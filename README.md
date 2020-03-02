@@ -23,7 +23,7 @@ border=no  # if you disable window border, uosc will draw
 
 Copy `uosc.lua` into `scripts/` folder.
 
-To configure uosc, create a `script-opts/uosc.conf` file, or download the one in this repository.
+To configure **uosc**, create a `script-opts/uosc.conf` file, or download the one in this repository.
 
 ## Options
 
@@ -56,7 +56,7 @@ p  script-binding uosc/toggleprogressbar
 
 ## Commands
 
-Available commands uosc listens on:
+Available commands **uosc** listens on:
 
 #### `toggleprogressbar`
 
