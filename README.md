@@ -2,7 +2,7 @@
 	<a href="https://darsain.github.io/uosc/preview.webm"><img src="https://darsain.github.io/uosc/preview.png" width="854" height="480"></a>
 	<h1>uosc</h1>
 	<p>
-		Minimalistic proximity based UI for <a href="https://mpv.io">MPV player</a>.
+		Minimalist proximity based UI for <a href="https://mpv.io">MPV player</a>.
 	</p>
 	<br>
 </div>
@@ -18,7 +18,7 @@ In your `mpv.conf`:
 ```config
 osc=no     # required so that the 2 UIs don't fight each other
 border=no  # if you disable window border, uosc will draw
-           # its own proximity based window controls
+           # its own pretty proximity based window controls
 ```
 
 Copy `uosc.lua` into `scripts/` folder.
