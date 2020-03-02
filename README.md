@@ -2,7 +2,7 @@
 	<a href="https://darsain.github.io/uosc/preview.webm"><img src="https://darsain.github.io/uosc/preview.png" width="854" height="480">
 	<h1>uosc</h1>
 	<p>
-		Minimalistic proximity based UI for MPV player.
+		Minimalistic proximity based UI for <a href="https://mpv.io">MPV player</a>.
 	</p>
 	<br>
 </div>
