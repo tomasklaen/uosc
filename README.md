@@ -61,3 +61,14 @@ Available commands **uosc** listens on:
 #### `toggleprogressbar`
 
 Toggle the thin discrete progress bar.
+
+## Tips
+
+If the UI feels sluggish to you, it's probably because the rendering is chained to video frame rate. Add this to your `mpv.conf` file to enable interpolation and get a more responsive UI:
+
+```
+interpolation=yes
+video-sync=display-resample
+```
+
+Though it does come at the cost of a higher CPU load.
