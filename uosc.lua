@@ -38,6 +38,11 @@ Key  script-binding uosc/toggleprogressbar
 
 ]]
 
+if mp.get_property('osc') == 'yes' then
+	mp.msg.info("Disabled because original osc is enabled!")
+	return
+end
+
 local assdraw = require 'mp.assdraw'
 local opt = require 'mp.options'
 local osd = mp.create_osd_overlay("ass-events")
