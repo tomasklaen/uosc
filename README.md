@@ -21,9 +21,9 @@ border=no  # if you disable window border, uosc will draw
            # its own pretty proximity based window controls
 ```
 
-Copy `uosc.lua` into `scripts/` folder.
+Download and save [`uosc.lua`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.lua) into `scripts/` folder.
 
-To configure **uosc**, create a `script-opts/uosc.conf` file, or download the one in this repository.
+To configure **uosc**, create a `script-opts/uosc.conf` file, or download [`uosc.conf`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.conf) from this repository.
 
 ## Options
 
