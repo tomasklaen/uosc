@@ -499,7 +499,7 @@ function render_window_controls(ass)
 		local clip_coordinates = "0,0,"..(minimize.ax - 10)..","..config.window_controls.height
 
 		ass:new_event()
-		ass:append("{\\blur0\\bord0\\shad1\\1c&HFFFFFF\\4c&H000000\\fn"..config.font.."\\fs"..fontsize.."\\clip("..clip_coordinates..")")
+		ass:append("{\\q2\\blur0\\bord0\\shad1\\1c&HFFFFFF\\4c&H000000\\fn"..config.font.."\\fs"..fontsize.."\\clip("..clip_coordinates..")")
 		ass_append_opacity(ass, 1, master_opacity)
 		ass:pos(0 + spacing, config.window_controls.height / 2)
 		ass:an(4)
