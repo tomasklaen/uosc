@@ -22,7 +22,7 @@ progressbar_fullscreen=       # defaults to `progressbar`
 progressbar_size=4            # progressbar size in pixels
 progressbar_size_fullscreen=  # defaults to `progressbar_size`
 seekbar_size=40               # seekbar size in pixels
-seekbar_size_fullscreen=0     # defaults to `seekbar_size`
+seekbar_size_fullscreen=      # defaults to `seekbar_size`
 min_proximity=60              # element<>cursor proximity below which opacity equals 1
 max_proximity=120             # element<>cursor proximity above which opacity equals 0
 bar_opacity=0.8               # max opacity of progress and seek bars
@@ -60,6 +60,12 @@ opt.read_options(options, "uosc")
 local config = {
 	render_delay = 0.03,        -- sets rendering frequency
 	font = mp.get_property("options/osd-font"),
+	window_controls = {
+		button_width = 46,
+		height = 40,
+		icon_opacity = 0.8,
+		background_opacity = 0.8,
+	}
 }
 local state = {
 	filename = "",
@@ -83,52 +89,96 @@ local cursor = {
 	x = nil,
 	y = nil,
 }
-local window_controls = {
-	button_width = 46,
-	button_height = 40,
-	icon_opacity = 0.8,
-	background_opacity = 0.8,
-}
 local infinity = 1e309
 local elements = {
 	progressbar = {
 		enabled = true, -- flag set manually through runtime keybinds
-		show = true,    -- consolidation of `progressbar` and `progressbar_fullscreen`
-		size = 0, -- dynamic consolidation of `seekbar_size` and `seekbar_size_fullscreen`
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated on screen dimensions init/update
+		show = true, -- consolidation of `progressbar` and `progressbar_fullscreen` options
+		size = 0, -- consolidation of `progressbar_size` and `progressbar_size_fullscreen` options
+		on_display_resize = function(element)
+			element.size = (state.fullscreen or state.maximized)
+				and (options.progressbar_size_fullscreen ~= 0)
+				and options.progressbar_size_fullscreen
+				or options.progressbar_size
+
+			element.show = state.fullscreen
+				and options.progressbar_fullscreen ~= ""
+				and options.progressbar_fullscreen
+				or options.progressbar
+		end,
 		render = function(ass) render_progressbar(ass) end,
 	},
 	seekbar = {
 		interactive = true, -- listen for mouse events and don't disable window dragging
-		size = 0, -- dynamic consolidation of `seekbar_size` and `seekbar_size_fullscreen`
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated on screen dimensions init/update
+		size = 0, -- consolidation of `seekbar_size` and `seekbar_size_fullscreen` options
+		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
-		render = function(ass) render_seekbar(ass) end,
+		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
+		on_display_resize = function(element)
+			element.size = (state.fullscreen or state.maximized)
+				and (options.seekbar_size_fullscreen ~= 0)
+				and options.seekbar_size_fullscreen
+				or options.seekbar_size
+			element.ax = 0
+			element.ay = display.height - element.size
+			element.bx = display.width
+			element.by = display.height
+		end,
 		on_mbtn_left_down = function()
 			mp.commandv("seek", ((cursor.x / display.width) * 100), "absolute-percent+exact")
-		end
+		end,
+		render = function(ass) render_seekbar(ass) end,
 	},
 	window_controls = {
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated on screen dimensions init/update
+		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
 		proximity = infinity, opacity = 0,   -- calculated on mouse movement
+		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
+		on_display_resize = function(element)
+			local ax = display.width - (config.window_controls.button_width * 3)
+			element.ax = options.title and 0 or ax
+			element.ay = 0
+			element.bx = display.width
+			element.by = config.window_controls.height
+		end,
 		render = function(ass) render_window_controls(ass) end,
 	},
 	window_controls_minimize = {
 		interactive = true, -- listen for mouse events and don't disable window dragging
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated on screen dimensions init/update
+		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
+		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
+		on_display_resize = function(element)
+			element.ax = display.width - (config.window_controls.button_width * 3)
+			element.ay = 0
+			element.bx = element.ax + config.window_controls.button_width
+			element.by = config.window_controls.height
+		end,
 		on_mbtn_left_down = function() mp.commandv("cycle", "window-minimized") end
 	},
 	window_controls_maximize = {
 		interactive = true, -- listen for mouse events and don't disable window dragging
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated on screen dimensions init/update
+		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
+		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
+		on_display_resize = function(element)
+			element.ax = display.width - (config.window_controls.button_width * 2)
+			element.ay = 0
+			element.bx = element.ax + config.window_controls.button_width
+			element.by = config.window_controls.height
+		end,
 		on_mbtn_left_down = function() mp.commandv("cycle", "window-maximized") end
 	},
 	window_controls_close = {
 		interactive = true, -- listen for mouse events and don't disable window dragging
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated on screen dimensions init/update
+		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
+		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
+		on_display_resize = function(element)
+			element.ax = display.width - config.window_controls.button_width
+			element.ay = 0
+			element.bx = element.ax + config.window_controls.button_width
+			element.by = config.window_controls.height
+		end,
 		on_mbtn_left_down = function() mp.commandv("quit") end
 	}
 }
@@ -168,51 +218,12 @@ function update_display_dimensions()
 	display.height = o.h
 	display.aspect = o.aspect
 
-	-- Update element rectangles
-
-	-- Seekbar
-	elements.seekbar.size = (state.fullscreen or state.maximized) and (options.seekbar_size_fullscreen ~= 0)
-		and options.seekbar_size_fullscreen
-		or options.seekbar_size
-	elements.seekbar.ax = 0
-	elements.seekbar.ay = display.height - elements.seekbar.size
-	elements.seekbar.bx = display.width
-	elements.seekbar.by = display.height
-
-	local window_control_buttons_ax = display.width - (window_controls.button_width * 3)
-
-	-- Window controls
-	elements.window_controls.ax = options.title and 0 or window_control_buttons_ax
-	elements.window_controls.ay = 0
-	elements.window_controls.bx = display.width
-	elements.window_controls.by = window_controls.button_height
-
-	-- Window controls minimize button
-	elements.window_controls_minimize.ax = window_control_buttons_ax
-	elements.window_controls_minimize.ay = 0
-	elements.window_controls_minimize.bx = elements.window_controls_minimize.ax + window_controls.button_width
-	elements.window_controls_minimize.by = window_controls.button_height
-
-	-- Window controls maximize button
-	elements.window_controls_maximize.ax = elements.window_controls_minimize.bx
-	elements.window_controls_maximize.ay = 0
-	elements.window_controls_maximize.bx = elements.window_controls_maximize.ax + window_controls.button_width
-	elements.window_controls_maximize.by = window_controls.button_height
-
-	-- Window controls close button
-	elements.window_controls_close.ax = elements.window_controls_maximize.bx
-	elements.window_controls_close.ay = 0
-	elements.window_controls_close.bx = elements.window_controls_close.ax + window_controls.button_width
-	elements.window_controls_close.by = window_controls.button_height
-
-	-- Update progressbar rendering config
-	elements.progressbar.size = (state.fullscreen or state.maximized) and (options.progressbar_size_fullscreen ~= 0)
-		and options.progressbar_size_fullscreen
-		or options.progressbar_size
-
-	elements.progressbar.show = state.fullscreen and options.progressbar_fullscreen ~= ""
-		and options.progressbar_fullscreen
-		or options.progressbar
+	-- Tell elements to update their area rectangles
+	for _, element in pairs(elements) do
+		if element.on_display_resize ~= nil then
+			element.on_display_resize(element)
+		end
+	end
 end
 
 function update_cursor_position()
@@ -222,24 +233,26 @@ function update_cursor_position()
 	update_proximities()
 end
 
+function update_element_cursor_proximity(element)
+	if cursor.hidden then
+		element.proximity = infinity
+		element.opacity = 0
+	else
+		local range = options.max_proximity - options.min_proximity
+		element.proximity = get_point_to_rectangle_proximity(cursor, element)
+		element.opacity = 1 - math.min(math.max(element.proximity - options.min_proximity, 0), range) / range
+	end
+end
+
 function update_proximities()
-	local max = options.max_proximity
-	local min = options.min_proximity
-	local range = max - min
 	local should_enable_mouse_bindings = false
 
 	-- Calculates proximities and opacities for defined elements
 	for _, element in pairs(elements) do
 		-- Only update proximity and opacity for elements that care about it
-		if element.proximity ~= nil then
-			if cursor.hidden then
-				element.proximity = infinity
-				element.opacity = 0
-			else
-				element.proximity = get_point_to_rectangle_proximity(cursor, element)
-				element.opacity = 1 - math.min(math.max(element.proximity - min, 0), range) / range
-				should_enable_mouse_bindings = should_enable_mouse_bindings or (element.interactive and element.proximity == 0)
-			end
+		if element.proximity ~= nil and element.on_mouse_move ~= nil then
+			element.on_mouse_move(element)
+			should_enable_mouse_bindings = should_enable_mouse_bindings or (element.interactive and element.proximity == 0)
 		end
 	end
 
@@ -408,7 +421,7 @@ function render_window_controls(ass)
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H2311e8}")
-		ass_append_opacity(ass, window_controls.background_opacity, master_opacity)
+		ass_append_opacity(ass, config.window_controls.background_opacity, master_opacity)
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(close.ax, close.ay, close.bx, close.by)
@@ -416,8 +429,8 @@ function render_window_controls(ass)
 	end
 	ass:new_event()
 	ass:append("{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}")
-	ass_append_opacity(ass, window_controls.icon_opacity, master_opacity)
-	ass:pos(close.ax + (window_controls.button_width / 2), (window_controls.button_height / 2))
+	ass_append_opacity(ass, config.window_controls.icon_opacity, master_opacity)
+	ass:pos(close.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 	ass:draw_start()
 	ass:move_to(-5, 5)
 	ass:line_to(5, -5)
@@ -431,7 +444,7 @@ function render_window_controls(ass)
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H000000}")
-		ass_append_opacity(ass, window_controls.background_opacity, master_opacity)
+		ass_append_opacity(ass, config.window_controls.background_opacity, master_opacity)
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(maximize.ax, maximize.ay, maximize.bx, maximize.by)
@@ -439,15 +452,15 @@ function render_window_controls(ass)
 	end
 	ass:new_event()
 	ass:append("{\\blur0\\bord2\\shad0\\1c\\3c&H000000}")
-	ass_append_opacity(ass, {[3] = window_controls.icon_opacity}, master_opacity)
-	ass:pos(maximize.ax + (window_controls.button_width / 2), (window_controls.button_height / 2))
+	ass_append_opacity(ass, {[3] = config.window_controls.icon_opacity}, master_opacity)
+	ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 	ass:draw_start()
 	ass:rect_cw(-4, -4, 6, 6)
 	ass:draw_stop()
 	ass:new_event()
 	ass:append("{\\blur0\\bord2\\shad0\\1c\\3c&HFFFFFF}")
-	ass_append_opacity(ass, {[3] = window_controls.icon_opacity}, master_opacity)
-	ass:pos(maximize.ax + (window_controls.button_width / 2), (window_controls.button_height / 2))
+	ass_append_opacity(ass, {[3] = config.window_controls.icon_opacity}, master_opacity)
+	ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 	ass:draw_start()
 	ass:rect_cw(-5, -5, 5, 5)
 	ass:draw_stop()
@@ -458,7 +471,7 @@ function render_window_controls(ass)
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H000000}")
-		ass_append_opacity(ass, window_controls.background_opacity, master_opacity)
+		ass_append_opacity(ass, config.window_controls.background_opacity, master_opacity)
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(minimize.ax, minimize.ay, minimize.bx, minimize.by)
@@ -466,9 +479,9 @@ function render_window_controls(ass)
 	end
 	ass:new_event()
 	ass:append("{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}")
-	ass_append_opacity(ass, window_controls.icon_opacity, master_opacity)
+	ass_append_opacity(ass, config.window_controls.icon_opacity, master_opacity)
 	ass:append("{\\1a&HFF&}")
-	ass:pos(minimize.ax + (window_controls.button_width / 2), (window_controls.button_height / 2))
+	ass:pos(minimize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 	ass:draw_start()
 	ass:move_to(-5, 0)
 	ass:line_to(5, 0)
@@ -476,14 +489,14 @@ function render_window_controls(ass)
 
 	-- Window title
 	if options.title then
-		local spacing = math.ceil(window_controls.button_height * 0.25)
-		local fontsize = math.floor(window_controls.button_height - (spacing * 2))
-		local clip_coordinates = "0,0,"..(minimize.ax - 10)..","..window_controls.button_height
+		local spacing = math.ceil(config.window_controls.height * 0.25)
+		local fontsize = math.floor(config.window_controls.height - (spacing * 2))
+		local clip_coordinates = "0,0,"..(minimize.ax - 10)..","..config.window_controls.height
 
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\shad1\\1c&HFFFFFF\\4c&H000000\\fn"..config.font.."\\fs"..fontsize.."\\clip("..clip_coordinates..")")
 		ass_append_opacity(ass, 1, master_opacity)
-		ass:pos(0 + spacing, window_controls.button_height / 2)
+		ass:pos(0 + spacing, config.window_controls.height / 2)
 		ass:an(4)
 		ass:append(state.filename)
 	end
