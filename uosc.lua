@@ -70,7 +70,7 @@ local config = {
 }
 local state = {
 	filename = "",
-	border = mp.get_property("border"),
+	border = mp.get_property_native("border"),
 	duration = nil,
 	position = nil,
 	paused = false,
@@ -281,22 +281,18 @@ function render_progressbar(ass)
 		and (1 - math.min(elements.seekbar.opacity + elements.seekbar.opacity * 0.6, 1))
 		or 1
 
-	-- Top border
-	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."}")
-	ass_append_opacity(ass, math.max(options.bar_opacity - 0.1, 0), master_opacity)
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:rect_cw(0, display.height - bar.size - 1, display.width, display.height - bar.size)
-	ass:draw_stop()
+	local ax = 0
+	local ay = display.height - bar.size
+	local bx = display.width * progress
+	local by = display.height
 
 	-- Background
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."}")
+	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."\\iclip("..ax..","..ay..","..bx..","..by..")}")
 	ass_append_opacity(ass, math.max(options.bar_opacity - 0.1, 0), master_opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
-	ass:rect_cw(display.width * progress, display.height - bar.size, display.width, display.height)
+	ass:rect_cw(ax, ay - 1, display.width, by)
 	ass:draw_stop()
 
 	-- Progress
@@ -305,7 +301,7 @@ function render_progressbar(ass)
 	ass_append_opacity(ass, options.bar_opacity, master_opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
-	ass:rect_cw(0, display.height - bar.size, display.width * progress, display.height)
+	ass:rect_cw(ax, ay, bx, by)
 	ass:draw_stop()
 end
 
@@ -324,22 +320,19 @@ function render_seekbar(ass)
 	local spacing = math.ceil(bar.size * 0.27)
 	local fontsize = math.floor(bar.size - (spacing * 2))
 
-	-- Top border
-	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."}")
-	ass_append_opacity(ass, math.max(options.bar_opacity - 0.1, 0), bar.opacity)
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:rect_cw(0, display.height - bar.size - 1, display.width, display.height - bar.size)
-	ass:draw_stop()
+	local ax = 0
+	local ay = display.height - bar.size
+	local bx = display.width * progress
+	local by = display.height
+	local elapsed_bar_coordinates = ax..","..ay..","..bx..","..by
 
 	-- Background
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."}")
+	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."\\iclip("..elapsed_bar_coordinates..")}")
 	ass_append_opacity(ass, math.max(options.bar_opacity - 0.1, 0), bar.opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
-	ass:rect_cw(display.width * progress, display.height - bar.size, display.width, display.height)
+	ass:rect_cw(0, ay - 1, display.width, by)
 	ass:draw_stop()
 
 	-- Progress
@@ -348,50 +341,48 @@ function render_seekbar(ass)
 	ass_append_opacity(ass, options.bar_opacity, bar.opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
-	ass:rect_cw(0, display.height - bar.size, display.width * progress, display.height)
+	ass:rect_cw(ax, ay, bx, by)
 	ass:draw_stop()
 
 	-- Elapsed time
-	local elapsed = mp.get_property_native("time-pos")
-	local elapsed_clip_coordinates = "0,"..(display.height - bar.size)..","..(display.width * progress)..","..display.height
+	local elapsed_seconds = mp.get_property_native("time-pos")
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_clip_coordinates..")")
+	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
 	ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1), bar.opacity)
-	ass:pos(spacing, display.height - (bar.size / 2))
+	ass:pos(spacing, ay + (bar.size / 2))
 	ass:an(4)
-	ass:append(mp.format_time(elapsed))
+	ass:append(mp.format_time(elapsed_seconds))
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_clip_coordinates..")")
+	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
 	ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1), bar.opacity)
-	ass:pos(spacing, display.height - (bar.size / 2))
+	ass:pos(spacing, ay + (bar.size / 2))
 	ass:an(4)
-	ass:append(mp.format_time(elapsed))
+	ass:append(mp.format_time(elapsed_seconds))
 
 	-- Remaining time
-	local remaining = mp.get_property_native("playtime-remaining")
-	local remaining_clip_coordinates = display.width * progress..","..(display.height - bar.size)..","..display.width..","..display.height
+	local remaining_seconds = mp.get_property_native("playtime-remaining")
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..remaining_clip_coordinates..")")
+	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
 	ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1), bar.opacity)
-	ass:pos(display.width - spacing, display.height - (bar.size / 2))
+	ass:pos(display.width - spacing, ay + (bar.size / 2))
 	ass:an(6)
-	ass:append("-"..mp.format_time(remaining))
+	ass:append("-"..mp.format_time(remaining_seconds))
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..remaining_clip_coordinates..")")
+	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
 	ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1), bar.opacity)
-	ass:pos(display.width - spacing, display.height - (bar.size / 2))
+	ass:pos(display.width - spacing, ay + (bar.size / 2))
 	ass:an(6)
-	ass:append("-"..mp.format_time(remaining))
+	ass:append("-"..mp.format_time(remaining_seconds))
 
 	if bar.proximity == 0 then
 		-- Hovered time
-		local hovered = mp.get_property_native("duration") * (cursor.x / display.width)
+		local hovered_seconds = mp.get_property_native("duration") * (cursor.x / display.width)
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."")
 		ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1))
-		ass:pos(cursor.x, display.height - bar.size)
+		ass:pos(cursor.x, ay)
 		ass:an(2)
-		ass:append(mp.format_time(hovered))
+		ass:append(mp.format_time(hovered_seconds))
 
 		-- Cursor line
 		ass:new_event()
@@ -399,7 +390,7 @@ function render_seekbar(ass)
 		ass_append_opacity(ass, 0.2)
 		ass:pos(0, 0)
 		ass:draw_start()
-		ass:rect_cw(cursor.x, display.height - bar.size, cursor.x + 1, display.height)
+		ass:rect_cw(cursor.x, ay, cursor.x + 1, by)
 		ass:draw_stop()
 	end
 end
