@@ -551,7 +551,7 @@ end
 
 -- EVENT HANDLERS
 
-function dispatch_mouse_button_event_to_elements(name, value)
+function dispatch_event_to_element_below_mouse_button(name, value)
 	for _, element in pairs(elements) do
 		if element.proximity == 0 then
 			local handler = element["on_"..name]
@@ -571,15 +571,15 @@ end
 function handle_event(source, what)
 	if source == "mbtn_left" then
 		if what == "down" or what == "press" then
-			dispatch_mouse_button_event_to_elements("mbtn_left_down")
+			dispatch_event_to_element_below_mouse_button("mbtn_left_down")
 		elseif what == "up" then
-			dispatch_mouse_button_event_to_elements("mbtn_left_up")
+			dispatch_event_to_element_below_mouse_button("mbtn_left_up")
 		end
 	elseif source == "mbtn_right" then
 		if what == "down" or what == "press" then
-			dispatch_mouse_button_event_to_elements("mbtn_right_down")
+			dispatch_event_to_element_below_mouse_button("mbtn_right_down")
 		elseif what == "up" then
-			dispatch_mouse_button_event_to_elements("mbtn_right_up")
+			dispatch_event_to_element_below_mouse_button("mbtn_right_up")
 		end
 	elseif source == "mouse_leave" then
 		cursor.hidden = true
