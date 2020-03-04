@@ -435,7 +435,7 @@ function render_window_controls(ass)
 	if maximize.proximity == 0 then
 		-- Background on hover
 		ass:new_event()
-		ass:append("{\\blur0\\bord0\\1c&H000000}")
+		ass:append("{\\blur0\\bord0\\1c&H222222}")
 		ass_append_opacity(ass, config.window_controls.background_opacity, master_opacity)
 		ass:pos(0, 0)
 		ass:draw_start()
@@ -462,7 +462,7 @@ function render_window_controls(ass)
 	if minimize.proximity == 0 then
 		-- Background on hover
 		ass:new_event()
-		ass:append("{\\blur0\\bord0\\1c&H000000}")
+		ass:append("{\\blur0\\bord0\\1c&H222222}")
 		ass_append_opacity(ass, config.window_controls.background_opacity, master_opacity)
 		ass:pos(0, 0)
 		ass:draw_start()
