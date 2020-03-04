@@ -16,18 +16,16 @@ border=no  # if you disable window border, uosc will draw
 Options go in `script-opts/uosc.conf`. Defaults:
 
 ```
-title=no                      # display window title (filename) in no-border mode
-progressbar=yes               # show thin discrete progress at the bottom
-progressbar_fullscreen=       # defaults to `progressbar`
-progressbar_size=4            # progressbar size in pixels
-progressbar_size_fullscreen=  # defaults to `progressbar_size`
-seekbar_size=40               # seekbar size in pixels
-seekbar_size_fullscreen=      # defaults to `seekbar_size`
-min_proximity=60              # element<>cursor proximity below which opacity equals 1
-max_proximity=120             # element<>cursor proximity above which opacity equals 0
-bar_opacity=0.8               # max opacity of progress and seek bars
-bar_color_foreground=FFFFFF   # BBGGRR - BLUE GREEN RED hex code
-bar_color_background=000000   # BBGGRR - BLUE GREEN RED hex code
+title=no                       # display window title (filename) in no-border mode
+progressbar_size=4             # progressbar size in pixels, 0 to disable
+progressbar_size_fullscreen=4  # same as ^ but when in fullscreen
+seekbar_size=40                # seekbar size in pixels, 0 to disable
+seekbar_size_fullscreen=40     # same as ^ but when in fullscreen
+min_proximity=60               # proximity below which opacity equals 1
+max_proximity=120              # proximity above which opacity equals 0
+bar_opacity=0.8                # max opacity of progress and seek bars
+bar_color_foreground=FFFFFF    # BBGGRR - BLUE GREEN RED hex code
+bar_color_background=000000    # BBGGRR - BLUE GREEN RED hex code
 ```
 
 Available keybindings (place into `input.conf`):
@@ -49,12 +47,10 @@ local osd = mp.create_osd_overlay("ass-events")
 
 local options = {
 	title = false,                   -- display window title (filename) in no-border mode
-	progressbar = true,              -- show thin discrete progress at the bottom
-	progressbar_fullscreen = "",     -- defaults to `progressbar`
-	progressbar_size = 4,            -- progressbar size in pixels
-	progressbar_size_fullscreen = 0, -- defaults to `progressbar_size` when 0
-	seekbar_size = 40,               -- seekbar size in pixels
-	seekbar_size_fullscreen = 0,     -- defaults to `seekbar_size` when 0
+	progressbar_size = 4,            -- progressbar size in pixels, 0 to disable
+	progressbar_size_fullscreen = 4, -- same as ^ but when in fullscreen
+	seekbar_size = 40,               -- seekbar size in pixels, 0 to disable
+	seekbar_size_fullscreen = 40,    -- same as ^ but when in fullscreen
 	min_proximity = 60,              -- proximity below which opacity equals 1
 	max_proximity = 120,             -- proximity above which opacity equals 0
 	bar_opacity = 0.8,               -- max opacity of progress and seek bars
@@ -98,18 +94,13 @@ local infinity = 1e309
 local elements = {
 	progressbar = {
 		enabled = true, -- flag set manually through runtime keybinds
-		show = true, -- consolidation of `progressbar` and `progressbar_fullscreen` options
 		size = 0, -- consolidation of `progressbar_size` and `progressbar_size_fullscreen` options
 		on_display_resize = function(element)
-			element.size = (state.fullscreen or state.maximized)
-				and (options.progressbar_size_fullscreen ~= 0)
-				and options.progressbar_size_fullscreen
-				or options.progressbar_size
-
-			element.show = state.fullscreen
-				and options.progressbar_fullscreen ~= ""
-				and options.progressbar_fullscreen
-				or options.progressbar
+			if state.fullscreen or state.maximized then
+				element.size = options.progressbar_size_fullscreen
+			else
+				element.size = options.progressbar_size
+			end
 		end,
 		render = function(ass) render_progressbar(ass) end,
 	},
@@ -120,10 +111,12 @@ local elements = {
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
 		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
 		on_display_resize = function(element)
-			element.size = (state.fullscreen or state.maximized)
-				and (options.seekbar_size_fullscreen ~= 0)
-				and options.seekbar_size_fullscreen
-				or options.seekbar_size
+			if state.fullscreen or state.maximized then
+				element.size = options.seekbar_size_fullscreen
+			else
+				element.size = options.seekbar_size
+			end
+			element.interactive = element.size > 0
 			element.ax = 0
 			element.ay = display.height - element.size
 			element.bx = display.width
@@ -277,14 +270,16 @@ function render_progressbar(ass)
 	local bar = elements.progressbar
 
 	if not bar.enabled
-		or not bar.show
+		or bar.size == 0
 		or state.duration == nil
 		or state.position == nil then
 		return
 	end
 
 	local progress = state.position / state.duration
-	local master_opacity = 1 - math.min(elements.seekbar.opacity + elements.seekbar.opacity * 0.6, 1)
+	local master_opacity = elements.seekbar.size > 0
+		and (1 - math.min(elements.seekbar.opacity + elements.seekbar.opacity * 0.6, 1))
+		or 1
 
 	-- Top border
 	ass:new_event()
@@ -318,6 +313,7 @@ function render_seekbar(ass)
 	local bar = elements.seekbar
 
 	if cursor.hidden
+		or bar.size == 0
 		or bar.opacity == 0
 		or state.duration == nil
 		or state.position == nil then
