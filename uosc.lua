@@ -1,6 +1,6 @@
 --[[
 
-uosc 1.0.3 | https://github.com/darsain/uosc
+uosc 1.0.4 | https://github.com/darsain/uosc
 
 Minimalistic proximity based UI for MPV player.
 

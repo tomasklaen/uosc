@@ -1,3 +1,7 @@
+### 1.0.4
+
+Tweaked styling of window controls to be more visible against pure black backgrounds.
+
 ### 1.0.3
 
 Simplified options and made them more explicit.
