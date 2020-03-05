@@ -278,7 +278,7 @@ function render_progressbar(ass)
 
 	local progress = state.position / state.duration
 	local master_opacity = elements.seekbar.size > 0
-		and (1 - math.min(elements.seekbar.opacity + elements.seekbar.opacity * 0.6, 1))
+		and (1 - math.min(elements.seekbar.opacity / 0.4, 1))
 		or 1
 
 	local ax = 0
