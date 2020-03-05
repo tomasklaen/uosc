@@ -281,6 +281,10 @@ function render_progressbar(ass)
 		and (1 - math.min(elements.seekbar.opacity / 0.4, 1))
 		or 1
 
+	if master_opacity == 0 then
+		return
+	end
+
 	local ax = 0
 	local ay = display.height - bar.size
 	local bx = display.width * progress
