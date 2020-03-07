@@ -1,3 +1,7 @@
+### 1.0.5
+
+Ensures time text seen above the cursor during seeking doesn't overflow the screen. This is a naive implementation that is only guessing the width of the text, since there is no other API to use for this.
+
 ### 1.0.4
 
 Tweaked styling of window controls to be more visible against pure black backgrounds.
