@@ -381,10 +381,11 @@ function render_seekbar(ass)
 	if bar.proximity == 0 then
 		-- Hovered time
 		local hovered_seconds = mp.get_property_native("duration") * (cursor.x / display.width)
+		local box_half_width_guesstimate = (fontsize * 4.2) / 2
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."")
 		ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1))
-		ass:pos(cursor.x, ay)
+		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), ay)
 		ass:an(2)
 		ass:append(mp.format_time(hovered_seconds))
 
