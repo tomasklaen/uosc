@@ -101,6 +101,16 @@ local config = {
 		background_opacity = 0.8,
 	}
 }
+local display = {
+	width = 1280,
+	height = 720,
+	aspect = 1.77778,
+}
+local cursor = {
+	hidden = true, -- true when autohidden or outside of the player window
+	x = nil,
+	y = nil,
+}
 local state = {
 	filename = "",
 	border = mp.get_property_native("border"),
@@ -111,17 +121,12 @@ local state = {
 	maximized = mp.get_property_native("window-maximized"),
 	render_timer = nil,
 	render_last_time = 0,
+	cursor_autohide_timer = mp.add_timeout(mp.get_property_native("cursor-autohide") / 1000, function()
+		cursor.hidden = true
+		update_proximities()
+		request_render()
+	end),
 	mouse_bindings_enabled = false
-}
-local display = {
-	width = 1280,
-	height = 720,
-	aspect = 1.77778,
-}
-local cursor = {
-	hidden = true, -- true when autohidden or outside of the player window
-	x = nil,
-	y = nil,
 }
 local infinity = 1e309
 local elements = {
@@ -698,6 +703,10 @@ function handle_mouse_move()
 	cursor.hidden = false
 	update_cursor_position()
 	request_render()
+
+	-- Restart timer that hides UI when mouse is autohidden
+	state.cursor_autohide_timer:kill()
+	state.cursor_autohide_timer:resume()
 end
 
 function handle_toggle_progress()
