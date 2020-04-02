@@ -17,13 +17,19 @@ Options go in `script-opts/uosc.conf`. Defaults:
 
 ```
 title=no                       # display window title (filename) in no-border mode
-progressbar_size=4             # progressbar size in pixels, 0 to disable
-progressbar_size_fullscreen=4  # same as ^ but when in fullscreen
+
 seekbar_size=40                # seekbar size in pixels, 0 to disable
 seekbar_size_fullscreen=40     # same as ^ but when in fullscreen
+seekbar_chapters=              # seekbar chapters style: dots, lines, lines-top, lines-bottom
+
+progressbar_size=4             # progressbar size in pixels, 0 to disable
+progressbar_size_fullscreen=4  # same as ^ but when in fullscreen
+progressbar_chapters=          # progressbar chapters style: lines, lines-top, lines-bottom
+
 min_proximity=40               # proximity below which opacity equals 1
 max_proximity=120              # proximity above which opacity equals 0
 bar_opacity=0.8                # max opacity of progress and seek bars
+chapters_opacity=0.2           # chapters indicator opacity
 bar_color_foreground=FFFFFF    # BBGGRR - BLUE GREEN RED hex code
 bar_color_background=000000    # BBGGRR - BLUE GREEN RED hex code
 ```
@@ -47,13 +53,19 @@ local osd = mp.create_osd_overlay("ass-events")
 
 local options = {
 	title = false,                   -- display window title (filename) in no-border mode
-	progressbar_size = 4,            -- progressbar size in pixels, 0 to disable
-	progressbar_size_fullscreen = 4, -- same as ^ but when in fullscreen
+
 	seekbar_size = 40,               -- seekbar size in pixels, 0 to disable
 	seekbar_size_fullscreen = 40,    -- same as ^ but when in fullscreen
+	seekbar_chapters = "",           -- seekbar chapters style: dots, lines, lines-top, lines-bottom
+
+	progressbar_size = 4,            -- progressbar size in pixels, 0 to disable
+	progressbar_size_fullscreen = 4, -- same as ^ but when in fullscreen
+	progressbar_chapters = "",       -- progressbar chapters style: lines, lines-top, lines-bottom
+
 	min_proximity = 40,              -- proximity below which opacity equals 1
 	max_proximity = 120,             -- proximity above which opacity equals 0
 	bar_opacity = 0.8,               -- max opacity of progress and seek bars
+	chapter_opacity = 0.2,           -- chapters indicator opacity
 	bar_color_foreground = "FFFFFF", -- BBGGRR - BLUE GREEN RED hex code
 	bar_color_background = "000000", -- BBGGRR - BLUE GREEN RED hex code
 }
@@ -264,6 +276,44 @@ function update_proximities()
 	end
 end
 
+function draw_chapters(ass, style, chapter_y, size, foreground_cutoff, master_opacity)
+	if state.chapters ~= nil then
+		local half_size = size / 2
+		local bezier_stretch = size * 0.67
+		for i, chapter in ipairs(state.chapters) do
+			local chapter_x = display.width * (chapter.time / state.duration)
+
+			ass:new_event()
+			if chapter_x > foreground_cutoff then
+				ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_foreground.."}")
+			else
+				ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."}")
+			end
+			ass_append_opacity(ass, options.chapter_opacity, master_opacity)
+			ass:pos(0, 0)
+			ass:draw_start()
+
+			if style == "dots" then
+				ass:move_to(chapter_x - half_size, chapter_y)
+				ass:bezier_curve(
+					chapter_x - half_size, chapter_y - bezier_stretch,
+					chapter_x + half_size, chapter_y - bezier_stretch,
+					chapter_x + half_size, chapter_y
+				)
+				ass:bezier_curve(
+					chapter_x + half_size, chapter_y + bezier_stretch,
+					chapter_x - half_size, chapter_y + bezier_stretch,
+					chapter_x - half_size, chapter_y
+				)
+			elseif style == "lines" then
+				ass:rect_cw(chapter_x, chapter_y, chapter_x + 1, chapter_y + size)
+			end
+
+			ass:draw_stop()
+		end
+	end
+end
+
 --  ELEMENT RENDERERS
 
 function render_progressbar(ass)
@@ -307,6 +357,15 @@ function render_progressbar(ass)
 	ass:draw_start()
 	ass:rect_cw(ax, ay, bx, by)
 	ass:draw_stop()
+
+	-- Chapters
+	if options.progressbar_chapters == "lines" then
+		draw_chapters(ass, "lines", ay, bar.size, bx, bar.opacity)
+	elseif options.progressbar_chapters == "lines-top" then
+		draw_chapters(ass, "lines", ay, bar.size / 2, bx, bar.opacity)
+	elseif options.progressbar_chapters == "lines-bottom" then
+		draw_chapters(ass, "lines", ay + bar.size - (bar.size / 2), bar.size / 2, bx, bar.opacity)
+	end
 end
 
 function render_seekbar(ass)
@@ -347,6 +406,17 @@ function render_seekbar(ass)
 	ass:draw_start()
 	ass:rect_cw(ax, ay, bx, by)
 	ass:draw_stop()
+
+	-- Chapters
+	if options.seekbar_chapters == "dots" then
+		draw_chapters(ass, "dots", ay + 6, 6, bx, bar.opacity)
+	elseif options.seekbar_chapters == "lines" then
+		draw_chapters(ass, "lines", ay, bar.size, bx, bar.opacity)
+	elseif options.seekbar_chapters == "lines-top" then
+		draw_chapters(ass, "lines", ay, bar.size / 4, bx, bar.opacity)
+	elseif options.seekbar_chapters == "lines-bottom" then
+		draw_chapters(ass, "lines", ay + bar.size - (bar.size / 4), bar.size / 4, bx, bar.opacity)
+	end
 
 	-- Elapsed time
 	local elapsed_seconds = mp.get_property_native("time-pos")
@@ -607,6 +677,7 @@ end
 
 mp.register_event("file-loaded", handle_file_load)
 
+mp.observe_property("chapter-list", "native", state_setter("chapters"))
 mp.observe_property("fullscreen", "bool", state_setter("fullscreen"))
 mp.observe_property("border", "bool", state_setter("border"))
 mp.observe_property("window-maximized", "bool", state_setter("maximized"))
