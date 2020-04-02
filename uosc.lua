@@ -51,6 +51,8 @@ max_proximity=120
 color_foreground=FFFFFF
 # BBGGRR - BLUE GREEN RED hex code
 color_background=000000
+# hide proximity based elements when mpv autohides the cursor
+autohide=no
 ```
 
 Available keybindings (place into `input.conf`):
@@ -85,10 +87,11 @@ local options = {
 	progressbar_chapters = "dots",      -- progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
 	progressbar_chapters_opacity = 0.3, -- progressbar chapters indicator opacity
 
-	min_proximity = 40,              -- proximity below which opacity equals 1
-	max_proximity = 120,             -- proximity above which opacity equals 0
+	min_proximity = 40,          -- proximity below which opacity equals 1
+	max_proximity = 120,         -- proximity above which opacity equals 0
 	color_foreground = "FFFFFF", -- BBGGRR - BLUE GREEN RED hex code
 	color_background = "000000", -- BBGGRR - BLUE GREEN RED hex code
+	autohide = false,            -- hide proximity based elements when mpv autohides the cursor
 }
 opt.read_options(options, "uosc")
 local config = {
@@ -124,6 +127,7 @@ local state = {
 	render_timer = nil,
 	render_last_time = 0,
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native("cursor-autohide") / 1000, function()
+		if not options.autohide then return end
 		cursor.hidden = true
 		update_proximities()
 		request_render()
@@ -707,8 +711,10 @@ function handle_mouse_move()
 	request_render()
 
 	-- Restart timer that hides UI when mouse is autohidden
-	state.cursor_autohide_timer:kill()
-	state.cursor_autohide_timer:resume()
+	if options.autohide then
+		state.cursor_autohide_timer:kill()
+		state.cursor_autohide_timer:resume()
+	end
 end
 
 function handle_toggle_progress()
