@@ -40,7 +40,7 @@ seekbar_size_fullscreen=60
 # seekbar opacity when fully visible
 seekbar_opacity=0.8
 # seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
-seekbar_chapters=
+seekbar_chapters=dots
 # seekbar chapters indicator opacity
 seekbar_chapters_opacity=0.3
 
@@ -51,7 +51,7 @@ progressbar_size_fullscreen=0
 # progressbar opacity
 progressbar_opacity=0.8
 # progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
-progressbar_chapters=
+progressbar_chapters=dots
 # progressbar chapters indicator opacity
 progressbar_chapters_opacity=0.3
 
