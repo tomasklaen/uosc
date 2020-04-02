@@ -53,7 +53,7 @@ progressbar_opacity=0.8
 # progressbar chapters indicator style: lines, lines-top, lines-bottom
 progressbar_chapters=
 # progressbar chapters indicator opacity
-progressbar_chapters_opacity=0.2
+progressbar_chapters_opacity=0.3
 
 # proximity below which opacity equals 1
 min_proximity=40
