@@ -76,13 +76,13 @@ local options = {
 	seekbar_size = 40,              -- seekbar size in pixels, 0 to disable
 	seekbar_size_fullscreen = 60,   -- same as ^ but when in fullscreen
 	seekbar_opacity = 0.8,          -- seekbar opacity when fully visible
-	seekbar_chapters = "dots",          -- seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
+	seekbar_chapters = "dots",      -- seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
 	seekbar_chapters_opacity = 0.3, -- seekbar chapters indicator opacity
 
 	progressbar_size = 1,               -- progressbar size in pixels, 0 to disable
 	progressbar_size_fullscreen = 0,    -- same as ^ but when in fullscreen
 	progressbar_opacity = 0.8,          -- progressbar opacity
-	progressbar_chapters = "dots",          -- progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
+	progressbar_chapters = "dots",      -- progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
 	progressbar_chapters_opacity = 0.3, -- progressbar chapters indicator opacity
 
 	min_proximity = 40,              -- proximity below which opacity equals 1
