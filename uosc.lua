@@ -363,11 +363,11 @@ function render_progressbar(ass, progressbar)
 	end
 
 	-- Progressbar opacity is inversely proportional to seekbar opacity
-	local master_opacity = elements.seekbar.size > 0
+	local opacity = elements.seekbar.size > 0
 		and (1 - math.min(elements.seekbar.opacity / 0.4, 1))
 		or 1
 
-	if master_opacity == 0 then
+	if opacity == 0 then
 		return
 	end
 
@@ -388,7 +388,7 @@ function render_progressbar(ass, progressbar)
 	-- Background
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..fax..","..fay..","..fbx..","..fby..")}")
-	ass_append_opacity(ass, math.max(options.progressbar_opacity - 0.1, 0), master_opacity)
+	ass_append_opacity(ass, math.max(options.progressbar_opacity - 0.1, 0), opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(bax, bay, bbx, bby)
@@ -397,7 +397,7 @@ function render_progressbar(ass, progressbar)
 	-- Progress
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
-	ass_append_opacity(ass, options.progressbar_opacity, master_opacity)
+	ass_append_opacity(ass, options.progressbar_opacity, opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(fax, fay, fbx, fby)
@@ -405,13 +405,13 @@ function render_progressbar(ass, progressbar)
 
 	-- Chapters
 	if options.progressbar_chapters == "dots" then
-		draw_chapters(ass, "dots", math.ceil(fay + (progressbar.size / 2)), 4, fbx, options.progressbar_chapters_opacity * master_opacity)
+		draw_chapters(ass, "dots", math.ceil(fay + (progressbar.size / 2)), 4, fbx, options.progressbar_chapters_opacity * opacity)
 	elseif options.progressbar_chapters == "lines" then
-		draw_chapters(ass, "lines", fay, progressbar.size, fbx, options.progressbar_chapters_opacity * master_opacity)
+		draw_chapters(ass, "lines", fay, progressbar.size, fbx, options.progressbar_chapters_opacity * opacity)
 	elseif options.progressbar_chapters == "lines-top" then
-		draw_chapters(ass, "lines", fay, progressbar.size / 2, fbx, options.progressbar_chapters_opacity * master_opacity)
+		draw_chapters(ass, "lines", fay, progressbar.size / 2, fbx, options.progressbar_chapters_opacity * opacity)
 	elseif options.progressbar_chapters == "lines-bottom" then
-		draw_chapters(ass, "lines", fay + progressbar.size - (progressbar.size / 2), progressbar.size / 2, fbx, options.progressbar_chapters_opacity * master_opacity)
+		draw_chapters(ass, "lines", fay + progressbar.size - (progressbar.size / 2), progressbar.size / 2, fbx, options.progressbar_chapters_opacity * opacity)
 	end
 end
 
@@ -717,10 +717,6 @@ function handle_mouse_move()
 	end
 end
 
-function handle_toggle_progress()
-	elements.progressbar.enabled = not elements.progressbar.enabled
-end
-
 function handle_border_change(_, border)
 	state.border = border
 	-- Sets 1px bottom border for bars in no-border mode
@@ -773,5 +769,18 @@ mp.set_key_bindings({
 	{"mbtn_right_dbl", "ignore"},
 }, "mouse_buttons", "force")
 
--- User defined keybindings
-mp.add_key_binding(nil, 'toggleprogressbar', handle_toggle_progress)
+-- User bindable functions
+mp.add_key_binding(nil, 'toggleprogressbar', function()
+	elements.progressbar.enabled = not elements.progressbar.enabled
+	request_render()
+end)
+mp.add_key_binding(nil, 'toggleseekbar', function()
+	if elements.seekbar.opacity < 0.5 then
+		cursor.hidden = false
+		elements.seekbar.opacity = 1
+	else
+		cursor.hidden = true
+		elements.seekbar.opacity = 0
+	end
+	request_render()
+end)

@@ -89,6 +89,12 @@ Available commands **uosc** listens on:
 
 Toggle the thin discrete progress bar.
 
+#### `toggleseekbar`
+
+Toggle seekbar manually instead of moving a pointer to it. Useful to check times without touching the pointer device.
+
+The toggled state is reset immediately on next pointer move.
+
 ## Tips
 
 If the UI feels sluggish to you, it's probably because the rendering is chained to video frame rate. Add this to your `mpv.conf` file to enable interpolation and get a more responsive UI:
