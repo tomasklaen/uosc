@@ -50,7 +50,7 @@ progressbar_size=1
 progressbar_size_fullscreen=0
 # progressbar opacity
 progressbar_opacity=0.8
-# progressbar chapters indicator style: lines, lines-top, lines-bottom
+# progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
 progressbar_chapters=
 # progressbar chapters indicator opacity
 progressbar_chapters_opacity=0.3

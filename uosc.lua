@@ -36,7 +36,7 @@ progressbar_size=1
 progressbar_size_fullscreen=0
 # progressbar opacity
 progressbar_opacity=0.8
-# progressbar chapters indicator style: lines, lines-top, lines-bottom
+# progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
 progressbar_chapters=
 # progressbar chapters indicator opacity
 progressbar_chapters_opacity=0.3
@@ -80,7 +80,7 @@ local options = {
 	progressbar_size = 1,               -- progressbar size in pixels, 0 to disable
 	progressbar_size_fullscreen = 0,    -- same as ^ but when in fullscreen
 	progressbar_opacity = 0.8,          -- progressbar opacity
-	progressbar_chapters = "",          -- progressbar chapters indicator style: lines, lines-top, lines-bottom
+	progressbar_chapters = "",          -- progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
 	progressbar_chapters_opacity = 0.3, -- progressbar chapters indicator opacity
 
 	min_proximity = 40,              -- proximity below which opacity equals 1
@@ -393,7 +393,9 @@ function render_progressbar(ass, progressbar)
 	ass:draw_stop()
 
 	-- Chapters
-	if options.progressbar_chapters == "lines" then
+	if options.progressbar_chapters == "dots" then
+		draw_chapters(ass, "dots", math.ceil(fay + (progressbar.size / 2)), 4, fbx, options.progressbar_chapters_opacity * master_opacity)
+	elseif options.progressbar_chapters == "lines" then
 		draw_chapters(ass, "lines", fay, progressbar.size, fbx, options.progressbar_chapters_opacity * master_opacity)
 	elseif options.progressbar_chapters == "lines-top" then
 		draw_chapters(ass, "lines", fay, progressbar.size / 2, fbx, options.progressbar_chapters_opacity * master_opacity)
