@@ -133,12 +133,14 @@ local elements = {
 				element.size = options.progressbar_size
 			end
 		end,
-		render = function(ass) render_progressbar(ass) end,
+		render = function(ass, element) render_progressbar(ass, element) end,
 	},
 	seekbar = {
 		interactive = true, -- listen for mouse events and disable window dragging
-		size = 0, -- consolidation of `seekbar_size` and `seekbar_size_fullscreen` options, set in `on_display_resize` lsitener below
-		ax = 0, ay = 0, bx = 0, by = 0, -- rectangle coordinates calculated in `on_display_resize` lsitener
+		size = 0, -- consolidation of `seekbar_size` and `seekbar_size_fullscreen` options, set in `on_display_resize` handler below
+		font_size = 0, -- calculated in `on_display_resize` handler below based on seekbar size
+		spacing = 0, -- calculated in `on_display_resize` handler below based on size and font size
+		ax = 0, ay = 0, bx = 0, by = 0, -- rectangle coordinates calculated in `on_display_resize` handler below
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
 		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
 		on_display_resize = function(element)
@@ -148,6 +150,8 @@ local elements = {
 				element.size = options.seekbar_size
 			end
 			element.interactive = element.size > 0
+			element.font_size = math.floor(math.min((element.size + 15) * 0.4, element.size * 0.96))
+			element.spacing = math.floor((element.size - element.font_size) / 2)
 			element.ax = 0
 			element.ay = display.height - element.size
 			element.bx = display.width
@@ -156,7 +160,7 @@ local elements = {
 		on_mbtn_left_down = function()
 			mp.commandv("seek", ((cursor.x / display.width) * 100), "absolute-percent+exact")
 		end,
-		render = function(ass) render_seekbar(ass) end,
+		render = function(ass, element) render_seekbar(ass, element) end,
 	},
 	window_controls = {
 		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
@@ -169,7 +173,7 @@ local elements = {
 			element.bx = display.width
 			element.by = config.window_controls.height
 		end,
-		render = function(ass) render_window_controls(ass) end,
+		render = function(ass, element) render_window_controls(ass, element) end,
 	},
 	window_controls_minimize = {
 		interactive = true, -- listen for mouse events and disable window dragging
@@ -337,11 +341,9 @@ end
 
 --  ELEMENT RENDERERS
 
-function render_progressbar(ass)
-	local bar = elements.progressbar
-
-	if not bar.enabled
-		or bar.size == 0
+function render_progressbar(ass, progressbar)
+	if not progressbar.enabled
+		or progressbar.size == 0
 		or state.duration == nil
 		or state.position == nil then
 		return
@@ -358,7 +360,7 @@ function render_progressbar(ass)
 	end
 
 	local ax = 0
-	local ay = display.height - bar.size
+	local ay = display.height - progressbar.size
 	local bx = display.width * progress
 	local by = display.height
 
@@ -382,31 +384,26 @@ function render_progressbar(ass)
 
 	-- Chapters
 	if options.progressbar_chapters == "lines" then
-		draw_chapters(ass, "lines", ay, bar.size, bx, options.progressbar_chapters_opacity * master_opacity)
+		draw_chapters(ass, "lines", ay, progressbar.size, bx, options.progressbar_chapters_opacity * master_opacity)
 	elseif options.progressbar_chapters == "lines-top" then
-		draw_chapters(ass, "lines", ay, bar.size / 2, bx, options.progressbar_chapters_opacity * master_opacity)
+		draw_chapters(ass, "lines", ay, progressbar.size / 2, bx, options.progressbar_chapters_opacity * master_opacity)
 	elseif options.progressbar_chapters == "lines-bottom" then
-		draw_chapters(ass, "lines", ay + bar.size - (bar.size / 2), bar.size / 2, bx, options.progressbar_chapters_opacity * master_opacity)
+		draw_chapters(ass, "lines", ay + progressbar.size - (progressbar.size / 2), progressbar.size / 2, bx, options.progressbar_chapters_opacity * master_opacity)
 	end
 end
 
-function render_seekbar(ass)
-	local bar = elements.seekbar
-
+function render_seekbar(ass, seekbar)
 	if cursor.hidden
-		or bar.size == 0
-		or bar.opacity == 0
+		or seekbar.size == 0
+		or seekbar.opacity == 0
 		or state.duration == nil
 		or state.position == nil then
 		return
 	end
 
 	local progress = state.position / state.duration
-	local spacing = math.ceil(bar.size * 0.27)
-	local fontsize = math.floor(bar.size - (spacing * 2))
-
 	local ax = 0
-	local ay = display.height - bar.size
+	local ay = display.height - seekbar.size
 	local bx = display.width * progress
 	local by = display.height
 	local elapsed_bar_coordinates = ax..","..ay..","..bx..","..by
@@ -414,7 +411,7 @@ function render_seekbar(ass)
 	-- Background
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..elapsed_bar_coordinates..")}")
-	ass_append_opacity(ass, math.max(options.seekbar_opacity - 0.1, 0), bar.opacity)
+	ass_append_opacity(ass, math.max(options.seekbar_opacity - 0.1, 0), seekbar.opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(0, ay - 1, display.width, by)
@@ -423,7 +420,7 @@ function render_seekbar(ass)
 	-- Progress
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
-	ass_append_opacity(ass, options.seekbar_opacity, bar.opacity)
+	ass_append_opacity(ass, options.seekbar_opacity, seekbar.opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(ax, ay, bx, by)
@@ -431,51 +428,51 @@ function render_seekbar(ass)
 
 	-- Chapters
 	if options.seekbar_chapters == "dots" then
-		draw_chapters(ass, "dots", ay + 6, 6, bx, options.seekbar_chapters_opacity * bar.opacity)
+		draw_chapters(ass, "dots", ay + 6, 6, bx, options.seekbar_chapters_opacity * seekbar.opacity)
 	elseif options.seekbar_chapters == "lines" then
-		draw_chapters(ass, "lines", ay, bar.size, bx, options.seekbar_chapters_opacity * bar.opacity)
+		draw_chapters(ass, "lines", ay, seekbar.size, bx, options.seekbar_chapters_opacity * seekbar.opacity)
 	elseif options.seekbar_chapters == "lines-top" then
-		draw_chapters(ass, "lines", ay, bar.size / 4, bx, options.seekbar_chapters_opacity * bar.opacity)
+		draw_chapters(ass, "lines", ay, seekbar.size / 4, bx, options.seekbar_chapters_opacity * seekbar.opacity)
 	elseif options.seekbar_chapters == "lines-bottom" then
-		draw_chapters(ass, "lines", ay + bar.size - (bar.size / 4), bar.size / 4, bx, options.seekbar_chapters_opacity * bar.opacity)
+		draw_chapters(ass, "lines", ay + seekbar.size - (seekbar.size / 4), seekbar.size / 4, bx, options.seekbar_chapters_opacity * seekbar.opacity)
 	end
 
 	-- Elapsed time
 	local elapsed_seconds = mp.get_property_native("time-pos")
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
-	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
-	ass:pos(spacing, ay + (bar.size / 2))
+	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\clip("..elapsed_bar_coordinates..")")
+	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity)
+	ass:pos(seekbar.spacing, ay + (seekbar.size / 2))
 	ass:an(4)
 	ass:append(mp.format_time(elapsed_seconds))
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
-	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
-	ass:pos(spacing, ay + (bar.size / 2))
+	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\iclip("..elapsed_bar_coordinates..")")
+	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity)
+	ass:pos(seekbar.spacing, ay + (seekbar.size / 2))
 	ass:an(4)
 	ass:append(mp.format_time(elapsed_seconds))
 
 	-- Remaining time
 	local remaining_seconds = mp.get_property_native("playtime-remaining")
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
-	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
-	ass:pos(display.width - spacing, ay + (bar.size / 2))
+	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\clip("..elapsed_bar_coordinates..")")
+	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity)
+	ass:pos(display.width - seekbar.spacing, ay + (seekbar.size / 2))
 	ass:an(6)
 	ass:append("-"..mp.format_time(remaining_seconds))
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
-	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
-	ass:pos(display.width - spacing, ay + (bar.size / 2))
+	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\iclip("..elapsed_bar_coordinates..")")
+	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity)
+	ass:pos(display.width - seekbar.spacing, ay + (seekbar.size / 2))
 	ass:an(6)
 	ass:append("-"..mp.format_time(remaining_seconds))
 
-	if bar.proximity == 0 then
+	if seekbar.proximity == 0 then
 		-- Hovered time
 		local hovered_seconds = mp.get_property_native("duration") * (cursor.x / display.width)
-		local box_half_width_guesstimate = (fontsize * 4.2) / 2
+		local box_half_width_guesstimate = (seekbar.font_size * 4.2) / 2
 		ass:new_event()
-		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."")
+		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."")
 		ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1))
 		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), ay)
 		ass:an(2)
@@ -492,7 +489,7 @@ function render_seekbar(ass)
 	end
 end
 
-function render_window_controls(ass)
+function render_window_controls(ass, window_controls)
 	if cursor.hidden
 		or state.border
 		or state.duration == nil
@@ -500,7 +497,7 @@ function render_window_controls(ass)
 		return
 	end
 
-	local master_opacity = elements.window_controls.opacity
+	local master_opacity = window_controls.opacity
 
 	if master_opacity == 0 then return end
 
@@ -621,7 +618,7 @@ function render()
 
 	for _, element in pairs(elements) do
 		if element.render ~= nil then
-			element.render(ass)
+			element.render(ass, element)
 		end
 	end
 
