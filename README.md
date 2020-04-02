@@ -66,7 +66,7 @@ color_background=000000
 ```
 
 Terminology:
-- **Seekbar**: thick seeking bar with times that appears when mouse is near it
+- **Seekbar**: thick seeking bar with elapsed/remaining times that appears when mouse is near it
 - **Progressbar**: thin persistent video progress bar
 
 ## Keybindings
