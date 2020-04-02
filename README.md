@@ -37,24 +37,28 @@ title=no
 seekbar_size=40
 # same as ^ but when in fullscreen
 seekbar_size_fullscreen=40
-# seekbar chapters style: dots, lines, lines-top, lines-bottom
+# seekbar opacity when fully visible
+seekbar_opacity=0.8
+# seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
 seekbar_chapters=
+# seekbar chapters indicator opacity
+seekbar_chapters_opacity=0.3
 
 # progressbar size in pixels, 0 to disable
-progressbar_size=4
+progressbar_size=1
 # same as ^ but when in fullscreen
-progressbar_size_fullscreen=4
-# progressbar chapters style: lines, lines-top, lines-bottom
+progressbar_size_fullscreen=0
+# progressbar opacity
+progressbar_opacity=0.8
+# progressbar chapters indicator style: lines, lines-top, lines-bottom
 progressbar_chapters=
+# progressbar chapters indicator opacity
+progressbar_chapters_opacity=0.2
 
 # proximity below which opacity equals 1
 min_proximity=40
 # proximity above which opacity equals 0
 max_proximity=120
-# max opacity of progress and seek bars
-bar_opacity=0.8
-# chapters indicator opacity
-chapters_opacity=0.2
 # BBGGRR - BLUE GREEN RED hex code
 bar_color_foreground=FFFFFF
 # BBGGRR - BLUE GREEN RED hex code

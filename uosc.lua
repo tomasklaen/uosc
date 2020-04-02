@@ -23,24 +23,28 @@ title=no
 seekbar_size=40
 # same as ^ but when in fullscreen
 seekbar_size_fullscreen=40
-# seekbar chapters style: dots, lines, lines-top, lines-bottom
+# seekbar opacity when fully visible
+seekbar_opacity=0.8
+# seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
 seekbar_chapters=
+# seekbar chapters indicator opacity
+seekbar_chapters_opacity=0.3
 
 # progressbar size in pixels, 0 to disable
-progressbar_size=4
+progressbar_size=1
 # same as ^ but when in fullscreen
-progressbar_size_fullscreen=4
-# progressbar chapters style: lines, lines-top, lines-bottom
+progressbar_size_fullscreen=0
+# progressbar opacity
+progressbar_opacity=0.8
+# progressbar chapters indicator style: lines, lines-top, lines-bottom
 progressbar_chapters=
+# progressbar chapters indicator opacity
+progressbar_chapters_opacity=0.2
 
 # proximity below which opacity equals 1
 min_proximity=40
 # proximity above which opacity equals 0
 max_proximity=120
-# max opacity of progress and seek bars
-bar_opacity=0.8
-# chapters indicator opacity
-chapters_opacity=0.2
 # BBGGRR - BLUE GREEN RED hex code
 bar_color_foreground=FFFFFF
 # BBGGRR - BLUE GREEN RED hex code
@@ -65,26 +69,28 @@ local opt = require 'mp.options'
 local osd = mp.create_osd_overlay("ass-events")
 
 local options = {
-	title = false,                   -- display window title (filename) in no-border mode
+	title = false, -- display window title (filename) in no-border mode
 
-	seekbar_size = 40,               -- seekbar size in pixels, 0 to disable
-	seekbar_size_fullscreen = 40,    -- same as ^ but when in fullscreen
-	seekbar_chapters = "",           -- seekbar chapters style: dots, lines, lines-top, lines-bottom
+	seekbar_size = 40,              -- seekbar size in pixels, 0 to disable
+	seekbar_size_fullscreen = 40,   -- same as ^ but when in fullscreen
+	seekbar_opacity = 0.8,          -- seekbar opacity when fully visible
+	seekbar_chapters = "",          -- seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
+	seekbar_chapters_opacity = 0.3, -- seekbar chapters indicator opacity
 
-	progressbar_size = 4,            -- progressbar size in pixels, 0 to disable
-	progressbar_size_fullscreen = 4, -- same as ^ but when in fullscreen
-	progressbar_chapters = "",       -- progressbar chapters style: lines, lines-top, lines-bottom
+	progressbar_size = 4,               -- progressbar size in pixels, 0 to disable
+	progressbar_size_fullscreen = 4,    -- same as ^ but when in fullscreen
+	progressbar_opacity = 0.8,          -- progressbar opacity
+	progressbar_chapters = "",          -- progressbar chapters indicator style: lines, lines-top, lines-bottom
+	progressbar_chapters_opacity = 0.2, -- progressbar chapters indicator opacity
 
 	min_proximity = 40,              -- proximity below which opacity equals 1
 	max_proximity = 120,             -- proximity above which opacity equals 0
-	bar_opacity = 0.8,               -- max opacity of progress and seek bars
-	chapter_opacity = 0.2,           -- chapters indicator opacity
 	bar_color_foreground = "FFFFFF", -- BBGGRR - BLUE GREEN RED hex code
 	bar_color_background = "000000", -- BBGGRR - BLUE GREEN RED hex code
 }
 opt.read_options(options, "uosc")
 local config = {
-	render_delay = 0.03,        -- sets rendering frequency
+	render_delay = 0.03, -- sets max rendering frequency
 	font = mp.get_property("options/osd-font"),
 	window_controls = {
 		button_width = 46,
@@ -130,9 +136,9 @@ local elements = {
 		render = function(ass) render_progressbar(ass) end,
 	},
 	seekbar = {
-		interactive = true, -- listen for mouse events and don't disable window dragging
-		size = 0, -- consolidation of `seekbar_size` and `seekbar_size_fullscreen` options
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
+		interactive = true, -- listen for mouse events and disable window dragging
+		size = 0, -- consolidation of `seekbar_size` and `seekbar_size_fullscreen` options, set in `on_display_resize` lsitener below
+		ax = 0, ay = 0, bx = 0, by = 0, -- rectangle coordinates calculated in `on_display_resize` lsitener
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
 		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
 		on_display_resize = function(element)
@@ -166,7 +172,7 @@ local elements = {
 		render = function(ass) render_window_controls(ass) end,
 	},
 	window_controls_minimize = {
-		interactive = true, -- listen for mouse events and don't disable window dragging
+		interactive = true, -- listen for mouse events and disable window dragging
 		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
 		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
@@ -179,7 +185,7 @@ local elements = {
 		on_mbtn_left_down = function() mp.commandv("cycle", "window-minimized") end
 	},
 	window_controls_maximize = {
-		interactive = true, -- listen for mouse events and don't disable window dragging
+		interactive = true, -- listen for mouse events and disable window dragging
 		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
 		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
@@ -192,7 +198,7 @@ local elements = {
 		on_mbtn_left_down = function() mp.commandv("cycle", "window-maximized") end
 	},
 	window_controls_close = {
-		interactive = true, -- listen for mouse events and don't disable window dragging
+		interactive = true, -- listen for mouse events and disable window dragging
 		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
 		proximity = infinity, opacity = 0,  -- calculated on mouse movement
 		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
@@ -289,7 +295,9 @@ function update_proximities()
 	end
 end
 
-function draw_chapters(ass, style, chapter_y, size, foreground_cutoff, master_opacity)
+-- Drawing helpers
+
+function draw_chapters(ass, style, chapter_y, size, foreground_cutoff, opacity)
 	if state.chapters ~= nil then
 		local half_size = size / 2
 		local bezier_stretch = size * 0.67
@@ -302,7 +310,7 @@ function draw_chapters(ass, style, chapter_y, size, foreground_cutoff, master_op
 			else
 				ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."}")
 			end
-			ass_append_opacity(ass, options.chapter_opacity, master_opacity)
+			ass_append_opacity(ass, opacity)
 			ass:pos(0, 0)
 			ass:draw_start()
 
@@ -340,6 +348,7 @@ function render_progressbar(ass)
 	end
 
 	local progress = state.position / state.duration
+	-- Progressbar opacity is inversely proportional to seekbar opacity
 	local master_opacity = elements.seekbar.size > 0
 		and (1 - math.min(elements.seekbar.opacity / 0.4, 1))
 		or 1
@@ -356,7 +365,7 @@ function render_progressbar(ass)
 	-- Background
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."\\iclip("..ax..","..ay..","..bx..","..by..")}")
-	ass_append_opacity(ass, math.max(options.bar_opacity - 0.1, 0), master_opacity)
+	ass_append_opacity(ass, math.max(options.progressbar_opacity - 0.1, 0), master_opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(ax, ay - 1, display.width, by)
@@ -365,7 +374,7 @@ function render_progressbar(ass)
 	-- Progress
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_foreground.."}")
-	ass_append_opacity(ass, options.bar_opacity, master_opacity)
+	ass_append_opacity(ass, options.progressbar_opacity, master_opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(ax, ay, bx, by)
@@ -373,11 +382,11 @@ function render_progressbar(ass)
 
 	-- Chapters
 	if options.progressbar_chapters == "lines" then
-		draw_chapters(ass, "lines", ay, bar.size, bx, bar.opacity)
+		draw_chapters(ass, "lines", ay, bar.size, bx, options.progressbar_chapters_opacity * master_opacity)
 	elseif options.progressbar_chapters == "lines-top" then
-		draw_chapters(ass, "lines", ay, bar.size / 2, bx, bar.opacity)
+		draw_chapters(ass, "lines", ay, bar.size / 2, bx, options.progressbar_chapters_opacity * master_opacity)
 	elseif options.progressbar_chapters == "lines-bottom" then
-		draw_chapters(ass, "lines", ay + bar.size - (bar.size / 2), bar.size / 2, bx, bar.opacity)
+		draw_chapters(ass, "lines", ay + bar.size - (bar.size / 2), bar.size / 2, bx, options.progressbar_chapters_opacity * master_opacity)
 	end
 end
 
@@ -405,7 +414,7 @@ function render_seekbar(ass)
 	-- Background
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."\\iclip("..elapsed_bar_coordinates..")}")
-	ass_append_opacity(ass, math.max(options.bar_opacity - 0.1, 0), bar.opacity)
+	ass_append_opacity(ass, math.max(options.seekbar_opacity - 0.1, 0), bar.opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(0, ay - 1, display.width, by)
@@ -414,7 +423,7 @@ function render_seekbar(ass)
 	-- Progress
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_foreground.."}")
-	ass_append_opacity(ass, options.bar_opacity, bar.opacity)
+	ass_append_opacity(ass, options.seekbar_opacity, bar.opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(ax, ay, bx, by)
@@ -422,26 +431,26 @@ function render_seekbar(ass)
 
 	-- Chapters
 	if options.seekbar_chapters == "dots" then
-		draw_chapters(ass, "dots", ay + 6, 6, bx, bar.opacity)
+		draw_chapters(ass, "dots", ay + 6, 6, bx, options.seekbar_chapters_opacity * bar.opacity)
 	elseif options.seekbar_chapters == "lines" then
-		draw_chapters(ass, "lines", ay, bar.size, bx, bar.opacity)
+		draw_chapters(ass, "lines", ay, bar.size, bx, options.seekbar_chapters_opacity * bar.opacity)
 	elseif options.seekbar_chapters == "lines-top" then
-		draw_chapters(ass, "lines", ay, bar.size / 4, bx, bar.opacity)
+		draw_chapters(ass, "lines", ay, bar.size / 4, bx, options.seekbar_chapters_opacity * bar.opacity)
 	elseif options.seekbar_chapters == "lines-bottom" then
-		draw_chapters(ass, "lines", ay + bar.size - (bar.size / 4), bar.size / 4, bx, bar.opacity)
+		draw_chapters(ass, "lines", ay + bar.size - (bar.size / 4), bar.size / 4, bx, options.seekbar_chapters_opacity * bar.opacity)
 	end
 
 	-- Elapsed time
 	local elapsed_seconds = mp.get_property_native("time-pos")
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
-	ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1), bar.opacity)
+	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
 	ass:pos(spacing, ay + (bar.size / 2))
 	ass:an(4)
 	ass:append(mp.format_time(elapsed_seconds))
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
-	ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1), bar.opacity)
+	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
 	ass:pos(spacing, ay + (bar.size / 2))
 	ass:an(4)
 	ass:append(mp.format_time(elapsed_seconds))
@@ -450,13 +459,13 @@ function render_seekbar(ass)
 	local remaining_seconds = mp.get_property_native("playtime-remaining")
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
-	ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1), bar.opacity)
+	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
 	ass:pos(display.width - spacing, ay + (bar.size / 2))
 	ass:an(6)
 	ass:append("-"..mp.format_time(remaining_seconds))
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
-	ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1), bar.opacity)
+	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
 	ass:pos(display.width - spacing, ay + (bar.size / 2))
 	ass:an(6)
 	ass:append("-"..mp.format_time(remaining_seconds))
@@ -467,7 +476,7 @@ function render_seekbar(ass)
 		local box_half_width_guesstimate = (fontsize * 4.2) / 2
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."")
-		ass_append_opacity(ass, math.min(options.bar_opacity + 0.1, 1))
+		ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1))
 		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), ay)
 		ass:an(2)
 		ass:append(mp.format_time(hovered_seconds))
