@@ -1,3 +1,9 @@
+## 1.2.0
+
+New:
+- Added `toggleseekbar` script binding.
+- Added `autohide` option to control UI autohide when cursor autohides. Off by default.
+
 ## 1.1.0
 
 New:
