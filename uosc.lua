@@ -22,7 +22,7 @@ title=no
 # seekbar size in pixels, 0 to disable
 seekbar_size=40
 # same as ^ but when in fullscreen
-seekbar_size_fullscreen=40
+seekbar_size_fullscreen=60
 # seekbar opacity when fully visible
 seekbar_opacity=0.8
 # seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
@@ -46,9 +46,9 @@ min_proximity=40
 # proximity above which opacity equals 0
 max_proximity=120
 # BBGGRR - BLUE GREEN RED hex code
-bar_color_foreground=FFFFFF
+color_foreground=FFFFFF
 # BBGGRR - BLUE GREEN RED hex code
-bar_color_background=000000
+color_background=000000
 ```
 
 Available keybindings (place into `input.conf`):
@@ -72,21 +72,21 @@ local options = {
 	title = false, -- display window title (filename) in no-border mode
 
 	seekbar_size = 40,              -- seekbar size in pixels, 0 to disable
-	seekbar_size_fullscreen = 40,   -- same as ^ but when in fullscreen
+	seekbar_size_fullscreen = 60,   -- same as ^ but when in fullscreen
 	seekbar_opacity = 0.8,          -- seekbar opacity when fully visible
 	seekbar_chapters = "",          -- seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
 	seekbar_chapters_opacity = 0.3, -- seekbar chapters indicator opacity
 
-	progressbar_size = 4,               -- progressbar size in pixels, 0 to disable
-	progressbar_size_fullscreen = 4,    -- same as ^ but when in fullscreen
+	progressbar_size = 1,               -- progressbar size in pixels, 0 to disable
+	progressbar_size_fullscreen = 0,    -- same as ^ but when in fullscreen
 	progressbar_opacity = 0.8,          -- progressbar opacity
 	progressbar_chapters = "",          -- progressbar chapters indicator style: lines, lines-top, lines-bottom
 	progressbar_chapters_opacity = 0.2, -- progressbar chapters indicator opacity
 
 	min_proximity = 40,              -- proximity below which opacity equals 1
 	max_proximity = 120,             -- proximity above which opacity equals 0
-	bar_color_foreground = "FFFFFF", -- BBGGRR - BLUE GREEN RED hex code
-	bar_color_background = "000000", -- BBGGRR - BLUE GREEN RED hex code
+	color_foreground = "FFFFFF", -- BBGGRR - BLUE GREEN RED hex code
+	color_background = "000000", -- BBGGRR - BLUE GREEN RED hex code
 }
 opt.read_options(options, "uosc")
 local config = {
@@ -306,9 +306,9 @@ function draw_chapters(ass, style, chapter_y, size, foreground_cutoff, opacity)
 
 			ass:new_event()
 			if chapter_x > foreground_cutoff then
-				ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_foreground.."}")
+				ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
 			else
-				ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."}")
+				ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."}")
 			end
 			ass_append_opacity(ass, opacity)
 			ass:pos(0, 0)
@@ -364,7 +364,7 @@ function render_progressbar(ass)
 
 	-- Background
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."\\iclip("..ax..","..ay..","..bx..","..by..")}")
+	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..ax..","..ay..","..bx..","..by..")}")
 	ass_append_opacity(ass, math.max(options.progressbar_opacity - 0.1, 0), master_opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -373,7 +373,7 @@ function render_progressbar(ass)
 
 	-- Progress
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_foreground.."}")
+	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
 	ass_append_opacity(ass, options.progressbar_opacity, master_opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -413,7 +413,7 @@ function render_seekbar(ass)
 
 	-- Background
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_background.."\\iclip("..elapsed_bar_coordinates..")}")
+	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..elapsed_bar_coordinates..")}")
 	ass_append_opacity(ass, math.max(options.seekbar_opacity - 0.1, 0), bar.opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -422,7 +422,7 @@ function render_seekbar(ass)
 
 	-- Progress
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.bar_color_foreground.."}")
+	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
 	ass_append_opacity(ass, options.seekbar_opacity, bar.opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -443,13 +443,13 @@ function render_seekbar(ass)
 	-- Elapsed time
 	local elapsed_seconds = mp.get_property_native("time-pos")
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
+	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
 	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
 	ass:pos(spacing, ay + (bar.size / 2))
 	ass:an(4)
 	ass:append(mp.format_time(elapsed_seconds))
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
+	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
 	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
 	ass:pos(spacing, ay + (bar.size / 2))
 	ass:an(4)
@@ -458,13 +458,13 @@ function render_seekbar(ass)
 	-- Remaining time
 	local remaining_seconds = mp.get_property_native("playtime-remaining")
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
+	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\clip("..elapsed_bar_coordinates..")")
 	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
 	ass:pos(display.width - spacing, ay + (bar.size / 2))
 	ass:an(6)
 	ass:append("-"..mp.format_time(remaining_seconds))
 	ass:new_event()
-	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
+	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."\\iclip("..elapsed_bar_coordinates..")")
 	ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1), bar.opacity)
 	ass:pos(display.width - spacing, ay + (bar.size / 2))
 	ass:an(6)
@@ -475,7 +475,7 @@ function render_seekbar(ass)
 		local hovered_seconds = mp.get_property_native("duration") * (cursor.x / display.width)
 		local box_half_width_guesstimate = (fontsize * 4.2) / 2
 		ass:new_event()
-		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."\\fn"..config.font.."\\fs"..fontsize.."")
+		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..fontsize.."")
 		ass_append_opacity(ass, math.min(options.seekbar_opacity + 0.1, 1))
 		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), ay)
 		ass:an(2)
@@ -483,7 +483,7 @@ function render_seekbar(ass)
 
 		-- Cursor line
 		ass:new_event()
-		ass:append("{\\blur0\\bord0\\xshad-1\\yshad0\\1c&H"..options.bar_color_foreground.."\\4c&H"..options.bar_color_background.."}")
+		ass:append("{\\blur0\\bord0\\xshad-1\\yshad0\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."}")
 		ass_append_opacity(ass, 0.2)
 		ass:pos(0, 0)
 		ass:draw_start()
