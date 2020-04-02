@@ -16,22 +16,35 @@ border=no  # if you disable window border, uosc will draw
 Options go in `script-opts/uosc.conf`. Defaults:
 
 ```
-title=no                       # display window title (filename) in no-border mode
+# display window title (filename) in no-border mode
+title=no
 
-seekbar_size=40                # seekbar size in pixels, 0 to disable
-seekbar_size_fullscreen=40     # same as ^ but when in fullscreen
-seekbar_chapters=              # seekbar chapters style: dots, lines, lines-top, lines-bottom
+# seekbar size in pixels, 0 to disable
+seekbar_size=40
+# same as ^ but when in fullscreen
+seekbar_size_fullscreen=40
+# seekbar chapters style: dots, lines, lines-top, lines-bottom
+seekbar_chapters=
 
-progressbar_size=4             # progressbar size in pixels, 0 to disable
-progressbar_size_fullscreen=4  # same as ^ but when in fullscreen
-progressbar_chapters=          # progressbar chapters style: lines, lines-top, lines-bottom
+# progressbar size in pixels, 0 to disable
+progressbar_size=4
+# same as ^ but when in fullscreen
+progressbar_size_fullscreen=4
+# progressbar chapters style: lines, lines-top, lines-bottom
+progressbar_chapters=
 
-min_proximity=40               # proximity below which opacity equals 1
-max_proximity=120              # proximity above which opacity equals 0
-bar_opacity=0.8                # max opacity of progress and seek bars
-chapters_opacity=0.2           # chapters indicator opacity
-bar_color_foreground=FFFFFF    # BBGGRR - BLUE GREEN RED hex code
-bar_color_background=000000    # BBGGRR - BLUE GREEN RED hex code
+# proximity below which opacity equals 1
+min_proximity=40
+# proximity above which opacity equals 0
+max_proximity=120
+# max opacity of progress and seek bars
+bar_opacity=0.8
+# chapters indicator opacity
+chapters_opacity=0.2
+# BBGGRR - BLUE GREEN RED hex code
+bar_color_foreground=FFFFFF
+# BBGGRR - BLUE GREEN RED hex code
+bar_color_background=000000
 ```
 
 Available keybindings (place into `input.conf`):
