@@ -27,11 +27,11 @@ To configure **uosc**, create a `script-opts/uosc.conf` file, or download [`uosc
 
 ## Options
 
-All available options with their default values:
-
 Terminology:
 - **Seekbar**: thick clickable seeking bar with elapsed/remaining times that appears when mouse is near it
 - **Progressbar**: thin persistent video progress bar
+
+All available options with their default values:
 
 ```conf
 # display window title (filename) in no-border mode
