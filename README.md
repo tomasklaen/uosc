@@ -29,6 +29,10 @@ To configure **uosc**, create a `script-opts/uosc.conf` file, or download [`uosc
 
 All available options with their default values:
 
+Terminology:
+- **Seekbar**: thick clickable seeking bar with elapsed/remaining times that appears when mouse is near it
+- **Progressbar**: thin persistent video progress bar
+
 ```conf
 # display window title (filename) in no-border mode
 title=no
@@ -65,11 +69,29 @@ color_foreground=FFFFFF
 color_background=000000
 # hide proximity based elements when mpv autohides the cursor
 autohide=no
-```
 
-Terminology:
-- **Seekbar**: thick seeking bar with elapsed/remaining times that appears when mouse is near it
-- **Progressbar**: thin persistent video progress bar
+# `chapter_ranges` lets you define custom range indicators that will be parsed out from
+# chapters, identified by chapter titles, and displayed in progressbar and seekbar.
+# This requires that someone or something makes chapters that identify these ranges in their titles.
+#
+# Syntax 1: "<start-str>-<end-str>:<color>:<opacity>"
+# Syntax 2: "<range-str>:<color>:<opacity>"
+#
+# Multiple chapter ranges can be defined by separating them with comma:
+#
+# chapter_ranges=<range1>,<range2>,<range3>
+#
+# `<start-str>`, `<end-str>`, and `<range-str>` only have to occur in a title, they don't have to match it completely.
+# If only one `<range-str>` is specified, ranges will be created from consecutive pairs of this type of chapters.
+#
+# Example:
+#
+# Display skippable youtube video sponsor blocks from https://github.com/po5/mpv_sponsorblock
+#
+# chapter_ranges=Sponsor start-Sponsor end:968638:0.2
+#
+chapter_ranges=
+```
 
 ## Keybindings
 

@@ -53,12 +53,35 @@ color_foreground=FFFFFF
 color_background=000000
 # hide proximity based elements when mpv autohides the cursor
 autohide=no
+
+# `chapter_ranges` lets you define custom range indicators that will be parsed out from
+# chapters, identified by chapter titles, and displayed in progressbar and seekbar.
+# This requires that someone or something makes chapters that identify these ranges in their titles.
+#
+# Syntax 1: "<start-str>-<end-str>:<color>:<opacity>"
+# Syntax 2: "<range-str>:<color>:<opacity>"
+#
+# Multiple chapter ranges can be defined by separating them with comma:
+#
+# chapter_ranges=<range1>,<range2>,<range3>
+#
+# `<start-str>`, `<end-str>`, and `<range-str>` only have to occur in a title, they don't have to match it completely.
+# If only one `<range-str>` is specified, ranges will be created from consecutive pairs of this type of chapters.
+#
+# Example:
+#
+# Display skippable youtube video sponsor blocks from https://github.com/po5/mpv_sponsorblock
+#
+# chapter_ranges=Sponsor start-Sponsor end:968638:0.2
+#
+chapter_ranges=
 ```
 
 Available keybindings (place into `input.conf`):
 
 ```
 Key  script-binding uosc/toggleprogressbar
+Key  script-binding uosc/toggleseekbar
 ```
 
 ]]
@@ -73,25 +96,26 @@ local opt = require 'mp.options'
 local osd = mp.create_osd_overlay("ass-events")
 
 local options = {
-	title = false, -- display window title (filename) in no-border mode
+	title = false,
 
-	seekbar_size = 40,              -- seekbar size in pixels, 0 to disable
-	seekbar_size_fullscreen = 60,   -- same as ^ but when in fullscreen
-	seekbar_opacity = 0.8,          -- seekbar opacity when fully visible
-	seekbar_chapters = "dots",      -- seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
-	seekbar_chapters_opacity = 0.3, -- seekbar chapters indicator opacity
+	seekbar_size = 40,
+	seekbar_size_fullscreen = 60,
+	seekbar_opacity = 0.8,
+	seekbar_chapters = "dots",
+	seekbar_chapters_opacity = 0.3,
 
-	progressbar_size = 1,               -- progressbar size in pixels, 0 to disable
-	progressbar_size_fullscreen = 0,    -- same as ^ but when in fullscreen
-	progressbar_opacity = 0.8,          -- progressbar opacity
-	progressbar_chapters = "dots",      -- progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
-	progressbar_chapters_opacity = 0.3, -- progressbar chapters indicator opacity
+	progressbar_size = 1,
+	progressbar_size_fullscreen = 0,
+	progressbar_opacity = 0.8,
+	progressbar_chapters = "dots",
+	progressbar_chapters_opacity = 0.3,
 
-	min_proximity = 40,          -- proximity below which opacity equals 1
-	max_proximity = 120,         -- proximity above which opacity equals 0
-	color_foreground = "FFFFFF", -- BBGGRR - BLUE GREEN RED hex code
-	color_background = "000000", -- BBGGRR - BLUE GREEN RED hex code
-	autohide = false,            -- hide proximity based elements when mpv autohides the cursor
+	min_proximity = 40,
+	max_proximity = 120,
+	color_foreground = "FFFFFF",
+	color_background = "000000",
+	autohide = false,
+	chapter_ranges = ""
 }
 opt.read_options(options, "uosc")
 local config = {
@@ -122,6 +146,8 @@ local state = {
 	duration = nil,
 	position = nil,
 	paused = false,
+	chapters = nil,
+	chapter_ranges = nil, -- structure: [{color: "BBGGRR", opacity: 0-1, serialize: (chapter, last_range_with_no_end?) => range, ranges: [{start: seconds, end: seconds}, ...]}]
 	fullscreen = mp.get_property_native("fullscreen"),
 	maximized = mp.get_property_native("window-maximized"),
 	render_timer = nil,
@@ -231,31 +257,40 @@ local elements = {
 
 -- HELPER FUNCTIONS
 
+function split(inputstr, sep)
+	if sep == nil then
+		sep = "%s"
+	end
+	local t={}
+	for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+		table.insert(t, str)
+	end
+	return t
+end
+
 function get_point_to_rectangle_proximity(point, rect)
 	local dx = math.max(rect.ax - point.x, 0, point.x - rect.bx + 1)
 	local dy = math.max(rect.ay - point.y, 0, point.y - rect.by + 1)
 	return math.sqrt(dx*dx + dy*dy);
 end
 
-function to_alpha(opacity, fraction)
-	fraction = fraction ~= nil and fraction or 1
-	return 255 - math.ceil(255 * opacity * fraction)
+function opacity_to_alpha(opacity)
+	return 255 - math.ceil(255 * opacity)
 end
 
 function ass_opacity(opacity, fraction)
-	local ass = assdraw.ass_new()
+	fraction = fraction ~= nil and fraction or 1
 	if type(opacity) == "number" then
-		ass:append(string.format("{\\alpha&H%X&}", to_alpha(opacity, fraction)))
+		return string.format("{\\alpha&H%X&}", opacity_to_alpha(opacity * fraction))
 	else
-		ass:append(string.format(
+		return string.format(
 			"{\\1a&H%X&\\2a&H%X&\\3a&H%X&\\4a&H%X&}",
-			to_alpha(opacity[1] or 0, fraction),
-			to_alpha(opacity[2] or 0, fraction),
-			to_alpha(opacity[3] or 0, fraction),
-			to_alpha(opacity[4] or 0, fraction)
-		))
+			opacity_to_alpha((opacity[1] or 0) * fraction),
+			opacity_to_alpha((opacity[2] or 0) * fraction),
+			opacity_to_alpha((opacity[3] or 0) * fraction),
+			opacity_to_alpha((opacity[4] or 0) * fraction)
+		)
 	end
-	return ass
 end
 
 -- STATE UPDATES
@@ -316,8 +351,24 @@ end
 
 -- Drawing helpers
 
-function draw_chapters(style, chapter_y, size, foreground_cutoff, opacity)
+function new_ass()
 	local ass = assdraw.ass_new()
+	-- Not 100% sure what scale does, but as far as I understand it multiplies
+	-- the resolution of final render by the number this value is set for?
+	-- Since uosc is rendered to be pixel perfect, and not relatively stretched
+	-- I see no reason to go above 1 and increase CPU/GPU/memory load.
+	-- Open an issue if I'm mistaken and this should be higher.
+	ass.scale = 1
+	-- Doing ass:new_event() on an empty ass object does nothing on purpose for
+	-- some reason, so we have to do it manually here so that all ass objects
+	-- can be merged safely without having to call new_event() before every damn
+	-- merge.
+	ass.text = "\n"
+	return ass
+end
+
+function draw_chapters(style, chapter_y, size, foreground_cutoff, opacity)
+	local ass = new_ass()
 	if state.chapters ~= nil then
 		local half_size = size / 2
 		local bezier_stretch = size * 0.67
@@ -330,7 +381,7 @@ function draw_chapters(style, chapter_y, size, foreground_cutoff, opacity)
 			else
 				ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."}")
 			end
-			ass:merge(ass_opacity(opacity))
+			ass:append(ass_opacity(opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
 
@@ -356,10 +407,33 @@ function draw_chapters(style, chapter_y, size, foreground_cutoff, opacity)
 	return ass
 end
 
+function draw_chapter_ranges(top, size, opacity)
+	local ass = new_ass()
+	if state.chapter_ranges == nil then return ass end
+
+	for i, chapter_range in ipairs(state.chapter_ranges) do
+		for i, range in ipairs(chapter_range.ranges) do
+			local ax = display.width * (range["start"] / state.duration)
+			local ay = top
+			local bx = display.width * (range["end"] / state.duration)
+			local by = top + size
+			ass:new_event()
+			ass:append("{\\blur0\\bord0\\1c&H"..chapter_range.color.."}")
+			ass:append(ass_opacity(chapter_range.opacity, opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(ax, ay, bx, by)
+			ass:draw_stop()
+		end
+	end
+
+	return ass
+end
+
 --  ELEMENT RENDERERS
 
 function render_progressbar(progressbar)
-	local ass = assdraw.ass_new()
+	local ass = new_ass()
 
 	if not progressbar.enabled
 		or progressbar.size == 0
@@ -394,20 +468,25 @@ function render_progressbar(progressbar)
 	-- Background
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..fax..","..fay..","..fbx..","..fby..")}")
-	ass:merge(ass_opacity(math.max(options.progressbar_opacity - 0.1, 0), opacity))
+	ass:append(ass_opacity(math.max(options.progressbar_opacity - 0.1, 0), opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(bax, bay, bbx, bby)
 	ass:draw_stop()
 
-	-- Progress
+	-- Foreground
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
-	ass:merge(ass_opacity(options.progressbar_opacity, opacity))
+	ass:append(ass_opacity(options.progressbar_opacity, opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(fax, fay, fbx, fby)
 	ass:draw_stop()
+
+	-- Custom ranges
+	if state.chapter_ranges ~= nil then
+		ass:merge(draw_chapter_ranges(fay, progressbar.size, opacity))
+	end
 
 	-- Chapters
 	if options.progressbar_chapters == "dots" then
@@ -424,7 +503,7 @@ function render_progressbar(progressbar)
 end
 
 function render_seekbar(seekbar)
-	local ass = assdraw.ass_new()
+	local ass = new_ass()
 
 	if cursor.hidden
 		or seekbar.size == 0
@@ -452,20 +531,25 @@ function render_seekbar(seekbar)
 	-- Background
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..foreground_coordinates..")}")
-	ass:merge(ass_opacity(math.max(options.seekbar_opacity - 0.1, 0), seekbar.opacity))
+	ass:append(ass_opacity(math.max(options.seekbar_opacity - 0.1, 0), seekbar.opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(bax, bay, bbx, bby)
 	ass:draw_stop()
 
-	-- Progress
+	-- Foreground
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
-	ass:merge(ass_opacity(options.seekbar_opacity, seekbar.opacity))
+	ass:append(ass_opacity(options.seekbar_opacity, seekbar.opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(fax, fay, fbx, fby)
 	ass:draw_stop()
+
+	-- Custom ranges
+	if state.chapter_ranges ~= nil then
+		ass:merge(draw_chapter_ranges(fay, seekbar.size, seekbar.opacity))
+	end
 
 	-- Chapters
 	if options.seekbar_chapters == "dots" then
@@ -482,13 +566,13 @@ function render_seekbar(seekbar)
 	local elapsed_seconds = mp.get_property_native("time-pos")
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\clip("..foreground_coordinates..")")
-	ass:merge(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
+	ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
 	ass:pos(seekbar.spacing, fay + (seekbar.size / 2))
 	ass:an(4)
 	ass:append(mp.format_time(elapsed_seconds))
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\iclip("..foreground_coordinates..")")
-	ass:merge(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
+	ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
 	ass:pos(seekbar.spacing, fay + (seekbar.size / 2))
 	ass:an(4)
 	ass:append(mp.format_time(elapsed_seconds))
@@ -497,13 +581,13 @@ function render_seekbar(seekbar)
 	local remaining_seconds = mp.get_property_native("playtime-remaining")
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\clip("..foreground_coordinates..")")
-	ass:merge(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
+	ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
 	ass:pos(display.width - seekbar.spacing, fay + (seekbar.size / 2))
 	ass:an(6)
 	ass:append("-"..mp.format_time(remaining_seconds))
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\iclip("..foreground_coordinates..")")
-	ass:merge(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
+	ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
 	ass:pos(display.width - seekbar.spacing, fay + (seekbar.size / 2))
 	ass:an(6)
 	ass:append("-"..mp.format_time(remaining_seconds))
@@ -514,7 +598,7 @@ function render_seekbar(seekbar)
 		local box_half_width_guesstimate = (seekbar.font_size * 4.2) / 2
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."")
-		ass:merge(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1)))
+		ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1)))
 		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), fay)
 		ass:an(2)
 		ass:append(mp.format_time(hovered_seconds))
@@ -522,7 +606,7 @@ function render_seekbar(seekbar)
 		-- Cursor line
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\xshad-1\\yshad0\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."}")
-		ass:merge(ass_opacity(0.2))
+		ass:append(ass_opacity(0.2))
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(cursor.x, fay, cursor.x + 1, fby)
@@ -533,7 +617,7 @@ function render_seekbar(seekbar)
 end
 
 function render_window_controls(window_controls)
-	local ass = assdraw.ass_new()
+	local ass = new_ass()
 
 	if cursor.hidden
 		or state.border
@@ -552,7 +636,7 @@ function render_window_controls(window_controls)
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H2311e8}")
-		ass:merge(ass_opacity(config.window_controls.background_opacity, master_opacity))
+		ass:append(ass_opacity(config.window_controls.background_opacity, master_opacity))
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(close.ax, close.ay, close.bx, close.by)
@@ -560,7 +644,7 @@ function render_window_controls(window_controls)
 	end
 	ass:new_event()
 	ass:append("{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}")
-	ass:merge(ass_opacity(config.window_controls.icon_opacity, master_opacity))
+	ass:append(ass_opacity(config.window_controls.icon_opacity, master_opacity))
 	ass:pos(close.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 	ass:draw_start()
 	ass:move_to(-5, 5)
@@ -575,7 +659,7 @@ function render_window_controls(window_controls)
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H222222}")
-		ass:merge(ass_opacity(config.window_controls.background_opacity, master_opacity))
+		ass:append(ass_opacity(config.window_controls.background_opacity, master_opacity))
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(maximize.ax, maximize.ay, maximize.bx, maximize.by)
@@ -583,14 +667,14 @@ function render_window_controls(window_controls)
 	end
 	ass:new_event()
 	ass:append("{\\blur0\\bord2\\shad0\\1c\\3c&H000000}")
-	ass:merge(ass_opacity({[3] = config.window_controls.icon_opacity}, master_opacity))
+	ass:append(ass_opacity({[3] = config.window_controls.icon_opacity}, master_opacity))
 	ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 	ass:draw_start()
 	ass:rect_cw(-4, -4, 6, 6)
 	ass:draw_stop()
 	ass:new_event()
 	ass:append("{\\blur0\\bord2\\shad0\\1c\\3c&HFFFFFF}")
-	ass:merge(ass_opacity({[3] = config.window_controls.icon_opacity}, master_opacity))
+	ass:append(ass_opacity({[3] = config.window_controls.icon_opacity}, master_opacity))
 	ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 	ass:draw_start()
 	ass:rect_cw(-5, -5, 5, 5)
@@ -602,7 +686,7 @@ function render_window_controls(window_controls)
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H222222}")
-		ass:merge(ass_opacity(config.window_controls.background_opacity, master_opacity))
+		ass:append(ass_opacity(config.window_controls.background_opacity, master_opacity))
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(minimize.ax, minimize.ay, minimize.bx, minimize.by)
@@ -610,7 +694,7 @@ function render_window_controls(window_controls)
 	end
 	ass:new_event()
 	ass:append("{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}")
-	ass:merge(ass_opacity(config.window_controls.icon_opacity, master_opacity))
+	ass:append(ass_opacity(config.window_controls.icon_opacity, master_opacity))
 	ass:append("{\\1a&HFF&}")
 	ass:pos(minimize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 	ass:draw_start()
@@ -622,11 +706,11 @@ function render_window_controls(window_controls)
 	if options.title then
 		local spacing = math.ceil(config.window_controls.height * 0.25)
 		local fontsize = math.floor(config.window_controls.height - (spacing * 2))
-		local clip_coordinates = "0,0,"..(minimize.ax - 10)..","..config.window_controls.height
+		local clip_coordinates = "0,0,"..(minimize.ax - spacing)..","..config.window_controls.height
 
 		ass:new_event()
 		ass:append("{\\q2\\blur0\\bord0\\shad1\\1c&HFFFFFF\\4c&H000000\\fn"..config.font.."\\fs"..fontsize.."\\clip("..clip_coordinates..")")
-		ass:merge(ass_opacity(1, master_opacity))
+		ass:append(ass_opacity(1, master_opacity))
 		ass:pos(0 + spacing, config.window_controls.height / 2)
 		ass:an(4)
 		ass:append(state.filename)
@@ -660,8 +744,7 @@ function render()
 	state.render_last_time = mp.get_time()
 
 	-- Actual rendering
-	local ass = assdraw.ass_new()
-	ass.scale = 1
+	local ass = new_ass()
 
 	for _, element in pairs(elements) do
 		if element.render ~= nil then
@@ -747,11 +830,80 @@ function state_setter(name)
 	return function(_, value) state[name] = value end
 end
 
+-- CHAPTERS
+
+-- Parse `chapter_ranges` option into workable data structure
+
+for _, chapter_range_definition in ipairs(split(options.chapter_ranges, ",")) do
+	local definition_parts = split(chapter_range_definition, ":")
+	local start_end_pair = split(definition_parts[1], '-')
+	local chapter_range = {
+		start_str = start_end_pair[1],
+		end_str = start_end_pair[2] or start_end_pair[1],
+		color = definition_parts[2],
+		opacity = tonumber(definition_parts[3]),
+	}
+	chapter_range["serialize"] = function (chapter, last_range)
+		if not chapter.title then return end
+		if chapter.title:find(chapter_range.end_str) then
+			if last_range then
+				last_range["end"] = chapter.time
+				return last_range
+			else
+				return {
+					["start"] = 0,
+					["end"] = chapter.time
+				}
+			end
+		elseif chapter.title:find(chapter_range.start_str) then
+			return {
+				["start"] = chapter.time,
+				["end"] = chapter.time + 0.1
+			}
+		end
+	end
+
+	state.chapter_ranges = state.chapter_ranges or {}
+	state.chapter_ranges[#state.chapter_ranges + 1] = chapter_range
+end
+
+function parse_chapters(name, chapters)
+	if not chapters then return end
+
+	-- Reset custom ranges
+	for _, chapter_range in ipairs(state.chapter_ranges or {}) do
+		chapter_range.ranges = {}
+	end
+
+	local basic_chapters = {}
+
+	for _, chapter in ipairs(chapters) do
+		local is_chapter_range = false
+
+		for _, chapter_range in ipairs(state.chapter_ranges or {}) do
+			local last_range = chapter_range.ranges[#chapter_range.ranges]
+			local new_range = chapter_range.serialize(chapter, last_range)
+			if new_range then
+				is_chapter_range = true
+				if new_range ~= last_range then
+					chapter_range.ranges[#chapter_range.ranges + 1] = new_range
+				end
+			end
+		end
+
+		if not is_chapter_range then
+			basic_chapters[#basic_chapters + 1] = chapter
+		end
+	end
+
+	state.chapters = basic_chapters
+end
+
 -- HOOKS
 
 mp.register_event("file-loaded", handle_file_load)
 
-mp.observe_property("chapter-list", "native", state_setter("chapters"))
+mp.observe_property("chapter-list", "native", parse_chapters)
 mp.observe_property("fullscreen", "bool", state_setter("fullscreen"))
 mp.observe_property("border", "bool", handle_border_change)
 mp.observe_property("window-maximized", "bool", state_setter("maximized"))
