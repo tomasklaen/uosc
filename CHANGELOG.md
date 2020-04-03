@@ -1,3 +1,12 @@
+## 1.3.0
+
+New:
+- Added `chapter_ranges` feature to display chapters that are intended to be ranges as bars instead of dots/lines. Read the docs for more details on how to use them.
+	Quick example that displays skippable youtube video sponsor blocks from [](https://github.com/po5/mpv_sponsorblock):
+	```conf
+	chapter_ranges=Sponsor start-Sponsor end:968638:0.2
+	```
+
 ## 1.2.0
 
 New:
