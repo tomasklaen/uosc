@@ -54,26 +54,48 @@ color_background=000000
 # hide proximity based elements when mpv autohides the cursor
 autohide=no
 
-# `chapter_ranges` lets you define custom range indicators that will be parsed out from
-# chapters, identified by chapter titles, and displayed in progressbar and seekbar.
-# This requires that someone or something makes chapters that identify these ranges in their titles.
+# `chapter_ranges` lets you transform chapter indicators into range indicators
+# with custom color and opacity by creating a chapter range definition that
+# matches chapter titles.
 #
-# Syntax 1: "<start-str>-<end-str>:<color>:<opacity>"
-# Syntax 2: "<range-str>:<color>:<opacity>"
+# Chapter range definition syntax:
+# ```
+# start_pattern<color:opacity>end_pattern
+# ```
+#
+# Multiple start and end patterns can be defined by separating them with `|`:
+# ```
+# p1|pN<color:opacity>p1|pN
+# ```
 #
 # Multiple chapter ranges can be defined by separating them with comma:
 #
-# chapter_ranges=<range1>,<range2>,<range3>
+# chapter_ranges=range1,rangeN
 #
-# `<start-str>`, `<end-str>`, and `<range-str>` only have to occur in a title, they don't have to match it completely.
-# If only one `<range-str>` is specified, ranges will be created from consecutive pairs of this type of chapters.
+# One of `start_pattern`s can be a custom keyword `{bof}` that will match
+# beginning of file when it makes sense.
 #
-# Example:
+# One of `end_pattern`s can be a custom keyword `{eof}` that will match end of
+# file when it makes sense.
+#
+# Patterns are lua patterns (http://lua-users.org/wiki/PatternsTutorial).
+# They only need to occur in a title, not match it completely.
+# Matching is case insensitive.
+#
+# `color` is a `bbggrr` hexadecimal color code.
+# `opacity` is a float number from 0 to 1.
+#
+# Examples:
 #
 # Display skippable youtube video sponsor blocks from https://github.com/po5/mpv_sponsorblock
+# ```
+# chapter_ranges=sponsor start<968638:0.5>sponsor end
+# ```
 #
-# chapter_ranges=Sponsor start-Sponsor end:968638:0.5
-#
+# Display anime openings and endings as ranges:
+# ```
+# chapter_ranges=op<968638:0.5>.*,ed|ending<968638:0.5>.*|{eof}
+# ```
 chapter_ranges=
 ```
 
@@ -255,17 +277,44 @@ local elements = {
 	}
 }
 
--- HELPER FUNCTIONS
+-- HELPERS
 
-function split(inputstr, sep)
-	if sep == nil then
-		sep = "%s"
+function split(str, pat)
+	local t = {}
+	local fpat = "(.-)" .. pat
+	local last_end = 1
+	local s, e, cap = str:find(fpat, 1)
+	while s do
+		if s ~= 1 or cap ~= "" then
+			table.insert(t,cap)
+		end
+		last_end = e+1
+		s, e, cap = str:find(fpat, last_end)
 	end
-	local t={}
-	for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-		table.insert(t, str)
+	if last_end <= #str then
+		cap = str:sub(last_end)
+		table.insert(t, cap)
 	end
 	return t
+end
+
+function table_find(tab, el)
+	for index, value in ipairs(tab) do
+		if value == el then return index end
+	end
+end
+
+function table_remove(tab, el)
+	local should_remove = type(el) == "function" and el or function(value)
+		return value == el
+	end
+	local new_table = {}
+	for _, value in ipairs(tab) do
+		if not should_remove(value) then
+			table.insert(new_table, value)
+		end
+	end
+	return new_table
 end
 
 function get_point_to_rectangle_proximity(point, rect)
@@ -367,7 +416,7 @@ function new_ass()
 	return ass
 end
 
-function draw_chapters(style, chapter_y, size, foreground_cutoff, opacity)
+function draw_chapters(style, chapter_y, size, foreground_cutoff, chapter_opacity, master_opacity)
 	local ass = new_ass()
 	if state.chapters ~= nil then
 		local half_size = size / 2
@@ -375,13 +424,18 @@ function draw_chapters(style, chapter_y, size, foreground_cutoff, opacity)
 		for i, chapter in ipairs(state.chapters) do
 			local chapter_x = display.width * (chapter.time / state.duration)
 
-			ass:new_event()
-			if chapter_x > foreground_cutoff then
-				ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
+			local color
+			if chapter.color ~= nil then
+				color = chapter.color
+			elseif chapter_x > foreground_cutoff then
+				color = options.color_foreground
 			else
-				ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."}")
+				color = options.color_background
 			end
-			ass:append(ass_opacity(opacity))
+
+			ass:new_event()
+			ass:append("{\\blur0\\bord0\\1c&H"..color.."}")
+			ass:append(ass_opacity(chapter.opacity or chapter_opacity, master_opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
 
@@ -413,9 +467,9 @@ function draw_chapter_ranges(top, size, opacity)
 
 	for i, chapter_range in ipairs(state.chapter_ranges) do
 		for i, range in ipairs(chapter_range.ranges) do
-			local ax = display.width * (range["start"] / state.duration)
+			local ax = display.width * (range["start"].time / state.duration)
 			local ay = top
-			local bx = display.width * (range["end"] / state.duration)
+			local bx = display.width * (range["end"].time / state.duration)
 			local by = top + size
 			ass:new_event()
 			ass:append("{\\blur0\\bord0\\1c&H"..chapter_range.color.."}")
@@ -490,13 +544,13 @@ function render_progressbar(progressbar)
 
 	-- Chapters
 	if options.progressbar_chapters == "dots" then
-		ass:merge(draw_chapters("dots", math.ceil(fay + (progressbar.size / 2)), 4, fbx, options.progressbar_chapters_opacity * opacity))
+		ass:merge(draw_chapters("dots", math.ceil(fay + (progressbar.size / 2)), 4, fbx, options.progressbar_chapters_opacity, opacity))
 	elseif options.progressbar_chapters == "lines" then
-		ass:merge(draw_chapters("lines", fay, progressbar.size, fbx, options.progressbar_chapters_opacity * opacity))
+		ass:merge(draw_chapters("lines", fay, progressbar.size, fbx, options.progressbar_chapters_opacity, opacity))
 	elseif options.progressbar_chapters == "lines-top" then
-		ass:merge(draw_chapters("lines", fay, progressbar.size / 2, fbx, options.progressbar_chapters_opacity * opacity))
+		ass:merge(draw_chapters("lines", fay, progressbar.size / 2, fbx, options.progressbar_chapters_opacity, opacity))
 	elseif options.progressbar_chapters == "lines-bottom" then
-		ass:merge(draw_chapters("lines", fay + progressbar.size - (progressbar.size / 2), progressbar.size / 2, fbx, options.progressbar_chapters_opacity * opacity))
+		ass:merge(draw_chapters("lines", fay + progressbar.size - (progressbar.size / 2), progressbar.size / 2, fbx, options.progressbar_chapters_opacity, opacity))
 	end
 
 	return ass
@@ -553,13 +607,13 @@ function render_seekbar(seekbar)
 
 	-- Chapters
 	if options.seekbar_chapters == "dots" then
-		ass:merge(draw_chapters("dots", fay + 6, 6, fbx, options.seekbar_chapters_opacity * seekbar.opacity))
+		ass:merge(draw_chapters("dots", fay + 6, 6, fbx, options.seekbar_chapters_opacity, seekbar.opacity))
 	elseif options.seekbar_chapters == "lines" then
-		ass:merge(draw_chapters("lines", fay, seekbar.size, fbx, options.seekbar_chapters_opacity * seekbar.opacity))
+		ass:merge(draw_chapters("lines", fay, seekbar.size, fbx, options.seekbar_chapters_opacity, seekbar.opacity))
 	elseif options.seekbar_chapters == "lines-top" then
-		ass:merge(draw_chapters("lines", fay, seekbar.size / 4, fbx, options.seekbar_chapters_opacity * seekbar.opacity))
+		ass:merge(draw_chapters("lines", fay, seekbar.size / 4, fbx, options.seekbar_chapters_opacity, seekbar.opacity))
 	elseif options.seekbar_chapters == "lines-bottom" then
-		ass:merge(draw_chapters("lines", fay + seekbar.size - (seekbar.size / 4), seekbar.size / 4, fbx, options.seekbar_chapters_opacity * seekbar.opacity))
+		ass:merge(draw_chapters("lines", fay + seekbar.size - (seekbar.size / 4), seekbar.size / 4, fbx, options.seekbar_chapters_opacity, seekbar.opacity))
 	end
 
 	-- Elapsed time
@@ -833,38 +887,98 @@ end
 -- CHAPTERS
 
 -- Parse `chapter_ranges` option into workable data structure
+for _, definition in ipairs(split(options.chapter_ranges, " *,+ *")) do
+	local start_patterns, color, opacity, end_patterns = string.match(definition, "([^<]+)<(%x%x%x%x%x%x):(%d%.?%d*)>([^>]+)")
 
-for _, chapter_range_definition in ipairs(split(options.chapter_ranges, ",")) do
-	local definition_parts = split(chapter_range_definition, ":")
-	local start_end_pair = split(definition_parts[1], '-')
+	-- Invalid definition
+	if start_patterns == nil then goto continue end
+
+	start_patterns = start_patterns:lower()
+	end_patterns = end_patterns:lower()
+	local uses_bof = start_patterns:find("{bof}") ~= nil
+	local uses_eof = end_patterns:find("{eof}") ~= nil
 	local chapter_range = {
-		start_str = start_end_pair[1],
-		end_str = start_end_pair[2] or start_end_pair[1],
-		color = definition_parts[2],
-		opacity = tonumber(definition_parts[3]),
+		start_patterns = split(start_patterns, "|"),
+		end_patterns = split(end_patterns, "|"),
+		color = color,
+		opacity = tonumber(opacity),
+		ranges = {}
 	}
-	chapter_range["serialize"] = function (chapter, last_range)
-		if not chapter.title then return end
-		if chapter.title:find(chapter_range.end_str) then
-			if last_range then
-				last_range["end"] = chapter.time
-				return last_range
-			else
-				return {
-					["start"] = 0,
-					["end"] = chapter.time
-				}
+
+	-- Filter out special keywords so we don't use them when matching titles
+	if uses_bof then
+		chapter_range.start_patterns = table_remove(chapter_range.start_patterns, "{bof}")
+	end
+	if uses_eof and chapter_range.end_patterns then
+		chapter_range.end_patterns = table_remove(chapter_range.end_patterns, "{eof}")
+	end
+
+	chapter_range["serialize"] = function (chapters)
+		chapter_range.ranges = {}
+		local current_range = nil
+		-- bof and eof should be used only once per timeline
+		-- eof is only used when last range is missing end
+		local bof_used = false
+
+		function start_range(chapter)
+			-- If there is already a range started, should we append or overwrite?
+			-- I chose overwrite here.
+			current_range = {["start"] = chapter}
+		end
+
+		function end_range(chapter)
+			current_range["end"] = chapter
+			table.insert(chapter_range.ranges, current_range)
+			-- Mark both chapter objects
+			current_range["start"]._uosc_used_as_range_point = true
+			current_range["end"]._uosc_used_as_range_point = true
+			-- Clear for next range
+			current_range = nil
+		end
+
+		for _, chapter in ipairs(chapters) do
+			if type(chapter.title) == "string" then
+				local lowercase_title = chapter.title:lower()
+				local is_end = false
+				local is_start = false
+
+				-- Is ending check and handling
+				if chapter_range.end_patterns then
+					for _, end_pattern in ipairs(chapter_range.end_patterns) do
+						is_end = is_end or lowercase_title:find(end_pattern) ~= nil
+					end
+
+					if is_end then
+						if current_range == nil and uses_bof and not bof_used then
+							bof_used = true
+							start_range({time = 0})
+						end
+						if current_range ~= nil then
+							end_range(chapter)
+						else
+							is_end = false
+						end
+					end
+				end
+
+				-- Is start check and handling
+				for _, start_pattern in ipairs(chapter_range.start_patterns) do
+					is_start = is_start or lowercase_title:find(start_pattern) ~= nil
+				end
+
+				if is_start then start_range(chapter) end
 			end
-		elseif chapter.title:find(chapter_range.start_str) then
-			return {
-				["start"] = chapter.time,
-				["end"] = chapter.time + 0.1
-			}
+		end
+
+		-- If there is an unfinished range and range type accepts eof, use it
+		if current_range ~= nil and uses_eof then
+			end_range({time = state.duration or infinity})
 		end
 	end
 
 	state.chapter_ranges = state.chapter_ranges or {}
-	state.chapter_ranges[#state.chapter_ranges + 1] = chapter_range
+	table.insert(state.chapter_ranges, chapter_range)
+	::continue::
 end
 
 function parse_chapters(name, chapters)
@@ -872,31 +986,13 @@ function parse_chapters(name, chapters)
 
 	-- Reset custom ranges
 	for _, chapter_range in ipairs(state.chapter_ranges or {}) do
-		chapter_range.ranges = {}
+		chapter_range.serialize(chapters)
 	end
 
-	local basic_chapters = {}
-
-	for _, chapter in ipairs(chapters) do
-		local is_chapter_range = false
-
-		for _, chapter_range in ipairs(state.chapter_ranges or {}) do
-			local last_range = chapter_range.ranges[#chapter_range.ranges]
-			local new_range = chapter_range.serialize(chapter, last_range)
-			if new_range then
-				is_chapter_range = true
-				if new_range ~= last_range then
-					chapter_range.ranges[#chapter_range.ranges + 1] = new_range
-				end
-			end
-		end
-
-		if not is_chapter_range then
-			basic_chapters[#basic_chapters + 1] = chapter
-		end
-	end
-
-	state.chapters = basic_chapters
+	-- Filter out chapters that were used as ranges
+	state.chapters = table_remove(chapters, function(chapter)
+		return chapter._uosc_used_as_range_point == true
+	end)
 end
 
 -- HOOKS
