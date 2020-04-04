@@ -1,3 +1,20 @@
+## 1.4.0
+
+Changed:
+- Rewritten `chapter_ranges` feature to support more powerful range definitions.
+	The quick example from below can now be written as:
+	```conf
+	chapter_ranges=sponsor start<968638:0.2>sponsor end
+	```
+	Another example to display openings and endings of animes:
+	```conf
+	chapter_ranges=op<968638:0.5>.*,ed|ending<968638:0.5>.*|{eof}
+	```
+	Read options documentation to learn more about the syntax.
+
+Fixed:
+- Some minor bug fixes.
+
 ## 1.3.0
 
 New:
