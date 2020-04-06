@@ -10,49 +10,48 @@ Place these options into your `mpv.conf` file:
 ```
 osc=no     # required so that the 2 UIs don't fight each other
 border=no  # if you disable window border, uosc will draw
-           # its own proximity based window controls
+           # its own pretty window controls (minimize, maximize, close)
 ```
 
 Options go in `script-opts/uosc.conf`. Defaults:
 
 ```
-# display window title (filename) in no-border mode
-title=no
-
-# seekbar size in pixels, 0 to disable
-seekbar_size=40
+# timeline size when fully retracted, 0 will hide it completely
+timeline_size_min=1
+# timeline size when fully expanded, in pixels, 0 to disable
+timeline_size_max=40
 # same as ^ but when in fullscreen
-seekbar_size_fullscreen=60
-# seekbar opacity when fully visible
-seekbar_opacity=0.8
-# seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
-# set to empty to disable
-seekbar_chapters=dots
-# seekbar chapters indicator opacity
-seekbar_chapters_opacity=0.3
+timeline_size_min_fullscreen=0
+timeline_size_max_fullscreen=60
+# timeline opacity
+timeline_opacity=0.8
+# pads the elapsed bar from top, effectively creating a top border of background
+# color to help visually separate elapsed bar from video of similar color
+# in no border windowed mode bottom is padded as well to separate from whatever
+# is behind current window
+# this might be unwanted if you are using unique/rare colors with low overlap
+# chance, so you can disable it by setting to 0
+timeline_padding=1
 
-# progressbar size in pixels, 0 to disable
-progressbar_size=1
-# same as ^ but when in fullscreen
-progressbar_size_fullscreen=0
-# progressbar opacity
-progressbar_opacity=0.8
-# progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
+# timeline chapters indicator style: dots, lines, lines-top, lines-bottom
 # set to empty to disable
-progressbar_chapters=dots
-# progressbar chapters indicator opacity
-progressbar_chapters_opacity=0.3
+chapters=dots
+# timeline chapters indicator opacity
+chapters_opacity=0.3
 
-# proximity below which opacity equals 1
-min_proximity=40
-# proximity above which opacity equals 0
-max_proximity=120
-# BBGGRR - BLUE GREEN RED hex code
-color_foreground=FFFFFF
-# BBGGRR - BLUE GREEN RED hex code
+# proximity below which elements are fully faded in/expanded
+proximity_min=40
+# proximity above which elements are fully faded out/retracted
+proximity_max=120
+# BBGGRR - BLUE GREEN RED hex codes
+color_foreground=ffffff
+color_foreground_text=000000
 color_background=000000
+color_background_text=ffffff
 # hide proximity based elements when mpv autohides the cursor
 autohide=no
+# display window title (filename) in top window controls bar in no-border mode
+title=no
 
 # `chapter_ranges` lets you transform chapter indicators into range indicators
 # with custom color and opacity by creating a chapter range definition that
@@ -102,10 +101,8 @@ chapter_ranges=
 Available keybindings (place into `input.conf`):
 
 ```
-Key  script-binding uosc/toggleprogressbar
-Key  script-binding uosc/toggleseekbar
+Key  script-binding uosc/toggletimeline
 ```
-
 ]]
 
 if mp.get_property('osc') == 'yes' then
@@ -116,35 +113,33 @@ end
 local assdraw = require 'mp.assdraw'
 local opt = require 'mp.options'
 local osd = mp.create_osd_overlay("ass-events")
+local infinity = 1e309
 
 local options = {
-	title = false,
+	timeline_size_min = 1,
+	timeline_size_max = 40,
+	timeline_size_min_fullscreen = 0,
+	timeline_size_max_fullscreen = 60,
+	timeline_opacity = 0.8,
+	timeline_padding = 1,
 
-	seekbar_size = 40,
-	seekbar_size_fullscreen = 60,
-	seekbar_opacity = 0.8,
-	seekbar_chapters = "dots",
-	seekbar_chapters_opacity = 0.3,
+	chapters = "dots",
+	chapters_opacity = 0.3,
 
-	progressbar_size = 1,
-	progressbar_size_fullscreen = 0,
-	progressbar_opacity = 0.8,
-	progressbar_chapters = "dots",
-	progressbar_chapters_opacity = 0.3,
-
-	min_proximity = 40,
-	max_proximity = 120,
-	color_foreground = "FFFFFF",
+	proximity_min = 40,
+	proximity_max = 120,
+	color_foreground = "ffffff",
+	color_foreground_text = "000000",
 	color_background = "000000",
+	color_background_text = "ffffff",
 	autohide = false,
+	title = false,
 	chapter_ranges = ""
 }
 opt.read_options(options, "uosc")
 local config = {
 	render_delay = 0.03, -- sets max rendering frequency
 	font = mp.get_property("options/osd-font"),
-	bar_top_border = 1,
-	bar_bottom_border = 0, -- set dynamically to 1 in no-border mode
 	window_controls = {
 		button_width = 46,
 		height = 40,
@@ -174,6 +169,8 @@ local state = {
 	maximized = mp.get_property_native("window-maximized"),
 	render_timer = nil,
 	render_last_time = 0,
+	timeline_top_padding = options.timeline_padding,
+	timeline_bottom_padding = 0, -- set dynamically to 1 in no-border mode
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native("cursor-autohide") / 1000, function()
 		if not options.autohide then return end
 		cursor.hidden = true
@@ -182,102 +179,46 @@ local state = {
 	end),
 	mouse_bindings_enabled = false
 }
-local infinity = 1e309
-local elements = {
-	progressbar = {
-		enabled = true, -- flag set manually through runtime keybinds
-		size = 0, -- consolidation of `progressbar_size` and `progressbar_size_fullscreen` options
-		on_display_resize = function(element)
-			if state.fullscreen or state.maximized then
-				element.size = options.progressbar_size_fullscreen
-			else
-				element.size = options.progressbar_size
-			end
-		end,
-		render = function(element) return render_progressbar(element) end,
-	},
-	seekbar = {
-		interactive = true, -- listen for mouse events and disable window dragging
-		size = 0, -- consolidation of `seekbar_size` and `seekbar_size_fullscreen` options, set in `on_display_resize` handler below
-		font_size = 0, -- calculated in `on_display_resize` handler below based on seekbar size
-		spacing = 0, -- calculated in `on_display_resize` handler below based on size and font size
-		ax = 0, ay = 0, bx = 0, by = 0, -- rectangle coordinates calculated in `on_display_resize` handler below
-		proximity = infinity, opacity = 0,  -- calculated on mouse movement
-		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
-		on_display_resize = function(element)
-			if state.fullscreen or state.maximized then
-				element.size = options.seekbar_size_fullscreen
-			else
-				element.size = options.seekbar_size
-			end
-			element.interactive = element.size > 0
-			element.font_size = math.floor(math.min((element.size + 15) * 0.4, element.size * 0.96))
-			element.spacing = math.floor((element.size - element.font_size) / 2)
-			element.ax = 0
-			element.ay = display.height - element.size - config.bar_top_border - config.bar_bottom_border
-			element.bx = display.width
-			element.by = display.height
-		end,
-		on_mbtn_left_down = function()
-			mp.commandv("seek", ((cursor.x / display.width) * 100), "absolute-percent+exact")
-		end,
-		render = function(element) return render_seekbar(element) end,
-	},
-	window_controls = {
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
-		proximity = infinity, opacity = 0,   -- calculated on mouse movement
-		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
-		on_display_resize = function(element)
-			local ax = display.width - (config.window_controls.button_width * 3)
-			element.ax = options.title and 0 or ax
-			element.ay = 0
-			element.bx = display.width
-			element.by = config.window_controls.height
-		end,
-		render = function(element) return render_window_controls(element) end,
-	},
-	window_controls_minimize = {
-		interactive = true, -- listen for mouse events and disable window dragging
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
-		proximity = infinity, opacity = 0,  -- calculated on mouse movement
-		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
-		on_display_resize = function(element)
-			element.ax = display.width - (config.window_controls.button_width * 3)
-			element.ay = 0
-			element.bx = element.ax + config.window_controls.button_width
-			element.by = config.window_controls.height
-		end,
-		on_mbtn_left_down = function() mp.commandv("cycle", "window-minimized") end
-	},
-	window_controls_maximize = {
-		interactive = true, -- listen for mouse events and disable window dragging
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
-		proximity = infinity, opacity = 0,  -- calculated on mouse movement
-		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
-		on_display_resize = function(element)
-			element.ax = display.width - (config.window_controls.button_width * 2)
-			element.ay = 0
-			element.bx = element.ax + config.window_controls.button_width
-			element.by = config.window_controls.height
-		end,
-		on_mbtn_left_down = function() mp.commandv("cycle", "window-maximized") end
-	},
-	window_controls_close = {
-		interactive = true, -- listen for mouse events and disable window dragging
-		ax = 0, ay = 0, bx = 0, by = 0, -- calculated by on_display_resize
-		proximity = infinity, opacity = 0,  -- calculated on mouse movement
-		on_mouse_move = function(element) update_element_cursor_proximity(element) end,
-		on_display_resize = function(element)
-			element.ax = display.width - config.window_controls.button_width
-			element.ay = 0
-			element.bx = element.ax + config.window_controls.button_width
-			element.by = config.window_controls.height
-		end,
-		on_mbtn_left_down = function() mp.commandv("quit") end
-	}
+
+--[[
+Element object signature:
+{
+	-- listen for mouse events and disable window dragging
+	interactive = true,
+	-- element rectangle coordinates
+	ax = 0, ay = 0, bx = 0, by = 0,
+	-- cursor<>element effective proximity as a 0-1 floating number
+	-- where 0 = completely away, and 1 = touching/hovering
+	-- so it's easy to work with and throw into equations
+	proximity = 0,
+	-- raw cursor<>element proximity in pixels
+	proximity_raw = infinity,
+	-- triggered every time mouse moves over a display, not just the element
+	on_mouse_move = function(this_element),
+	on_display_resize = function(this_element),
+	-- trigered on left mouse button down over this element rectangle
+	on_mbtn_left_down = function(this_element),
+	-- trigered on right mouse button down over this element rectangle
+	on_mbtn_right_down = function(this_element),
+	-- whether to render this element, has to return new_ass() object
+	render = function(this_element),
 }
+]]
+local elements = {}
+function add_element(name, props)
+	elements[name] = {
+		interactive = false,
+		ax = 0, ay = 0, bx = 0, by = 0,
+		proximity = 0, proximity_raw = infinity,
+	}
+	for key, value in pairs(props) do elements[name][key] = value end
+end
 
 -- HELPERS
+
+function call_me_maybe(fn, value)
+	if fn then fn(value) end
+end
 
 function split(str, pat)
 	local t = {}
@@ -298,13 +239,13 @@ function split(str, pat)
 	return t
 end
 
-function table_find(tab, el)
+function itable_find(tab, el)
 	for index, value in ipairs(tab) do
 		if value == el then return index end
 	end
 end
 
-function table_remove(tab, el)
+function itable_remove(tab, el)
 	local should_remove = type(el) == "function" and el or function(value)
 		return value == el
 	end
@@ -317,10 +258,118 @@ function table_remove(tab, el)
 	return new_table
 end
 
+function tween(current, to, setter, on_end)
+	local timeout
+	local cutoff = math.abs(to - current) * 0.01
+	function tick()
+		current = current + ((to - current) * 0.3)
+		local is_end = math.abs(to - current) < cutoff
+		setter(is_end and to or current)
+		request_render()
+		if is_end then
+			call_me_maybe(on_end)
+		else
+			timeout:resume()
+		end
+	end
+	timeout = mp.add_timeout(0.016, tick)
+	tick()
+	return function() timeout:kill() end
+end
+
+function tween_element(element, current, to, setter, on_end)
+	call_me_maybe(element.stop_current_animation)
+	element.stop_current_animation = tween(
+		current,
+		to,
+		function(current) setter(element, current) end,
+		function()
+			element.stop_current_animation = nil
+			call_me_maybe(on_end, element)
+		end
+	)
+end
+
+function tween_element_property(element, prop, to, on_end)
+	tween_element(element, element[prop], to, function(_, value) element[prop] = value end, on_end)
+end
+
 function get_point_to_rectangle_proximity(point, rect)
 	local dx = math.max(rect.ax - point.x, 0, point.x - rect.bx + 1)
 	local dy = math.max(rect.ay - point.y, 0, point.y - rect.by + 1)
 	return math.sqrt(dx*dx + dy*dy);
+end
+
+-- STATE UPDATES
+
+function update_display_dimensions()
+	local o = mp.get_property_native("osd-dimensions")
+	display.width = o.w
+	display.height = o.h
+	display.aspect = o.aspect
+
+	-- Tell elements about this
+	for _, element in pairs(elements) do
+		if element.on_display_resize ~= nil then
+			element.on_display_resize(element)
+		end
+	end
+end
+
+function update_cursor_position()
+	cursor.x, cursor.y = mp.get_mouse_pos()
+	update_proximities()
+end
+
+function update_element_cursor_proximity(element)
+	if cursor.hidden then
+		element.proximity_raw = infinity
+		element.proximity = 0
+	else
+		local range = options.proximity_max - options.proximity_min
+		element.proximity_raw = get_point_to_rectangle_proximity(cursor, element)
+		element.proximity = 1 - (math.min(math.max(element.proximity_raw - options.proximity_min, 0), range) / range)
+	end
+end
+
+function update_proximities()
+	local should_enable_mouse_bindings = false
+
+	-- Calculates proximities and opacities for defined elements
+	for _, element in pairs(elements) do
+		-- Only update proximity and opacity for elements that care about it
+		if element.proximity ~= nil and element.on_mouse_move ~= nil then
+			element.on_mouse_move(element)
+			should_enable_mouse_bindings = should_enable_mouse_bindings or (element.interactive and element.proximity_raw == 0)
+		end
+	end
+
+	-- Disable cursor input interception when cursor is not over any controls
+	if not state.mouse_bindings_enabled and should_enable_mouse_bindings then
+		state.mouse_bindings_enabled = true
+		mp.enable_key_bindings("mouse_buttons")
+	elseif state.mouse_bindings_enabled and not should_enable_mouse_bindings then
+		state.mouse_bindings_enabled = false
+		mp.disable_key_bindings("mouse_buttons")
+	end
+end
+
+-- DRAWING HELPERS
+
+function new_ass()
+	local ass = assdraw.ass_new()
+	-- Not 100% sure what scale does, but as far as I understand it multiplies
+	-- the resolution of final render by the number this value is set for?
+	-- Since uosc is rendered to be pixel perfect, and not relatively stretched
+	-- I see no reason to go above 1 and increase CPU/GPU/memory load.
+	-- Open an issue if I'm mistaken and this should be higher.
+	ass.scale = 1
+	-- Doing ass:new_event() on an empty ass object does nothing on purpose for
+	-- some reason, so we have to do it manually here so that all ass objects
+	-- can be merged safely without having to call new_event() before every damn
+	-- merge.
+	ass.text = "\n"
+	return ass
 end
 
 function opacity_to_alpha(opacity)
@@ -342,250 +391,46 @@ function ass_opacity(opacity, fraction)
 	end
 end
 
--- STATE UPDATES
-
-function update_display_dimensions()
-	local o = mp.get_property_native("osd-dimensions")
-	display.width = o.w
-	display.height = o.h
-	display.aspect = o.aspect
-
-	-- Tell elements to update their area rectangles
-	for _, element in pairs(elements) do
-		if element.on_display_resize ~= nil then
-			element.on_display_resize(element)
-		end
-	end
-end
-
-function update_cursor_position()
-	local x, y = mp.get_mouse_pos()
-	cursor.x = x
-	cursor.y = y
-	update_proximities()
-end
-
-function update_element_cursor_proximity(element)
-	if cursor.hidden then
-		element.proximity = infinity
-		element.opacity = 0
-	else
-		local range = options.max_proximity - options.min_proximity
-		element.proximity = get_point_to_rectangle_proximity(cursor, element)
-		element.opacity = 1 - math.min(math.max(element.proximity - options.min_proximity, 0), range) / range
-	end
-end
-
-function update_proximities()
-	local should_enable_mouse_bindings = false
-
-	-- Calculates proximities and opacities for defined elements
-	for _, element in pairs(elements) do
-		-- Only update proximity and opacity for elements that care about it
-		if element.proximity ~= nil and element.on_mouse_move ~= nil then
-			element.on_mouse_move(element)
-			should_enable_mouse_bindings = should_enable_mouse_bindings or (element.interactive and element.proximity == 0)
-		end
-	end
-
-	-- Disable cursor input interception when cursor is not over any controls
-	if not state.mouse_bindings_enabled and should_enable_mouse_bindings then
-		state.mouse_bindings_enabled = true
-		mp.enable_key_bindings("mouse_buttons")
-	elseif state.mouse_bindings_enabled and not should_enable_mouse_bindings then
-		state.mouse_bindings_enabled = false
-		mp.disable_key_bindings("mouse_buttons")
-	end
-end
-
--- Drawing helpers
-
-function new_ass()
-	local ass = assdraw.ass_new()
-	-- Not 100% sure what scale does, but as far as I understand it multiplies
-	-- the resolution of final render by the number this value is set for?
-	-- Since uosc is rendered to be pixel perfect, and not relatively stretched
-	-- I see no reason to go above 1 and increase CPU/GPU/memory load.
-	-- Open an issue if I'm mistaken and this should be higher.
-	ass.scale = 1
-	-- Doing ass:new_event() on an empty ass object does nothing on purpose for
-	-- some reason, so we have to do it manually here so that all ass objects
-	-- can be merged safely without having to call new_event() before every damn
-	-- merge.
-	ass.text = "\n"
-	return ass
-end
-
-function draw_chapters(style, chapter_y, size, foreground_cutoff, chapter_opacity, master_opacity)
-	local ass = new_ass()
-	if state.chapters ~= nil then
-		local half_size = size / 2
-		local bezier_stretch = size * 0.67
-		for i, chapter in ipairs(state.chapters) do
-			local chapter_x = display.width * (chapter.time / state.duration)
-
-			local color
-			if chapter.color ~= nil then
-				color = chapter.color
-			elseif chapter_x > foreground_cutoff then
-				color = options.color_foreground
-			else
-				color = options.color_background
-			end
-
-			ass:new_event()
-			ass:append("{\\blur0\\bord0\\1c&H"..color.."}")
-			ass:append(ass_opacity(chapter.opacity or chapter_opacity, master_opacity))
-			ass:pos(0, 0)
-			ass:draw_start()
-
-			if style == "dots" then
-				ass:move_to(chapter_x - half_size, chapter_y)
-				ass:bezier_curve(
-					chapter_x - half_size, chapter_y - bezier_stretch,
-					chapter_x + half_size, chapter_y - bezier_stretch,
-					chapter_x + half_size, chapter_y
-				)
-				ass:bezier_curve(
-					chapter_x + half_size, chapter_y + bezier_stretch,
-					chapter_x - half_size, chapter_y + bezier_stretch,
-					chapter_x - half_size, chapter_y
-				)
-			elseif style == "lines" then
-				ass:rect_cw(chapter_x, chapter_y, chapter_x + 1, chapter_y + size)
-			end
-
-			ass:draw_stop()
-		end
-	end
-	return ass
-end
-
-function draw_chapter_ranges(top, size, opacity)
-	local ass = new_ass()
-	if state.chapter_ranges == nil then return ass end
-
-	for i, chapter_range in ipairs(state.chapter_ranges) do
-		for i, range in ipairs(chapter_range.ranges) do
-			local ax = display.width * (range["start"].time / state.duration)
-			local ay = top
-			local bx = display.width * (range["end"].time / state.duration)
-			local by = top + size
-			ass:new_event()
-			ass:append("{\\blur0\\bord0\\1c&H"..chapter_range.color.."}")
-			ass:append(ass_opacity(chapter_range.opacity, opacity))
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(ax, ay, bx, by)
-			ass:draw_stop()
-		end
-	end
-
-	return ass
-end
-
 --  ELEMENT RENDERERS
 
-function render_progressbar(progressbar)
+function render_timeline(timeline)
 	local ass = new_ass()
 
-	if not progressbar.enabled
-		or progressbar.size == 0
+	if timeline.size_max == 0
 		or state.duration == nil
 		or state.position == nil then
 		return ass
 	end
 
-	-- Progressbar opacity is inversely proportional to seekbar opacity
-	local opacity = elements.seekbar.size > 0
-		and (1 - math.min(elements.seekbar.opacity / 0.4, 1))
-		or 1
+	local size = timeline.size_min + math.ceil((timeline.size_max - timeline.size_min) * timeline.proximity)
 
-	if opacity == 0 then
-		return ass
-	end
+	if size < 1 then return ass end
 
+	-- text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches timeline.size_min
+	local hide_text_below = math.max(timeline.font_size * 0.7, timeline.size_min * 2)
+	local hide_text_ramp = hide_text_below / 2
+	local text_opacity = math.max(math.min(size - hide_text_below, hide_text_ramp), 0) / hide_text_ramp
+
+	local spacing = math.max(math.floor((timeline.size_max - timeline.font_size) / 2.5), 4)
 	local progress = state.position / state.duration
 
 	-- Background bar coordinates
 	local bax = 0
-	local bay = display.height - progressbar.size - config.bar_bottom_border - config.bar_top_border
+	local bay = display.height - size - state.timeline_bottom_padding - state.timeline_top_padding
 	local bbx = display.width
 	local bby = display.height
 
 	-- Foreground bar coordinates
 	local fax = bax
-	local fay = bay + config.bar_top_border
+	local fay = bay + state.timeline_top_padding
 	local fbx = bbx * progress
-	local fby = bby - config.bar_bottom_border
-
-	-- Background
-	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..fax..","..fay..","..fbx..","..fby..")}")
-	ass:append(ass_opacity(math.max(options.progressbar_opacity - 0.1, 0), opacity))
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:rect_cw(bax, bay, bbx, bby)
-	ass:draw_stop()
-
-	-- Foreground
-	ass:new_event()
-	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
-	ass:append(ass_opacity(options.progressbar_opacity, opacity))
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:rect_cw(fax, fay, fbx, fby)
-	ass:draw_stop()
-
-	-- Custom ranges
-	if state.chapter_ranges ~= nil then
-		ass:merge(draw_chapter_ranges(fay, progressbar.size, opacity))
-	end
-
-	-- Chapters
-	if options.progressbar_chapters == "dots" then
-		ass:merge(draw_chapters("dots", math.ceil(fay + (progressbar.size / 2)), 4, fbx, options.progressbar_chapters_opacity, opacity))
-	elseif options.progressbar_chapters == "lines" then
-		ass:merge(draw_chapters("lines", fay, progressbar.size, fbx, options.progressbar_chapters_opacity, opacity))
-	elseif options.progressbar_chapters == "lines-top" then
-		ass:merge(draw_chapters("lines", fay, progressbar.size / 2, fbx, options.progressbar_chapters_opacity, opacity))
-	elseif options.progressbar_chapters == "lines-bottom" then
-		ass:merge(draw_chapters("lines", fay + progressbar.size - (progressbar.size / 2), progressbar.size / 2, fbx, options.progressbar_chapters_opacity, opacity))
-	end
-
-	return ass
-end
-
-function render_seekbar(seekbar)
-	local ass = new_ass()
-
-	if cursor.hidden
-		or seekbar.size == 0
-		or seekbar.opacity == 0
-		or state.duration == nil
-		or state.position == nil then
-		return ass
-	end
-
-	local progress = state.position / state.duration
-
-	-- Background bar coordinates
-	local bax = 0
-	local bay = display.height - seekbar.size - config.bar_bottom_border - config.bar_top_border
-	local bbx = display.width
-	local bby = display.height
-
-	-- Foreground bar coordinates
-	local fax = bax
-	local fay = bay + config.bar_top_border
-	local fbx = bbx * progress
-	local fby = bby - config.bar_bottom_border
+	local fby = bby - state.timeline_bottom_padding
 	local foreground_coordinates = fax..","..fay..","..fbx..","..fby -- for clipping
 
 	-- Background
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..foreground_coordinates..")}")
-	ass:append(ass_opacity(math.max(options.seekbar_opacity - 0.1, 0), seekbar.opacity))
+	ass:append(ass_opacity(math.max(options.timeline_opacity - 0.1, 0)))
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(bax, bay, bbx, bby)
@@ -594,7 +439,7 @@ function render_seekbar(seekbar)
 	-- Foreground
 	ass:new_event()
 	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
-	ass:append(ass_opacity(options.seekbar_opacity, seekbar.opacity))
+	ass:append(ass_opacity(options.timeline_opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(fax, fay, fbx, fby)
@@ -602,61 +447,125 @@ function render_seekbar(seekbar)
 
 	-- Custom ranges
 	if state.chapter_ranges ~= nil then
-		ass:merge(draw_chapter_ranges(fay, seekbar.size, seekbar.opacity))
+		for i, chapter_range in ipairs(state.chapter_ranges) do
+			for i, range in ipairs(chapter_range.ranges) do
+				local rax = display.width * (range["start"].time / state.duration)
+				local rbx = display.width * (range["end"].time / state.duration)
+				ass:new_event()
+				ass:append("{\\blur0\\bord0\\1c&H"..chapter_range.color.."}")
+				ass:append(ass_opacity(chapter_range.opacity))
+				ass:pos(0, 0)
+				ass:draw_start()
+				-- for 1px chapter size, use the whole size of the bar including padding
+				if size <= 1 then
+					ass:rect_cw(rax, bay, rbx, bby)
+				else
+					ass:rect_cw(rax, fay, rbx, fby)
+				end
+				ass:draw_stop()
+			end
+		end
 	end
 
 	-- Chapters
-	if options.seekbar_chapters == "dots" then
-		ass:merge(draw_chapters("dots", fay + 6, 6, fbx, options.seekbar_chapters_opacity, seekbar.opacity))
-	elseif options.seekbar_chapters == "lines" then
-		ass:merge(draw_chapters("lines", fay, seekbar.size, fbx, options.seekbar_chapters_opacity, seekbar.opacity))
-	elseif options.seekbar_chapters == "lines-top" then
-		ass:merge(draw_chapters("lines", fay, seekbar.size / 4, fbx, options.seekbar_chapters_opacity, seekbar.opacity))
-	elseif options.seekbar_chapters == "lines-bottom" then
-		ass:merge(draw_chapters("lines", fay + seekbar.size - (seekbar.size / 4), seekbar.size / 4, fbx, options.seekbar_chapters_opacity, seekbar.opacity))
+	if options.chapters ~= "" and state.chapters ~= nil and #state.chapters > 0 then
+		local half_size = size / 2
+		local size_padded = bby - bay
+		local dots = false
+		local chapter_size, chapter_y
+		if options.chapters == "dots" then
+			dots = true
+			chapter_size = math.min(6, (size_padded / 2) + 2)
+			chapter_y = math.min(fay + chapter_size, fay + half_size)
+		elseif options.chapters == "lines" then
+			chapter_size = size
+			chapter_y = fay + (chapter_size / 2)
+		elseif options.chapters == "lines-top" then
+			chapter_size = math.min(timeline.size_max / 3.5, size)
+			chapter_y = fay + (chapter_size / 2)
+		elseif options.chapters == "lines-bottom" then
+			chapter_size = math.min(timeline.size_max / 3.5, size)
+			chapter_y = fay + size - (chapter_size / 2)
+		end
+
+		if chapter_size ~= nil then
+			-- for 1px chapter size, use the whole size of the bar including padding
+			chapter_size = size <= 1 and size_padded or chapter_size
+			local chapter_half_size = chapter_size / 2
+
+			for i, chapter in ipairs(state.chapters) do
+				local chapter_x = display.width * (chapter.time / state.duration)
+				local color = chapter_x > fbx and options.color_foreground or options.color_background
+
+				ass:new_event()
+				ass:append("{\\blur0\\bord0\\1c&H"..color.."}")
+				ass:append(ass_opacity(options.chapters_opacity))
+				ass:pos(0, 0)
+				ass:draw_start()
+
+				if dots then
+					local bezier_stretch = chapter_size * 0.67
+					ass:move_to(chapter_x - chapter_half_size, chapter_y)
+					ass:bezier_curve(
+						chapter_x - chapter_half_size, chapter_y - bezier_stretch,
+						chapter_x + chapter_half_size, chapter_y - bezier_stretch,
+						chapter_x + chapter_half_size, chapter_y
+					)
+					ass:bezier_curve(
+						chapter_x + chapter_half_size, chapter_y + bezier_stretch,
+						chapter_x - chapter_half_size, chapter_y + bezier_stretch,
+						chapter_x - chapter_half_size, chapter_y
+					)
+				else
+					ass:rect_cw(chapter_x, chapter_y - chapter_half_size, chapter_x + 1, chapter_y + chapter_half_size)
+				end
+
+				ass:draw_stop()
+			end
+		end
 	end
 
-	-- Elapsed time
-	local elapsed_seconds = mp.get_property_native("playback-time")
-	if elapsed_seconds then
-		ass:new_event()
-		ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\clip("..foreground_coordinates..")")
-		ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
-		ass:pos(seekbar.spacing, fay + (seekbar.size / 2))
-		ass:an(4)
-		ass:append(mp.format_time(elapsed_seconds))
-		ass:new_event()
-		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\iclip("..foreground_coordinates..")")
-		ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
-		ass:pos(seekbar.spacing, fay + (seekbar.size / 2))
-		ass:an(4)
-		ass:append(mp.format_time(elapsed_seconds))
+	if text_opacity > 0 then
+		-- Elapsed time
+		if state.elapsed_seconds then
+			ass:new_event()
+			ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_foreground_text.."\\fn"..config.font.."\\fs"..timeline.font_size.."\\clip("..foreground_coordinates..")")
+			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
+			ass:pos(spacing, fay + (size / 2))
+			ass:an(4)
+			ass:append(state.elapsed_time)
+			ass:new_event()
+			ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_background_text.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..timeline.font_size.."\\iclip("..foreground_coordinates..")")
+			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
+			ass:pos(spacing, fay + (size / 2))
+			ass:an(4)
+			ass:append(state.elapsed_time)
+		end
+
+		-- Remaining time
+		if state.remaining_seconds then
+			ass:new_event()
+			ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_foreground_text.."\\fn"..config.font.."\\fs"..timeline.font_size.."\\clip("..foreground_coordinates..")")
+			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
+			ass:pos(display.width - spacing, fay + (size / 2))
+			ass:an(6)
+			ass:append(state.remaining_time)
+			ass:new_event()
+			ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_background_text.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..timeline.font_size.."\\iclip("..foreground_coordinates..")")
+			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
+			ass:pos(display.width - spacing, fay + (size / 2))
+			ass:an(6)
+			ass:append(state.remaining_time)
+		end
 	end
 
-	-- Remaining time
-	local remaining_seconds = mp.get_property_native("playtime-remaining")
-	if remaining_seconds then
-		ass:new_event()
-		ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\clip("..foreground_coordinates..")")
-		ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
-		ass:pos(display.width - seekbar.spacing, fay + (seekbar.size / 2))
-		ass:an(6)
-		ass:append("-"..mp.format_time(remaining_seconds))
-		ass:new_event()
-		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."\\iclip("..foreground_coordinates..")")
-		ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1), seekbar.opacity))
-		ass:pos(display.width - seekbar.spacing, fay + (seekbar.size / 2))
-		ass:an(6)
-		ass:append("-"..mp.format_time(remaining_seconds))
-	end
-
-	if seekbar.proximity == 0 then
+	if timeline.proximity_raw == 0 then
 		-- Hovered time
 		local hovered_seconds = mp.get_property_native("duration") * (cursor.x / display.width)
-		local box_half_width_guesstimate = (seekbar.font_size * 4.2) / 2
+		local box_half_width_guesstimate = (timeline.font_size * 4.2) / 2
 		ass:new_event()
-		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_foreground.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..seekbar.font_size.."")
-		ass:append(ass_opacity(math.min(options.seekbar_opacity + 0.1, 1)))
+		ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_background_text.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..timeline.font_size.."")
+		ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1)))
 		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), fay)
 		ass:an(2)
 		ass:append(mp.format_time(hovered_seconds))
@@ -677,20 +586,13 @@ end
 function render_window_controls(window_controls)
 	local ass = new_ass()
 
-	if cursor.hidden
-		or state.border
-		or state.duration == nil
-		or state.position == nil then
-		return ass
-	end
+	if state.border or window_controls.proximity == 0 then return ass end
 
-	local master_opacity = window_controls.opacity
-
-	if master_opacity == 0 then return ass end
+	local master_opacity = window_controls.proximity
 
 	-- Close button
 	local close = elements.window_controls_close
-	if close.proximity == 0 then
+	if close.proximity_raw == 0 then
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H2311e8}")
@@ -713,7 +615,7 @@ function render_window_controls(window_controls)
 
 	-- Maximize button
 	local maximize = elements.window_controls_maximize
-	if maximize.proximity == 0 then
+	if maximize.proximity_raw == 0 then
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H222222}")
@@ -740,7 +642,7 @@ function render_window_controls(window_controls)
 
 	-- Minimize button
 	local minimize = elements.window_controls_minimize
-	if minimize.proximity == 0 then
+	if minimize.proximity_raw == 0 then
 		-- Background on hover
 		ass:new_event()
 		ass:append("{\\blur0\\bord0\\1c&H222222}")
@@ -822,13 +724,87 @@ function render()
 	osd:update()
 end
 
+-- STATIC ELEMENTS
+
+add_element("timeline", {
+	interactive = true,
+	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
+	on_mouse_move = update_element_cursor_proximity,
+	font_size = 0, -- calculated in on_display_resize
+	on_display_resize = function(element)
+		if state.fullscreen or state.maximized then
+			element.size_min = options.timeline_size_min_fullscreen
+			element.size_max = options.timeline_size_max_fullscreen
+		else
+			element.size_min = options.timeline_size_min
+			element.size_max = options.timeline_size_max
+		end
+		element.interactive = element.size_max > 0
+		element.font_size = math.floor(math.min((element.size_max + 60) * 0.2, element.size_max * 0.96))
+		element.ax = 0
+		element.ay = display.height - element.size_max - state.timeline_top_padding - state.timeline_bottom_padding
+		element.bx = display.width
+		element.by = display.height
+	end,
+	on_mbtn_left_down = function()
+		mp.commandv("seek", ((cursor.x / display.width) * 100), "absolute-percent+exact")
+	end,
+	render = render_timeline,
+})
+add_element("window_controls", {
+	on_mouse_move = update_element_cursor_proximity,
+	on_display_resize = function(element)
+		local ax = display.width - (config.window_controls.button_width * 3)
+		element.ax = options.title and 0 or ax
+		element.ay = 0
+		element.bx = display.width
+		element.by = config.window_controls.height
+	end,
+	render = render_window_controls,
+})
+add_element("window_controls_minimize", {
+	interactive = true,
+	on_mouse_move = update_element_cursor_proximity,
+	on_display_resize = function(element)
+		element.ax = display.width - (config.window_controls.button_width * 3)
+		element.ay = 0
+		element.bx = element.ax + config.window_controls.button_width
+		element.by = config.window_controls.height
+	end,
+	on_mbtn_left_down = function() mp.commandv("cycle", "window-minimized") end
+})
+add_element("window_controls_maximize", {
+	interactive = true,
+	on_mouse_move = update_element_cursor_proximity,
+	on_display_resize = function(element)
+		element.ax = display.width - (config.window_controls.button_width * 2)
+		element.ay = 0
+		element.bx = element.ax + config.window_controls.button_width
+		element.by = config.window_controls.height
+	end,
+	on_mbtn_left_down = function() mp.commandv("cycle", "window-maximized") end
+})
+add_element("window_controls_close", {
+	interactive = true,
+	on_mouse_move = update_element_cursor_proximity,
+	on_display_resize = function(element)
+		element.ax = display.width - config.window_controls.button_width
+		element.ay = 0
+		element.bx = element.ax + config.window_controls.button_width
+		element.by = config.window_controls.height
+	end,
+	on_mbtn_left_down = function() mp.commandv("quit") end
+})
+
 -- EVENT HANDLERS
 
-function dispatch_event_to_element_below_mouse_button(name, value)
+function dispatch_mouse_button_event_to_element_below_cursor(name, value)
 	for _, element in pairs(elements) do
-		if element.proximity == 0 then
+		if element.proximity == 1 then
 			local handler = element["on_"..name]
-			if handler then handler(element, value) break
+			if handler then
+				handler(element, value)
+				break
 			end
 		end
 	end
@@ -836,21 +812,21 @@ end
 
 function handle_file_load()
 	state.duration = mp.get_property_number("duration", nil)
-	state.filename = mp.get_property_native("filename", "")
+	state.filename = mp.get_property_osd("filename", "")
 end
 
 function handle_event(source, what)
 	if source == "mbtn_left" then
 		if what == "down" or what == "press" then
-			dispatch_event_to_element_below_mouse_button("mbtn_left_down")
+			dispatch_mouse_button_event_to_element_below_cursor("mbtn_left_down")
 		elseif what == "up" then
-			dispatch_event_to_element_below_mouse_button("mbtn_left_up")
+			dispatch_mouse_button_event_to_element_below_cursor("mbtn_left_up")
 		end
 	elseif source == "mbtn_right" then
 		if what == "down" or what == "press" then
-			dispatch_event_to_element_below_mouse_button("mbtn_right_down")
+			dispatch_mouse_button_event_to_element_below_cursor("mbtn_right_down")
 		elseif what == "up" then
-			dispatch_event_to_element_below_mouse_button("mbtn_right_up")
+			dispatch_mouse_button_event_to_element_below_cursor("mbtn_right_up")
 		end
 	elseif source == "mouse_leave" then
 		cursor.hidden = true
@@ -875,7 +851,7 @@ end
 function handle_border_change(_, border)
 	state.border = border
 	-- Sets 1px bottom border for bars in no-border mode
-	config.bar_bottom_border = (not border and 1) or 0
+	state.timeline_bottom_padding = (not border and state.timeline_top_padding) or 0
 
 	request_render()
 end
@@ -892,7 +868,7 @@ end
 
 -- Parse `chapter_ranges` option into workable data structure
 for _, definition in ipairs(split(options.chapter_ranges, " *,+ *")) do
-	local start_patterns, color, opacity, end_patterns = string.match(definition, "([^<]+)<(%x%x%x%x%x%x):(%d%.?%d*)>([^>]+)")
+	local start_patterns, color, opacity, end_patterns = string.match(definition, "([^<]+)<(%x%x%x%x%x%x):(%d?%.?%d*)>([^>]+)")
 
 	-- Invalid definition
 	if start_patterns == nil then goto continue end
@@ -911,10 +887,10 @@ for _, definition in ipairs(split(options.chapter_ranges, " *,+ *")) do
 
 	-- Filter out special keywords so we don't use them when matching titles
 	if uses_bof then
-		chapter_range.start_patterns = table_remove(chapter_range.start_patterns, "{bof}")
+		chapter_range.start_patterns = itable_remove(chapter_range.start_patterns, "{bof}")
 	end
 	if uses_eof and chapter_range.end_patterns then
-		chapter_range.end_patterns = table_remove(chapter_range.end_patterns, "{eof}")
+		chapter_range.end_patterns = itable_remove(chapter_range.end_patterns, "{eof}")
 	end
 
 	chapter_range["serialize"] = function (chapters)
@@ -982,6 +958,7 @@ for _, definition in ipairs(split(options.chapter_ranges, " *,+ *")) do
 
 	state.chapter_ranges = state.chapter_ranges or {}
 	table.insert(state.chapter_ranges, chapter_range)
+
 	::continue::
 end
 
@@ -994,9 +971,11 @@ function parse_chapters(name, chapters)
 	end
 
 	-- Filter out chapters that were used as ranges
-	state.chapters = table_remove(chapters, function(chapter)
+	state.chapters = itable_remove(chapters, function(chapter)
 		return chapter._uosc_used_as_range_point == true
 	end)
+
+	request_render()
 end
 
 -- HOOKS
@@ -1011,6 +990,10 @@ mp.observe_property("idle-active", "bool", state_setter("idle"))
 mp.observe_property("pause", "bool", state_setter("paused"))
 mp.observe_property("playback-time", "number", function(name, val)
 	state.position = val
+	state.elapsed_seconds = mp.get_property_native("playback-time")
+	state.elapsed_time = state.elapsed_seconds and mp.format_time(state.elapsed_seconds) or nil
+	state.remaining_seconds = mp.get_property_native("playtime-remaining")
+	state.remaining_time = state.remaining_seconds and mp.format_time(state.remaining_seconds) or nil
 	request_render()
 end)
 mp.observe_property("osd-dimensions", "native", function(name, val)
@@ -1036,17 +1019,10 @@ mp.set_key_bindings({
 }, "mouse_buttons", "force")
 
 -- User bindable functions
-mp.add_key_binding(nil, 'toggleprogressbar', function()
-	elements.progressbar.enabled = not elements.progressbar.enabled
-	request_render()
-end)
-mp.add_key_binding(nil, 'toggleseekbar', function()
-	if elements.seekbar.opacity < 0.5 then
-		cursor.hidden = false
-		elements.seekbar.opacity = 1
+mp.add_key_binding(nil, 'toggletimeline', function()
+	if elements.timeline.proximity > 0.5 then
+		tween_element_property(elements.timeline, "proximity", 0)
 	else
-		cursor.hidden = true
-		elements.seekbar.opacity = 0
+		tween_element_property(elements.timeline, "proximity", 1)
 	end
-	request_render()
 end)

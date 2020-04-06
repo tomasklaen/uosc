@@ -27,50 +27,45 @@ To configure **uosc**, create a `script-opts/uosc.conf` file, or download [`uosc
 
 ## Options
 
-Terminology:
-- **Seekbar**: thick clickable seeking bar with elapsed/remaining times that appears when mouse is near it
-- **Progressbar**: thin persistent video progress bar
-
 All available options with their default values:
 
 ```conf
-# display window title (filename) in no-border mode
-title=no
-
-# seekbar size in pixels, 0 to disable
-seekbar_size=40
+# timeline size when fully retracted, 0 will hide it completely
+timeline_size_min=1
+# timeline size when fully expanded, in pixels, 0 to disable
+timeline_size_max=40
 # same as ^ but when in fullscreen
-seekbar_size_fullscreen=60
-# seekbar opacity when fully visible
-seekbar_opacity=0.8
-# seekbar chapters indicator style: dots, lines, lines-top, lines-bottom
-# set to empty to disable
-seekbar_chapters=dots
-# seekbar chapters indicator opacity
-seekbar_chapters_opacity=0.3
+timeline_size_min_fullscreen=0
+timeline_size_max_fullscreen=60
+# timeline opacity
+timeline_opacity=0.8
+# pads the elapsed bar from top, effectively creating a top border of background
+# color to help visually separate elapsed bar from video of similar color
+# in no border windowed mode bottom is padded as well to separate from whatever
+# is behind current window
+# this might be unwanted if you are using unique/rare colors with low overlap
+# chance, so you can disable it by setting to 0
+timeline_padding=1
 
-# progressbar size in pixels, 0 to disable
-progressbar_size=1
-# same as ^ but when in fullscreen
-progressbar_size_fullscreen=0
-# progressbar opacity
-progressbar_opacity=0.8
-# progressbar chapters indicator style: dots, lines, lines-top, lines-bottom
+# timeline chapters indicator style: dots, lines, lines-top, lines-bottom
 # set to empty to disable
-progressbar_chapters=dots
-# progressbar chapters indicator opacity
-progressbar_chapters_opacity=0.3
+chapters=dots
+# timeline chapters indicator opacity
+chapters_opacity=0.3
 
-# proximity below which opacity equals 1
-min_proximity=40
-# proximity above which opacity equals 0
-max_proximity=120
-# BBGGRR - BLUE GREEN RED hex code
-color_foreground=FFFFFF
-# BBGGRR - BLUE GREEN RED hex code
+# proximity below which elements are fully faded in/expanded
+proximity_min=40
+# proximity above which elements are fully faded out/retracted
+proximity_max=120
+# BBGGRR - BLUE GREEN RED hex codes
+color_foreground=ffffff
+color_foreground_text=000000
 color_background=000000
+color_background_text=ffffff
 # hide proximity based elements when mpv autohides the cursor
 autohide=no
+# display window title (filename) in top window controls bar in no-border mode
+title=no
 
 # `chapter_ranges` lets you transform chapter indicators into range indicators
 # with custom color and opacity by creating a chapter range definition that
@@ -124,26 +119,24 @@ By default, **uosc** doesn't create any keybinds, but provides commands to bind 
 For example, this will bind the `p` key to toggle progress bar:
 
 ```
-p  script-binding uosc/toggleprogressbar
+p  script-binding uosc/toggletimeline
 ```
 
 ## Commands
 
 Available commands **uosc** listens on:
 
-#### `toggleprogressbar`
+#### `toggletimeline`
 
-Toggle the thin discrete progress bar.
-
-#### `toggleseekbar`
-
-Toggle seekbar manually instead of moving a pointer to it. Useful to check times without touching the pointer device.
-
-The toggled state is reset immediately on next pointer move.
+Force expands/retracts the bottom timeline until next mouse move, which will reset its state.
 
 ## Tips
 
-If the UI feels sluggish to you, it's probably because the rendering is chained to video frame rate. Add this to your `mpv.conf` file to enable interpolation and get a more responsive UI:
+If the UI feels sluggish to you, it's probably because the rendering is chained to playing video frame rate.
+
+You can test the smoother operation by pausing the video and then using the UI, which will make it render closer to display refresh rate.
+
+To get this smoothness also while video is playing, add this to your `mpv.conf` file to enable interpolation:
 
 ```
 interpolation=yes
