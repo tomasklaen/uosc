@@ -432,6 +432,68 @@ function ass_opacity(opacity, fraction)
 	end
 end
 
+-- ASS \shadN shadows are drawn also below the element, which when there is an
+-- opacity in play, blends element colors into ugly greys. The mess below is an
+-- attempt to fix it by rendering shadows for icons with clipping.
+local icons = {}
+function icon(name, pos_x, pos_y, size, above_foreground, opacity)
+	local ass = assdraw.ass_new()
+	local shadow_size = 1
+	local icon_path = icons[name](pos_x, pos_y, size)
+	local icon_color, shadow_color
+
+	local icon_color = above_foreground and options.color_foreground_text or options.color_background_text
+
+	if not above_foreground then
+		ass:new_event()
+		ass:append("{\\blur0\\bord0\\shad0\\1c&H000000\\iclip("..ass.scale..", "..icon_path..")}")
+		ass:append(ass_opacity(opacity))
+		ass:pos(shadow_size, shadow_size)
+		ass:draw_start()
+		ass:append(icon_path)
+		ass:draw_stop()
+	end
+
+	ass:new_event()
+	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..icon_color.."}")
+	ass:append(ass_opacity(opacity))
+	ass:pos(0, 0)
+	ass:draw_start()
+	ass:append(icon_path)
+	ass:draw_stop()
+
+	return ass.text
+end
+
+function icons._volume(muted, pos_x, pos_y, size)
+	local ass = assdraw.ass_new()
+	if elements.volume.width == nil then return "" end
+	local scale = size / 200
+	function x(number) return pos_x + (number * scale) end
+	function y(number) return pos_y + (number * scale) end
+	ass:move_to(x(-85), y(-35))
+	ass:line_to(x(-50), y(-35))
+	ass:line_to(x(-5), y(-75))
+	ass:line_to(x(-5), y(75))
+	ass:line_to(x(-50), y(35))
+	ass:line_to(x(-85), y(35))
+	if muted then
+		ass:move_to(x(76), y(-35)) ass:line_to(x(50), y(-9)) ass:line_to(x(24), y(-35))
+		ass:line_to(x(15), y(-26)) ass:line_to(x(41), y(0)) ass:line_to(x(15), y(26))
+		ass:line_to(x(24), y(35)) ass:line_to(x(50), y(9)) ass:line_to(x(76), y(35))
+		ass:line_to(x(85), y(26)) ass:line_to(x(59), y(0)) ass:line_to(x(85), y(-26))
+	else
+		ass:move_to(x(20), y(-30)) ass:line_to(x(20), y(30))
+		ass:line_to(x(35), y(30)) ass:line_to(x(35), y(-30))
+
+		ass:move_to(x(55), y(-60)) ass:line_to(x(55), y(60))
+		ass:line_to(x(70), y(60)) ass:line_to(x(70), y(-60))
+	end
+	return ass.text
+end
+function icons.volume(pos_x, pos_y, size) return icons._volume(false, pos_x, pos_y, size) end
+function icons.volume_muted(pos_x, pos_y, size) return icons._volume(true, pos_x, pos_y, size) end
+
 --  ELEMENT RENDERERS
 
 function render_timeline(timeline)
@@ -825,13 +887,9 @@ function render_volume(volume)
 
 	-- Mute button
 	local mute = elements.volume_mute
+	local icon_name = state.mute and "volume_muted" or "volume"
 	ass:new_event()
-	ass:append("{\\blur0\\bord1\\shad1\\1c&HFFFFFF\\3c&HFFFFFF\\4c&H000000}")
-	ass:append(ass_opacity(options.volume_opacity, opacity))
-	ass:pos(mute.ax + (mute.width / 2), mute.ay + (mute.height / 2))
-	ass:draw_start()
-	ass:merge(mute.icon)
-	ass:draw_stop()
+	ass:append(icon(icon_name, mute.ax + (mute.width / 2), mute.ay + (mute.height / 2), mute.width * 0.7, false, opacity))
 
 	return ass
 end
