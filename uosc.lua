@@ -25,13 +25,30 @@ timeline_size_min_fullscreen=0
 timeline_size_max_fullscreen=60
 # timeline opacity
 timeline_opacity=0.8
-# pads the elapsed bar from top, effectively creating a top border of background
-# color to help visually separate elapsed bar from video of similar color
-# in no border windowed mode bottom is padded as well to separate from whatever
-# is behind current window
+# adds a top border of background color to help visually separate elapsed bar
+# from video of similar color
+# in no border windowed mode bottom border is added as well to separate from
+# whatever is behind the current window
 # this might be unwanted if you are using unique/rare colors with low overlap
 # chance, so you can disable it by setting to 0
-timeline_padding=1
+timeline_border=1
+
+# where to display volume controls, set to empty to disable
+volume=right
+# volume control horizontal size
+volume_size=40
+# same as ^ but when in fullscreen
+volume_size_fullscreen=40
+# volume controls opacity
+volume_opacity=0.8
+# thin border around volume slider
+volume_border=1
+# when clicking or dragging volume slider, volume will snap only to increments
+# of this value
+volume_snap_to=1
+# when volume is changed externally (e.g. hotkey) flash volume control for this
+# amount of time, set to 0 to disable
+volume_flash_time=300
 
 # timeline chapters indicator style: dots, lines, lines-top, lines-bottom
 # set to empty to disable
@@ -121,7 +138,15 @@ local options = {
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
 	timeline_opacity = 0.8,
-	timeline_padding = 1,
+	timeline_border = 1,
+
+	volume = "right",
+	volume_size = 40,
+	volume_size_fullscreen = 60,
+	volume_opacity = 0.8,
+	volume_border = 1,
+	volume_snap_to = 1,
+	volume_flash_time = 300,
 
 	chapters = "dots",
 	chapters_opacity = 0.3,
@@ -169,13 +194,15 @@ local state = {
 	maximized = mp.get_property_native("window-maximized"),
 	render_timer = nil,
 	render_last_time = 0,
-	timeline_top_padding = options.timeline_padding,
-	timeline_bottom_padding = 0, -- set dynamically to 1 in no-border mode
+	volume = nil,
+	volume_max = nil,
+	mute = nil,
+	interactive_proximity = 0, -- highest relative proximity to any interactive element
+	timeline_top_padding = options.timeline_border,
+	timeline_bottom_padding = 0, -- set dynamically to `options.timeline_border` in no-border mode
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native("cursor-autohide") / 1000, function()
 		if not options.autohide then return end
-		cursor.hidden = true
-		update_proximities()
-		request_render()
+		handle_mouse_leave()
 	end),
 	mouse_bindings_enabled = false
 }
@@ -200,43 +227,61 @@ Element object signature:
 	on_mbtn_left_down = function(this_element),
 	-- trigered on right mouse button down over this element rectangle
 	on_mbtn_right_down = function(this_element),
-	-- whether to render this element, has to return new_ass() object
+	-- whether to render this element, has to return nil or assdraw.ass_new()
+	-- object
 	render = function(this_element),
 }
 ]]
-local elements = {}
-function add_element(name, props)
+local elements_mt = {itable = {}}
+elements_mt.__index = elements_mt
+local elements = setmetatable({}, elements_mt)
+
+function elements_mt.add(elements, name, props)
 	elements[name] = {
+		id = name,
 		interactive = false,
 		ax = 0, ay = 0, bx = 0, by = 0,
 		proximity = 0, proximity_raw = infinity,
 	}
 	for key, value in pairs(props) do elements[name][key] = value end
+	table.insert(elements_mt.itable, elements[name])
+end
+function elements_mt.ipairs()
+	return ipairs(elements_mt.itable)
+end
+function elements_mt.pairs(elements)
+	return pairs(elements)
 end
 
 -- HELPERS
+-- how are most of these not part of a standard library :(
 
-function call_me_maybe(fn, value)
-	if fn then fn(value) end
+function round(number)
+	local floored = math.floor(number)
+	return number - floored < 0.5 and floored or floored + 1
 end
 
-function split(str, pat)
-	local t = {}
-	local fpat = "(.-)" .. pat
+function call_me_maybe(fn, value1, value2, value3)
+	if fn then fn(value1, value2, value3) end
+end
+
+function split(str, pattern)
+	local list = {}
+	local full_pattern = "(.-)" .. pattern
 	local last_end = 1
-	local s, e, cap = str:find(fpat, 1)
-	while s do
-		if s ~= 1 or cap ~= "" then
-			table.insert(t,cap)
+	local start_index, end_index, capture = str:find(full_pattern, 1)
+	while start_index do
+		if start_index ~= 1 or capture ~= "" then
+			table.insert(list, capture)
 		end
-		last_end = e+1
-		s, e, cap = str:find(fpat, last_end)
+		last_end = end_index + 1
+		start_index, end_index, capture = str:find(full_pattern, last_end)
 	end
 	if last_end <= #str then
-		cap = str:sub(last_end)
-		table.insert(t, cap)
+		capture = str:sub(last_end)
+		table.insert(list, capture)
 	end
-	return t
+	return list
 end
 
 function itable_find(tab, el)
@@ -263,7 +308,7 @@ function tween(current, to, setter, on_end)
 	local cutoff = math.abs(to - current) * 0.01
 	function tick()
 		current = current + ((to - current) * 0.3)
-		local is_end = math.abs(to - current) < cutoff
+		local is_end = math.abs(to - current) <= cutoff
 		setter(is_end and to or current)
 		request_render()
 		if is_end then
@@ -277,17 +322,25 @@ function tween(current, to, setter, on_end)
 	return function() timeout:kill() end
 end
 
-function tween_element(element, current, to, setter, on_end)
-	call_me_maybe(element.stop_current_animation)
+-- Facilitates killing ongoing animation if one is already happening
+-- on this element. Killed animation will not get it's on_end called.
+function tween_element(element, from, to, setter, on_end)
+	if element.stop_current_animation then
+		call_me_maybe(element.stop_current_animation)
+	end
+
 	element.stop_current_animation = tween(
-		current,
-		to,
-		function(current) setter(element, current) end,
+		from, to,
+		function(value) setter(element, value) end,
 		function()
 			element.stop_current_animation = nil
 			call_me_maybe(on_end, element)
 		end
 	)
+end
+
+function tween_element_stop(element)
+	call_me_maybe(element.stop_current_animation)
 end
 
 function tween_element_property(element, prop, to, on_end)
@@ -309,16 +362,11 @@ function update_display_dimensions()
 	display.aspect = o.aspect
 
 	-- Tell elements about this
-	for _, element in pairs(elements) do
+	for _, element in elements:ipairs() do
 		if element.on_display_resize ~= nil then
 			element.on_display_resize(element)
 		end
 	end
-end
-
-function update_cursor_position()
-	cursor.x, cursor.y = mp.get_mouse_pos()
-	update_proximities()
 end
 
 function update_element_cursor_proximity(element)
@@ -333,44 +381,36 @@ function update_element_cursor_proximity(element)
 end
 
 function update_proximities()
-	local should_enable_mouse_bindings = false
+	local intercept_mouse_buttons = false
+	local highest_proximity = 0
 
 	-- Calculates proximities and opacities for defined elements
-	for _, element in pairs(elements) do
-		-- Only update proximity and opacity for elements that care about it
-		if element.proximity ~= nil and element.on_mouse_move ~= nil then
-			element.on_mouse_move(element)
-			should_enable_mouse_bindings = should_enable_mouse_bindings or (element.interactive and element.proximity_raw == 0)
+	for _, element in elements:ipairs() do
+		update_element_cursor_proximity(element)
+
+		if element.proximity > highest_proximity then
+			highest_proximity = element.proximity
+		end
+
+		-- cursor is over interactive element
+		if element.interactive and element.proximity_raw == 0 then
+			intercept_mouse_buttons = true
 		end
 	end
 
-	-- Disable cursor input interception when cursor is not over any controls
-	if not state.mouse_bindings_enabled and should_enable_mouse_bindings then
-		state.mouse_bindings_enabled = true
+	state.interactive_proximity = highest_proximity
+
+	-- Enable cursor input interception when cursor is over interactive controls
+	if not state.mouse_buttons_intercepted and intercept_mouse_buttons then
+		state.mouse_buttons_intercepted = true
 		mp.enable_key_bindings("mouse_buttons")
-	elseif state.mouse_bindings_enabled and not should_enable_mouse_bindings then
-		state.mouse_bindings_enabled = false
+	elseif state.mouse_buttons_intercepted and not intercept_mouse_buttons then
+		state.mouse_buttons_intercepted = false
 		mp.disable_key_bindings("mouse_buttons")
 	end
 end
 
 -- DRAWING HELPERS
-
-function new_ass()
-	local ass = assdraw.ass_new()
-	-- Not 100% sure what scale does, but as far as I understand it multiplies
-	-- the resolution of final render by the number this value is set for?
-	-- Since uosc is rendered to be pixel perfect, and not relatively stretched
-	-- I see no reason to go above 1 and increase CPU/GPU/memory load.
-	-- Open an issue if I'm mistaken and this should be higher.
-	ass.scale = 1
-	-- Doing ass:new_event() on an empty ass object does nothing on purpose for
-	-- some reason, so we have to do it manually here so that all ass objects
-	-- can be merged safely without having to call new_event() before every damn
-	-- merge.
-	ass.text = "\n"
-	return ass
-end
 
 function opacity_to_alpha(opacity)
 	return 255 - math.ceil(255 * opacity)
@@ -394,17 +434,19 @@ end
 --  ELEMENT RENDERERS
 
 function render_timeline(timeline)
-	local ass = new_ass()
 
 	if timeline.size_max == 0
 		or state.duration == nil
 		or state.position == nil then
-		return ass
+		return
 	end
 
-	local size = timeline.size_min + math.ceil((timeline.size_max - timeline.size_min) * timeline.proximity)
+	local proximity = math.max(state.interactive_proximity, timeline.proximity)
+	local size = timeline.size_min + math.ceil((timeline.size_max - timeline.size_min) * proximity)
 
-	if size < 1 then return ass end
+	if size < 1 then return end
+
+	local ass = assdraw.ass_new()
 
 	-- text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches timeline.size_min
 	local hide_text_below = math.max(timeline.font_size * 0.7, timeline.size_min * 2)
@@ -584,11 +626,12 @@ function render_timeline(timeline)
 end
 
 function render_window_controls(window_controls)
-	local ass = new_ass()
+	local proximity = math.max(state.interactive_proximity, window_controls.proximity)
 
-	if state.border or window_controls.proximity == 0 then return ass end
+	if state.border or proximity == 0 then return end
 
-	local master_opacity = window_controls.proximity
+	local ass = assdraw.ass_new()
+	local master_opacity = proximity
 
 	-- Close button
 	local close = elements.window_controls_close
@@ -679,6 +722,119 @@ function render_window_controls(window_controls)
 	return ass
 end
 
+function render_volume(volume)
+	local slider = elements.volume_slider
+	local proximity = math.max(state.interactive_proximity, volume.proximity)
+
+	if not slider.pressed and (proximity == 0 or volume.height == 0) then return end
+
+	local ass = assdraw.ass_new()
+	local opacity = slider.pressed and 1 or proximity
+
+	-- Background bar coordinates
+	local bax = slider.ax - options.volume_border
+	local bay = slider.ay - options.volume_border
+	local bbx = slider.bx + options.volume_border
+	local bby = slider.by + options.volume_border
+
+	-- Foreground bar coordinates
+	local fax = slider.ax
+	local fay = slider.ay + (slider.height * (1 - (state.volume / state.volume_max)))
+	local fbx = slider.bx
+	local fby = slider.by
+
+	-- Path to draw a foreground bar with a 100% volume indicator, already
+	-- clipped by volume level. Can't just clip it with rectangle, as it itself
+	-- also needs to be used as a path to clip the background bar and volume
+	-- number.
+	local fpath = assdraw.ass_new()
+	fpath:move_to(fbx, fby)
+	fpath:line_to(fax, fby)
+	local nudge_bottom_y = slider.volume_100_y + slider.nudge_size
+	if fay <= nudge_bottom_y then
+		fpath:line_to(fax, nudge_bottom_y)
+		if fay <= slider.volume_100_y then
+			fpath:line_to((fax + slider.nudge_size), slider.volume_100_y)
+			local nudge_top_y = slider.volume_100_y - slider.nudge_size
+			if fay <= nudge_top_y then
+				fpath:line_to(fax, nudge_top_y)
+				fpath:line_to(fax, fay)
+				fpath:line_to(fbx, fay)
+				fpath:line_to(fbx, nudge_top_y)
+			else
+				local triangle_side = fay - nudge_top_y
+				fpath:line_to((fax + triangle_side), fay)
+				fpath:line_to((fbx - triangle_side), fay)
+			end
+			fpath:line_to((fbx - slider.nudge_size), slider.volume_100_y)
+		else
+			local triangle_side = nudge_bottom_y - fay
+			fpath:line_to((fax + triangle_side), fay)
+			fpath:line_to((fbx - triangle_side), fay)
+		end
+		fpath:line_to(fbx, nudge_bottom_y)
+	else
+		fpath:line_to(fax, fay)
+		fpath:line_to(fbx, fay)
+	end
+	fpath:line_to(fbx, fby)
+
+	-- Background
+	ass:new_event()
+	ass:append("{\\blur0\\bord0\\1c&H"..options.color_background.."\\iclip("..fpath.scale..", "..fpath.text..")}")
+	ass:append(ass_opacity(math.max(options.volume_opacity - 0.1, 0), opacity))
+	ass:pos(0, 0)
+	ass:draw_start()
+	ass:move_to(bax, bay)
+	ass:line_to(bbx, bay)
+	local half_border = options.volume_border / 2
+	ass:line_to(bbx, slider.volume_100_y - slider.nudge_size + half_border)
+	ass:line_to(bbx - slider.nudge_size + half_border, slider.volume_100_y)
+	ass:line_to(bbx, slider.volume_100_y + slider.nudge_size - half_border)
+	ass:line_to(bbx, bby)
+	ass:line_to(bax, bby)
+	ass:line_to(bax, slider.volume_100_y + slider.nudge_size - half_border)
+	ass:line_to(bax + slider.nudge_size - half_border, slider.volume_100_y)
+	ass:line_to(bax, slider.volume_100_y - slider.nudge_size + half_border)
+	ass:line_to(bax, bay)
+	ass:draw_stop()
+
+	-- Foreground
+	ass:new_event()
+	ass:append("{\\blur0\\bord0\\1c&H"..options.color_foreground.."}")
+	ass:append(ass_opacity(options.volume_opacity, opacity))
+	ass:pos(0, 0)
+	ass:draw_start()
+	ass:append(fpath.text)
+	ass:draw_stop()
+
+	-- Current volume value
+	ass:new_event()
+	ass:append("{\\blur0\\bord0\\shad0\\1c&H"..options.color_foreground_text.."\\fn"..config.font.."\\fs"..slider.font_size.."\\clip("..fpath.scale..", "..fpath.text..")")
+	ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
+	ass:pos(slider.ax + (slider.width / 2), bay + slider.spacing)
+	ass:an(8)
+	ass:append(state.volume)
+	ass:new_event()
+	ass:append("{\\blur0\\bord0\\shad1\\1c&H"..options.color_background_text.."\\4c&H"..options.color_background.."\\fn"..config.font.."\\fs"..slider.font_size.."\\iclip("..fpath.scale..", "..fpath.text..")")
+	ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
+	ass:pos(slider.ax + (slider.width / 2), bay + slider.spacing)
+	ass:an(8)
+	ass:append(state.volume)
+
+	-- Mute button
+	local mute = elements.volume_mute
+	ass:new_event()
+	ass:append("{\\blur0\\bord1\\shad1\\1c&HFFFFFF\\3c&HFFFFFF\\4c&H000000}")
+	ass:append(ass_opacity(options.volume_opacity, opacity))
+	ass:pos(mute.ax + (mute.width / 2), mute.ay + (mute.height / 2))
+	ass:draw_start()
+	ass:merge(mute.icon)
+	ass:draw_stop()
+
+	return ass
+end
+
 -- MAIN RENDERING
 
 -- Request that render() is called.
@@ -704,11 +860,15 @@ function render()
 	state.render_last_time = mp.get_time()
 
 	-- Actual rendering
-	local ass = new_ass()
+	local ass = assdraw.ass_new()
 
-	for _, element in pairs(elements) do
+	for _, element in elements.ipairs() do
 		if element.render ~= nil then
-			ass:merge(element.render(element))
+			local result = element.render(element)
+			if result then
+				ass:new_event()
+				ass:merge(result)
+			end
 		end
 	end
 
@@ -726,10 +886,9 @@ end
 
 -- STATIC ELEMENTS
 
-add_element("timeline", {
+elements:add("timeline", {
 	interactive = true,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
-	on_mouse_move = update_element_cursor_proximity,
 	font_size = 0, -- calculated in on_display_resize
 	on_display_resize = function(element)
 		if state.fullscreen or state.maximized then
@@ -751,8 +910,7 @@ add_element("timeline", {
 	end,
 	render = render_timeline,
 })
-add_element("window_controls", {
-	on_mouse_move = update_element_cursor_proximity,
+elements:add("window_controls", {
 	on_display_resize = function(element)
 		local ax = display.width - (config.window_controls.button_width * 3)
 		element.ax = options.title and 0 or ax
@@ -762,9 +920,8 @@ add_element("window_controls", {
 	end,
 	render = render_window_controls,
 })
-add_element("window_controls_minimize", {
+elements:add("window_controls_minimize", {
 	interactive = true,
-	on_mouse_move = update_element_cursor_proximity,
 	on_display_resize = function(element)
 		element.ax = display.width - (config.window_controls.button_width * 3)
 		element.ay = 0
@@ -773,9 +930,8 @@ add_element("window_controls_minimize", {
 	end,
 	on_mbtn_left_down = function() mp.commandv("cycle", "window-minimized") end
 })
-add_element("window_controls_maximize", {
+elements:add("window_controls_maximize", {
 	interactive = true,
-	on_mouse_move = update_element_cursor_proximity,
 	on_display_resize = function(element)
 		element.ax = display.width - (config.window_controls.button_width * 2)
 		element.ay = 0
@@ -784,9 +940,8 @@ add_element("window_controls_maximize", {
 	end,
 	on_mbtn_left_down = function() mp.commandv("cycle", "window-maximized") end
 })
-add_element("window_controls_close", {
+elements:add("window_controls_close", {
 	interactive = true,
-	on_mouse_move = update_element_cursor_proximity,
 	on_display_resize = function(element)
 		element.ax = display.width - config.window_controls.button_width
 		element.ay = 0
@@ -795,73 +950,122 @@ add_element("window_controls_close", {
 	end,
 	on_mbtn_left_down = function() mp.commandv("quit") end
 })
+if itable_find({"left", "right"}, options.volume) then
+	local flash_timer = nil
+	if options.volume_flash_time > 0 then
+		flash_timer = mp.add_timeout(options.volume_flash_time / 1000, function()
+			tween_element_property(elements.volume, "proximity", 0)
+		end)
+		flash_timer:kill()
+	end
 
--- EVENT HANDLERS
+	function update_volume_icon()
+		local element = elements.volume_mute
+		element.icon = assdraw.ass_new()
+		if elements.volume.width == nil then return end
+		element.icon.scale = elements.volume.width / 40
+		element.icon:move_to(-80, -30)
+		element.icon:line_to(-40, -30)
+		element.icon:line_to(-5, -60)
+		element.icon:line_to(-5, 60)
+		element.icon:line_to(-40, 30)
+		element.icon:line_to(-80, 30)
+		if state.mute then
+			element.icon:move_to(30, -30)
+			element.icon:line_to(90, 30)
+			element.icon:move_to(30, 30)
+			element.icon:line_to(90, -30)
+		else
+			element.icon:move_to(40, -30)
+			element.icon:line_to(40, 30)
+			element.icon:move_to(80, -60)
+			element.icon:line_to(80, 60)
+		end
+	end
 
-function dispatch_mouse_button_event_to_element_below_cursor(name, value)
-	for _, element in pairs(elements) do
-		if element.proximity == 1 then
-			local handler = element["on_"..name]
-			if handler then
-				handler(element, value)
-				break
+	elements:add("volume", {
+		width = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
+		height = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
+		font_size = nil, -- calculated in on_display_resize
+		flash = function()
+			if flash_timer and (elements.volume.proximity < 1 or flash_timer:is_enabled()) then
+				tween_element_stop(elements.volume)
+				elements.volume.proximity = 1
+				flash_timer:kill()
+				flash_timer:resume()
 			end
-		end
-	end
-end
-
-function handle_file_load()
-	state.duration = mp.get_property_number("duration", nil)
-	state.filename = mp.get_property_osd("filename", "")
-end
-
-function handle_event(source, what)
-	if source == "mbtn_left" then
-		if what == "down" or what == "press" then
-			dispatch_mouse_button_event_to_element_below_cursor("mbtn_left_down")
-		elseif what == "up" then
-			dispatch_mouse_button_event_to_element_below_cursor("mbtn_left_up")
-		end
-	elseif source == "mbtn_right" then
-		if what == "down" or what == "press" then
-			dispatch_mouse_button_event_to_element_below_cursor("mbtn_right_down")
-		elseif what == "up" then
-			dispatch_mouse_button_event_to_element_below_cursor("mbtn_right_up")
-		end
-	elseif source == "mouse_leave" then
-		cursor.hidden = true
-		update_proximities()
-	end
-
-	request_render()
-end
-
-function handle_mouse_move()
-	cursor.hidden = false
-	update_cursor_position()
-	request_render()
-
-	-- Restart timer that hides UI when mouse is autohidden
-	if options.autohide then
-		state.cursor_autohide_timer:kill()
-		state.cursor_autohide_timer:resume()
-	end
-end
-
-function handle_border_change(_, border)
-	state.border = border
-	-- Sets 1px bottom border for bars in no-border mode
-	state.timeline_bottom_padding = (not border and state.timeline_top_padding) or 0
-
-	request_render()
-end
-
-function event_handler(source, what)
-	return function() handle_event(source, what) end
-end
-
-function state_setter(name)
-	return function(_, value) state[name] = value end
+		end,
+		on_display_resize = function(element)
+			local left = options.volume == "left"
+			element.width = (state.fullscreen or state.maximized) and options.volume_size_fullscreen or options.volume_size
+			element.height = round(math.min(element.width * 6, (elements.timeline.ay - elements.window_controls.by) * 0.8))
+			-- Don't bother rendering this if too small
+			if element.height < (element.width * 2) then
+				element.height = 0
+			end
+			element.font_size = math.floor(element.width * 0.2)
+			local spacing = element.width / 2
+			element.ax = round(options.volume == "left" and spacing or display.width - spacing - element.width)
+			element.ay = round((display.height / 2) - (element.height / 2))
+			element.bx = round(element.ax + element.width)
+			element.by = round(element.ay + element.height)
+		end,
+		render = render_volume,
+	})
+	elements:add("volume_mute", {
+		interactive = true,
+		width = 0,
+		height = 0,
+		on_display_resize = function(element)
+			element.width = elements.volume.width
+			element.height = element.width
+			element.ax = elements.volume.ax
+			element.ay = elements.volume.by - element.height
+			element.bx = elements.volume.bx
+			element.by = elements.volume.by
+			update_volume_icon()
+		end,
+		on_mbtn_left_down = function(element) mp.commandv("cycle", "mute") end,
+		on_global_prop_mute = update_volume_icon
+	})
+	elements:add("volume_slider", {
+		interactive = true,
+		pressed = false,
+		width = 0,
+		height = 0,
+		volume_100_y = 0, -- vertical position where volume overflows 100
+		nudge_size = nil, -- set on resize
+		font_size = nil,
+		spacing = nil,
+		on_display_resize = function(element)
+			-- Coordinates of the interactive portion of the bar
+			element.ax = elements.volume.ax + options.volume_border
+			element.ay = elements.volume.ay + options.volume_border
+			element.bx = elements.volume.bx - options.volume_border
+			element.by = elements.volume_mute.ay - options.volume_border
+			element.width = element.bx - element.ax
+			element.height = element.by - element.ay
+			element.volume_100_y = element.by - round(element.height * (100 / state.volume_max))
+			element.nudge_size = round(elements.volume.width * 0.18)
+			element.font_size = round(element.width * 0.5)
+			element.spacing = round(element.width * 0.2)
+		end,
+		set_from_cursor = function()
+			local slider = elements.volume_slider
+			local new_volume = math.min(math.max((slider.by - cursor.y) / slider.height, 0), 1) * state.volume_max
+			new_volume = round(new_volume / options.volume_snap_to) * options.volume_snap_to
+			if state.volume ~= new_volume then mp.commandv("set", "volume", new_volume) end
+		end,
+		on_mbtn_left_down = function(element)
+			element.pressed = true
+			element.set_from_cursor()
+		end,
+		on_global_mbtn_left_up = function(element) element.pressed = false end,
+		on_global_mouse_leave = function(element) element.pressed = false end,
+		on_global_mouse_move = function(element)
+			if element.pressed then element.set_from_cursor() end
+		end,
+	})
 end
 
 -- CHAPTERS
@@ -978,16 +1182,92 @@ function parse_chapters(name, chapters)
 	request_render()
 end
 
+-- EVENT HANDLERS
+
+function dispatch_event_to_elements(name, value)
+	for _, element in pairs(elements) do
+		if element.proximity_raw == 0 then
+			call_me_maybe(element["on_"..name], element, value)
+		end
+		call_me_maybe(element["on_global_"..name], element, value)
+	end
+end
+
+function handle_mouse_leave()
+	local interactive_proximity_on_leave = state.interactive_proximity
+	cursor.hidden = true
+	update_proximities()
+	dispatch_event_to_elements("mouse_leave")
+	if interactive_proximity_on_leave > 0 then
+		tween_element(state, interactive_proximity_on_leave, 0, function(state, value)
+			state.interactive_proximity = value
+			request_render()
+		end)
+	end
+end
+
+function create_mouse_event_handler(source)
+	if source == "mouse_move" then
+		return function()
+			if cursor.hidden then
+				tween_element_stop(state)
+			end
+			cursor.hidden = false
+			cursor.x, cursor.y = mp.get_mouse_pos()
+			update_proximities()
+			dispatch_event_to_elements(source)
+			request_render()
+
+			-- Restart timer that hides UI when mouse is autohidden
+			if options.autohide then
+				state.cursor_autohide_timer:kill()
+				state.cursor_autohide_timer:resume()
+			end
+		end
+	elseif source == "mouse_leave" then
+		return handle_mouse_leave
+	else
+		return function()
+			dispatch_event_to_elements(source)
+		end
+	end
+end
+
+function state_setter(name)
+	return function(_, value)
+		state[name] = value
+		dispatch_event_to_elements("prop_"..name, value)
+		request_render()
+	end
+end
+
 -- HOOKS
 
-mp.register_event("file-loaded", handle_file_load)
+mp.register_event("file-loaded", function()
+	state.duration = mp.get_property_number("duration", nil)
+	state.filename = mp.get_property_osd("filename", "")
+end)
 
 mp.observe_property("chapter-list", "native", parse_chapters)
 mp.observe_property("fullscreen", "bool", state_setter("fullscreen"))
-mp.observe_property("border", "bool", handle_border_change)
 mp.observe_property("window-maximized", "bool", state_setter("maximized"))
 mp.observe_property("idle-active", "bool", state_setter("idle"))
 mp.observe_property("pause", "bool", state_setter("paused"))
+mp.observe_property("volume", "number", function(_, value)
+	local is_initial_call = state.volume == nil
+	state.volume = value
+	if not is_initial_call then elements.volume.flash() end
+	request_render()
+end)
+mp.observe_property("volume-max", "number", state_setter("volume_max"))
+mp.observe_property("mute", "bool", state_setter("mute"))
+mp.observe_property("border", "bool", function (_, border)
+	state.border = border
+	-- Sets 1px bottom border for bars in no-border mode
+	state.timeline_bottom_padding = (not border and state.timeline_top_padding) or 0
+
+	request_render()
+end)
 mp.observe_property("playback-time", "number", function(name, val)
 	state.position = val
 	state.elapsed_seconds = mp.get_property_native("playback-time")
@@ -1005,15 +1285,15 @@ end)
 
 -- mouse movement bindings
 mp.set_key_bindings({
-	{"mouse_move", handle_mouse_move},
-	{"mouse_leave", event_handler("mouse_leave", nil)},
+	{"mouse_move", create_mouse_event_handler("mouse_move")},
+	{"mouse_leave", create_mouse_event_handler("mouse_leave")},
 }, "mouse_movement", "force")
 mp.enable_key_bindings("mouse_movement", "allow-vo-dragging+allow-hide-cursor")
 
 -- mouse button bindings
 mp.set_key_bindings({
-	{"mbtn_left", event_handler("mbtn_left", "up"), event_handler("mbtn_left", "down")},
-	{"mbtn_right", event_handler("mbtn_right", "up"), event_handler("mbtn_right", "down")},
+	{"mbtn_left", create_mouse_event_handler("mbtn_left_up"), create_mouse_event_handler("mbtn_left_down")},
+	{"mbtn_right", create_mouse_event_handler("mbtn_right_up"), create_mouse_event_handler("mbtn_right_down")},
 	{"mbtn_left_dbl", "ignore"},
 	{"mbtn_right_dbl", "ignore"},
 }, "mouse_buttons", "force")

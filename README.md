@@ -39,13 +39,30 @@ timeline_size_min_fullscreen=0
 timeline_size_max_fullscreen=60
 # timeline opacity
 timeline_opacity=0.8
-# pads the elapsed bar from top, effectively creating a top border of background
-# color to help visually separate elapsed bar from video of similar color
-# in no border windowed mode bottom is padded as well to separate from whatever
-# is behind current window
+# adds a top border of background color to help visually separate elapsed bar
+# from video of similar color
+# in no border windowed mode bottom border is added as well to separate from
+# whatever is behind the current window
 # this might be unwanted if you are using unique/rare colors with low overlap
 # chance, so you can disable it by setting to 0
-timeline_padding=1
+timeline_border=1
+
+# where to display volume controls, set to empty to disable
+volume=right
+# volume control horizontal size
+volume_size=40
+# same as ^ but when in fullscreen
+volume_size_fullscreen=40
+# volume controls opacity
+volume_opacity=0.8
+# thin border around volume slider
+volume_border=1
+# when clicking or dragging volume slider, volume will snap only to increments
+# of this value
+volume_snap_to=1
+# when volume is changed externally (e.g. hotkey) flash volume control for this
+# amount of time, set to 0 to disable
+volume_flash_time=300
 
 # timeline chapters indicator style: dots, lines, lines-top, lines-bottom
 # set to empty to disable
