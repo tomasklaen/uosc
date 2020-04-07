@@ -60,9 +60,6 @@ volume_border=1
 # when clicking or dragging volume slider, volume will snap only to increments
 # of this value
 volume_snap_to=1
-# when volume is changed externally (e.g. hotkey) flash volume control for this
-# amount of time, set to 0 to disable
-volume_flash_time=300
 
 # timeline chapters indicator style: dots, lines, lines-top, lines-bottom
 # set to empty to disable
@@ -81,6 +78,10 @@ color_background=000000
 color_background_text=ffffff
 # hide proximity based elements when mpv autohides the cursor
 autohide=no
+# when properties like volume or video position are changed externally
+# (e.g. hotkeys) this will flash the appropriate element for this amount of
+# time, set to 0 to disable
+flash_duration=300
 # display window title (filename) in top window controls bar in no-border mode
 title=no
 

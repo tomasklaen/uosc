@@ -46,9 +46,6 @@ volume_border=1
 # when clicking or dragging volume slider, volume will snap only to increments
 # of this value
 volume_snap_to=1
-# when volume is changed externally (e.g. hotkey) flash volume control for this
-# amount of time, set to 0 to disable
-volume_flash_time=300
 
 # timeline chapters indicator style: dots, lines, lines-top, lines-bottom
 # set to empty to disable
@@ -67,6 +64,10 @@ color_background=000000
 color_background_text=ffffff
 # hide proximity based elements when mpv autohides the cursor
 autohide=no
+# when properties like volume or video position are changed externally
+# (e.g. hotkeys) this will flash the appropriate element for this amount of
+# time, set to 0 to disable
+flash_duration=300
 # display window title (filename) in top window controls bar in no-border mode
 title=no
 
@@ -146,7 +147,6 @@ local options = {
 	volume_opacity = 0.8,
 	volume_border = 1,
 	volume_snap_to = 1,
-	volume_flash_time = 300,
 
 	chapters = "dots",
 	chapters_opacity = 0.3,
@@ -158,6 +158,7 @@ local options = {
 	color_background = "000000",
 	color_background_text = "ffffff",
 	autohide = false,
+	flash_duration = 300,
 	title = false,
 	chapter_ranges = ""
 }
@@ -886,10 +887,32 @@ end
 
 -- STATIC ELEMENTS
 
+function create_flash_function_for(element_name)
+	if not options.flash_duration or options.flash_duration < 1 then
+		return function() end
+	end
+
+	local flash_timer = nil
+	flash_timer = mp.add_timeout(options.flash_duration / 1000, function()
+		tween_element_property(elements[element_name], "proximity", 0)
+	end)
+	flash_timer:kill()
+
+	return function()
+		if flash_timer and (elements[element_name].proximity < 1 or flash_timer:is_enabled()) then
+			tween_element_stop(elements[element_name])
+			elements[element_name].proximity = 1
+			flash_timer:kill()
+			flash_timer:resume()
+		end
+	end
+end
+
 elements:add("timeline", {
 	interactive = true,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
 	font_size = 0, -- calculated in on_display_resize
+	flash = create_flash_function_for("timeline"),
 	on_display_resize = function(element)
 		if state.fullscreen or state.maximized then
 			element.size_min = options.timeline_size_min_fullscreen
@@ -951,14 +974,6 @@ elements:add("window_controls_close", {
 	on_mbtn_left_down = function() mp.commandv("quit") end
 })
 if itable_find({"left", "right"}, options.volume) then
-	local flash_timer = nil
-	if options.volume_flash_time > 0 then
-		flash_timer = mp.add_timeout(options.volume_flash_time / 1000, function()
-			tween_element_property(elements.volume, "proximity", 0)
-		end)
-		flash_timer:kill()
-	end
-
 	function update_volume_icon()
 		local element = elements.volume_mute
 		element.icon = assdraw.ass_new()
@@ -987,14 +1002,7 @@ if itable_find({"left", "right"}, options.volume) then
 		width = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		height = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		font_size = nil, -- calculated in on_display_resize
-		flash = function()
-			if flash_timer and (elements.volume.proximity < 1 or flash_timer:is_enabled()) then
-				tween_element_stop(elements.volume)
-				elements.volume.proximity = 1
-				flash_timer:kill()
-				flash_timer:resume()
-			end
-		end,
+		flash = create_flash_function_for("volume"),
 		on_display_resize = function(element)
 			local left = options.volume == "left"
 			element.width = (state.fullscreen or state.maximized) and options.volume_size_fullscreen or options.volume_size
@@ -1279,6 +1287,9 @@ end)
 mp.observe_property("osd-dimensions", "native", function(name, val)
 	update_display_dimensions()
 	request_render()
+end)
+mp.register_event("seek", function()
+	elements.timeline.flash()
 end)
 
 -- CONTROLS
