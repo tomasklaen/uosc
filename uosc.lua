@@ -32,6 +32,9 @@ timeline_opacity=0.8
 # this might be unwanted if you are using unique/rare colors with low overlap
 # chance, so you can disable it by setting to 0
 timeline_border=1
+# when video position is changed externally (e.g. hotkeys), flash the timeline
+# for this amount of time, set to 0 to disable
+timeline_flash_duration=300
 
 # where to display volume controls, set to empty to disable
 volume=right
@@ -46,6 +49,9 @@ volume_border=1
 # when clicking or dragging volume slider, volume will snap only to increments
 # of this value
 volume_snap_to=1
+# when volume is changed externally (e.g. hotkeys), flash the volume controls
+# for this amount of time, set to 0 to disable
+volume_flash_duration=300
 
 # timeline chapters indicator style: dots, lines, lines-top, lines-bottom
 # set to empty to disable
@@ -64,10 +70,6 @@ color_background=000000
 color_background_text=ffffff
 # hide proximity based elements when mpv autohides the cursor
 autohide=no
-# when properties like volume or video position are changed externally
-# (e.g. hotkeys) this will flash the appropriate element for this amount of
-# time, set to 0 to disable
-flash_duration=300
 # display window title (filename) in top window controls bar in no-border mode
 title=no
 
@@ -140,6 +142,7 @@ local options = {
 	timeline_size_max_fullscreen = 60,
 	timeline_opacity = 0.8,
 	timeline_border = 1,
+	timeline_flash_duration = 400,
 
 	volume = "right",
 	volume_size = 40,
@@ -147,6 +150,7 @@ local options = {
 	volume_opacity = 0.8,
 	volume_border = 1,
 	volume_snap_to = 1,
+	volume_flash_duration = 400,
 
 	chapters = "dots",
 	chapters_opacity = 0.3,
@@ -158,7 +162,6 @@ local options = {
 	color_background = "000000",
 	color_background_text = "ffffff",
 	autohide = false,
-	flash_duration = 300,
 	title = false,
 	chapter_ranges = ""
 }
@@ -946,12 +949,13 @@ end
 -- STATIC ELEMENTS
 
 function create_flash_function_for(element_name)
-	if not options.flash_duration or options.flash_duration < 1 then
+	local duration = options[element_name.."_flash_duration"]
+	if not duration or duration < 1 then
 		return function() end
 	end
 
 	local flash_timer = nil
-	flash_timer = mp.add_timeout(options.flash_duration / 1000, function()
+	flash_timer = mp.add_timeout(duration / 1000, function()
 		tween_element_property(elements[element_name], "proximity", 0)
 	end)
 	flash_timer:kill()
