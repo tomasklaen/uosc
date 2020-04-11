@@ -2,7 +2,7 @@
 	<a href="https://darsain.github.io/uosc/preview.webm"><img src="https://darsain.github.io/uosc/preview.png" width="854" height="480"></a>
 	<h1>uosc</h1>
 	<p>
-		Minimalist proximity based UI for <a href="https://mpv.io">MPV player</a>.
+		Minimalist cursor proximity based UI for <a href="https://mpv.io">MPV player</a>.
 	</p>
 	<br>
 </div>
@@ -50,6 +50,12 @@ timeline_border=1
 # for this amount of time, set to 0 to disable
 timeline_flash_duration=300
 
+# timeline chapters indicator style: dots, lines, lines-top, lines-bottom
+# set to empty to disable
+chapters=dots
+# timeline chapters indicator opacity
+chapters_opacity=0.3
+
 # where to display volume controls, set to empty to disable
 volume=right
 # volume control horizontal size
@@ -67,11 +73,10 @@ volume_snap_to=1
 # for this amount of time, set to 0 to disable
 volume_flash_duration=300
 
-# timeline chapters indicator style: dots, lines, lines-top, lines-bottom
-# set to empty to disable
-chapters=dots
-# timeline chapters indicator opacity
-chapters_opacity=0.3
+# menus (context menu, load subtitles, select subtitles,... , playlist,...)
+menu_item_height=40
+menu_item_height_fullscreen=50
+menu_opacity=0.8
 
 # proximity below which elements are fully faded in/expanded
 proximity_min=40
@@ -86,6 +91,12 @@ color_background_text=ffffff
 autohide=no
 # display window title (filename) in top window controls bar in no-border mode
 title=no
+# file types to display in file explorer when loading external subtitles
+subtitle_types=aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt
+# used to approximate text width
+# if you are using some wide font and see a lot of right side clipping in menus,
+# try bumping this up
+font_height_to_letter_width_ratio = 0.5
 
 # `chapter_ranges` lets you transform chapter indicators into range indicators
 # with custom color and opacity by creating a chapter range definition that
@@ -134,33 +145,133 @@ chapter_ranges=
 
 ## Keybindings
 
-By default, **uosc** doesn't create any keybinds, but provides commands to bind your preferred keys to. To add a keybind, open your `input.conf` file and add one on a new line.
+The only keybinds **uosc** defines by default are menu navigation keys that are active only when one of the menus (context menu, load/select subtitles,...) is active. They are:
 
-For example, this will bind the `p` key to toggle progress bar:
+- `↑`, `↓`, `←`, `→` - up, down, previous menu or close, select item
+- `k`, `j`, `h`, `l` - up, down, previous menu or close, select item
+- `w`, `s`, `a`, `d` - up, down, previous menu or close, select item
+- `enter` - select item
+- `esc` - close menu
+- `wheel_up`, `wheel_down` - scroll menu
 
-```
-p  script-binding uosc/toggletimeline
-```
+You can also click on a faded parent menu to go back to it.
+
+**uosc** also provides various commands with useful features to bind your preferred keys to. See [Commands](#commands) section below.
 
 ## Commands
 
-Available commands **uosc** listens on:
+To add a keybind to one of this commands, open your `input.conf` file and add one on a new line. The command syntax is `script-binding uosc/{command-name}`.
 
-#### `toggletimeline`
+Example to bind the `tab` key to toggle timeline:
 
-Force expands/retracts the bottom timeline until next mouse move, which will reset its state.
+```
+tab  script-binding uosc/toggle-timeline
+```
+
+Available commands:
+
+#### `toggle-timeline`
+
+Force expands/retracts the bottom timeline until pressed again, or next mouse move. Useful to check times during playback.
+
+#### `context-menu`
+
+Toggles context menu. Context menu is empty by default and won't show up when this is pressed. Read [Context menu](#context-menu) section below to find out how to fill it up with items you want there.
+
+#### `load-subtitles`
+
+Displays a file explorer with directory navigation to load external subtitles. Explorer only displays file types defined in `subtitle_types` option.
+
+#### `select-subtitles`
+
+Menu to select a subtitle track.
+
+#### `select-audio`
+
+Menu to select an audio track.
+
+#### `select-video`
+
+Menu to select a video track.
+
+#### `navigate-playlist`
+
+Menu to select an item from playlist.
+
+## Context menu
+
+**uosc** provides a way to build, display, and use your own context menu. Limitation is that the UI rendering API provided by mpv can only render stuff within window borders, so the menu can't float above it but needs to fit it. This might be annoying for tiny videos but otherwise it accomplishes the same thing.
+
+To display the menu, add **uosc**'s `context-menu` command to a key of your choice. Example to bind it to **right click** and **menu** buttons:
+
+```
+mbtn_right  script-binding uosc/context-menu
+menu        script-binding uosc/context-menu
+```
+
+***menu** button is the key between **win** and **right_ctrl** buttons that none uses (might not be on your keyboard).*
+
+### Adding items to menu
+
+Adding items to menu is facilitated by same line commenting of your keybinds in `input.conf` with special comment syntax. **uosc** will than parse this file and build the context menu out of it.
+
+#### Syntax
+
+Comment has to be at the end of the line with key-command binding.
+
+Comment has to start with `#!`.
+
+Text after `#!` is an item title.
+
+Title can be split with `>` to define nested menus. There is no limit on nesting.
+
+Use `#` instead of a key if you don't necessarily want to bind a key to a command, but still want it in the menu.
+
+If multiple menu items with the same command are defined, **uosc** will concatenate them into one item and just display all available shortcuts as that items' hint, while using the title of the first item that added the command to the menu.
+
+Menu items are displayed in the order they were defined in `input.conf` file.
+
+#### Examples
+
+Adds a menu item to load subtitles:
+
+```
+alt+s  script-binding uosc/load-subtitles  #! Load subtitles
+```
+
+Adds a stay-on-top toggle with no keybind:
+
+```
+#  cycle ontop  #! Toggle on-top
+```
+
+Defines multiple shortcuts to display in the first items' hint (items with same command get concatenated):
+
+```
+esc  quit  #! Quit
+q    quit  #!
+```
+
+Adds an **Aspect ratio** submenu with multiple items that have no keybinds defined:
+
+```
+#  set video-aspect-override "-1"      #! Aspect ratio > Default
+#  set video-aspect-override "16:9"    #! Aspect ratio > 16:9
+#  set video-aspect-override "4:3"     #! Aspect ratio > 4:3
+#  set video-aspect-override "2.35:1"  #! Aspect ratio > 2.35:1
+```
 
 ## Tips
 
-If the UI feels sluggish to you, it's probably because the rendering is chained to playing video frame rate.
+If the UI feels sluggish/slow to you, it's because when video is playing, the UI rendering frequency is chained to its frame rate, so unless you are the type of person that can't see above 24fps, it does feel sluggish.
 
-You can test the smoother operation by pausing the video and then using the UI, which will make it render closer to display refresh rate.
+You can test the smoother operation by pausing the video and then using the UI, which will make it render closer to your display refresh rate.
 
-To get this smoothness also while video is playing, add this to your `mpv.conf` file to enable interpolation:
+To get this smoothness also while playing a video, add this to your `mpv.conf` file to enable interpolation:
 
 ```
 interpolation=yes
 video-sync=display-resample
 ```
 
-Though it does come at the cost of a higher CPU load.
+Though it does come at the cost of a higher CPU/GPU load.
