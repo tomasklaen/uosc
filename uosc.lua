@@ -80,6 +80,10 @@ color_background_text=ffffff
 autohide=no
 # display window title (filename) in top window controls bar in no-border mode
 title=no
+# load first file when calling next on last file in a directory and vice versa
+directory_navigation_loops=no
+# file types to display in file explorer when navigating media files
+media_types=3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv
 # file types to display in file explorer when loading external subtitles
 subtitle_types=aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt
 # used to approximate text width
@@ -143,6 +147,13 @@ Key  script-binding uosc/select-audio
 Key  script-binding uosc/select-video
 Key  script-binding uosc/navigate-playlist
 Key  script-binding uosc/show-in-directory
+Key  script-binding uosc/navigate-directory
+Key  script-binding uosc/next-file
+Key  script-binding uosc/prev-file
+Key  script-binding uosc/first-file
+Key  script-binding uosc/last-file
+Key  script-binding uosc/delete-file-next
+Key  script-binding uosc/delete-file-quit
 ```
 ]]
 
@@ -192,6 +203,8 @@ local options = {
 	color_background_text = 'ffffff',
 	autohide = false,
 	title = false,
+	directory_navigation_loops = false,
+	media_types = '3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
 	subtitle_types = 'aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt',
 	font_height_to_letter_width_ratio = 0.5,
 	chapter_ranges = '',
@@ -269,36 +282,36 @@ function split(str, pattern)
 	local start_index, end_index, capture = str:find(full_pattern, 1)
 	while start_index do
 		if start_index ~= 1 or capture ~= '' then
-			table.insert(list, capture)
+			list[#list +1] = capture
 		end
 		last_end = end_index + 1
 		start_index, end_index, capture = str:find(full_pattern, last_end)
 	end
 	if last_end <= #str then
 		capture = str:sub(last_end)
-		table.insert(list, capture)
+		list[#list +1] = capture
 	end
 	return list
 end
 
 function itable_find(haystack, needle)
-	local is_needle = type(needle) == 'function' and needle or function(value)
+	local is_needle = type(needle) == 'function' and needle or function(index, value)
 		return value == needle
 	end
 	for index, value in ipairs(haystack) do
-		if is_needle(value) then return index end
+		if is_needle(index, value) then return index, value end
 	end
 end
 
 function itable_filter(haystack, needle)
-	local is_needle = type(needle) == 'function' and needle or function(value)
+	local is_needle = type(needle) == 'function' and needle or function(index, value)
 		return value == needle
 	end
-	local results = {}
+	local filtered = {}
 	for index, value in ipairs(haystack) do
-		if is_needle(value) then results[#results] = value end
+		if is_needle(index, value) then filtered[#filtered + 1] = value end
 	end
-	return results
+	return filtered
 end
 
 function itable_remove(haystack, needle)
@@ -308,7 +321,7 @@ function itable_remove(haystack, needle)
 	local new_table = {}
 	for _, value in ipairs(haystack) do
 		if not should_remove(value) then
-			table.insert(new_table, value)
+			new_table[#new_table + 1] = value
 		end
 	end
 	return new_table
@@ -318,12 +331,13 @@ function itable_slice(haystack, start_pos, end_pos)
 	start_pos = start_pos and start_pos or 1
 	end_pos = end_pos and end_pos or #haystack
 
-	if end_pos < 0 then end_pos = #haystack - end_pos end
+	if end_pos < 0 then end_pos = #haystack + end_pos + 1 end
+	if start_pos < 0 then start_pos = #haystack + start_pos + 1 end
 
 	local new_table = {}
 	for index, value in ipairs(haystack) do
 		if index >= start_pos and index <= end_pos then
-			table.insert(new_table, value)
+			new_table[#new_table + 1] = value
 		end
 	end
 	return new_table
@@ -430,6 +444,11 @@ function is_protocol(path)
 	return path:match('^%a[%a%d-_]+://')
 end
 
+function get_extension(path)
+	local parts = split(path, '%.')
+	return parts and parts[#parts] or nil
+end
+
 -- Serializes path into its semantic parts
 function serialize_path(path)
 	path = ensure_absolute_path(path)
@@ -444,6 +463,50 @@ function serialize_path(path)
 		filename = #dot_split > 1 and table.concat(itable_slice(dot_split, 1, #dot_split - 1), '.') or basename,
 		extension = #dot_split > 1 and dot_split[#dot_split] or nil,
 	}
+end
+
+function get_files_in_directory(directory, allowed_types)
+	local files, error = utils.readdir(directory, 'files')
+
+	if not files then
+		msg.error('Retrieving files failed: '..(error or ''))
+		return
+	end
+
+	-- Filter only requested file types
+	if allowed_types then
+		files = itable_filter(files, function(_, file)
+			local extension = get_extension(file)
+			return extension and itable_find(allowed_types, extension:lower())
+		end)
+	end
+
+	table.sort(files)
+
+	return files
+end
+
+function get_adjacent_media_file(file_path, direction)
+	local current_file = serialize_path(file_path)
+
+	local files = get_files_in_directory(current_file.dirname, options.media_types)
+
+	if not files then return end
+
+	for index, file in ipairs(files) do
+		if current_file.basename == file then
+			if direction == 'forward' then
+				if files[index + 1] then return files[index + 1] end
+				if options.directory_navigation_loops and files[1] then return files[1] end
+			else
+				if files[index - 1] then return files[index - 1] end
+				if options.directory_navigation_loops and files[#files] then return files[#files] end
+			end
+
+			-- This is the only file in directory
+			return nil
+		end
+	end
 end
 
 -- Element
@@ -505,7 +568,7 @@ function Elements:add(name, element)
 
 	-- Replace if element already exists
 	if self:has(name) then
-		insert_index = itable_find(Elements.itable, function(element)
+		insert_index = itable_find(Elements.itable, function(_, element)
 			return element.name == name
 		end)
 	end
@@ -602,7 +665,7 @@ function Menu:open(items, open_item, opts)
 
 			-- Preselect first 'item.selected == true' item
 			if not opts.selected_item then
-				local preselected_item = itable_find(items, function(item) return not not item.selected end)
+				local preselected_item = itable_find(items, function(_, item) return not not item.selected end)
 				if preselected_item then
 					this.selected_item = preselected_item
 				end
@@ -613,6 +676,9 @@ function Menu:open(items, open_item, opts)
 
 			-- Set initial dimensions
 			this:on_display_resize()
+
+			-- Scroll to selected item
+			this:center_selected_item()
 
 			-- Transition in animation
 			menu.transition = {to = 'child', target = this}
@@ -658,6 +724,11 @@ function Menu:open(items, open_item, opts)
 		scroll_to = function(this, pos)
 			this.scroll_y = math.max(math.min(pos, this.scroll_height), 0)
 			request_render()
+		end,
+		center_selected_item = function(this)
+			if this.selected_item then
+				this:scroll_to(round((this.scroll_step * (this.selected_item - 1)) - ((this.height - this.scroll_step) / 2)))
+			end
 		end,
 		on_wheel_up = function(this)
 			this:scroll_to(this.scroll_y - this.scroll_step)
@@ -713,11 +784,6 @@ function Menu:open(items, open_item, opts)
 		end,
 		close = function()
 			menu:close()
-		end,
-		center_selected_item = function(this)
-			if this.selected_item then
-				this:scroll_to(round((this.scroll_step * (this.selected_item - 1)) - ((this.height - this.scroll_step) / 2)))
-			end
 		end,
 		open_selected_item = function(this)
 			-- If there is a transition active and this method got called, it
@@ -1835,7 +1901,7 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 
 		function end_range(chapter)
 			current_range['end'] = chapter
-			table.insert(chapter_range.ranges, current_range)
+			chapter_range.ranges[#chapter_range.ranges + 1] = current_range
 			-- Mark both chapter objects
 			current_range['start']._uosc_used_as_range_point = true
 			current_range['end']._uosc_used_as_range_point = true
@@ -1884,7 +1950,7 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 	end
 
 	state.chapter_ranges = state.chapter_ranges or {}
-	table.insert(state.chapter_ranges, chapter_range)
+	state.chapter_ranges[#state.chapter_ranges + 1] = chapter_range
 
 	::continue::
 end
@@ -1932,7 +1998,7 @@ state.context_menu_items = (function()
 
 					if not submenus_by_id[submenu_id] then
 						submenus_by_id[submenu_id] = {title = title_part, items = {}}
-						table.insert(target_menu, submenus_by_id[submenu_id])
+						target_menu[#target_menu + 1] = submenus_by_id[submenu_id]
 					end
 
 					target_menu = submenus_by_id[submenu_id].items
@@ -1946,7 +2012,7 @@ state.context_menu_items = (function()
 							hint = not is_dummy and key or nil,
 							value = command
 						}
-						table.insert(target_menu, items_by_command[command])
+						target_menu[#target_menu + 1] = items_by_command[command]
 					end
 				end
 			end
@@ -1957,6 +2023,14 @@ state.context_menu_items = (function()
 end)()
 
 -- EVENT HANDLERS
+
+function create_state_setter(name)
+	return function(_, value)
+		state[name] = value
+		dispatch_event_to_elements('prop_'..name, value)
+		request_render()
+	end
+end
 
 function dispatch_event_to_elements(name, ...)
 	for _, element in pairs(elements) do
@@ -1981,8 +2055,7 @@ function handle_mouse_leave()
 end
 
 function create_mouse_event_handler(source)
-	if source == 'mouse_move'
- then
+	if source == 'mouse_move' then
 		return function()
 			if cursor.hidden then
 				tween_element_stop(state)
@@ -2008,11 +2081,35 @@ function create_mouse_event_handler(source)
 	end
 end
 
-function state_setter(name)
-	return function(_, value)
-		state[name] = value
-		dispatch_event_to_elements('prop_'..name, value)
-		request_render()
+function create_directory_navigator(direction)
+	return function()
+		local path = mp.get_property_native("path")
+
+		if is_protocol(path) then return end
+
+		local next_file = get_adjacent_media_file(path, direction)
+
+		if next_file then
+			mp.commandv("loadfile", next_file)
+		end
+	end
+end
+
+function create_adjacent_media_file_index_selector(index)
+	return function()
+		local path = mp.get_property_native("path")
+
+		if is_protocol(path) then return end
+
+		local dirname = serialize_path(path).dirname
+		local files, error = get_files_in_directory(dirname, options.media_types)
+
+		if not files then return end
+		if index < 0 then index = #files + index + 1 end
+
+		if files[index] then
+			mp.commandv("loadfile", utils.join_path(dirname, files[index]))
+		end
 	end
 end
 
@@ -2062,37 +2159,36 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	end
 end
 
-function open_load_subtitles_menu(directory)
+function open_file_navigation_menu(directory, handle_select, allowed_types, selected_file)
 	directory = serialize_path(directory)
 	local directories, error = utils.readdir(directory.path, 'dirs')
-	local files, error = utils.readdir(directory.path, 'files')
+	local files, error = get_files_in_directory(directory.path, allowed_types)
 
 	if not files or not directories then
 		msg.error('Retrieving files from '..directory..' failed: '..(error or ''))
 		return
 	end
 
-	-- List is not sorted on linux
-	if state.os ~= 'linux' then
-		table.sort(directories)
-		table.sort(files)
-	end
+	table.sort(directories)
+	table.sort(files)
 
-	local subtitle_types = split(options.subtitle_types, '[, ]+')
+	-- Pre-populate items with parent directory selector if not at root
 	local items = not directory.dirname and {} or {
 		{title = '..', hint = 'parent dir', value = directory.dirname}
 	}
 
 	for _, dir in ipairs(directories) do
 		local serialized = serialize_path(utils.join_path(directory.path, dir))
-		table.insert(items, {title = serialized.basename, value = serialized.path, hint = '/'})
+		items[#items + 1] = {title = serialized.basename, value = serialized.path, hint = '/'}
 	end
 
 	for _, file in ipairs(files) do
 		local serialized = serialize_path(utils.join_path(directory.path, file))
-		if itable_find(subtitle_types, serialized.extension:lower()) then
-			table.insert(items, {title = serialized.basename, value = serialized.path})
-		end
+		items[#items + 1] = {
+			title = serialized.basename,
+			value = serialized.path,
+			selected = selected_file == file
+		}
 	end
 
 	menu:open(items, function(path)
@@ -2104,13 +2200,18 @@ function open_load_subtitles_menu(directory)
 		end
 
 		if meta.is_dir then
-			open_load_subtitles_menu(path)
+			open_file_navigation_menu(path, handle_select, allowed_types)
 		else
-			mp.commandv('sub-add', path)
+			handle_select(path)
 			menu:close()
 		end
-	end, {title = directory.basename..'/', title_height = 36})
+	end, {title = directory.basename..'/', title_height = 36, select_on_hover = false})
 end
+
+-- VALUE SERIALIZATION/NORMALIZATION
+
+options.media_types = split(options.media_types, ' *, *')
+options.subtitle_types = split(options.subtitle_types, ' *, *')
 
 -- HOOKS
 
@@ -2120,18 +2221,18 @@ mp.register_event('file-loaded', function()
 end)
 
 mp.observe_property('chapter-list', 'native', parse_chapters)
-mp.observe_property('fullscreen', 'bool', state_setter('fullscreen'))
-mp.observe_property('window-maximized', 'bool', state_setter('maximized'))
-mp.observe_property('idle-active', 'bool', state_setter('idle'))
-mp.observe_property('pause', 'bool', state_setter('paused'))
+mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen'))
+mp.observe_property('window-maximized', 'bool', create_state_setter('maximized'))
+mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
+mp.observe_property('pause', 'bool', create_state_setter('paused'))
 mp.observe_property('volume', 'number', function(_, value)
 	local is_initial_call = state.volume == nil
 	state.volume = value
 	if not is_initial_call then elements.volume.flash() end
 	request_render()
 end)
-mp.observe_property('volume-max', 'number', state_setter('volume_max'))
-mp.observe_property('mute', 'bool', state_setter('mute'))
+mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
+mp.observe_property('mute', 'bool', create_state_setter('mute'))
 mp.observe_property('border', 'bool', function (_, border)
 	state.border = border
 	-- Sets 1px bottom border for bars in no-border mode
@@ -2163,14 +2264,14 @@ local base_keybinds = {
 	{'mouse_leave', create_mouse_event_handler('mouse_leave')},
 }
 if options.pause_on_click then
-	table.insert(base_keybinds, {'mbtn_left', function()
+	base_keybinds[#base_keybinds + 1] = {'mbtn_left', function()
 			if mp.get_time() - state.last_base_mbtn_left_down_time < 0.11 then
 				mp.command('cycle pause')
 			end
 		end, function()
 			state.last_base_mbtn_left_down_time = mp.get_time()
 		end
-	})
+	}
 end
 mp.set_key_bindings(base_keybinds, 'mouse_movement', 'force')
 mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
@@ -2201,7 +2302,14 @@ mp.add_key_binding(nil, 'context-menu', function()
 	end
 end)
 mp.add_key_binding(nil, 'load-subtitles', function()
-	open_load_subtitles_menu(serialize_path(mp.get_property_native('path')).dirname)
+	local path = mp.get_property_native('path')
+	if not is_protocol(path) then
+		open_file_navigation_menu(
+			serialize_path(path).dirname,
+			function(path) mp.commandv('sub-add', path) end,
+			options.subtitle_types
+		)
+	end
 end)
 mp.add_key_binding(nil, 'select-subtitles', create_select_tracklist_type_menu_opener('Subtitles', 'sub', 'sid'))
 mp.add_key_binding(nil, 'select-audio', create_select_tracklist_type_menu_opener('Audio', 'audio', 'aid'))
@@ -2245,4 +2353,46 @@ mp.add_key_binding(nil, 'show-in-directory', function()
 			utils.subprocess({args = {'xdg-open', serialize_path(path).dirname}, cancellable = false})
 		end
 	end
+end)
+mp.add_key_binding(nil, 'navigate-directory', function()
+	local path = mp.get_property_native('path')
+	if not is_protocol(path) then
+		path = serialize_path(path)
+		open_file_navigation_menu(
+			path.dirname,
+			function(path) mp.commandv('loadfile', path) end,
+			options.media_types,
+			path.basename
+		)
+	end
+end)
+mp.add_key_binding(nil, 'next-file', create_directory_navigator('forward'))
+mp.add_key_binding(nil, 'prev-file', create_directory_navigator('backward'))
+mp.add_key_binding(nil, 'first-file', create_adjacent_media_file_index_selector(1))
+mp.add_key_binding(nil, 'last-file', create_adjacent_media_file_index_selector(-1))
+mp.add_key_binding(nil, 'delete-file-next', function()
+	local path = mp.get_property_native('path')
+
+	if is_protocol(path) then return end
+
+	local playlist_count = mp.get_property_native('playlist-count')
+
+	if playlist_count > 1 then
+		mp.commandv('playlist-next', 'force')
+	else
+		local next_file = get_adjacent_media_file(path, 'forward')
+		if next_file then
+			mp.commandv('loadfile', next_file)
+		else
+			mp.commandv('stop')
+		end
+	end
+
+	os.remove(ensure_absolute_path(path))
+end)
+mp.add_key_binding(nil, 'delete-file-quit', function()
+	local path = mp.get_property_native('path')
+	if is_protocol(path) then return end
+	os.remove(ensure_absolute_path(path))
+	mp.command('quit')
 end)

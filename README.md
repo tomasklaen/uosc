@@ -94,6 +94,10 @@ color_background_text=ffffff
 autohide=no
 # display window title (filename) in top window controls bar in no-border mode
 title=no
+# load first file when calling next on last file in a directory and vice versa
+directory_navigation_loops=no
+# file types to display in file explorer when navigating media files
+media_types=3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv
 # file types to display in file explorer when loading external subtitles
 subtitle_types=aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt
 # used to approximate text width
@@ -205,9 +209,39 @@ Menu to select an item from playlist.
 
 Show current file in your operating systems' file explorer.
 
+#### `navigate-directory`
+
+Menu to navigate media files in current files' directory with current file preselected.
+
+#### `next-file`
+
+Open next file in current directory. Set `directory_navigation_loops=yes` to open first file when at the end.
+
+#### `prev-file`
+
+Open previous file in current directory. Set `directory_navigation_loops=yes` to open last file when at the start.
+
+#### `first-file`
+
+Open first file in current directory.
+
+#### `last-file`
+
+Open last file in current directory.
+
+#### `delete-file-next`
+
+Delete currently playing file and start next file in playlist (if there is a playlist) or current directory.
+
+Useful when watching periodic content.
+
+#### `delete-file-quit`
+
+Delete currently playing file and quit mpv.
+
 ## Context menu
 
-**uosc** provides a way to build, display, and use your own context menu. Limitation is that the UI rendering API provided by mpv can only render stuff within window borders, so the menu can't float above it but needs to fit it. This might be annoying for tiny videos but otherwise it accomplishes the same thing.
+**uosc** provides a way to build, display, and use your own context menu. Limitation is that the UI rendering API provided by mpv can only render stuff within window borders, so the menu can't float above it but needs to fit inside. This might be annoying for tiny videos but otherwise it accomplishes the same thing.
 
 To display the menu, add **uosc**'s `context-menu` command to a key of your choice. Example to bind it to **right click** and **menu** buttons:
 
@@ -220,11 +254,11 @@ menu        script-binding uosc/context-menu
 
 ### Adding items to menu
 
-Adding items to menu is facilitated by same line commenting of your keybinds in `input.conf` with special comment syntax. **uosc** will than parse this file and build the context menu out of it.
+Adding items to menu is facilitated by commenting of your keybinds in `input.conf` with special comment syntax. **uosc** will than parse this file and build the context menu out of it.
 
 #### Syntax
 
-Comment has to be at the end of the line with key-command binding.
+Comment has to be at the end of the line with the binding.
 
 Comment has to start with `#!`.
 
@@ -234,9 +268,9 @@ Title can be split with `>` to define nested menus. There is no limit on nesting
 
 Use `#` instead of a key if you don't necessarily want to bind a key to a command, but still want it in the menu.
 
-If multiple menu items with the same command are defined, **uosc** will concatenate them into one item and just display all available shortcuts as that items' hint, while using the title of the first item that added the command to the menu.
+If multiple menu items with the same command are defined, **uosc** will concatenate them into one item and just display all available shortcuts as that items' hint, while using the title of the first defined item.
 
-Menu items are displayed in the order they were defined in `input.conf` file.
+Menu items are displayed in the order they are defined in `input.conf` file.
 
 #### Examples
 
@@ -252,7 +286,7 @@ Adds a stay-on-top toggle with no keybind:
 #  cycle ontop  #! Toggle on-top
 ```
 
-Defines multiple shortcuts to display in the first items' hint (items with same command get concatenated):
+Define and display multiple shortcuts in single items' menu hint (items with same command get concatenated):
 
 ```
 esc  quit  #! Quit
@@ -267,6 +301,8 @@ Adds an **Aspect ratio** submenu with multiple items that have no keybinds defin
 #  set video-aspect-override "4:3"     #! Aspect ratio > 4:3
 #  set video-aspect-override "2.35:1"  #! Aspect ratio > 2.35:1
 ```
+
+To see all the commands ou can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).
 
 ## Tips
 
