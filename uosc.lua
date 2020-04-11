@@ -2163,10 +2163,7 @@ local base_keybinds = {
 }
 if options.pause_on_click then
 	table.insert(base_keybinds, {"mbtn_left", function()
-			local duration = mp.get_time() - state.last_base_mbtn_left_down_time
-			print("click", duration)
-
-			if duration < 0.11 then
+			if mp.get_time() - state.last_base_mbtn_left_down_time < 0.11 then
 				mp.command("cycle pause")
 			end
 		end, function()
