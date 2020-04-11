@@ -64,6 +64,9 @@ menu_item_height=40
 menu_item_height_fullscreen=50
 menu_opacity=0.8
 
+# pause video on short clicks so you can both drag and pause video with
+# left mouse button and no conflicts between the two
+pause_on_click=no
 # proximity below which elements are fully faded in/expanded
 proximity_min=40
 # proximity above which elements are fully faded out/retracted
@@ -179,6 +182,7 @@ local options = {
 	menu_item_height_fullscreen = 50,
 	menu_opacity = 0.9,
 
+	pause_on_click = false,
 	proximity_min = 40,
 	proximity_max = 120,
 	color_foreground = "ffffff",
@@ -2140,11 +2144,25 @@ end)
 
 -- CONTROLS
 
--- mouse movement
-mp.set_key_bindings({
+-- base keybinds
+local base_keybinds = {
 	{"mouse_move", create_mouse_event_handler("mouse_move")},
 	{"mouse_leave", create_mouse_event_handler("mouse_leave")},
-}, "mouse_movement", "force")
+}
+if options.pause_on_click then
+	table.insert(base_keybinds, {"mbtn_left", function()
+			local duration = mp.get_time() - state.last_base_mbtn_left_down_time
+			print("click", duration)
+
+			if duration < 0.11 then
+				mp.command("cycle pause")
+			end
+		end, function()
+			state.last_base_mbtn_left_down_time = mp.get_time()
+		end
+	})
+end
+mp.set_key_bindings(base_keybinds, "mouse_movement", "force")
 mp.enable_key_bindings("mouse_movement", "allow-vo-dragging+allow-hide-cursor")
 
 -- mouse buttons

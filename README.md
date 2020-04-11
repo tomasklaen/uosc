@@ -73,11 +73,14 @@ volume_snap_to=1
 # for this amount of time, set to 0 to disable
 volume_flash_duration=300
 
-# menus (context menu, load subtitles, select subtitles,... , playlist,...)
+# menu
 menu_item_height=40
 menu_item_height_fullscreen=50
 menu_opacity=0.8
 
+# pause video on short clicks so you can both drag and pause video with
+# left mouse button and no conflicts between the two
+pause_on_click=no
 # proximity below which elements are fully faded in/expanded
 proximity_min=40
 # proximity above which elements are fully faded out/retracted
