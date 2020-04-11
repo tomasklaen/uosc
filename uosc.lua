@@ -142,6 +142,7 @@ Key  script-binding uosc/select-subtitles
 Key  script-binding uosc/select-audio
 Key  script-binding uosc/select-video
 Key  script-binding uosc/navigate-playlist
+Key  script-binding uosc/show-in-directory
 ```
 ]]
 
@@ -419,6 +420,17 @@ function normalize_path(path)
 	end
 end
 
+-- Naive check for absolute paths
+function is_absolute_path(path)
+	return path:match('^/') or path:match('^%a+:[/\\]') or path:match('^\\\\')
+end
+
+-- Check if path is a protocol, such as `http://...`
+function is_protocol(path)
+	return path:match('^%a[%a%d-_]+://')
+end
+
+-- Serializes path into its semantic parts
 function serialize_path(path)
 	path = ensure_absolute_path(path)
 	local parts = split(path, "[\\/]+")
@@ -2214,4 +2226,25 @@ mp.add_key_binding(nil, "navigate-playlist", function()
 		mp.commandv("set", "playlist-pos-1", tostring(index))
 		menu:close()
 	end, {title = "Playlist", select_on_hover = false})
+end)
+mp.add_key_binding(nil, "show-in-directory", function()
+	local path = mp.get_property_native("path")
+
+	-- Ignore URLs
+	if is_protocol(path) then return end
+
+	path = ensure_absolute_path(path)
+
+	if state.os == "windows" then
+		utils.subprocess_detached({args = {'explorer', '/select,', path}, cancellable = false})
+	elseif state.os == "macos" then
+		utils.subprocess_detached({args = {'open', '-R', path}, cancellable = false})
+	elseif state.os == "linux" then
+		local result = utils.subprocess({args = {'nautilus', path}, cancellable = false})
+
+		-- Fallback opens the folder with xdg-open instead
+		if result.status ~= 0 then
+			utils.subprocess({args = {'xdg-open', serialize_path(path).dirname}, cancellable = false})
+		end
+	end
 end)
