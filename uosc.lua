@@ -634,7 +634,7 @@ function Menu:open(items, open_item, opts)
 
 	if menu:is_open() then
 		if not opts.parent_menu then
-			menu:close(function()
+			menu:close(true, function()
 				menu:open(items, open_item, opts)
 			end)
 			return
@@ -790,9 +790,6 @@ function Menu:open(items, open_item, opts)
 				update_proximities()
 			end)
 		end,
-		close = function()
-			menu:close()
-		end,
 		open_selected_item = function(this)
 			-- If there is a transition active and this method got called, it
 			-- means we are animating from this menu to parent menu, and all
@@ -813,6 +810,7 @@ function Menu:open(items, open_item, opts)
 					opts.parent_menu = this
 					menu:open(item.items, this.open_item, opts)
 				else
+					menu:close(true)
 					this.open_item(item.value)
 				end
 			end
@@ -938,16 +936,23 @@ function Menu:create_action(name)
 	end
 end
 
-function Menu:close(callback)
+function Menu:close(immediate, callback)
+	if type(immediate) ~= 'boolean' then callback = immediate end
+
 	if elements:has('menu') then
-		elements.menu:fadeout(function()
+		function close()
 			elements.menu:destroy()
 			elements:remove('menu')
 			update_proximities()
-			-- mp.disable_key_bindings('menu_navigation')
 			menu:disable_key_bindings()
 			call_me_maybe(callback)
-		end)
+		end
+
+		if immediate then
+			close()
+		else
+			elements.menu:fadeout(close)
+		end
 	end
 end
 
@@ -2291,7 +2296,6 @@ if options.pause_on_click_shorter_than > 0 then
 	local last_down_event;
 	local click_timer = mp.add_timeout(duration_seconds, function()
 		mp.command('cycle pause')
-		print('pausing')
 	end);
 	click_timer:kill()
 	base_keybinds[#base_keybinds + 1] = {'mbtn_left', function()
@@ -2300,7 +2304,6 @@ if options.pause_on_click_shorter_than > 0 then
 			end
 		end, function()
 			if click_timer:is_enabled() then
-				print('killing')
 				click_timer:kill()
 				last_down_event = 0
 			else
@@ -2332,7 +2335,6 @@ end)
 mp.add_key_binding(nil, 'context-menu', function()
 	if state.context_menu_items then
 		menu:open(state.context_menu_items, function(command)
-			menu:close()
 			mp.command(command)
 		end)
 	end

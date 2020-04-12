@@ -7,7 +7,17 @@
 	<br>
 </div>
 
-All UI elements hide and show based on their proximity to cursor. Click on the preview above to see it in action.
+Most notable features:
+
+- UI elements hide and show based on their proximity to cursor instead of the annoying last mouse move time. This gives you 100% control over when you see the UI and when you don't. Click on the preview above to see it in action.
+- Set min timeline size to make an always visible discrete progress bar.
+- Build your own context menu with nesting support by editing your `input.conf` file.
+- UIs for:
+	- Loading external subtitles.
+	- Selecting subtitle/audio/video track.
+	- Quick directory and playlist navigation.
+- Transform chapters into timeline ranges (the red portion of the timeline in the preview).
+- And a lot of useful options and commands to bind keys to.
 
 ## Installation
 
