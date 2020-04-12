@@ -384,8 +384,14 @@ function tween_element_stop(element)
 	call_me_maybe(element.stop_current_animation)
 end
 
-function tween_element_property(element, prop, to, on_end)
-	tween_element(element, element[prop], to, function(_, value) element[prop] = value end, on_end)
+-- `from` is optional and defaults to `element[prop]`
+function tween_element_property(element, prop, from, to, on_end)
+	if type(to) ~= 'number' then
+		on_end = to
+		to = from
+		from = element[prop]
+	end
+	tween_element(element, from, to, function(_, value) element[prop] = value end, on_end)
 end
 
 function get_point_to_rectangle_proximity(point, rect)
@@ -842,13 +848,11 @@ function Menu:open(items, open_item, opts)
 				(display.width * 0.9) - side_elements_width
 			)
 			local title_size = this.title and this.title_size or 0
-			this.height = round(math.min(
-				(this.scroll_step * #items) - this.item_spacing,
-				round((elements.timeline.ay - elements.window_controls.by) * 0.9) - title_size
-			))
+			local max_height = round((display.height - elements.timeline.size_min) * 0.8) - title_size
+			this.height = math.min(round(this.scroll_step * #items) - this.item_spacing, max_height)
 			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
 			this.ax = round((display.width - this.width) / 2) + this.offset_x
-			this.ay = math.max(round((display.height - this.height) / 2), elements.window_controls.by + title_size)
+			this.ay = round((display.height - this.height) / 2 + title_size)
 			this.bx = round(this.ax + this.width)
 			this.by = round(this.ay + this.height)
 
@@ -1113,26 +1117,26 @@ end
 
 -- ELEMENT RENDERERS
 
-function render_timeline(timeline)
-	if timeline.size_max == 0
+function render_timeline(this)
+	if this.size_max == 0
 		or state.duration == nil
 		or state.position == nil then
 		return
 	end
 
-	local proximity = math.max(state.interactive_proximity, timeline.proximity)
-	local size = timeline.size_min + math.ceil((timeline.size_max - timeline.size_min) * proximity)
+	local proximity = this.forced_proximity and this.forced_proximity or math.max(state.interactive_proximity, this.proximity)
+	local size = this.size_min + math.ceil((this.size_max - this.size_min) * proximity)
 
 	if size < 1 then return end
 
 	local ass = assdraw.ass_new()
 
 	-- text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches timeline.size_min
-	local hide_text_below = math.max(timeline.font_size * 0.7, timeline.size_min * 2)
+	local hide_text_below = math.max(this.font_size * 0.7, this.size_min * 2)
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = math.max(math.min(size - hide_text_below, hide_text_ramp), 0) / hide_text_ramp
 
-	local spacing = math.max(math.floor((timeline.size_max - timeline.font_size) / 2.5), 4)
+	local spacing = math.max(math.floor((this.size_max - this.font_size) / 2.5), 4)
 	local progress = state.position / state.duration
 
 	-- Background bar coordinates
@@ -1202,10 +1206,10 @@ function render_timeline(timeline)
 			chapter_size = size
 			chapter_y = fay + (chapter_size / 2)
 		elseif options.chapters == 'lines-top' then
-			chapter_size = math.min(timeline.size_max / 3.5, size)
+			chapter_size = math.min(this.size_max / 3.5, size)
 			chapter_y = fay + (chapter_size / 2)
 		elseif options.chapters == 'lines-bottom' then
-			chapter_size = math.min(timeline.size_max / 3.5, size)
+			chapter_size = math.min(this.size_max / 3.5, size)
 			chapter_y = fay + size - (chapter_size / 2)
 		end
 
@@ -1250,13 +1254,13 @@ function render_timeline(timeline)
 		-- Elapsed time
 		if state.elapsed_seconds then
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..timeline.font_size..'\\clip('..foreground_coordinates..')')
+			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..'\\clip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(spacing, fay + (size / 2))
 			ass:an(4)
 			ass:append(state.elapsed_time)
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..timeline.font_size..'\\iclip('..foreground_coordinates..')')
+			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'\\iclip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(spacing, fay + (size / 2))
 			ass:an(4)
@@ -1266,13 +1270,13 @@ function render_timeline(timeline)
 		-- Remaining time
 		if state.remaining_seconds then
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..timeline.font_size..'\\clip('..foreground_coordinates..')')
+			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..'\\clip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(display.width - spacing, fay + (size / 2))
 			ass:an(6)
 			ass:append(state.remaining_time)
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..timeline.font_size..'\\iclip('..foreground_coordinates..')')
+			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'\\iclip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(display.width - spacing, fay + (size / 2))
 			ass:an(6)
@@ -1280,12 +1284,12 @@ function render_timeline(timeline)
 		end
 	end
 
-	if timeline.proximity_raw == 0 then
+	if this.proximity_raw == 0 then
 		-- Hovered time
 		local hovered_seconds = mp.get_property_native('duration') * (cursor.x / display.width)
-		local box_half_width_guesstimate = (timeline.font_size * 4.2) / 2
+		local box_half_width_guesstimate = (this.font_size * 4.2) / 2
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..timeline.font_size..'')
+		ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'')
 		ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1)))
 		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), fay)
 		ass:an(2)
@@ -1304,8 +1308,8 @@ function render_timeline(timeline)
 	return ass
 end
 
-function render_window_controls(window_controls)
-	local opacity = math.max(state.interactive_proximity, window_controls.proximity)
+function render_window_controls(this)
+	local opacity = math.max(state.interactive_proximity, this.proximity)
 
 	if state.border or opacity == 0 then return end
 
@@ -1403,9 +1407,9 @@ end
 function render_volume(this)
 	local slider = elements.volume_slider
 	local proximity = math.max(state.interactive_proximity, this.proximity)
-	local opacity = (slider.pressed and 1 or proximity)
+	local opacity = this.forced_proximity and this.forced_proximity or (slider.pressed and 1 or proximity)
 
-	if not slider.pressed and (proximity == 0 or this.height == 0) or opacity == 0 then return end
+	if this.width == 0 or opacity == 0 then return end
 
 	local ass = assdraw.ass_new()
 
@@ -1530,7 +1534,7 @@ function render_menu(this)
 		-- Background
 		ass:new_event()
 		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-		ass:append(ass_opacity(math.max(options.menu_opacity - 0.1, 0), this.opacity * 0.5))
+		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.5))
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(this.ax, this.ay - this.title_height, this.bx, this.ay)
@@ -1538,7 +1542,7 @@ function render_menu(this)
 
 		-- Title
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.title_font_size..'\\q2\\clip('..this.ax..','..this.ay - this.title_height..','..this.bx..','..this.ay..')}')
+		ass:append('{\\blur0\\bord0\\shad1\\b1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.title_font_size..'\\q2\\clip('..this.ax..','..this.ay - this.title_height..','..this.bx..','..this.ay..')}')
 		ass:append(ass_opacity(options.menu_opacity, this.opacity))
 		ass:pos(display.width / 2, this.ay - (this.title_height * 0.5))
 		ass:an(5)
@@ -1551,7 +1555,7 @@ function render_menu(this)
 	if this.scroll_y > 0 then
 		ass:new_event()
 		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-		ass:append(ass_opacity(math.max(options.menu_opacity - 0.1, 0), this.opacity * 0.5))
+		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.5))
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(this.ax, this.ay - 5, this.bx, this.ay)
@@ -1561,7 +1565,7 @@ function render_menu(this)
 	if this.scroll_y < this.scroll_height then
 		ass:new_event()
 		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-		ass:append(ass_opacity(math.max(options.menu_opacity - 0.1, 0), this.opacity * 0.5))
+		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.5))
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(this.ax, this.by, this.bx, this.by + 5)
@@ -1603,7 +1607,7 @@ function render_menu(this)
 		-- Background
 		ass:new_event()
 		ass:append('{\\blur0\\bord0\\1c&H'..background_color..item_clip..'}')
-		ass:append(ass_opacity(math.max(options.menu_opacity - 0.1, 0), this.opacity))
+		ass:append(ass_opacity(options.menu_opacity, this.opacity))
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:rect_cw(this.ax, item_ay, this.bx, item_by)
@@ -1705,20 +1709,22 @@ function create_flash_function_for(element_name)
 		return function() end
 	end
 
-	local flash_timer = nil
+	local flash_timer
 	flash_timer = mp.add_timeout(duration / 1000, function()
-		tween_element_property(elements[element_name], 'proximity', 0)
+		tween_element_property(elements[element_name], 'forced_proximity', 1, 0, function()
+			elements[element_name].forced_proximity = nil
+		end)
 	end)
 	flash_timer:kill()
 
 	return function()
-		if flash_timer and (elements[element_name].proximity < 1 or flash_timer:is_enabled()) then
+		if elements[element_name].proximity < 1 or flash_timer:is_enabled() then
 			tween_element_stop(elements[element_name])
-			elements[element_name].proximity = 1
+			elements[element_name].forced_proximity = 1
 			flash_timer:kill()
 			flash_timer:resume()
 		end
-	end
+	end, flash_timer
 end
 
 elements:add('timeline', Element.new({
@@ -1726,20 +1732,20 @@ elements:add('timeline', Element.new({
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
 	font_size = 0, -- calculated in on_display_resize
 	flash = create_flash_function_for('timeline'),
-	on_display_resize = function(element)
+	on_display_resize = function(this)
 		if state.fullscreen or state.maximized then
-			element.size_min = options.timeline_size_min_fullscreen
-			element.size_max = options.timeline_size_max_fullscreen
+			this.size_min = options.timeline_size_min_fullscreen
+			this.size_max = options.timeline_size_max_fullscreen
 		else
-			element.size_min = options.timeline_size_min
-			element.size_max = options.timeline_size_max
+			this.size_min = options.timeline_size_min
+			this.size_max = options.timeline_size_max
 		end
-		element.interactive = element.size_max > 0
-		element.font_size = math.floor(math.min((element.size_max + 60) * 0.2, element.size_max * 0.96))
-		element.ax = 0
-		element.ay = display.height - element.size_max - state.timeline_top_padding - state.timeline_bottom_padding
-		element.bx = display.width
-		element.by = display.height
+		this.interactive = this.size_max > 0
+		this.font_size = math.floor(math.min((this.size_max + 60) * 0.2, this.size_max * 0.96))
+		this.ax = 0
+		this.ay = display.height - this.size_max - state.timeline_top_padding - state.timeline_bottom_padding
+		this.bx = display.width
+		this.by = display.height
 	end,
 	on_mbtn_left_down = function()
 		mp.commandv('seek', ((cursor.x / display.width) * 100), 'absolute-percent+exact')
@@ -1747,32 +1753,32 @@ elements:add('timeline', Element.new({
 	render = render_timeline,
 }))
 elements:add('window_controls', Element.new({
-	on_display_resize = function(element)
+	on_display_resize = function(this)
 		local ax = display.width - (config.window_controls.button_width * 3)
-		element.ax = options.title and 0 or ax
-		element.ay = 0
-		element.bx = display.width
-		element.by = config.window_controls.height
+		this.ax = options.title and 0 or ax
+		this.ay = 0
+		this.bx = display.width
+		this.by = config.window_controls.height
 	end,
 	render = render_window_controls,
 }))
 elements:add('window_controls_minimize', Element.new({
 	interactive = true,
-	on_display_resize = function(element)
-		element.ax = display.width - (config.window_controls.button_width * 3)
-		element.ay = 0
-		element.bx = element.ax + config.window_controls.button_width
-		element.by = config.window_controls.height
+	on_display_resize = function(this)
+		this.ax = display.width - (config.window_controls.button_width * 3)
+		this.ay = 0
+		this.bx = this.ax + config.window_controls.button_width
+		this.by = config.window_controls.height
 	end,
 	on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end
 }))
 elements:add('window_controls_maximize', Element.new({
 	interactive = true,
-	on_display_resize = function(element)
-		element.ax = display.width - (config.window_controls.button_width * 2)
-		element.ay = 0
-		element.bx = element.ax + config.window_controls.button_width
-		element.by = config.window_controls.height
+	on_display_resize = function(this)
+		this.ax = display.width - (config.window_controls.button_width * 2)
+		this.ay = 0
+		this.bx = this.ax + config.window_controls.button_width
+		this.by = config.window_controls.height
 	end,
 	on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end
 }))
