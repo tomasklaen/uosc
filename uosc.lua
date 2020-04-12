@@ -1118,13 +1118,12 @@ end
 -- ELEMENT RENDERERS
 
 function render_timeline(this)
-	if this.size_max == 0
-		or state.duration == nil
-		or state.position == nil then
-		return
-	end
+	if this.size_max == 0 or state.duration == nil or state.position == nil then return end
 
 	local proximity = this.forced_proximity and this.forced_proximity or math.max(state.interactive_proximity, this.proximity)
+
+	if this.pressed then proximity = 1 end
+
 	local size = this.size_min + math.ceil((this.size_max - this.size_min) * proximity)
 
 	if size < 1 then return end
@@ -1284,7 +1283,7 @@ function render_timeline(this)
 		end
 	end
 
-	if this.proximity_raw == 0 then
+	if this.proximity_raw == 0 or this.pressed then
 		-- Hovered time
 		local hovered_seconds = mp.get_property_native('duration') * (cursor.x / display.width)
 		local box_half_width_guesstimate = (this.font_size * 4.2) / 2
@@ -1729,6 +1728,7 @@ end
 
 elements:add('timeline', Element.new({
 	interactive = true,
+	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
 	font_size = 0, -- calculated in on_display_resize
 	flash = create_flash_function_for('timeline'),
@@ -1747,8 +1747,17 @@ elements:add('timeline', Element.new({
 		this.bx = display.width
 		this.by = display.height
 	end,
-	on_mbtn_left_down = function()
+	set_from_cursor = function(this)
 		mp.commandv('seek', ((cursor.x / display.width) * 100), 'absolute-percent+exact')
+	end,
+	on_mbtn_left_down = function(this)
+		this.pressed = true
+		this:set_from_cursor()
+	end,
+	on_global_mbtn_left_up = function(this) this.pressed = false end,
+	on_global_mouse_leave = function(this) this.pressed = false end,
+	on_global_mouse_move = function(this)
+		if this.pressed then this:set_from_cursor() end
 	end,
 	render = render_timeline,
 }))
