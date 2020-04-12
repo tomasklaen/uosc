@@ -640,7 +640,6 @@ function Menu:open(items, open_item, opts)
 			return
 		end
 	else
-		-- mp.enable_key_bindings('menu_navigation', 'allow-vo-dragging')
 		menu:enable_key_bindings()
 	end
 
@@ -698,7 +697,7 @@ function Menu:open(items, open_item, opts)
 				this:set_parent_opacity(1 - ((1 - config.menu_parent_opacity) * pos))
 			end, function()
 				menu.transition = nil
-				-- Helps selects an item below cursor when appropriate
+				-- Helps select an item below cursor when appropriate
 				update_proximities()
 				this:on_global_mouse_move()
 			end)
@@ -1555,27 +1554,6 @@ function render_menu(this)
 
 	local scroll_area_clip = '\\clip('..this.ax..','..this.ay..','..this.bx..','..this.by..')'
 
-	-- Draw indicators that content can be scrolled
-	if this.scroll_y > 0 then
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.5))
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(this.ax, this.ay - 5, this.bx, this.ay)
-		ass:draw_stop()
-	end
-
-	if this.scroll_y < this.scroll_height then
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.5))
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(this.ax, this.by, this.bx, this.by + 5)
-		ass:draw_stop()
-	end
-
 	for index, item in ipairs(this.items) do
 		local item_ay = this.ay - this.scroll_y + (this.item_height * (index - 1) + this.item_spacing * (index - 1))
 		local item_by = item_ay + this.item_height
@@ -1648,6 +1626,20 @@ function render_menu(this)
 				is_active and 'foreground' or 'background', this.opacity, -- backdrop, opacity
 				item_clip
 			))
+		end
+
+		-- Scrollbar
+		if this.scroll_height > 0 then
+			local scrollbar_grove = this.height - 4
+			local scrollbar_size = math.max((this.height / (this.scroll_height + this.height)) * scrollbar_grove, 40)
+			local scrollbar_y = this.ay + 2 + ((this.scroll_y / this.scroll_height) * (scrollbar_grove - scrollbar_size))
+			ass:new_event()
+			ass:append('{\\blur0\\bord1\\1c&H'..options.color_foreground..'\\3c&H'..options.color_background..'}')
+			ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.5))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(this.bx - 2, scrollbar_y, this.bx, scrollbar_y + scrollbar_size)
+			ass:draw_stop()
 		end
 
 		::continue::
