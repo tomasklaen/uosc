@@ -730,22 +730,13 @@ function Menu:open(items, open_item, opts)
 		end,
 		scroll_to = function(this, pos)
 			this.scroll_y = math.max(math.min(pos, this.scroll_height), 0)
+			this:on_global_mouse_move()
 			request_render()
 		end,
 		center_selected_item = function(this)
 			if this.selected_item then
 				this:scroll_to(round((this.scroll_step * (this.selected_item - 1)) - ((this.height - this.scroll_step) / 2)))
 			end
-		end,
-		on_wheel_up = function(this)
-			this:scroll_to(this.scroll_y - this.scroll_step)
-			this:on_global_mouse_move()
-			request_render()
-		end,
-		on_wheel_down = function(this)
-			this:scroll_to(this.scroll_y + this.scroll_step)
-			this:on_global_mouse_move()
-			request_render()
 		end,
 		prev = function(this)
 			local current_index = this.selected_item or this.previous_selected_item
@@ -889,6 +880,12 @@ function Menu:open(items, open_item, opts)
 				end
 			end
 		end,
+		on_wheel_up = function(this) this:scroll_to(this.scroll_y - this.scroll_step) end,
+		on_wheel_down = function(this) this:scroll_to(this.scroll_y + this.scroll_step) end,
+		on_pgup = function(this) this:scroll_to(this.scroll_y - this.height) end,
+		on_pgdwn = function(this) this:scroll_to(this.scroll_y + this.height) end,
+		on_home = function(this) this:scroll_to(0) end,
+		on_end = function(this) this:scroll_to(this.scroll_height) end,
 		render = render_menu,
 	}))
 end
@@ -922,6 +919,10 @@ function Menu:enable_key_bindings()
 	menu:add_key_binding('esc',        'menu-close',       self:create_action('close'))
 	menu:add_key_binding('wheel_up',   'menu-scroll-up',   self:create_action('on_wheel_up'))
 	menu:add_key_binding('wheel_down', 'menu-scroll-down', self:create_action('on_wheel_down'))
+	menu:add_key_binding('pgup',       'menu-page-up',     self:create_action('on_pgup'))
+	menu:add_key_binding('pgdwn',      'menu-page-down',   self:create_action('on_pgdwn'))
+	menu:add_key_binding('home',       'menu-home',        self:create_action('on_home'))
+	menu:add_key_binding('end',        'menu-end',         self:create_action('on_end'))
 end
 
 function Menu:disable_key_bindings()

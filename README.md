@@ -171,6 +171,7 @@ The only keybinds **uosc** defines by default are menu navigation keys that are 
 - `enter` - select item
 - `esc` - close menu
 - `wheel_up`, `wheel_down` - scroll menu
+- `pgup`, `pgdwn`, `home`, `end` - self explanatory
 
 You can also click on a faded parent menu to go back to it.
 
