@@ -454,7 +454,7 @@ end
 
 function get_extension(path)
 	local parts = split(path, '%.')
-	return parts and parts[#parts] or nil
+	return parts and #parts > 1 and parts[#parts] or nil
 end
 
 -- Serializes path into its semantic parts
@@ -2107,7 +2107,7 @@ function create_mouse_event_handler(source)
 	end
 end
 
-function create_directory_navigator(direction)
+function create_navigate_directory(direction)
 	return function()
 		local path = mp.get_property_native("path")
 
@@ -2116,19 +2116,19 @@ function create_directory_navigator(direction)
 		local next_file = get_adjacent_media_file(path, direction)
 
 		if next_file then
-			mp.commandv("loadfile", next_file)
+			mp.commandv("loadfile", utils.join_path(serialize_path(path).dirname, next_file))
 		end
 	end
 end
 
-function create_adjacent_media_file_index_selector(index)
+function create_select_adjacent_media_file_index(index)
 	return function()
 		local path = mp.get_property_native("path")
 
 		if is_protocol(path) then return end
 
 		local dirname = serialize_path(path).dirname
-		local files, error = get_files_in_directory(dirname, options.media_types)
+		local files = get_files_in_directory(dirname, options.media_types)
 
 		if not files then return end
 		if index < 0 then index = #files + index + 1 end
@@ -2195,8 +2195,8 @@ function open_file_navigation_menu(directory, handle_select, allowed_types, sele
 		return
 	end
 
+	-- Files are already sorted
 	table.sort(directories)
-	table.sort(files)
 
 	-- Pre-populate items with parent directory selector if not at root
 	local items = not directory.dirname and {} or {
@@ -2404,10 +2404,10 @@ mp.add_key_binding(nil, 'navigate-directory', function()
 		)
 	end
 end)
-mp.add_key_binding(nil, 'next-file', create_directory_navigator('forward'))
-mp.add_key_binding(nil, 'prev-file', create_directory_navigator('backward'))
-mp.add_key_binding(nil, 'first-file', create_adjacent_media_file_index_selector(1))
-mp.add_key_binding(nil, 'last-file', create_adjacent_media_file_index_selector(-1))
+mp.add_key_binding(nil, 'next-file', create_navigate_directory('forward'))
+mp.add_key_binding(nil, 'prev-file', create_navigate_directory('backward'))
+mp.add_key_binding(nil, 'first-file', create_select_adjacent_media_file_index(1))
+mp.add_key_binding(nil, 'last-file', create_select_adjacent_media_file_index(-1))
 mp.add_key_binding(nil, 'delete-file-next', function()
 	local path = mp.get_property_native('path')
 
