@@ -1,5 +1,5 @@
 <div align="center">
-	<a href="https://darsain.github.io/uosc/preview.webm"><img src="https://darsain.github.io/uosc/preview.png" width="854" height="480"></a>
+	<a href="https://darsain.github.io/uosc/preview.webm"><img src="https://darsain.github.io/uosc/preview.png" width="914" height="568"></a>
 	<h1>uosc</h1>
 	<p>
 		Minimalist cursor proximity based UI for <a href="https://mpv.io">MPV player</a>.
@@ -195,11 +195,11 @@ Expands the bottom timeline until pressed again, or next mouse move. Useful to c
 
 #### `toggle-progress`
 
-Toggles the always visible portion of the timeline. You can look at it as switching `options.timeline_size_min` between it's configured value and 0.
+Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
 
 #### `context-menu`
 
-Toggles context menu. Context menu is empty by default and won't show up when this is pressed. Read [Context menu](#context-menu) section below to find out how to fill it up with items you want there.
+Toggles context menu. Context menu is empty by default and won't show up when this is pressed. Read [Context menu](#context-menu-1) section below to find out how to fill it up with items you want there.
 
 #### `load-subtitles`
 
@@ -270,7 +270,7 @@ menu        script-binding uosc/context-menu
 
 ### Adding items to menu
 
-Adding items to menu is facilitated by commenting of your keybinds in `input.conf` with special comment syntax. **uosc** will than parse this file and build the context menu out of it.
+Adding items to menu is facilitated by commenting your keybinds in `input.conf` with special comment syntax. **uosc** will than parse this file and build the context menu out of it.
 
 #### Syntax
 
