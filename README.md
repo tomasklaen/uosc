@@ -148,7 +148,7 @@ font_height_to_letter_width_ratio = 0.5
 # ```
 # chapter_ranges=op<ffc500:0.5>.*,ed|ending<ffc500:0.5>.*|{eof}
 # ```
-chapter_ranges=
+chapter_ranges=op<ffc500:.5>.*,ed|ending<ffc500:.5>.*|{eof},sponsor start<0000ff:.5>sponsor end
 ```
 
 ## Keybindings

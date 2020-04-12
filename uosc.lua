@@ -1,6 +1,6 @@
 --[[
 
-uosc 1.4.0 | https://github.com/darsain/uosc
+uosc 2.0.0 - 2020-Apr-12 | https://github.com/darsain/uosc
 
 Minimalistic cursor proximity based UI for MPV player.
 
@@ -59,7 +59,7 @@ volume_snap_to=1
 # for this amount of time, set to 0 to disable
 volume_flash_duration=300
 
-# controls all menus such as context menu, subtitle loader/selector, ...
+# menu
 menu_item_height=40
 menu_item_height_fullscreen=50
 menu_opacity=0.9
@@ -134,7 +134,7 @@ font_height_to_letter_width_ratio = 0.5
 # ```
 # chapter_ranges=op<ffc500:0.5>.*,ed|ending<ffc500:0.5>.*|{eof}
 # ```
-chapter_ranges=
+chapter_ranges=op<ffc500:.5>.*,ed|ending<ffc500:.5>.*|{eof},sponsor start<0000ff:.5>sponsor end
 ```
 
 Available keybindings (place into `input.conf`):
@@ -209,7 +209,7 @@ local options = {
 	media_types = '3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
 	subtitle_types = 'aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt',
 	font_height_to_letter_width_ratio = 0.5,
-	chapter_ranges = '',
+	chapter_ranges = 'op<ffc500:.5>.*,ed|ending<ffc500:.5>.*|{eof},sponsor start<0000ff:.5>sponsor end',
 }
 opt.read_options(options, 'uosc')
 local config = {
