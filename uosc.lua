@@ -2275,7 +2275,11 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 	request_render()
 end)
 mp.register_event('seek', function()
-	elements.timeline.flash()
+	-- Don't flash for times at the beginning of the video as that might be just
+	-- video looping around.
+	if mp.get_property_native('playback-time') > 1 then
+		elements.timeline.flash()
+	end
 end)
 
 -- CONTROLS
