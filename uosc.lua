@@ -648,7 +648,7 @@ function Menu:open(items, open_item, opts)
 		interactive = true,
 		belongs_to_interactive_proximity = false,
 		title = nil,
-		title_height = 50,
+		title_height = 40,
 		width = nil,
 		height = nil,
 		offset_x = 0, -- used to animated from/to left when submenu
