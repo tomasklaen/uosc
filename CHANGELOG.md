@@ -15,7 +15,8 @@ New:
 	- Playlist navigation.
 	- Directory navigation.
 - A lot of new useful commands added. Rad the documentation to see exactly what they do. Here is a quick list of all currently available commands to bind your keys to:
-	- `script-binding uosc/toggle-timeline`
+	- `script-binding uosc/flash-timeline`
+	- `script-binding uosc/toggle-progress`
 	- `script-binding uosc/context-menu`
 	- `script-binding uosc/load-subtitles`
 	- `script-binding uosc/select-subtitles`

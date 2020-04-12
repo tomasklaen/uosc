@@ -41,7 +41,7 @@ All available options with their default values:
 
 ```conf
 # timeline size when fully retracted, 0 will hide it completely
-timeline_size_min=1
+timeline_size_min=2
 # timeline size when fully expanded, in pixels, 0 to disable
 timeline_size_max=40
 # same as ^ but when in fullscreen
@@ -181,17 +181,21 @@ You can also click on a faded parent menu to go back to it.
 
 To add a keybind to one of this commands, open your `input.conf` file and add one on a new line. The command syntax is `script-binding uosc/{command-name}`.
 
-Example to bind the `tab` key to toggle timeline:
+Example to bind the `tab` key to flash timeline:
 
 ```
-tab  script-binding uosc/toggle-timeline
+tab  script-binding uosc/flash-timeline
 ```
 
 Available commands:
 
-#### `toggle-timeline`
+#### `flash-timeline`
 
-Force expands/retracts the bottom timeline until pressed again, or next mouse move. Useful to check times during playback.
+Expands the bottom timeline until pressed again, or next mouse move. Useful to check times during playback.
+
+#### `toggle-progress`
+
+Toggles the always visible portion of the timeline. You can look at it as switching `options.timeline_size_min` between it's configured value and 0.
 
 #### `context-menu`
 
