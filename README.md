@@ -78,9 +78,10 @@ menu_item_height=40
 menu_item_height_fullscreen=50
 menu_opacity=0.8
 
-# pause video on short clicks so you can both drag and pause video with
-# left mouse button and no conflicts between the two
-pause_on_click=no
+# pause video on clicks shorter than this number of milliseconds
+# enables you to use left mouse button for both dragging and pausing the video
+# I recommend a duration of 120, leave at 0 to disable
+pause_on_click_shorter_than=0
 # proximity below which elements are fully faded in/expanded
 proximity_min=40
 # proximity above which elements are fully faded out/retracted

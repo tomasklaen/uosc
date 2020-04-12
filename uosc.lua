@@ -64,9 +64,10 @@ menu_item_height=40
 menu_item_height_fullscreen=50
 menu_opacity=0.8
 
-# pause video on short clicks so you can both drag and pause video with
-# left mouse button and no conflicts between the two
-pause_on_click=no
+# pause video on clicks shorter than this number of milliseconds
+# enables you to use left mouse button for both dragging and pausing the video
+# I recommend a duration of 120, leave at 0 to disable
+pause_on_click_shorter_than=0
 # proximity below which elements are fully faded in/expanded
 proximity_min=40
 # proximity above which elements are fully faded out/retracted
@@ -194,7 +195,8 @@ local options = {
 	menu_item_height_fullscreen = 50,
 	menu_opacity = 0.9,
 
-	pause_on_click = false,
+	pause_on_click_shorter_than = 0,
+	click_duration = 110,
 	proximity_min = 40,
 	proximity_max = 120,
 	color_foreground = 'ffffff',
@@ -2267,13 +2269,28 @@ local base_keybinds = {
 	{'mouse_move', create_mouse_event_handler('mouse_move')},
 	{'mouse_leave', create_mouse_event_handler('mouse_leave')},
 }
-if options.pause_on_click then
+if options.pause_on_click_shorter_than > 0 then
+	-- Cycles pause when click is shorter than `options.pause_on_click_shorter_than`
+	-- while filtering out double clicks.
+	local duration_seconds = options.pause_on_click_shorter_than / 1000
+	local last_down_event;
+	local click_timer = mp.add_timeout(duration_seconds, function()
+		mp.command('cycle pause')
+		print('pausing')
+	end);
+	click_timer:kill()
 	base_keybinds[#base_keybinds + 1] = {'mbtn_left', function()
-			if mp.get_time() - state.last_base_mbtn_left_down_time < 0.11 then
-				mp.command('cycle pause')
+			if mp.get_time() - last_down_event < duration_seconds then
+				click_timer:resume()
 			end
 		end, function()
-			state.last_base_mbtn_left_down_time = mp.get_time()
+			if click_timer:is_enabled() then
+				print('killing')
+				click_timer:kill()
+				last_down_event = 0
+			else
+				last_down_event = mp.get_time()
+			end
 		end
 	}
 end
