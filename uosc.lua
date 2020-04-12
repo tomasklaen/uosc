@@ -59,10 +59,10 @@ volume_snap_to=1
 # for this amount of time, set to 0 to disable
 volume_flash_duration=300
 
-# menu
+# controls all menus such as context menu, subtitle loader/selector, ...
 menu_item_height=40
 menu_item_height_fullscreen=50
-menu_opacity=0.8
+menu_opacity=0.9
 
 # pause video on clicks shorter than this number of milliseconds
 # enables you to use left mouse button for both dragging and pausing the video
