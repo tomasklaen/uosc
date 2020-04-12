@@ -1,6 +1,6 @@
 --[[
 
-uosc 2.0.0 - 2020-Apr-12 | https://github.com/darsain/uosc
+uosc notyet - 2020-Apr-12 | https://github.com/darsain/uosc
 
 Minimalistic cursor proximity based UI for MPV player.
 
@@ -140,7 +140,8 @@ chapter_ranges=op<ffc500:.5>.*,ed|ending<ffc500:.5>.*|{eof},sponsor start<0000ff
 Available keybindings (place into `input.conf`):
 
 ```
-Key  script-binding uosc/toggle-timeline
+Key  script-binding uosc/flash-timeline
+Key  script-binding uosc/toggle-progress
 Key  script-binding uosc/context-menu
 Key  script-binding uosc/load-subtitles
 Key  script-binding uosc/select-subtitles
@@ -172,7 +173,7 @@ local infinity = 1e309
 
 -- OPTIONS/CONFIG/STATE
 local options = {
-	timeline_size_min = 1,
+	timeline_size_min = 2,
 	timeline_size_max = 40,
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
@@ -1129,14 +1130,15 @@ function render_timeline(this)
 
 	if this.pressed then proximity = 1 end
 
-	local size = this.size_min + math.ceil((this.size_max - this.size_min) * proximity)
+	local size_min = this.size_min_override or this.size_min
+	local size = size_min + math.ceil((this.size_max - size_min) * proximity)
 
 	if size < 1 then return end
 
 	local ass = assdraw.ass_new()
 
 	-- text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches timeline.size_min
-	local hide_text_below = math.max(this.font_size * 0.7, this.size_min * 2)
+	local hide_text_below = math.max(this.font_size * 0.7, size_min * 2)
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = math.max(math.min(size - hide_text_below, hide_text_ramp), 0) / hide_text_ramp
 
@@ -1728,6 +1730,7 @@ elements:add('timeline', Element.new({
 	interactive = true,
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
+	size_min_override = nil, -- used for toggle-progress command
 	font_size = 0, -- calculated in on_display_resize
 	flash = create_flash_function_for('timeline'),
 	on_display_resize = function(this)
@@ -2318,11 +2321,21 @@ mp.set_key_bindings({
 
 -- KEY BINDABLE FEATURES
 
-mp.add_key_binding(nil, 'toggle-timeline', function()
+mp.add_key_binding(nil, 'flash-timeline', function()
 	if elements.timeline.proximity > 0.5 then
 		tween_element_property(elements.timeline, 'proximity', 0)
 	else
 		tween_element_property(elements.timeline, 'proximity', 1)
+	end
+end)
+mp.add_key_binding(nil, 'toggle-progress', function()
+	local timeline = elements.timeline
+	if timeline.size_min_override then
+		tween_element_property(timeline, 'size_min_override', timeline.size_min_override, timeline.size_min, function()
+			timeline.size_min_override = nil
+		end)
+	else
+		tween_element_property(timeline, 'size_min_override', timeline.size_min, 0)
 	end
 end)
 mp.add_key_binding(nil, 'context-menu', function()
