@@ -62,7 +62,7 @@ volume_flash_duration=300
 # menu
 menu_item_height=40
 menu_item_height_fullscreen=50
-menu_opacity=0.9
+menu_opacity=0.8
 
 # pause video on clicks shorter than this number of milliseconds
 # enables you to use left mouse button for both dragging and pausing the video
@@ -195,7 +195,7 @@ local options = {
 
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
-	menu_opacity = 0.9,
+	menu_opacity = 0.8,
 
 	pause_on_click_shorter_than = 0,
 	click_duration = 110,
@@ -649,13 +649,13 @@ function Menu:open(items, open_item, opts)
 		end
 	else
 		menu:enable_key_bindings()
+		elements.curtain:fadein()
 	end
 
 	elements:add('menu', Element.new({
 		interactive = true,
 		belongs_to_interactive_proximity = false,
 		title = nil,
-		title_height = 40,
 		width = nil,
 		height = nil,
 		offset_x = 0, -- used to animated from/to left when submenu
@@ -818,7 +818,6 @@ function Menu:open(items, open_item, opts)
 		on_display_resize = function(this)
 			this.item_height = (state.fullscreen or state.maximized) and options.menu_item_height_fullscreen or options.menu_item_height
 			this.font_size = round(this.item_height * 0.5)
-			this.title_font_size = round(this.title_height * 0.5)
 			this.item_content_spacing = round((this.item_height - this.font_size) * 0.666)
 			this.scroll_step = this.item_height + this.item_spacing
 
@@ -844,7 +843,7 @@ function Menu:open(items, open_item, opts)
 			-- consuming values in rendering easier. Title drawn above this, so
 			-- we need to account for that in max_height and ay position.
 			this.width = round(math.min(math.max(estimated_max_width, config.menu_min_width), display.width * 0.9))
-			local title_height = this.title and this.title_height or 0
+			local title_height = this.title and this.scroll_step or 0
 			local max_height = round(display.height * 0.9) - title_height
 			this.height = math.min(round(this.scroll_step * #items) - this.item_spacing, max_height)
 			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
@@ -918,7 +917,6 @@ function Menu:enable_key_bindings()
 	menu.key_bindings = {}
 	-- The `mp.set_key_bindings()` method would be easier here, but that
 	-- doesn't support 'repeatable' flag, so we are stuck with this monster.
-	menu:add_key_binding('mbtn_left',  'menu-click',       create_mouse_event_handler('mbtn_left_down'))
 	menu:add_key_binding('up',         'menu-prev',        self:create_action('prev'), 'repeatable')
 	menu:add_key_binding('w',          'menu-prev-alt',    self:create_action('prev'), 'repeatable')
 	menu:add_key_binding('k',          'menu-prev-alt2',   self:create_action('prev'), 'repeatable')
@@ -966,6 +964,8 @@ function Menu:close(immediate, callback)
 			menu:disable_key_bindings()
 			call_me_maybe(callback)
 		end
+
+		elements.curtain:fadeout()
 
 		if immediate then
 			close()
@@ -1105,6 +1105,7 @@ function update_proximities()
 	for _, element in elements:ipairs() do
 		-- If menu is open, all other elements have to be disabled
 		if menu_only then
+			intercept_mouse_buttons = true
 			if element.name == 'menu' then
 				update_element_cursor_proximity(element)
 			else
@@ -1335,7 +1336,7 @@ end
 function render_window_controls(this)
 	local opacity = math.max(state.interactive_proximity, this.proximity)
 
-	if state.border or opacity == 0 then return end
+	if state.border or opacity == 0 or elements.curtain.opacity > 0 then return end
 
 	local ass = assdraw.ass_new()
 
@@ -1433,7 +1434,7 @@ function render_volume(this)
 	local proximity = math.max(state.interactive_proximity, this.proximity)
 	local opacity = this.forced_proximity and this.forced_proximity or (slider.pressed and 1 or proximity)
 
-	if this.width == 0 or opacity == 0 then return end
+	if this.width == 0 or opacity == 0 or elements.curtain.opacity > 0 then return end
 
 	local ass = assdraw.ass_new()
 
@@ -1558,17 +1559,17 @@ function render_menu(this)
 		-- Background
 		ass:new_event()
 		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.5))
+		ass:append(ass_opacity(options.menu_opacity, this.opacity))
 		ass:pos(0, 0)
 		ass:draw_start()
-		ass:rect_cw(this.ax, this.ay - this.title_height, this.bx, this.ay)
+		ass:rect_cw(this.ax, this.ay - this.item_height, this.bx, this.ay - 1)
 		ass:draw_stop()
 
 		-- Title
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad1\\b1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.title_font_size..'\\q2\\clip('..this.ax..','..this.ay - this.title_height..','..this.bx..','..this.ay..')}')
+		ass:append('{\\blur0\\bord0\\shad1\\b1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'\\q2\\clip('..this.ax..','..this.ay - this.item_height..','..this.bx..','..this.ay..')}')
 		ass:append(ass_opacity(options.menu_opacity, this.opacity))
-		ass:pos(display.width / 2, this.ay - (this.title_height * 0.5))
+		ass:pos(display.width / 2, this.ay - (this.item_height * 0.5))
 		ass:an(5)
 		ass:append(this.title)
 	end
@@ -1650,26 +1651,6 @@ function render_menu(this)
 		end
 
 		::continue::
-	end
-
-	-- Scrollable area overflow indicators
-	if this.scroll_y > 0 then
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.8))
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(this.ax, this.ay, this.bx, this.ay + 4)
-		ass:draw_stop()
-	end
-	if this.scroll_y < this.scroll_height then
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.8))
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(this.ax, this.by - 4, this.bx, this.by)
-		ass:draw_stop()
 	end
 
 	-- Scrollbar
@@ -1916,6 +1897,28 @@ if itable_find({'left', 'right'}, options.volume) then
 		end,
 	}))
 end
+elements:add('curtain', Element.new({
+	opacity = 0,
+	fadeout = function(this)
+		tween_element_property(this, 'opacity', 0);
+	end,
+	fadein = function(this)
+		tween_element_property(this, 'opacity', 1);
+	end,
+	render = function(this)
+		if this.opacity > 0 then
+			local ass = assdraw.ass_new()
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H000000}')
+			ass:append(ass_opacity(0.4, this.opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(0, 0, display.width, display.height)
+			ass:draw_stop()
+			return ass
+		end
+	end
+}))
 
 -- CHAPTERS SERIALIZATION
 
@@ -2265,7 +2268,7 @@ function open_file_navigation_menu(directory, handle_select, allowed_types, sele
 			handle_select(path)
 			menu:close()
 		end
-	end, {title = directory.basename..'/', title_height = 36, select_on_hover = false})
+	end, {title = directory.basename..'/', select_on_hover = false})
 end
 
 -- VALUE SERIALIZATION/NORMALIZATION
@@ -2361,9 +2364,7 @@ mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 -- mouse buttons
 mp.set_key_bindings({
 	{'mbtn_left', create_mouse_event_handler('mbtn_left_up'), create_mouse_event_handler('mbtn_left_down')},
-	{'mbtn_right', create_mouse_event_handler('mbtn_right_up'), create_mouse_event_handler('mbtn_right_down')},
 	{'mbtn_left_dbl', 'ignore'},
-	{'mbtn_right_dbl', 'ignore'},
 }, 'mouse_buttons', 'force')
 
 -- KEY BINDABLE FEATURES
