@@ -318,7 +318,7 @@ Adds an **Aspect ratio** submenu with multiple items that have no keybinds defin
 #  set video-aspect-override "2.35:1"  #! Aspect ratio > 2.35:1
 ```
 
-To see all the commands ou can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).
+To see all the commands you can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).
 
 ## Tips
 
