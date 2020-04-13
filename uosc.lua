@@ -148,7 +148,7 @@ Key  script-binding uosc/select-subtitles
 Key  script-binding uosc/select-audio
 Key  script-binding uosc/select-video
 Key  script-binding uosc/navigate-playlist
-Key  script-binding uosc/show-in-directory
+Key  script-binding uosc/navigate-chapters
 Key  script-binding uosc/navigate-directory
 Key  script-binding uosc/next-file
 Key  script-binding uosc/prev-file
@@ -156,6 +156,7 @@ Key  script-binding uosc/first-file
 Key  script-binding uosc/last-file
 Key  script-binding uosc/delete-file-next
 Key  script-binding uosc/delete-file-quit
+Key  script-binding uosc/show-in-directory
 ```
 ]]
 
@@ -2404,8 +2405,32 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 
 	menu:open(items, function(index)
 		mp.commandv('set', 'playlist-pos-1', tostring(index))
-		menu:close()
 	end, {title = 'Playlist', select_on_hover = false})
+end)
+mp.add_key_binding(nil, 'navigate-chapters', function()
+	local items = {}
+	local chapters = mp.get_property_native('chapter-list')
+	local selected_item = nil
+
+	for index, chapter in ipairs(chapters) do
+		-- Set as selected chapter if this is the first chapter with time lower
+		-- than current playing position (with 100ms leeway), or if this
+		-- chapters' time is the same as previously selected chapter (later
+		-- defined chapters are prioritized).
+		if state.position and (state.position + 0.1 > chapter.time or (selected_item and chapters[selected_item].time == chapter.time)) then
+			selected_item = index
+		end
+
+		items[#items + 1] = {
+			title = chapter.title or '',
+			hint = mp.format_time(chapter.time),
+			value = chapter.time
+		}
+	end
+
+	menu:open(items, function(time)
+		mp.commandv('seek', tostring(time), 'absolute')
+	end, {title = 'Chapters', select_on_hover = false, selected_item = selected_item})
 end)
 mp.add_key_binding(nil, 'show-in-directory', function()
 	local path = mp.get_property_native('path')

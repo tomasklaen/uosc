@@ -221,9 +221,9 @@ Menu to select a video track.
 
 Menu to select an item from playlist.
 
-#### `show-in-directory`
+#### `navigate-chapters`
 
-Show current file in your operating systems' file explorer.
+Menu to seek to start of a specific chapter.
 
 #### `navigate-directory`
 
@@ -254,6 +254,10 @@ Useful when watching periodic content.
 #### `delete-file-quit`
 
 Delete currently playing file and quit mpv.
+
+#### `show-in-directory`
+
+Show current file in your operating systems' file explorer.
 
 ## Context menu
 
