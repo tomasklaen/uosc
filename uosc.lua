@@ -2281,11 +2281,15 @@ mp.observe_property('border', 'bool', function (_, border)
 	request_render()
 end)
 mp.observe_property('playback-time', 'number', function(name, val)
+	-- Ignore the initial call with nil value
+	if val == nil then return end
+
 	state.position = val
-	state.elapsed_seconds = mp.get_property_native('playback-time')
+	state.elapsed_seconds = val
 	state.elapsed_time = state.elapsed_seconds and mp.format_time(state.elapsed_seconds) or nil
 	state.remaining_seconds = mp.get_property_native('playtime-remaining')
 	state.remaining_time = state.remaining_seconds and mp.format_time(state.remaining_seconds) or nil
+
 	request_render()
 end)
 mp.observe_property('osd-dimensions', 'native', function(name, val)
@@ -2293,9 +2297,11 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 	request_render()
 end)
 mp.register_event('seek', function()
-	-- Don't flash for times at the beginning of the video as that might be just
-	-- video looping around.
-	if mp.get_property_native('playback-time') > 1 then
+	local position = mp.get_property_native('playback-time')
+	local seek_length = math.abs(position - state.position)
+
+	-- Don't flash on video looping (seek to 0) or tiny seeks (frame-step)
+	if position > 0.5 and seek_length > 0.5 then
 		elements.timeline.flash()
 	end
 end)
