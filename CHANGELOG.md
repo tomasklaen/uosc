@@ -1,8 +1,15 @@
-# 2.0.1 - 2020-Apr-13
+# 2.1.0 - 2020-Apr-13
+
+New:
+- Chapter navigation under `uosc/navigate-chapters` command. Bind with:
+	```
+	key script-binding uosc/navigate-chapters
+	```
 
 Fixed:
 - `context-menu` command now correctly toggles the menu instead of reopening it.
 - Keyboard navigation not working properly in some menus.
+- Timeline will no longer flash on tiny seeks such as `frame-step`.
 
 # 2.0.0 - 2020-Apr-12
 
