@@ -346,6 +346,12 @@ function itable_slice(haystack, start_pos, end_pos)
 	return new_table
 end
 
+function table_copy(table)
+	local new_table = {}
+	for key, value in pairs(table) do new_table[key] = value end
+	return new_table
+end
+
 function tween(current, to, setter, on_end)
 	local timeout
 	local cutoff = math.abs(to - current) * 0.01
@@ -799,7 +805,7 @@ function Menu:open(items, open_item, opts)
 				local item = this.items[this.selected_item]
 				-- Is submenu
 				if item.items then
-					local opts = itable_slice(opts)
+					local opts = table_copy(opts)
 					opts.parent_menu = this
 					menu:open(item.items, this.open_item, opts)
 				else
