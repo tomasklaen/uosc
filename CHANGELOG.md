@@ -6,11 +6,15 @@ New:
 	key script-binding uosc/navigate-chapters
 	```
 
+Changed:
+- Use `media-title` instead of `filename` for window title.
+- Updated default `chapter_ranges` to be more robust.
+
 Fixed:
-- `context-menu` command now correctly toggles the menu instead of reopening it.
+- Crash on opening a video from saved state.
+- `context-menu` command not correctly toggling menus but always reopening them.
 - Keyboard navigation not working properly in some menus.
 - Timeline will no longer flash on tiny seeks such as `frame-step`.
-- Crash on opening a video from saved state.
 
 # 2.0.0 - 2020-Apr-12
 
