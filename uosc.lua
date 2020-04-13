@@ -840,17 +840,16 @@ function Menu:open(items, open_item, opts)
 				estimated_max_width = estimated_menu_title_width
 			end
 
-			local side_elements_width = elements.volume and (elements.volume.width + elements.volume.margin) * 2 or 0
-			this.width = math.min(
-				math.max(estimated_max_width, config.menu_min_width),
-				(display.width * 0.9) - side_elements_width
-			)
-			local title_size = this.title and this.title_size or 0
-			local max_height = round((display.height - elements.timeline.size_min) * 0.8) - title_size
+			-- Coordinates and sizes are of the scrollable area to make
+			-- consuming values in rendering easier. Title drawn above this, so
+			-- we need to account for that in max_height and ay position.
+			this.width = math.max(estimated_max_width, config.menu_min_width)
+			local title_height = this.title and this.title_height or 0
+			local max_height = round(display.height * 0.8) - title_height
 			this.height = math.min(round(this.scroll_step * #items) - this.item_spacing, max_height)
 			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
 			this.ax = round((display.width - this.width) / 2) + this.offset_x
-			this.ay = round((display.height - this.height) / 2 + title_size)
+			this.ay = round((display.height - this.height) / 2 + (title_height / 2))
 			this.bx = round(this.ax + this.width)
 			this.by = round(this.ay + this.height)
 
