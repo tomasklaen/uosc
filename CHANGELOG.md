@@ -1,3 +1,9 @@
+# 2.0.1 - 2020-Apr-13
+
+Fixed:
+- `context-menu` command now correctly toggles the menu instead of reopening it.
+- Keyboard navigation not working properly in some menus.
+
 # 2.0.0 - 2020-Apr-12
 
 Substantial rewrite with tons of new features and improvements! A lot of options have changed or disappeared, you need to reconfigure your config file.
