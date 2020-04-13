@@ -151,14 +151,14 @@ font_height_to_letter_width_ratio=0.5
 #
 # Display skippable youtube video sponsor blocks from https://github.com/po5/mpv_sponsorblock
 # ```
-# chapter_ranges=sponsor start<0000ff:0.5>sponsor end
+# chapter_ranges=sponsor start<3535a5:0.5>sponsor end
 # ```
 #
 # Display anime openings and endings as ranges:
 # ```
-# chapter_ranges=op<ffc500:0.5>.*,ed|ending<ffc500:0.5>.*|{eof}
+# chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}
 # ```
-chapter_ranges=op<ffc500:.5>.*,ed|ending<ffc500:.5>.*|{eof},sponsor start<0000ff:.5>sponsor end
+chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end
 ```
 
 ## Keybindings
