@@ -626,8 +626,8 @@ local Menu = {}
 Menu.__index = Menu
 local menu = setmetatable({key_bindings = {}}, Menu)
 
-function Menu:is_open()
-	return elements.menu ~= nil
+function Menu:is_open(menu_type)
+	return elements.menu ~= nil and (not menu_type or elements.menu.type == menu_type)
 end
 
 function Menu:open(items, open_item, opts)
@@ -2343,10 +2343,12 @@ mp.add_key_binding(nil, 'toggle-progress', function()
 	end
 end)
 mp.add_key_binding(nil, 'context-menu', function()
-	if state.context_menu_items then
+	if menu:is_open('context-menu') then
+		menu:close()
+	elseif state.context_menu_items then
 		menu:open(state.context_menu_items, function(command)
 			mp.command(command)
-		end)
+		end, {type = 'context-menu'})
 	end
 end)
 mp.add_key_binding(nil, 'load-subtitles', function()
