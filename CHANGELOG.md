@@ -10,6 +10,7 @@ Fixed:
 - `context-menu` command now correctly toggles the menu instead of reopening it.
 - Keyboard navigation not working properly in some menus.
 - Timeline will no longer flash on tiny seeks such as `frame-step`.
+- Crash on opening a video from saved state.
 
 # 2.0.0 - 2020-Apr-12
 
