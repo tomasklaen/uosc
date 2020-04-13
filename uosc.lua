@@ -729,9 +729,11 @@ function Menu:open(items, open_item, opts)
 				this.parent_menu:set_parent_opacity(opacity * config.menu_parent_opacity)
 			end
 		end,
+		get_item_below_cursor = function(this)
+			return math.ceil((cursor.y - this.ay + this.scroll_y) / this.scroll_step)
+		end,
 		scroll_to = function(this, pos)
 			this.scroll_y = math.max(math.min(pos, this.scroll_height), 0)
-			this:on_global_mouse_move()
 			request_render()
 		end,
 		center_selected_item = function(this)
@@ -851,7 +853,7 @@ function Menu:open(items, open_item, opts)
 		end,
 		on_global_mbtn_left_down = function(this)
 			if this.proximity_raw == 0 then
-				this.selected_item = math.ceil((cursor.y - this.ay + this.scroll_y) / this.scroll_step)
+				this.selected_item = this:get_item_below_cursor()
 				this:open_selected_item()
 			else
 				-- check if this is clicking on any parent menus
@@ -872,7 +874,7 @@ function Menu:open(items, open_item, opts)
 		on_global_mouse_move = function(this)
 			if this.select_on_hover then
 				if this.proximity_raw == 0 then
-					this.selected_item = math.ceil((cursor.y - this.ay + this.scroll_y) / this.scroll_step)
+					this.selected_item = this:get_item_below_cursor()
 				else
 					if this.selected_item then
 						this.previous_selected_item = this.selected_item
@@ -881,8 +883,18 @@ function Menu:open(items, open_item, opts)
 				end
 			end
 		end,
-		on_wheel_up = function(this) this:scroll_to(this.scroll_y - this.scroll_step) end,
-		on_wheel_down = function(this) this:scroll_to(this.scroll_y + this.scroll_step) end,
+		on_wheel_up = function(this)
+			this:scroll_to(this.scroll_y - this.scroll_step)
+			-- Selects item below cursor
+			this:on_global_mouse_move()
+			request_render()
+		end,
+		on_wheel_down = function(this)
+			this:scroll_to(this.scroll_y + this.scroll_step)
+			-- Selects item below cursor
+			this:on_global_mouse_move()
+			request_render()
+		end,
 		on_pgup = function(this) this:scroll_to(this.scroll_y - this.height) end,
 		on_pgdwn = function(this) this:scroll_to(this.scroll_y + this.height) end,
 		on_home = function(this) this:scroll_to(0) end,
