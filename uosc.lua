@@ -17,7 +17,7 @@ Options go in `script-opts/uosc.conf`. Defaults:
 
 ```
 # timeline size when fully retracted, 0 will hide it completely
-timeline_size_min=1
+timeline_size_min=2
 # timeline size when fully expanded, in pixels, 0 to disable
 timeline_size_max=40
 # same as ^ but when in fullscreen
@@ -90,7 +90,7 @@ subtitle_types=aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,
 # used to approximate text width
 # if you are using some wide font and see a lot of right side clipping in menus,
 # try bumping this up
-font_height_to_letter_width_ratio = 0.5
+font_height_to_letter_width_ratio=0.5
 
 # `chapter_ranges` lets you transform chapter indicators into range indicators
 # with custom color and opacity by creating a chapter range definition that
