@@ -2299,11 +2299,13 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 end)
 mp.register_event('seek', function()
 	local position = mp.get_property_native('playback-time')
-	local seek_length = math.abs(position - state.position)
+	if position and state.position then
+		local seek_length = math.abs(position - state.position)
 
-	-- Don't flash on video looping (seek to 0) or tiny seeks (frame-step)
-	if position > 0.5 and seek_length > 0.5 then
-		elements.timeline.flash()
+		-- Don't flash on video looping (seek to 0) or tiny seeks (frame-step)
+		if position > 0.5 and seek_length > 0.5 then
+			elements.timeline.flash()
+		end
 	end
 end)
 
