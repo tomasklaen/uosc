@@ -313,13 +313,25 @@ esc  quit  #! Quit
 q    quit  #!
 ```
 
-Adds an **Aspect ratio** submenu with multiple items that have no keybinds defined:
+Suggested minimal context menu setup to start with:
 
 ```
-#  set video-aspect-override "-1"      #! Aspect ratio > Default
-#  set video-aspect-override "16:9"    #! Aspect ratio > 16:9
-#  set video-aspect-override "4:3"     #! Aspect ratio > 4:3
-#  set video-aspect-override "2.35:1"  #! Aspect ratio > 2.35:1
+menu        script-binding uosc/context-menu
+mbtn_right  script-binding uosc/context-menu
+alt+s       script-binding uosc/load-subtitles     #! Load subtitles
+S           script-binding uosc/select-subtitles   #! Select subtitles
+A           script-binding uosc/select-audio       #! Select audio
+ctrl+s      async screenshot                       #! Utils > Screenshot
+P           script-binding uosc/navigate-playlist  #! Utils > Navigate playlist
+C           script-binding uosc/navigate-chapters  #! Utils > Navigate chapters
+D           script-binding uosc/navigate-directory #! Utils > Navigate directory
+#           set video-aspect-override "-1"         #! Aspect ratio > Default
+#           set video-aspect-override "16:9"       #! Aspect ratio > 16:9
+#           set video-aspect-override "4:3"        #! Aspect ratio > 4:3
+#           set video-aspect-override "2.35:1"     #! Aspect ratio > 2.35:1
+o           script-binding uosc/show-in-directory  #! Show in directory
+esc         quit #! Quit
+q           quit #!
 ```
 
 To see all the commands you can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).
