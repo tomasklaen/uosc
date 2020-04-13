@@ -1,4 +1,9 @@
-# 2.1.0 - 2020-Apr-13
+### 2.1.1 - 2020-Apr-13
+
+Changed:
+- Tweaked vertical alignment, scroll indicators, and button handling, for tall menus.
+
+## 2.1.0 - 2020-Apr-13
 
 New:
 - Chapter navigation under `uosc/navigate-chapters` command. Bind with:
