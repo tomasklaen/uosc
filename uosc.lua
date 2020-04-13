@@ -843,9 +843,9 @@ function Menu:open(items, open_item, opts)
 			-- Coordinates and sizes are of the scrollable area to make
 			-- consuming values in rendering easier. Title drawn above this, so
 			-- we need to account for that in max_height and ay position.
-			this.width = math.max(estimated_max_width, config.menu_min_width)
+			this.width = round(math.min(math.max(estimated_max_width, config.menu_min_width), display.width * 0.9))
 			local title_height = this.title and this.title_height or 0
-			local max_height = round(display.height * 0.8) - title_height
+			local max_height = round(display.height * 0.9) - title_height
 			this.height = math.min(round(this.scroll_step * #items) - this.item_spacing, max_height)
 			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
 			this.ax = round((display.width - this.width) / 2) + this.offset_x
@@ -1054,7 +1054,7 @@ end
 function icons.volume(pos_x, pos_y, size) return icons._volume(false, pos_x, pos_y, size) end
 function icons.volume_muted(pos_x, pos_y, size) return icons._volume(true, pos_x, pos_y, size) end
 
-function icons.right(pos_x, pos_y, size)
+function icons.arrow_right(pos_x, pos_y, size)
 	local ass = assdraw.ass_new()
 	if elements.volume.width == nil then return '' end
 	local scale = size / 200
@@ -1639,7 +1639,7 @@ function render_menu(this)
 		elseif has_submenu then
 			ass:new_event()
 			ass:append(icon(
-				'right',
+				'arrow_right',
 				this.bx - this.item_content_spacing - (icon_size / 2), -- x
 				item_ay + (this.item_height / 2), -- y
 				icon_size, -- size
@@ -1649,21 +1649,41 @@ function render_menu(this)
 			))
 		end
 
-		-- Scrollbar
-		if this.scroll_height > 0 then
-			local scrollbar_grove = this.height - 4
-			local scrollbar_size = math.max((this.height / (this.scroll_height + this.height)) * scrollbar_grove, 40)
-			local scrollbar_y = this.ay + 2 + ((this.scroll_y / this.scroll_height) * (scrollbar_grove - scrollbar_size))
-			ass:new_event()
-			ass:append('{\\blur0\\bord1\\1c&H'..options.color_foreground..'\\3c&H'..options.color_background..'}')
-			ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.5))
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(this.bx - 2, scrollbar_y, this.bx, scrollbar_y + scrollbar_size)
-			ass:draw_stop()
-		end
-
 		::continue::
+	end
+
+	-- Scrollable area overflow indicators
+	if this.scroll_y > 0 then
+		ass:new_event()
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
+		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.8))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:rect_cw(this.ax, this.ay, this.bx, this.ay + 4)
+		ass:draw_stop()
+	end
+	if this.scroll_y < this.scroll_height then
+		ass:new_event()
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
+		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.8))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:rect_cw(this.ax, this.by - 4, this.bx, this.by)
+		ass:draw_stop()
+	end
+
+	-- Scrollbar
+	if this.scroll_height > 0 then
+		local groove_height = this.height - 2
+		local thumb_height = math.max((this.height / (this.scroll_height + this.height)) * groove_height, 40)
+		local thumb_y = this.ay + 1 + ((this.scroll_y / this.scroll_height) * (groove_height - thumb_height))
+		ass:new_event()
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+		ass:append(ass_opacity(options.menu_opacity, this.opacity * 0.8))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:rect_cw(this.bx - 3, thumb_y, this.bx - 1, thumb_y + thumb_height)
+		ass:draw_stop()
 	end
 
 	return ass
