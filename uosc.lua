@@ -2289,10 +2289,13 @@ mp.observe_property('volume', 'number', function(_, value)
 	local is_initial_call = state.volume == nil
 	state.volume = value
 	if not is_initial_call then elements.volume.flash() end
-	request_render()
 end)
 mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
-mp.observe_property('mute', 'bool', create_state_setter('mute'))
+mp.observe_property('mute', 'bool', function(_, value)
+	local is_initial_call = state.mute == nil
+	state.mute = value
+	if not is_initial_call then elements.volume.flash() end
+end)
 mp.observe_property('border', 'bool', function (_, border)
 	state.border = border
 	-- Sets 1px bottom border for bars in no-border mode
