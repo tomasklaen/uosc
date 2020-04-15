@@ -636,7 +636,7 @@ menu:open(items, open_item)
 ]]
 local Menu = {}
 Menu.__index = Menu
-local menu = setmetatable({key_bindings = {}}, Menu)
+local menu = setmetatable({key_bindings = {}, is_closing = false}, Menu)
 
 function Menu:is_open(menu_type)
 	return elements.menu ~= nil and (not menu_type or elements.menu.type == menu_type)
@@ -964,15 +964,17 @@ end
 function Menu:close(immediate, callback)
 	if type(immediate) ~= 'boolean' then callback = immediate end
 
-	if elements:has('menu') then
+	if elements:has('menu') and not menu.is_closing then
 		function close()
 			elements.menu:destroy()
 			elements:remove('menu')
+			menu.is_closing = false
 			update_proximities()
 			menu:disable_key_bindings()
 			call_me_maybe(callback)
 		end
 
+		menu.is_closing = true
 		elements.curtain:fadeout()
 
 		if immediate then
