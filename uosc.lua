@@ -1,6 +1,6 @@
 --[[
 
-uosc 2.1.1 - 2020-Apr-13 | https://github.com/darsain/uosc
+uosc 2.2.0 - 2020-Apr-15 | https://github.com/darsain/uosc
 
 Minimalistic cursor proximity based UI for MPV player.
 

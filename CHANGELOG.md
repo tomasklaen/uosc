@@ -1,3 +1,14 @@
+## 2.2.0 - 2020-Apr-15
+
+New:
+- Timeline now displays cached ranges for streaming videos. You can turn it off or tweak styles with `timeline_cached_ranges` option.
+
+Changed:
+- Volume bar now also flashes on mute changes.
+
+Fixed:
+- Escape button not closing open menus.
+
 ### 2.1.1 - 2020-Apr-13
 
 Changed:
