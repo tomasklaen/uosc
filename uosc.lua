@@ -25,9 +25,6 @@ timeline_size_min_fullscreen=0
 timeline_size_max_fullscreen=60
 # timeline opacity
 timeline_opacity=0.8
-# display seekable buffered ranges for streaming videos, syntax `color:opacity`,
-# color is an BBGGRR hex code, set to empty or `no` to disable
-timeline_cached_ranges=345433:0.5
 # adds a top border of background color to help visually separate elapsed bar
 # from video of similar color
 # in no border windowed mode bottom border is added as well to separate from
@@ -35,6 +32,9 @@ timeline_cached_ranges=345433:0.5
 # this might be unwanted if you are using unique/rare colors with low overlap
 # chance, so you can disable it by setting to 0
 timeline_border=1
+# display seekable buffered ranges for streaming videos, syntax `color:opacity`,
+# color is an BBGGRR hex code, set to empty or `no` to disable
+timeline_cached_ranges=345433:0.5
 # when video position is changed externally (e.g. hotkeys), flash the timeline
 # for this amount of time, set to 0 to disable
 timeline_flash_duration=300
@@ -182,8 +182,8 @@ local options = {
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
 	timeline_opacity = 0.8,
-	timeline_cached_ranges = '345433:0.5',
 	timeline_border = 1,
+	timeline_cached_ranges = '345433:0.5',
 	timeline_flash_duration = 400,
 
 	chapters = 'dots',
