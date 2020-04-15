@@ -820,6 +820,9 @@ function Menu:open(items, open_item, opts)
 				end
 			end
 		end,
+		close = function(this)
+			menu:close()
+		end,
 		on_display_resize = function(this)
 			this.item_height = (state.fullscreen or state.maximized) and options.menu_item_height_fullscreen or options.menu_item_height
 			this.font_size = round(this.item_height * 0.5)
