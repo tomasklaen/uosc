@@ -25,6 +25,9 @@ timeline_size_min_fullscreen=0
 timeline_size_max_fullscreen=60
 # timeline opacity
 timeline_opacity=0.8
+# display seekable buffered ranges for streaming videos, syntax `color:opacity`,
+# color is an BBGGRR hex code, set to empty or `no` to disable
+timeline_cached_ranges=345433:0.5
 # adds a top border of background color to help visually separate elapsed bar
 # from video of similar color
 # in no border windowed mode bottom border is added as well to separate from
@@ -179,6 +182,7 @@ local options = {
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
 	timeline_opacity = 0.8,
+	timeline_cached_ranges = '345433:0.5',
 	timeline_border = 1,
 	timeline_flash_duration = 400,
 
@@ -265,7 +269,8 @@ local state = {
 		if not options.autohide then return end
 		handle_mouse_leave()
 	end),
-	mouse_bindings_enabled = false
+	mouse_bindings_enabled = false,
+	cached_ranges = nil,
 }
 
 -- HELPERS
@@ -1175,6 +1180,7 @@ function render_timeline(this)
 	local fay = bay + state.timeline_top_padding
 	local fbx = bbx * progress
 	local fby = bby - state.timeline_bottom_padding
+	local foreground_size = bby - bay
 	local foreground_coordinates = fax..','..fay..','..fbx..','..fby -- for clipping
 
 	-- Background
@@ -1194,6 +1200,24 @@ function render_timeline(this)
 	ass:draw_start()
 	ass:rect_cw(fax, fay, fbx, fby)
 	ass:draw_stop()
+
+	-- Seekable ranges
+	if options.timeline_cached_ranges and state.cached_ranges then
+		local range_height = math.max(foreground_size / 8, size_min)
+		local range_ay = fby - range_height
+		for _, range in ipairs(state.cached_ranges) do
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H'..options.timeline_cached_ranges.color..'}')
+			ass:append(ass_opacity(options.timeline_cached_ranges.opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(
+				bbx * (range['start'] / state.duration), range_ay,
+				bbx * (range['end'] / state.duration), range_ay + range_height
+			)
+			ass:draw_stop()
+		end
+	end
 
 	-- Custom ranges
 	if state.chapter_ranges ~= nil then
@@ -1220,12 +1244,11 @@ function render_timeline(this)
 	-- Chapters
 	if options.chapters ~= '' and state.chapters ~= nil and #state.chapters > 0 then
 		local half_size = size / 2
-		local size_padded = bby - bay
 		local dots = false
 		local chapter_size, chapter_y
 		if options.chapters == 'dots' then
 			dots = true
-			chapter_size = math.min(6, (size_padded / 2) + 2)
+			chapter_size = math.min(6, (foreground_size / 2) + 2)
 			chapter_y = math.min(fay + chapter_size, fay + half_size)
 		elseif options.chapters == 'lines' then
 			chapter_size = size
@@ -1240,7 +1263,7 @@ function render_timeline(this)
 
 		if chapter_size ~= nil then
 			-- for 1px chapter size, use the whole size of the bar including padding
-			chapter_size = size <= 1 and size_padded or chapter_size
+			chapter_size = size <= 1 and foreground_size or chapter_size
 			local chapter_half_size = chapter_size / 2
 
 			for i, chapter in ipairs(state.chapters) do
@@ -2275,6 +2298,11 @@ end
 
 options.media_types = split(options.media_types, ' *, *')
 options.subtitle_types = split(options.subtitle_types, ' *, *')
+options.timeline_cached_ranges = (function()
+	if options.timeline_cached_ranges == '' or options.timeline_cached_ranges == 'no' then return nil end
+	local parts = split(options.timeline_cached_ranges, ':')
+	return parts[1] and {color = parts[1], opacity = tonumber(parts[2])} or nil
+end)()
 
 -- HOOKS
 
@@ -2318,6 +2346,14 @@ end)
 mp.observe_property('osd-dimensions', 'native', function(name, val)
 	update_display_dimensions()
 	request_render()
+end)
+mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
+	if cache_state == nil then
+		state.cached_ranges = nil
+		return
+	end
+	local cache_ranges = cache_state['seekable-ranges']
+	state.cached_ranges = #cache_ranges > 0 and cache_ranges or nil
 end)
 mp.register_event('seek', function()
 	local position = mp.get_property_native('playback-time')
