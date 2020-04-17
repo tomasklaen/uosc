@@ -675,6 +675,7 @@ function Menu:open(items, open_item, opts)
 	elements:add('menu', Element.new({
 		interactive = true,
 		belongs_to_interactive_proximity = false,
+		type = nil, -- menu type such as `context-menu`, `navigate-chapters`, ...
 		title = nil,
 		width = nil,
 		height = nil,
@@ -762,6 +763,12 @@ function Menu:open(items, open_item, opts)
 		scroll_to = function(this, pos)
 			this.scroll_y = math.max(math.min(pos, this.scroll_height), 0)
 			request_render()
+		end,
+		select_item = function(this, index)
+			if index >= 1 and index <= #this.items then
+				this.selected_item = index
+				this:center_selected_item()
+			end
 		end,
 		center_selected_item = function(this)
 			if this.selected_item then
@@ -2268,7 +2275,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	end
 end
 
-function open_file_navigation_menu(directory, handle_select, allowed_types, selected_file)
+function open_file_navigation_menu(menu_type, directory, handle_select, allowed_types, selected_file)
 	directory = serialize_path(directory)
 	local directories, error = utils.readdir(directory.path, 'dirs')
 	local files, error = get_files_in_directory(directory.path, allowed_types)
@@ -2314,7 +2321,7 @@ function open_file_navigation_menu(directory, handle_select, allowed_types, sele
 			handle_select(path)
 			menu:close()
 		end
-	end, {title = directory.basename..'/', select_on_hover = false})
+	end, {type = menu_type, title = directory.basename..'/', select_on_hover = false})
 end
 
 -- VALUE SERIALIZATION/NORMALIZATION
@@ -2378,7 +2385,30 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	local cache_ranges = cache_state['seekable-ranges']
 	state.cached_ranges = #cache_ranges > 0 and cache_ranges or nil
 end)
+
+mp.register_event('file-loaded', function()
+	-- Update selected file in playlist navigation menu
+	if menu:is_open('navigate-playlist') then
+		local index = mp.get_property_number('playlist-pos-1')
+		if index then elements.menu:select_item(index) end
+	end
+
+	-- Update selected file in directory navigation menu
+	if menu:is_open('navigate-directory') then
+		local path = mp.get_property_native('path')
+
+		if is_protocol(path) then return end
+
+		path = serialize_path(path)
+		local index = itable_find(elements.menu.items, function(_, item)
+			return item.value == path.path
+		end)
+
+		if index then elements.menu:select_item(index) end
+	end
+end)
 mp.register_event('seek', function()
+	-- Flash timeline
 	local position = mp.get_property_native('playback-time')
 	if position and state.position then
 		local seek_length = math.abs(position - state.position)
@@ -2387,6 +2417,16 @@ mp.register_event('seek', function()
 		if position > 0.5 and seek_length > 0.5 then
 			elements.timeline.flash()
 		end
+	end
+
+	-- Update selected chapter in chaper navigation menu
+	if position and menu:is_open('navigate-chapters') then
+		local index = itable_find(elements.menu.items, function(_, item)
+			-- item.value = chapter.time
+			return item.value >= position
+		end)
+
+		if index then elements.menu:select_item(index) end
 	end
 end)
 
@@ -2486,7 +2526,7 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 
 	menu:open(items, function(index)
 		mp.commandv('set', 'playlist-pos-1', tostring(index))
-	end, {title = 'Playlist', select_on_hover = false})
+	end, {type = 'navigate-playlist', title = 'Playlist', select_on_hover = false})
 end)
 mp.add_key_binding(nil, 'navigate-chapters', function()
 	local items = {}
@@ -2511,7 +2551,7 @@ mp.add_key_binding(nil, 'navigate-chapters', function()
 
 	menu:open(items, function(time)
 		mp.commandv('seek', tostring(time), 'absolute')
-	end, {title = 'Chapters', select_on_hover = false, selected_item = selected_item})
+	end, {type = 'navigate-chapters', title = 'Chapters', select_on_hover = false, selected_item = selected_item})
 end)
 mp.add_key_binding(nil, 'show-in-directory', function()
 	local path = mp.get_property_native('path')
@@ -2539,6 +2579,7 @@ mp.add_key_binding(nil, 'navigate-directory', function()
 	if not is_protocol(path) then
 		path = serialize_path(path)
 		open_file_navigation_menu(
+			'navigate-directory',
 			path.dirname,
 			function(path) mp.commandv('loadfile', path) end,
 			options.media_types,
