@@ -1757,19 +1757,20 @@ function create_flash_function_for(element_name)
 
 	local flash_timer
 	flash_timer = mp.add_timeout(duration / 1000, function()
-		tween_element_property(elements[element_name], 'forced_proximity', 1, 0, function()
+		tween_element_property(elements[element_name], 'forced_proximity', 1, state.interactive_proximity, function()
 			elements[element_name].forced_proximity = nil
 		end)
 	end)
 	flash_timer:kill()
 
 	return function()
-		if elements[element_name].proximity < 1 or flash_timer:is_enabled() then
+		if state.interactive_proximity < 1 or flash_timer:is_enabled() then
 			tween_element_stop(elements[element_name])
 			elements[element_name].forced_proximity = 1
 			flash_timer:kill()
 			flash_timer:resume()
 		end
+		request_render()
 	end, flash_timer
 end
 
