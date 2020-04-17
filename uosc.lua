@@ -530,6 +530,21 @@ function get_adjacent_media_file(file_path, direction)
 	end
 end
 
+-- Ensures chapters are in chronological order
+function get_normalized_chapters()
+	local chapters = mp.get_property_native('chapter-list')
+
+	if not chapters then return end
+
+	-- Copy table
+	chapters = itable_slice(chapters)
+
+	-- Ensure chronological order of chapters
+	table.sort(chapters, function(a, b) return a.time < b.time end)
+
+	return chapters
+end
+
 -- Element
 --[[
 Signature:
@@ -2047,7 +2062,9 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 	::continue::
 end
 
-function parse_chapters(name, chapters)
+function parse_chapters()
+	local chapters = get_normalized_chapters()
+
 	if not chapters then return end
 
 	-- Reset custom ranges
@@ -2473,7 +2490,7 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 end)
 mp.add_key_binding(nil, 'navigate-chapters', function()
 	local items = {}
-	local chapters = mp.get_property_native('chapter-list')
+	local chapters = get_normalized_chapters()
 	local selected_item = nil
 
 	for index, chapter in ipairs(chapters) do
