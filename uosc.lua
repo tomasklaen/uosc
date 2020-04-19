@@ -25,73 +25,63 @@ timeline_size_min_fullscreen=0
 timeline_size_max_fullscreen=60
 # timeline opacity
 timeline_opacity=0.8
-# adds a top border of background color to help visually separate elapsed bar
-# from video of similar color
-# in no border windowed mode bottom border is added as well to separate from
-# whatever is behind the current window
-# this might be unwanted if you are using unique/rare colors with low overlap
-# chance, so you can disable it by setting to 0
+# top (and bottom in no-border mode) border of background color to help visually
+# separate elapsed bar from a video of similar color or desktop background
 timeline_border=1
 # display seekable buffered ranges for streaming videos, syntax `color:opacity`,
 # color is an BBGGRR hex code, set to empty or `no` to disable
 timeline_cached_ranges=345433:0.5
-# when video position is changed externally (e.g. hotkeys), flash the timeline
-# for this amount of time, set to 0 to disable
-timeline_flash_duration=300
+# briefly show timeline on external changes (e.g. seeking with a hotkey)
+timeline_flash=yes
 
-# timeline chapters indicator style: dots, lines, lines-top, lines-bottom
+# timeline chapters style: dots, lines, lines-top, lines-bottom
 # set to empty to disable
 chapters=dots
-# timeline chapters indicator opacity
 chapters_opacity=0.3
 
-# where to display volume controls, set to empty to disable
+# where to display volume controls (`left` or `right`), set to empty to disable
 volume=right
-# volume control horizontal size
 volume_size=40
-# same as ^ but when in fullscreen
 volume_size_fullscreen=40
-# volume controls opacity
 volume_opacity=0.8
-# thin border around volume slider
 volume_border=1
-# when clicking or dragging volume slider, volume will snap only to increments
-# of this value
-volume_snap_to=1
-# when volume is changed externally (e.g. hotkeys), flash the volume controls
-# for this amount of time, set to 0 to disable
-volume_flash_duration=300
+# when dragging the slider, volume will round to increments of this value
+volume_rounding=1
+# briefly show volume slider on external changes (e.g. changed by a hotkey)
+volume_flash=yes
+
+# playback speed widget: drag left-right to change, click to reset
+speed=no
+speed_size=35
+speed_size_fullscreen=50
+speed_opacity=1
+# when dragging the slider, speed will round to increments of this value
+speed_rounding=0.1
+# briefly show speed slider on external changes (e.g. changed by a hotkey)
+speed_flash=yes
 
 # controls all menus, such as context menu, subtitle loader/selector, etc
-menu_item_height=40
-menu_item_height_fullscreen=50
+menu_item_height=30
+menu_item_height_fullscreen=45
 menu_opacity=0.8
 
-# playback speed control widget: drag to change, click to reset
-speed=no
-speed_size=40
-speed_size_fullscreen=60
-speed_opacity=1
-speed_step=0.1
-
-# pause video on clicks shorter than this number of milliseconds
-# enables you to use left mouse button for both dragging and pausing the video
-# I recommend a duration of 120, leave at 0 to disable
+# pause video on clicks shorter than this number of milliseconds, 0 to disable
 pause_on_click_shorter_than=0
-# proximity below which elements are fully faded in/expanded
-proximity_min=40
-# proximity above which elements are fully faded out/retracted
-proximity_max=120
-# BBGGRR - BLUE GREEN RED hex codes
+# for how long in milliseconds to show elements they're it's being flashed
+flash_duration=400
+# distances in pixels below which elements are fully faded in/out
+proximity_in=40
+proximity_out=120
+# BBGGRR - BLUE GREEN RED hex color codes
 color_foreground=ffffff
 color_foreground_text=000000
 color_background=000000
 color_background_text=ffffff
-# hide proximity based elements when mpv autohides the cursor
+# hide UI when mpv autohides the cursor
 autohide=no
 # display window title (filename) in top window controls bar in no-border mode
 title=no
-# load first file when calling next on last file in a directory and vice versa
+# load first file when calling next on a last file in a directory and vice versa
 directory_navigation_loops=no
 # file types to display in file explorer when navigating media files
 media_types=3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv
@@ -102,9 +92,7 @@ subtitle_types=aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,
 # try bumping this up
 font_height_to_letter_width_ratio=0.5
 
-# `chapter_ranges` lets you transform chapter indicators into range indicators
-# with custom color and opacity by creating a chapter range definition that
-# matches chapter titles.
+# `chapter_ranges` lets you transform chapter indicators into range indicators.
 #
 # Chapter range definition syntax:
 # ```
@@ -191,7 +179,7 @@ local options = {
 	timeline_opacity = 0.8,
 	timeline_border = 1,
 	timeline_cached_ranges = '345433:0.5',
-	timeline_flash_duration = 400,
+	timeline_flash = true,
 
 	chapters = 'dots',
 	chapters_opacity = 0.3,
@@ -201,23 +189,24 @@ local options = {
 	volume_size_fullscreen = 60,
 	volume_opacity = 0.8,
 	volume_border = 1,
-	volume_snap_to = 1,
-	volume_flash_duration = 400,
+	volume_rounding = 1,
+	volume_flash = true,
 
 	speed = false,
-	speed_size = 40,
-	speed_size_fullscreen = 60,
+	speed_size = 35,
+	speed_size_fullscreen = 50,
 	speed_opacity = 1,
-	speed_step = 0.1,
+	speed_rounding = 0.1,
+	speed_flash = true,
 
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
 	menu_opacity = 0.8,
 
 	pause_on_click_shorter_than = 0,
-	click_duration = 110,
-	proximity_min = 40,
-	proximity_max = 120,
+	flash_duration = 400,
+	proximity_in = 40,
+	proximity_out = 120,
 	color_foreground = 'ffffff',
 	color_foreground_text = '000000',
 	color_background = '000000',
@@ -371,9 +360,8 @@ end
 -- Creates in-between frames to animate value from `from` to `to` numbers.
 -- Returns function that terminates animation.
 -- `to` can be a function that returns target value, useful for movable targets.
--- `on_end` callback is called only when animation arrives at the end.
--- `cleanup` callback is called either on_end, or when animation is canceled.
-function tween(from, to, setter, on_end, cleanup)
+-- `callback` is called either on animation end, or when animation is canceled
+function tween(from, to, setter, callback)
 	local timeout
 	local getTo = type(to) == 'function' and to or function() return to end
 	local cutoff = math.abs(getTo() - from) * 0.01
@@ -383,8 +371,7 @@ function tween(from, to, setter, on_end, cleanup)
 		setter(is_end and getTo() or from)
 		request_render()
 		if is_end then
-			call_me_maybe(on_end)
-			call_me_maybe(cleanup)
+			call_me_maybe(callback)
 		else
 			timeout:resume()
 		end
@@ -393,22 +380,21 @@ function tween(from, to, setter, on_end, cleanup)
 	tick()
 	return function()
 		timeout:kill()
-		call_me_maybe(cleanup)
+		call_me_maybe(callback)
 	end
 end
 
 -- Kills ongoing animation if one is already running on this element.
 -- Killed animation will not get its `on_end` called.
-function tween_element(element, from, to, setter, on_end, cleanup)
+function tween_element(element, from, to, setter, callback)
 	tween_element_stop(element)
 
 	element.stop_current_animation = tween(
 		from, to,
 		function(value) setter(element, value) end,
-		on_end,
 		function()
 			element.stop_current_animation = nil
-			call_me_maybe(cleanup, element)
+			call_me_maybe(callback, element)
 		end
 	)
 end
@@ -424,8 +410,8 @@ function tween_element_stop(element)
 end
 
 -- Helper to automatically use an element property setter
-function tween_element_property(element, prop, from, to, on_end, cleanup)
-	tween_element(element, from, to, function(_, value) element[prop] = value end, on_end, cleanup)
+function tween_element_property(element, prop, from, to, callback)
+	tween_element(element, from, to, function(_, value) element[prop] = value end, callback)
 end
 
 function get_point_to_rectangle_proximity(point, rect)
@@ -603,7 +589,19 @@ Element.__index = Element
 function Element.new(props)
 	local element = setmetatable(props, Element)
 	element._eventListeners = {}
+
+	-- Flash timer
+	element._flash_out_timer = mp.add_timeout(options.flash_duration / 1000, function()
+		local getTo = function() return state.interactive_proximity end
+		element:tween_property('forced_proximity', 1, getTo, function()
+			print('what')
+			element.forced_proximity = nil
+		end)
+	end)
+	element._flash_out_timer:kill()
+
 	element:init()
+
 	return element
 end
 
@@ -640,6 +638,18 @@ function Element:trigger(name, ...)
 	self:maybe('on_'..name, ...)
 	if self._eventListeners[name] == nil then return end
 	for _, handler in ipairs(self._eventListeners[name]) do handler(...) end
+end
+
+-- Briefly flashes the element for `options.flash_duration` milliseconds.
+-- Useful to visualize changes of volume and timeline when changed via hotkeys.
+-- Implemented by briefly adding animated `forced_proximity` property to the element.
+function Element:flash()
+	if options.flash_duration > 0 and (state.interactive_proximity < 1 or self._flash_out_timer:is_enabled()) then
+		self:tween_stop()
+		self.forced_proximity = 1
+		self._flash_out_timer:kill()
+		self._flash_out_timer:resume()
+	end
 end
 
 -- ELEMENTS
@@ -794,11 +804,11 @@ function Menu:open(items, open_item, opts)
 				update_proximities()
 			end
 		end,
-		fadeout = function(this, callback)
-			tween_element(this, 1, 0, function(this, pos)
+		fadeout = function(this, on_end, cleanup)
+			this:tween(1, 0, function(this, pos)
 				this.opacity = pos
 				this:set_parent_opacity(pos * config.menu_parent_opacity)
-			end, callback)
+			end, on_end, cleanup)
 		end,
 		set_parent_opacity = function(this, opacity)
 			if this.parent_menu then
@@ -814,9 +824,12 @@ function Menu:open(items, open_item, opts)
 			request_render()
 		end,
 		select_item = function(this, index)
-			if index >= 1 and index <= #this.items then
+			if index and index >= 1 and index <= #this.items then
 				this.selected_item = index
 				this:center_selected_item()
+			else
+				this.selected_item = nil
+				request_render()
 			end
 		end,
 		center_selected_item = function(this)
@@ -985,6 +998,8 @@ function Menu:open(items, open_item, opts)
 		on_end = function(this) this:scroll_to(this.scroll_height) end,
 		render = render_menu,
 	}))
+
+	elements.menu:maybe('on_open')
 end
 
 function Menu:add_key_binding(key, name, fn, flags)
@@ -1037,6 +1052,7 @@ function Menu:close(immediate, callback)
 
 	if elements:has('menu') and not menu.is_closing then
 		function close()
+			elements.menu:maybe('on_close')
 			elements.menu:destroy()
 			elements:remove('menu')
 			menu.is_closing = false
@@ -1051,7 +1067,7 @@ function Menu:close(immediate, callback)
 		if immediate then
 			close()
 		else
-			elements.menu:fadeout(close)
+			elements.menu:fadeout(nil, close)
 		end
 	end
 end
@@ -1171,9 +1187,9 @@ function update_element_cursor_proximity(element)
 		element.proximity_raw = infinity
 		element.proximity = 0
 	else
-		local range = options.proximity_max - options.proximity_min
+		local range = options.proximity_out - options.proximity_in
 		element.proximity_raw = get_point_to_rectangle_proximity(cursor, element)
-		element.proximity = menu:is_open() and 0 or 1 - (math.min(math.max(element.proximity_raw - options.proximity_min, 0), range) / range)
+		element.proximity = menu:is_open() and 0 or 1 - (math.min(math.max(element.proximity_raw - options.proximity_in, 0), range) / range)
 	end
 end
 
@@ -1682,7 +1698,7 @@ function render_speed(this)
 	-- Notches
 	local speed_at_center = state.speed
 	if this.dragging then
-		speed_at_center = this.dragging.start_speed + ((-this.dragging.distance / this.step_distance) * options.speed_step)
+		speed_at_center = this.dragging.start_speed + ((-this.dragging.distance / this.step_distance) * options.speed_rounding)
 		speed_at_center = math.min(math.max(speed_at_center, 0.01), 100)
 	end
 	local nearest_notch_speed = round(speed_at_center / this.notch_every) * this.notch_every
@@ -1916,34 +1932,6 @@ end
 
 -- STATIC ELEMENTS
 
--- Creates a function that, when called, briefly flashes passed element name.
--- Useful to visualize changes of volume and timeline when changed via hotkeys.
-function create_flash_function_for(element_name)
-	local duration = options[element_name..'_flash_duration']
-	if not duration or duration < 1 then
-		return function() end
-	end
-
-	local flash_timer
-	flash_timer = mp.add_timeout(duration / 1000, function()
-		local getTo = function() return state.interactive_proximity end
-		elements[element_name]:tween_property('forced_proximity', 1, getTo, nil, function()
-			elements[element_name].forced_proximity = nil
-		end)
-	end)
-	flash_timer:kill()
-
-	return function()
-		if state.interactive_proximity < 1 or flash_timer:is_enabled() then
-			tween_element_stop(elements[element_name])
-			elements[element_name].forced_proximity = 1
-			flash_timer:kill()
-			flash_timer:resume()
-		end
-		request_render()
-	end, flash_timer
-end
-
 elements:add('timeline', Element.new({
 	interactive = true,
 	pressed = false,
@@ -1952,13 +1940,24 @@ elements:add('timeline', Element.new({
 	font_size = 0, -- calculated in on_display_resize
 	top_border = options.timeline_border,
 	bottom_border = 0, -- set dynamically in `border` property observer
-	flash = create_flash_function_for('timeline'),
 	init = function(this)
+		-- Toggle 1px bottom border for timeline in no-border mode
 		mp.observe_property('border', 'bool', function(_, border)
-			-- Sets 1px bottom border for timeline in no-border mode
 			this.bottom_border = not border and options.timeline_border or 0
 			request_render()
 		end)
+
+		-- Flash on external changes
+		if options.timeline_flash then
+			mp.register_event('seek', function()
+				local position = mp.get_property_native('playback-time')
+				if position and state.position then
+					local seek_length = math.abs(position - state.position)
+					-- Don't flash on video looping (seek to 0) or tiny seeks (frame-step)
+					if position > 0.5 and seek_length > 0.5 then this:flash() end
+				end
+			end)
+		end
 	end,
 	get_effective_proximity = function(this)
 		if this.pressed then
@@ -2056,7 +2055,21 @@ if itable_find({'left', 'right'}, options.volume) then
 		height = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		margin = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		font_size = nil, -- calculated in on_display_resize
-		flash = create_flash_function_for('volume'),
+		init = function(this)
+			-- FLash on external changes
+			if options.volume_flash then
+				local is_initial_volume_call = true
+				mp.observe_property('volume', 'number', function(_, value)
+					if not is_initial_volume_call then this:flash() end
+					is_initial_volume_call = false
+				end)
+				local is_initial_mute_call = true
+				mp.observe_property('mute', 'bool', function(_, value)
+					if not is_initial_mute_call then this:flash() end
+					is_initial_mute_call = false
+				end)
+			end
+		end,
 		on_display_resize = function(this)
 			local left = options.volume == 'left'
 			this.width = (state.fullscreen or state.maximized) and options.volume_size_fullscreen or options.volume_size
@@ -2112,7 +2125,7 @@ if itable_find({'left', 'right'}, options.volume) then
 		set_from_cursor = function(this)
 			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
 			local new_volume = math.min(math.max(volume_fraction, 0), 1) * state.volume_max
-			new_volume = round(new_volume / options.volume_snap_to) * options.volume_snap_to
+			new_volume = round(new_volume / options.volume_rounding) * options.volume_rounding
 			if state.volume ~= new_volume then mp.commandv('set', 'volume', new_volume) end
 		end,
 		on_mbtn_left_down = function(this)
@@ -2139,29 +2152,37 @@ if options.speed then
 		init = function(this)
 			-- Fade out/in on timeline mouse enter/leave
 			elements.timeline:on('mouse_enter', function()
-				this:tween_property('forced_proximity', 1, 0, nil, function(this)
-					this.forced_proximity = 0
-				end)
+				if not this.dragging then this:fadeout() end
 			end)
 			elements.timeline:on('mouse_leave', function()
-				local get_current_proximity = function() return state.interactive_proximity end
-				this:tween_property('forced_proximity', 0, get_current_proximity, nil, function(this)
-					this.forced_proximity = nil
-				end)
+				if not this.dragging then this:fadein() end
 			end)
 
 			-- Flash on external changes
-			mp.observe_property_native('speed', function()
-				if not this.dragging then
-					this:flash()
-				end
+			if options.speed_flash then
+				local initial_call = true
+				mp.observe_property('speed', 'number', function()
+					if not initial_call and not this.dragging then this:flash() end
+					initial_call = false
+				end)
+			end
+		end,
+		fadeout = function(this)
+			this:tween_property('forced_proximity', 1, 0, function(this)
+				this.forced_proximity = 0
+			end)
+		end,
+		fadein = function(this)
+			local get_current_proximity = function() return state.interactive_proximity end
+			this:tween_property('forced_proximity', 0, get_current_proximity, function(this)
+				this.forced_proximity = nil
 			end)
 		end,
 		on_display_resize = function(this)
 			this.height = (state.fullscreen or state.maximized) and options.speed_size_fullscreen or options.speed_size
 			this.width = this.height * 5
 			this.notch_spacing = this.width / this.notches
-			this.step_distance = this.notch_spacing * (options.speed_step / this.notch_every)
+			this.step_distance = this.notch_spacing * (options.speed_rounding / this.notch_every)
 			this.ax = (display.width - this.width) / 2
 			this.by = display.height - elements.timeline.size_max - (this.height / 3)
 			this.ay = this.by - this.height
@@ -2171,7 +2192,7 @@ if options.speed then
 		set_from_cursor = function(this)
 			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
 			local new_volume = math.min(math.max(volume_fraction, 0), 1) * state.volume_max
-			new_volume = round(new_volume / options.volume_snap_to) * options.volume_snap_to
+			new_volume = round(new_volume / options.volume_rounding) * options.volume_rounding
 			if state.volume ~= new_volume then mp.commandv('set', 'volume', new_volume) end
 		end,
 		on_mbtn_left_down = function(this)
@@ -2188,7 +2209,7 @@ if options.speed then
 
 			this.dragging.distance = cursor.x - this.dragging.start_x
 			local steps_dragged = round(-this.dragging.distance / this.step_distance)
-			local new_speed = this.dragging.start_speed + (steps_dragged * options.speed_step)
+			local new_speed = this.dragging.start_speed + (steps_dragged * options.speed_rounding)
 			mp.set_property_native('speed', round(new_speed * 100) / 100)
 		end,
 		on_mbtn_left_up = function(this)
@@ -2198,6 +2219,9 @@ if options.speed then
 			end
 		end,
 		on_global_mbtn_left_up = function(this)
+			if this.dragging and elements.timeline.proximity_raw == 0 then
+				this:fadeout()
+			end
 			this.dragging = nil
 			request_render()
 		end,
@@ -2535,10 +2559,14 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	end
 end
 
-function open_file_navigation_menu(menu_type, directory, handle_select, allowed_types, selected_file)
+-- `menu_options`:
+-- **allowed_types** - table with file extensions to display
+-- **selected_file** - full path of a file to preselect
+-- Rest of the options are passed to `menu:open()`
+function open_file_navigation_menu(directory, handle_select, menu_options)
 	directory = serialize_path(directory)
 	local directories, error = utils.readdir(directory.path, 'dirs')
-	local files, error = get_files_in_directory(directory.path, allowed_types)
+	local files, error = get_files_in_directory(directory.path, menu_options.allowed_types)
 
 	if not files or not directories then
 		msg.error('Retrieving files from '..directory..' failed: '..(error or ''))
@@ -2563,9 +2591,12 @@ function open_file_navigation_menu(menu_type, directory, handle_select, allowed_
 		items[#items + 1] = {
 			title = serialized.basename,
 			value = serialized.path,
-			selected = selected_file == file
+			selected = menu_options.selected_file == serialized.path
 		}
 	end
+
+	menu_options.title = directory.basename..'/'
+	menu_options.select_on_hover = false
 
 	menu:open(items, function(path)
 		local meta, error = utils.file_info(path)
@@ -2576,12 +2607,12 @@ function open_file_navigation_menu(menu_type, directory, handle_select, allowed_
 		end
 
 		if meta.is_dir then
-			open_file_navigation_menu(path, handle_select, allowed_types)
+			open_file_navigation_menu(path, handle_select, menu_options)
 		else
 			handle_select(path)
 			menu:close()
 		end
-	end, {type = menu_type, title = directory.basename..'/', select_on_hover = false})
+	end, menu_options)
 end
 
 -- VALUE SERIALIZATION/NORMALIZATION
@@ -2604,17 +2635,9 @@ mp.observe_property('window-maximized', 'bool', create_state_setter('maximized')
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
 mp.observe_property('speed', 'number', create_state_setter('speed'))
 mp.observe_property('pause', 'bool', create_state_setter('paused'))
-mp.observe_property('volume', 'number', function(_, value)
-	local is_initial_call = state.volume == nil
-	state.volume = value
-	if not is_initial_call then elements.volume.flash() end
-end)
+mp.observe_property('volume', 'number', create_state_setter('volume'))
 mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
-mp.observe_property('mute', 'bool', function(_, value)
-	local is_initial_call = state.mute == nil
-	state.mute = value
-	if not is_initial_call then elements.volume.flash() end
-end)
+mp.observe_property('mute', 'bool', create_state_setter('mute'))
 mp.observe_property('playback-time', 'number', function(name, val)
 	-- Ignore the initial call with nil value
 	if val == nil then return end
@@ -2638,50 +2661,6 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	end
 	local cache_ranges = cache_state['seekable-ranges']
 	state.cached_ranges = #cache_ranges > 0 and cache_ranges or nil
-end)
-
-mp.register_event('file-loaded', function()
-	-- Update selected file in playlist navigation menu
-	if menu:is_open('navigate-playlist') then
-		local index = mp.get_property_number('playlist-pos-1')
-		if index then elements.menu:select_item(index) end
-	end
-
-	-- Update selected file in directory navigation menu
-	if menu:is_open('navigate-directory') then
-		local path = mp.get_property_native('path')
-
-		if is_protocol(path) then return end
-
-		path = serialize_path(path)
-		local index = itable_find(elements.menu.items, function(_, item)
-			return item.value == path.path
-		end)
-
-		if index then elements.menu:select_item(index) end
-	end
-end)
-mp.register_event('seek', function()
-	-- Flash timeline
-	local position = mp.get_property_native('playback-time')
-	if position and state.position then
-		local seek_length = math.abs(position - state.position)
-
-		-- Don't flash on video looping (seek to 0) or tiny seeks (frame-step)
-		if position > 0.5 and seek_length > 0.5 then
-			elements.timeline.flash()
-		end
-	end
-
-	-- Update selected chapter in chaper navigation menu
-	if position and menu:is_open('navigate-chapters') then
-		local index = itable_find(elements.menu.items, function(_, item)
-			-- item.value = chapter.time
-			return item.value >= position
-		end)
-
-		if index then elements.menu:select_item(index) end
-	end
 end)
 
 -- CONTROLS
@@ -2757,7 +2736,10 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 		open_file_navigation_menu(
 			serialize_path(path).dirname,
 			function(path) mp.commandv('sub-add', path) end,
-			options.subtitle_types
+			{
+				type = 'load-subtitles',
+				allowed_types = options.subtitle_types
+			}
 		)
 	end
 end)
@@ -2778,34 +2760,64 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 		}
 	end
 
+	-- Update selected file in playlist navigation menu
+	function handle_file_loaded()
+		if menu:is_open('navigate-playlist') then
+			local index = mp.get_property_number('playlist-pos-1')
+			if index then elements.menu:select_item(index) end
+		end
+	end
+
 	menu:open(items, function(index)
 		mp.commandv('set', 'playlist-pos-1', tostring(index))
-	end, {type = 'navigate-playlist', title = 'Playlist', select_on_hover = false})
+	end, {
+		type = 'navigate-playlist',
+		title = 'Playlist',
+		select_on_hover = false,
+		on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
+		on_close = function() mp.unregister_event(handle_file_loaded) end,
+	})
 end)
 mp.add_key_binding(nil, 'navigate-chapters', function()
 	local items = {}
 	local chapters = get_normalized_chapters()
-	local selected_item = nil
 
 	for index, chapter in ipairs(chapters) do
-		-- Set as selected chapter if this is the first chapter with time lower
-		-- than current playing position (with 100ms leeway), or if this
-		-- chapters' time is the same as previously selected chapter (later
-		-- defined chapters are prioritized).
-		if state.position and (state.position + 0.1 > chapter.time or (selected_item and chapters[selected_item].time == chapter.time)) then
-			selected_item = index
-		end
-
 		items[#items + 1] = {
 			title = chapter.title or '',
 			hint = mp.format_time(chapter.time),
 			value = chapter.time
 		}
+		print('item', index, chapter.time, mp.format_time(chapter.time), chapter.title or '')
+	end
+
+	-- Select first chapter from the end with time lower
+	-- than current playing position (with 100ms leeway).
+	function get_selected_chapter_index()
+		local position = mp.get_property_native('playback-time')
+		if not position then return nil end
+		for index = #items, 1, -1 do
+			if position - 0.1 > items[index].value then return index end
+		end
+	end
+
+	-- Update selected chapter in chaper navigation menu
+	function seek_handler()
+		if menu:is_open('navigate-chapters') then
+			elements.menu:select_item(get_selected_chapter_index())
+		end
 	end
 
 	menu:open(items, function(time)
 		mp.commandv('seek', tostring(time), 'absolute')
-	end, {type = 'navigate-chapters', title = 'Chapters', select_on_hover = false, selected_item = selected_item})
+	end, {
+		type = 'navigate-chapters',
+		title = 'Chapters',
+		select_on_hover = false,
+		selected_item = get_selected_chapter_index(),
+		on_open = function() mp.register_event('seek', seek_handler) end,
+		on_close = function() mp.unregister_event(seek_handler) end
+	})
 end)
 mp.add_key_binding(nil, 'show-in-directory', function()
 	local path = mp.get_property_native('path')
@@ -2831,13 +2843,33 @@ end)
 mp.add_key_binding(nil, 'navigate-directory', function()
 	local path = mp.get_property_native('path')
 	if not is_protocol(path) then
+		-- Update selected file in directory navigation menu
+		function handle_file_loaded()
+			if menu:is_open('navigate-directory') then
+				local path = mp.get_property_native('path')
+
+				if is_protocol(path) then return end
+
+				path = serialize_path(path)
+				local index = itable_find(elements.menu.items, function(_, item)
+					return item.value == path.path
+				end)
+
+				elements.menu:select_item(index)
+			end
+		end
+
 		path = serialize_path(path)
 		open_file_navigation_menu(
-			'navigate-directory',
 			path.dirname,
 			function(path) mp.commandv('loadfile', path) end,
-			options.media_types,
-			path.basename
+			{
+				type = 'navigate-directory',
+				allowed_types = options.media_types,
+				selected_file = path.path,
+				on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
+				on_close = function() mp.unregister_event(handle_file_loaded) end,
+			}
 		)
 	end
 end)
