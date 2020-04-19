@@ -62,10 +62,17 @@ volume_snap_to=1
 # for this amount of time, set to 0 to disable
 volume_flash_duration=300
 
-# menu
+# controls all menus, such as context menu, subtitle loader/selector, etc
 menu_item_height=40
 menu_item_height_fullscreen=50
 menu_opacity=0.8
+
+# playback speed control widget: drag to change, click to reset
+speed=no
+speed_size=40
+speed_size_fullscreen=60
+speed_opacity=1
+speed_step=0.1
 
 # pause video on clicks shorter than this number of milliseconds
 # enables you to use left mouse button for both dragging and pausing the video
@@ -197,6 +204,12 @@ local options = {
 	volume_snap_to = 1,
 	volume_flash_duration = 400,
 
+	speed = false,
+	speed_size = 40,
+	speed_size_fullscreen = 60,
+	speed_opacity = 1,
+	speed_step = 0.1,
+
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
 	menu_opacity = 0.8,
@@ -249,7 +262,6 @@ local state = {
 	end)(),
 	cwd = mp.get_property('working-directory'),
 	media_title = '',
-	border = mp.get_property_native('border'),
 	duration = nil,
 	position = nil,
 	paused = false,
@@ -263,8 +275,6 @@ local state = {
 	volume_max = nil,
 	mute = nil,
 	interactive_proximity = 0, -- highest relative proximity to any interactive element
-	timeline_top_padding = options.timeline_border,
-	timeline_bottom_padding = 0, -- set dynamically to `options.timeline_border` in no-border mode
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		if not options.autohide then return end
 		handle_mouse_leave()
@@ -276,8 +286,8 @@ local state = {
 -- HELPERS
 
 function round(number)
-	local floored = math.floor(number)
-	return number - floored < 0.5 and floored or floored + 1
+	local modulus = number % 1
+	return modulus < 0.5 and math.floor(number) or math.ceil(number)
 end
 
 function call_me_maybe(fn, value1, value2, value3)
@@ -358,53 +368,64 @@ function table_copy(table)
 	return new_table
 end
 
-function tween(current, to, setter, on_end)
+-- Creates in-between frames to animate value from `from` to `to` numbers.
+-- Returns function that terminates animation.
+-- `to` can be a function that returns target value, useful for movable targets.
+-- `on_end` callback is called only when animation arrives at the end.
+-- `cleanup` callback is called either on_end, or when animation is canceled.
+function tween(from, to, setter, on_end, cleanup)
 	local timeout
-	local cutoff = math.abs(to - current) * 0.01
+	local getTo = type(to) == 'function' and to or function() return to end
+	local cutoff = math.abs(getTo() - from) * 0.01
 	function tick()
-		current = current + ((to - current) * 0.3)
-		local is_end = math.abs(to - current) <= cutoff
-		setter(is_end and to or current)
+		from = from + ((getTo() - from) * 0.3)
+		local is_end = math.abs(getTo() - from) <= cutoff
+		setter(is_end and getTo() or from)
 		request_render()
 		if is_end then
 			call_me_maybe(on_end)
+			call_me_maybe(cleanup)
 		else
 			timeout:resume()
 		end
 	end
 	timeout = mp.add_timeout(0.016, tick)
 	tick()
-	return function() timeout:kill() end
+	return function()
+		timeout:kill()
+		call_me_maybe(cleanup)
+	end
 end
 
--- Kills ongoing animation if one is already running
--- on this element. Killed animation will not get its on_end called.
-function tween_element(element, from, to, setter, on_end)
+-- Kills ongoing animation if one is already running on this element.
+-- Killed animation will not get its `on_end` called.
+function tween_element(element, from, to, setter, on_end, cleanup)
 	tween_element_stop(element)
 
 	element.stop_current_animation = tween(
 		from, to,
 		function(value) setter(element, value) end,
+		on_end,
 		function()
 			element.stop_current_animation = nil
-			call_me_maybe(on_end, element)
+			call_me_maybe(cleanup, element)
 		end
 	)
 end
 
 -- Stopped animation will not get its on_end called.
-function tween_element_stop(element)
-	call_me_maybe(element.stop_current_animation)
+function tween_element_is_tweening(element)
+	return element and element.stop_current_animation
 end
 
--- `from` is optional and defaults to `element[prop]`
-function tween_element_property(element, prop, from, to, on_end)
-	if type(to) ~= 'number' then
-		on_end = to
-		to = from
-		from = element[prop]
-	end
-	tween_element(element, from, to, function(_, value) element[prop] = value end, on_end)
+-- Stopped animation will not get its on_end called.
+function tween_element_stop(element)
+	call_me_maybe(element and element.stop_current_animation)
+end
+
+-- Helper to automatically use an element property setter
+function tween_element_property(element, prop, from, to, on_end, cleanup)
+	tween_element(element, from, to, function(_, value) element[prop] = value end, on_end, cleanup)
 end
 
 function get_point_to_rectangle_proximity(point, rect)
@@ -581,6 +602,7 @@ Element.__index = Element
 
 function Element.new(props)
 	local element = setmetatable(props, Element)
+	element._eventListeners = {}
 	element:init()
 	return element
 end
@@ -591,6 +613,33 @@ function Element:destroy() end
 -- Call method if it exists
 function Element:maybe(name, ...)
 	if self[name] then return self[name](self, ...) end
+end
+
+-- Tween helpers
+function Element:tween(...) tween_element(self, ...) end
+function Element:tween_property(...) tween_element_property(self, ...) end
+function Element:tween_stop() tween_element_stop(self) end
+function Element:is_tweening() tween_element_is_tweening(self) end
+
+-- Event listeners
+function Element:on(name, handler)
+	if self._eventListeners[name] == nil then self._eventListeners[name] = {} end
+	local preexistingIndex = itable_find(self._eventListeners[name], handler)
+	if preexistingIndex then
+		return
+	else
+		self._eventListeners[name][#self._eventListeners[name] + 1] = handler
+	end
+end
+function Element:off(name, handler)
+	if self._eventListeners[name] == nil then return end
+	local index = itable_find(self._eventListeners, handler)
+	if index then table.remove(self._eventListeners, index) end
+end
+function Element:trigger(name, ...)
+	self:maybe('on_'..name, ...)
+	if self._eventListeners[name] == nil then return end
+	for _, handler in ipairs(self._eventListeners[name]) do handler(...) end
 end
 
 -- ELEMENTS
@@ -1132,9 +1181,13 @@ function update_proximities()
 	local intercept_mouse_buttons = false
 	local highest_proximity = 0
 	local menu_only = menu:is_open()
+	local mouse_left_elements = {}
+	local mouse_entered_elements = {}
 
 	-- Calculates proximities and opacities for defined elements
 	for _, element in elements:ipairs() do
+		local previous_proximity_raw = element.proximity_raw
+
 		-- If menu is open, all other elements have to be disabled
 		if menu_only then
 			intercept_mouse_buttons = true
@@ -1152,9 +1205,19 @@ function update_proximities()
 			highest_proximity = element.proximity
 		end
 
-		-- cursor is over interactive element
-		if element.interactive and element.proximity_raw == 0 then
-			intercept_mouse_buttons = true
+		if element.proximity_raw == 0 then
+			-- Mouse is over interactive element
+			if element.interactive then intercept_mouse_buttons = true end
+
+			-- Mouse entered element area
+			if previous_proximity_raw ~= 0 then
+				mouse_entered_elements[#mouse_entered_elements + 1] = element
+			end
+		else
+			-- Mouse left element area
+			if previous_proximity_raw == 0 then
+				mouse_left_elements[#mouse_left_elements + 1] = element
+			end
 		end
 	end
 
@@ -1170,6 +1233,10 @@ function update_proximities()
 		state.mouse_buttons_intercepted = false
 		mp.disable_key_bindings('mouse_buttons')
 	end
+
+	-- Trigger `mouse_leave` and `mouse_enter` events
+	for _, element in ipairs(mouse_left_elements) do element:trigger('mouse_leave') end
+	for _, element in ipairs(mouse_entered_elements) do element:trigger('mouse_enter') end
 end
 
 -- ELEMENT RENDERERS
@@ -1177,18 +1244,14 @@ end
 function render_timeline(this)
 	if this.size_max == 0 or state.duration == nil or state.position == nil then return end
 
-	local proximity = this.forced_proximity and this.forced_proximity or math.max(state.interactive_proximity, this.proximity)
-
-	if this.pressed then proximity = 1 end
-
-	local size_min = this.size_min_override or this.size_min
-	local size = size_min + math.ceil((this.size_max - size_min) * proximity)
+	local size_min = this:get_effective_size_min()
+	local size = this:get_effective_size()
 
 	if size < 1 then return end
 
 	local ass = assdraw.ass_new()
 
-	-- text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches timeline.size_min
+	-- Text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches timeline.size_min
 	local hide_text_below = math.max(this.font_size * 0.7, size_min * 2)
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = math.max(math.min(size - hide_text_below, hide_text_ramp), 0) / hide_text_ramp
@@ -1198,15 +1261,15 @@ function render_timeline(this)
 
 	-- Background bar coordinates
 	local bax = 0
-	local bay = display.height - size - state.timeline_bottom_padding - state.timeline_top_padding
+	local bay = display.height - size - this.bottom_border - this.top_border
 	local bbx = display.width
 	local bby = display.height
 
 	-- Foreground bar coordinates
 	local fax = bax
-	local fay = bay + state.timeline_top_padding
+	local fay = bay + this.top_border
 	local fbx = bbx * progress
-	local fby = bby - state.timeline_bottom_padding
+	local fby = bby - this.bottom_border
 	local foreground_size = bby - bay
 	local foreground_coordinates = fax..','..fay..','..fbx..','..fby -- for clipping
 
@@ -1359,7 +1422,7 @@ function render_timeline(this)
 		end
 	end
 
-	if this.proximity_raw == 0 or this.pressed then
+	if (this.proximity_raw == 0 or this.pressed) and not (elements.speed and elements.speed.dragging) then
 		-- Hovered time
 		local hovered_seconds = mp.get_property_native('duration') * (cursor.x / display.width)
 		local box_half_width_guesstimate = (this.font_size * 4.2) / 2
@@ -1386,7 +1449,7 @@ end
 function render_window_controls(this)
 	local opacity = math.max(state.interactive_proximity, this.proximity)
 
-	if state.border or opacity == 0 or elements.curtain.opacity > 0 then return end
+	if not this.enabled or opacity == 0 or elements.curtain.opacity > 0 then return end
 
 	local ass = assdraw.ass_new()
 
@@ -1569,7 +1632,7 @@ function render_volume(this)
 	-- Current volume value
 	if fay < slider.by - slider.spacing then
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..slider.font_size..'\\clip('..fpath.scale..', '..fpath.text..')')
+		ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..slider.font_size..'\\clip('..fpath.scale..', '..fpath.text..')}')
 		ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
 		ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
 		ass:an(2)
@@ -1577,7 +1640,7 @@ function render_volume(this)
 	end
 	if fay > slider.by - slider.spacing - slider.font_size then
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..slider.font_size..'\\iclip('..fpath.scale..', '..fpath.text..')')
+		ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..slider.font_size..'\\iclip('..fpath.scale..', '..fpath.text..')}')
 		ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
 		ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
 		ass:an(2)
@@ -1594,6 +1657,90 @@ function render_volume(this)
 		0, 0, options.volume_border, -- shadow_x, shadow_y, shadow_size
 		'background', options.volume_opacity * opacity -- backdrop, opacity
 	))
+	return ass
+end
+
+function render_speed(this)
+	if not this.dragging and (elements.curtain.opacity > 0) then return end
+
+	local proximity = math.max(state.interactive_proximity, this.proximity)
+	local opacity = this.forced_proximity and this.forced_proximity or (this.dragging and 1 or proximity)
+
+	if opacity == 0 then return end
+
+	local ass = assdraw.ass_new()
+
+	-- Coordinates
+	local timeline = elements.timeline
+	local ax = this.ax
+	local ay = this.ay + timeline.size_max - timeline:get_effective_size() - timeline.top_border - timeline.bottom_border
+	local bx = this.bx
+	local by = ay + this.height
+	local half_width = (this.width / 2)
+	local half_x = ax + half_width
+
+	-- Notches
+	local speed_at_center = state.speed
+	if this.dragging then
+		speed_at_center = this.dragging.start_speed + ((-this.dragging.distance / this.step_distance) * options.speed_step)
+		speed_at_center = math.min(math.max(speed_at_center, 0.01), 100)
+	end
+	local nearest_notch_speed = round(speed_at_center / this.notch_every) * this.notch_every
+	local nearest_notch_x = half_x + (((nearest_notch_speed - speed_at_center) / this.notch_every) * this.notch_spacing)
+	local notch_ay_big = by - (this.height * 0.4)
+	local notch_ay_medium = by - (this.height * 0.25)
+	local notch_ay_small = by - (this.height * 0.15)
+	local from_to_index = math.floor(this.notches / 2)
+
+	for i = -from_to_index, from_to_index do
+		local notch_speed = nearest_notch_speed + (i * this.notch_every)
+
+		if notch_speed < 0 or notch_speed > 100 then goto continue end
+
+		local notch_x = nearest_notch_x + (i * this.notch_spacing)
+		local notch_thickness = 1
+		local notch_ay = notch_ay_small
+		if (notch_speed % (this.notch_every * 10)) < 0.00000001 then
+			notch_ay = notch_ay_big
+			notch_thickness = 1
+		elseif (notch_speed % (this.notch_every * 5)) < 0.00000001 then
+			notch_ay = notch_ay_medium
+		end
+
+		ass:new_event()
+		ass:append('{\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000}')
+		ass:append(ass_opacity(math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1), opacity))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:move_to(notch_x - notch_thickness, notch_ay)
+		ass:line_to(notch_x + notch_thickness, notch_ay)
+		ass:line_to(notch_x + notch_thickness, by)
+		ass:line_to(notch_x - notch_thickness, by)
+		ass:draw_stop()
+
+		::continue::
+	end
+
+	-- Center guide
+	ass:new_event()
+	ass:append('{\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000}')
+	ass:append(ass_opacity(options.speed_opacity, opacity))
+	ass:pos(0, 0)
+	ass:draw_start()
+	ass:move_to(half_x, by - 2)
+	ass:line_to(half_x + 6, by + 4)
+	ass:line_to(half_x - 6, by + 4)
+	ass:draw_stop()
+
+	-- Speed value
+	local speed_text = (state.speed == 1 and '1.0' or state.speed)..'x'
+	ass:new_event()
+	ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'}')
+	ass:append(ass_opacity(options.speed_opacity, opacity))
+	ass:pos(half_x, ay)
+	ass:an(8)
+	ass:append(speed_text)
+
 	return ass
 end
 
@@ -1779,7 +1926,8 @@ function create_flash_function_for(element_name)
 
 	local flash_timer
 	flash_timer = mp.add_timeout(duration / 1000, function()
-		tween_element_property(elements[element_name], 'forced_proximity', 1, state.interactive_proximity, function()
+		local getTo = function() return state.interactive_proximity end
+		elements[element_name]:tween_property('forced_proximity', 1, getTo, nil, function()
 			elements[element_name].forced_proximity = nil
 		end)
 	end)
@@ -1802,7 +1950,31 @@ elements:add('timeline', Element.new({
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
 	size_min_override = nil, -- used for toggle-progress command
 	font_size = 0, -- calculated in on_display_resize
+	top_border = options.timeline_border,
+	bottom_border = 0, -- set dynamically in `border` property observer
 	flash = create_flash_function_for('timeline'),
+	init = function(this)
+		mp.observe_property('border', 'bool', function(_, border)
+			-- Sets 1px bottom border for timeline in no-border mode
+			this.bottom_border = not border and options.timeline_border or 0
+			request_render()
+		end)
+	end,
+	get_effective_proximity = function(this)
+		if this.pressed then
+			return 1
+		else
+			return this.forced_proximity and this.forced_proximity or math.max(state.interactive_proximity, this.proximity)
+		end
+	end,
+	get_effective_size_min = function(this)
+		return this.size_min_override or this.size_min
+	end,
+	get_effective_size = function(this)
+		if elements.speed and elements.speed.dragging then return this.size_max end
+		local size_min = this:get_effective_size_min()
+		return size_min + math.ceil((this.size_max - size_min) * this:get_effective_proximity())
+	end,
 	on_display_resize = function(this)
 		if state.fullscreen or state.maximized then
 			this.size_min = options.timeline_size_min_fullscreen
@@ -1814,7 +1986,7 @@ elements:add('timeline', Element.new({
 		this.interactive = this.size_max > 0
 		this.font_size = math.floor(math.min((this.size_max + 60) * 0.2, this.size_max * 0.96))
 		this.ax = 0
-		this.ay = display.height - this.size_max - state.timeline_top_padding - state.timeline_bottom_padding
+		this.ay = display.height - this.size_max - this.top_border - this.bottom_border
 		this.bx = display.width
 		this.by = display.height
 	end,
@@ -1833,6 +2005,12 @@ elements:add('timeline', Element.new({
 	render = render_timeline,
 }))
 elements:add('window_controls', Element.new({
+	enabled = false,
+	init = function(this)
+		mp.observe_property('border', 'bool', function(_, border)
+			this.enabled = not border
+		end)
+	end,
 	on_display_resize = function(this)
 		local ax = display.width - (config.window_controls.button_width * 3)
 		this.ax = options.title and 0 or ax
@@ -1948,13 +2126,95 @@ if itable_find({'left', 'right'}, options.volume) then
 		end,
 	}))
 end
+if options.speed then
+	elements:add('speed', Element.new({
+		interactive = true,
+		dragging = nil,
+		width = 0,
+		height = 0,
+		notches = 10,
+		notch_every = 0.1,
+		step_distance = nil,
+		font_size = nil,
+		init = function(this)
+			-- Fade out/in on timeline mouse enter/leave
+			elements.timeline:on('mouse_enter', function()
+				this:tween_property('forced_proximity', 1, 0, nil, function(this)
+					this.forced_proximity = 0
+				end)
+			end)
+			elements.timeline:on('mouse_leave', function()
+				local get_current_proximity = function() return state.interactive_proximity end
+				this:tween_property('forced_proximity', 0, get_current_proximity, nil, function(this)
+					this.forced_proximity = nil
+				end)
+			end)
+
+			-- Flash on external changes
+			mp.observe_property_native('speed', function()
+				if not this.dragging then
+					this:flash()
+				end
+			end)
+		end,
+		on_display_resize = function(this)
+			this.height = (state.fullscreen or state.maximized) and options.speed_size_fullscreen or options.speed_size
+			this.width = this.height * 5
+			this.notch_spacing = this.width / this.notches
+			this.step_distance = this.notch_spacing * (options.speed_step / this.notch_every)
+			this.ax = (display.width - this.width) / 2
+			this.by = display.height - elements.timeline.size_max - (this.height / 3)
+			this.ay = this.by - this.height
+			this.bx = this.ax + this.width
+			this.font_size = round(this.height * 0.6)
+		end,
+		set_from_cursor = function(this)
+			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
+			local new_volume = math.min(math.max(volume_fraction, 0), 1) * state.volume_max
+			new_volume = round(new_volume / options.volume_snap_to) * options.volume_snap_to
+			if state.volume ~= new_volume then mp.commandv('set', 'volume', new_volume) end
+		end,
+		on_mbtn_left_down = function(this)
+			this:tween_stop() -- Stop and cleanup possible ongoing animations
+			this.dragging = {
+				start_time = mp.get_time(),
+				start_x = cursor.x,
+				distance = 0,
+				start_speed = state.speed
+			}
+		end,
+		on_global_mouse_move = function(this)
+			if not this.dragging then return end
+
+			this.dragging.distance = cursor.x - this.dragging.start_x
+			local steps_dragged = round(-this.dragging.distance / this.step_distance)
+			local new_speed = this.dragging.start_speed + (steps_dragged * options.speed_step)
+			mp.set_property_native('speed', round(new_speed * 100) / 100)
+		end,
+		on_mbtn_left_up = function(this)
+			-- Reset speed on short clicks
+			if this.dragging and this.dragging.distance < 10 and mp.get_time() - this.dragging.start_time < 0.15 then
+				mp.set_property_native('speed', 1)
+			end
+		end,
+		on_global_mbtn_left_up = function(this)
+			this.dragging = nil
+			request_render()
+		end,
+		on_global_mouse_leave = function(this)
+			this.dragging = nil
+			request_render()
+		end,
+		render = render_speed,
+	}))
+end
 elements:add('curtain', Element.new({
 	opacity = 0,
 	fadeout = function(this)
-		tween_element_property(this, 'opacity', 0);
+		this:tween_property('opacity', this.opacity, 0);
 	end,
 	fadein = function(this)
-		tween_element_property(this, 'opacity', 1);
+		this:tween_property('opacity', this.opacity, 1);
 	end,
 	render = function(this)
 		if this.opacity > 0 then
@@ -2342,6 +2602,7 @@ mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen'))
 mp.observe_property('window-maximized', 'bool', create_state_setter('maximized'))
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
+mp.observe_property('speed', 'number', create_state_setter('speed'))
 mp.observe_property('pause', 'bool', create_state_setter('paused'))
 mp.observe_property('volume', 'number', function(_, value)
 	local is_initial_call = state.volume == nil
@@ -2353,13 +2614,6 @@ mp.observe_property('mute', 'bool', function(_, value)
 	local is_initial_call = state.mute == nil
 	state.mute = value
 	if not is_initial_call then elements.volume.flash() end
-end)
-mp.observe_property('border', 'bool', function (_, border)
-	state.border = border
-	-- Sets 1px bottom border for bars in no-border mode
-	state.timeline_bottom_padding = (not border and state.timeline_top_padding) or 0
-
-	request_render()
 end)
 mp.observe_property('playback-time', 'number', function(name, val)
 	-- Ignore the initial call with nil value
@@ -2473,19 +2727,19 @@ mp.set_key_bindings({
 
 mp.add_key_binding(nil, 'flash-timeline', function()
 	if elements.timeline.proximity > 0.5 then
-		tween_element_property(elements.timeline, 'proximity', 0)
+		elements.timeline:tween_property('proximity', elements.timeline.proximity, 0)
 	else
-		tween_element_property(elements.timeline, 'proximity', 1)
+		elements.timeline:tween_property('proximity', elements.timeline.proximity, 1)
 	end
 end)
 mp.add_key_binding(nil, 'toggle-progress', function()
 	local timeline = elements.timeline
 	if timeline.size_min_override then
-		tween_element_property(timeline, 'size_min_override', timeline.size_min_override, timeline.size_min, function()
+		timeline:tween_property('size_min_override', timeline.size_min_override, timeline.size_min, function()
 			timeline.size_min_override = nil
 		end)
 	else
-		tween_element_property(timeline, 'size_min_override', timeline.size_min, 0)
+		timeline:tween_property('size_min_override', timeline.size_min, 0)
 	end
 end)
 mp.add_key_binding(nil, 'context-menu', function()
