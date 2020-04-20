@@ -2131,8 +2131,7 @@ elements:add('window_controls', Element.new({
 		end)
 	end,
 	on_display_resize = function(this)
-		local ax = display.width - (config.window_controls.button_width * 3)
-		this.ax = options.title and 0 or ax
+		this.ax = display.width - (config.window_controls.button_width * 3)
 		this.ay = 0
 		this.bx = display.width
 		this.by = config.window_controls.height
