@@ -479,6 +479,7 @@ end
 
 -- Serializes path into its semantic parts
 function serialize_path(path)
+	if is_protocol(path) then return end
 	path = ensure_absolute_path(path)
 	local parts = split(path, '[\\/]+')
 	local basename = parts and parts[#parts] or path
@@ -749,7 +750,7 @@ function Menu:open(items, open_item, opts)
 		relative_parent_opacity = 0.4,
 		items = items,
 		selected_item = nil,
-		select_on_hover = true,
+		active_item = nil,
 		previous_selected_item = nil,
 		open_item = open_item,
 		parent_menu = nil,
@@ -757,22 +758,15 @@ function Menu:open(items, open_item, opts)
 			-- Already initialized
 			if this.width ~= nil then return end
 
-			-- Preselect first 'item.selected == true' item
-			if not opts.selected_item then
-				local preselected_item = itable_find(items, function(_, item) return not not item.selected end)
-				if preselected_item then
-					this.selected_item = preselected_item
-				end
-			end
-
 			-- Apply options
 			for key, value in pairs(opts) do this[key] = value end
+			this.selected_item = this.active_item
 
 			-- Set initial dimensions
 			this:on_display_resize()
 
-			-- Scroll to selected item
-			this:center_selected_item()
+			-- Scroll to active item
+			this:center_index(this.active_item)
 
 			-- Transition in animation
 			menu.transition = {to = 'child', target = this}
@@ -803,11 +797,11 @@ function Menu:open(items, open_item, opts)
 				update_proximities()
 			end
 		end,
-		fadeout = function(this, on_end, cleanup)
+		fadeout = function(this, callback)
 			this:tween(1, 0, function(this, pos)
 				this.opacity = pos
 				this:set_parent_opacity(pos * config.menu_parent_opacity)
-			end, on_end, cleanup)
+			end, callback)
 		end,
 		set_parent_opacity = function(this, opacity)
 			if this.parent_menu then
@@ -822,39 +816,45 @@ function Menu:open(items, open_item, opts)
 			this.scroll_y = math.max(math.min(pos, this.scroll_height), 0)
 			request_render()
 		end,
-		select_item = function(this, index)
-			if index and index >= 1 and index <= #this.items then
-				this.selected_item = index
-				this:center_selected_item()
-			else
-				this.selected_item = nil
-				request_render()
-			end
+		select_index = function(this, index)
+			this.selected_item = (index and index >= 1 and index <= #this.items) and index or nil
+			request_render()
 		end,
-		center_selected_item = function(this)
-			if this.selected_item then
-				this:scroll_to(round((this.scroll_step * (this.selected_item - 1)) - ((this.height - this.scroll_step) / 2)))
+		select_value = function(this, value)
+			this:select_index(itable_find(this.items, function(_, item) return item.value == value end))
+		end,
+		activate_index = function(this, index)
+			this.active_item = (index and index >= 1 and index <= #this.items) and index or nil
+			request_render()
+		end,
+		activate_value = function(this, value)
+			this:activate_index(itable_find(this.items, function(_, item) return item.value == value end))
+		end,
+		center_index = function(this, index)
+			if (index and index >= 1 and index <= #this.items) then
+				this:scroll_to(round((this.scroll_step * (index - 1)) - ((this.height - this.scroll_step) / 2)))
 			end
 		end,
 		prev = function(this)
-			local current_index = this.selected_item or this.previous_selected_item
-			this.selected_item = current_index and math.max(current_index - 1, 1) or #this.items
-			this:center_selected_item()
+			local current_index = this.selected_item or this.previous_selected_item or #this.items + 1
+			this.selected_item = math.max(current_index - 1, 1)
+			this:center_index(this.selected_item)
 		end,
 		next = function(this)
-			local current_index = this.selected_item or this.previous_selected_item
-			this.selected_item = current_index and math.min(current_index + 1, #this.items) or 1
-			this:center_selected_item()
+			local current_index = this.selected_item or this.previous_selected_item or 0
+			this.selected_item = math.min(current_index + 1, #this.items)
+			this:center_index(this.selected_item)
 		end,
 		back = function(this)
 			if menu.transition then
-				local target = menu.transition.target
-				tween_element_stop(target)
-				if menu.transition.to == 'parent' then
-					elements:add('menu', target)
+				local transition_target = menu.transition.target
+				local transition_target_type = menu.transition.target
+				tween_element_stop(transition_target)
+				if transition_target_type == 'parent' then
+					elements:add('menu', transition_target)
 				end
 				menu.transition = nil
-				target:back()
+				transition_target:back()
 				return
 			else
 				menu.transition = {to = 'parent', target = this.parent_menu}
@@ -908,8 +908,8 @@ function Menu:open(items, open_item, opts)
 		end,
 		on_display_resize = function(this)
 			this.item_height = (state.fullscreen or state.maximized) and options.menu_item_height_fullscreen or options.menu_item_height
-			this.font_size = round(this.item_height * 0.5)
-			this.item_content_spacing = round((this.item_height - this.font_size) * 0.666)
+			this.font_size = round(this.item_height * 0.45)
+			this.item_content_spacing = round((this.item_height - this.font_size) * 0.6)
 			this.scroll_step = this.item_height + this.item_spacing
 
 			-- Estimate width of a widest item
@@ -968,16 +968,15 @@ function Menu:open(items, open_item, opts)
 			end
 		end,
 		on_global_mouse_move = function(this)
-			if this.select_on_hover then
-				if this.proximity_raw == 0 then
-					this.selected_item = this:get_item_below_cursor()
-				else
-					if this.selected_item then
-						this.previous_selected_item = this.selected_item
-						this.selected_item = nil
-					end
+			if this.proximity_raw == 0 then
+				this.selected_item = this:get_item_below_cursor()
+			else
+				if this.selected_item then
+					this.previous_selected_item = this.selected_item
+					this.selected_item = nil
 				end
 			end
+			request_render()
 		end,
 		on_wheel_up = function(this)
 			this:scroll_to(this.scroll_y - this.scroll_step)
@@ -1066,7 +1065,7 @@ function Menu:close(immediate, callback)
 		if immediate then
 			close()
 		else
-			elements.menu:fadeout(nil, close)
+			elements.menu:fadeout(close)
 		end
 	end
 end
@@ -1800,7 +1799,7 @@ function render_menu(this)
 
 		if item_by < this.ay or item_ay > this.by then goto continue end
 
-		local is_active = this.selected_item == index
+		local is_active = this.active_item == index
 		local font_color, background_color, ass_shadow, ass_shadow_color
 		local icon_size = this.font_size
 
@@ -1828,6 +1827,17 @@ function render_menu(this)
 		ass:draw_start()
 		ass:rect_cw(this.ax, item_ay, this.bx, item_by)
 		ass:draw_stop()
+
+		-- Selected highlight
+		if this.selected_item == index then
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..item_clip..'}')
+			ass:append(ass_opacity(0.1, this.opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(this.ax, item_ay, this.bx, item_by)
+			ass:draw_stop()
+		end
 
 		-- Title
 		if item.title then
@@ -2517,16 +2527,13 @@ end
 function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop)
 	return function()
 		local items = {}
-		local selected_id = nil
+		local active_item = nil
 
 		for index, track in ipairs(mp.get_property_native('track-list')) do
 			if track.type == track_type then
-				if track.selected then
-					selected_id = track.id
-				end
+				if track.selected then active_item = track.id end
 
 				items[#items + 1] = {
-					selected = track.selected,
 					title = (track.title and track.title or 'Track '..track.id),
 					hint = track.lang and track.lang:upper() or nil,
 					value = track.id
@@ -2540,13 +2547,12 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		-- If I'm mistaken and there is an active need for this, feel free to
 		-- open an issue.
 		if track_type == 'sub' then
-			table.insert(items, 1, {hint = 'disabled', value = nil, selected = not selected_id})
+			active_item = active_item and active_item + 1 or 1
+			table.insert(items, 1, {hint = 'disabled', value = nil})
 		end
 
 		menu:open(items, function(id)
-			if id ~= selected_id then
-				mp.commandv('set', track_prop, id and id or 'no')
-			end
+			mp.commandv('set', track_prop, id and id or 'no')
 
 			-- If subtitle track was selected, assume user also wants to see it
 			if id and track_type == 'sub' then
@@ -2554,13 +2560,13 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 			end
 
 			menu:close()
-		end, {title = menu_title, select_on_hover = false})
+		end, {title = menu_title, active_item = active_item})
 	end
 end
 
 -- `menu_options`:
 -- **allowed_types** - table with file extensions to display
--- **selected_file** - full path of a file to preselect
+-- **active_path** - full path of a file to preselect
 -- Rest of the options are passed to `menu:open()`
 function open_file_navigation_menu(directory, handle_select, menu_options)
 	directory = serialize_path(directory)
@@ -2585,17 +2591,23 @@ function open_file_navigation_menu(directory, handle_select, menu_options)
 		items[#items + 1] = {title = serialized.basename, value = serialized.path, hint = '/'}
 	end
 
+	menu_options.active_item = nil
+
 	for _, file in ipairs(files) do
 		local serialized = serialize_path(utils.join_path(directory.path, file))
-		items[#items + 1] = {
+		local item_index = #items + 1
+
+		items[item_index] = {
 			title = serialized.basename,
 			value = serialized.path,
-			selected = menu_options.selected_file == serialized.path
 		}
+
+		if menu_options.active_path == serialized.path then
+			menu_options.active_item = item_index
+		end
 	end
 
 	menu_options.title = directory.basename..'/'
-	menu_options.select_on_hover = false
 
 	menu:open(items, function(path)
 		local meta, error = utils.file_info(path)
@@ -2755,22 +2767,24 @@ mp.add_key_binding(nil, 'select-video', create_select_tracklist_type_menu_opener
 mp.add_key_binding(nil, 'navigate-playlist', function()
 	local items = {}
 	local pos = mp.get_property_number('playlist-pos-1', 0)
+	local active_item
 
 	for index, item in ipairs(mp.get_property_native('playlist')) do
 		local is_url = item.filename:find('://')
-		items[#items + 1] = {
-			selected = index == pos,
+		items[index] = {
 			title = is_url and item.filename or serialize_path(item.filename).basename,
 			hint = tostring(index),
 			value = index
 		}
+
+		if index == pos then active_item = index end
 	end
 
 	-- Update selected file in playlist navigation menu
 	function handle_file_loaded()
 		if menu:is_open('navigate-playlist') then
 			local index = mp.get_property_number('playlist-pos-1')
-			if index then elements.menu:select_item(index) end
+			if index then elements.menu:select_index(index) end
 		end
 	end
 
@@ -2779,7 +2793,7 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 	end, {
 		type = 'navigate-playlist',
 		title = 'Playlist',
-		select_on_hover = false,
+		active_item = active_item,
 		on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
 		on_close = function() mp.unregister_event(handle_file_loaded) end,
 	})
@@ -2809,7 +2823,7 @@ mp.add_key_binding(nil, 'navigate-chapters', function()
 	-- Update selected chapter in chaper navigation menu
 	function seek_handler()
 		if menu:is_open('navigate-chapters') then
-			elements.menu:select_item(get_selected_chapter_index())
+			elements.menu:activate_index(get_selected_chapter_index())
 		end
 	end
 
@@ -2818,8 +2832,7 @@ mp.add_key_binding(nil, 'navigate-chapters', function()
 	end, {
 		type = 'navigate-chapters',
 		title = 'Chapters',
-		select_on_hover = false,
-		selected_item = get_selected_chapter_index(),
+		active_item = get_selected_chapter_index(),
 		on_open = function() mp.register_event('seek', seek_handler) end,
 		on_close = function() mp.unregister_event(seek_handler) end
 	})
@@ -2852,15 +2865,7 @@ mp.add_key_binding(nil, 'navigate-directory', function()
 		function handle_file_loaded()
 			if menu:is_open('navigate-directory') then
 				local path = mp.get_property_native('path')
-
-				if is_protocol(path) then return end
-
-				path = serialize_path(path)
-				local index = itable_find(elements.menu.items, function(_, item)
-					return item.value == path.path
-				end)
-
-				elements.menu:select_item(index)
+				elements.menu:activate_value(serialize_path(path).path)
 			end
 		end
 
@@ -2871,7 +2876,7 @@ mp.add_key_binding(nil, 'navigate-directory', function()
 			{
 				type = 'navigate-directory',
 				allowed_types = options.media_types,
-				selected_file = path.path,
+				active_path = path.path,
 				on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
 				on_close = function() mp.unregister_event(handle_file_loaded) end,
 			}
