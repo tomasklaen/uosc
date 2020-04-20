@@ -357,6 +357,44 @@ function table_copy(table)
 	return new_table
 end
 
+-- Sorting comparator close to (but not exactly) how file explorers sort files
+local word_order_comparator = (function()
+	local symbol_order
+	local default_order
+
+	if state.os == 'win' then
+		symbol_order = {
+			['!'] = 1, ['#'] = 2, ['$'] = 3, ['%'] = 4, ['&'] = 5, ['('] = 6, [')'] = 6, [','] = 7,
+			['.'] = 8, ["'"] = 9, ['-'] = 10, [';'] = 11, ['@'] = 12, ['['] = 13, [']'] = 13, ['^'] = 14,
+			['_'] = 15, ['`'] = 16, ['{'] = 17, ['}'] = 17, ['~'] = 18, ['+'] = 19, ['='] = 20,
+		}
+		default_order = 21
+	else
+		symbol_order = {
+			['`'] = 1, ['^'] = 2, ['~'] = 3, ['='] = 4, ['_'] = 5, ['-'] = 6, [','] = 7, [';'] = 8,
+			['!'] = 9, ["'"] = 10, ['('] = 11, [')'] = 11, ['['] = 12, [']'] = 12, ['{'] = 13, ['}'] = 14,
+			['@'] = 15, ['$'] = 16, ['*'] = 17, ['&'] = 18, ['%'] = 19, ['+'] = 20, ['.'] = 22, ['#'] = 23,
+		}
+		default_order = 21
+	end
+
+	return function (a, b)
+		for i = 1, math.max(#a, #b) do
+			local ai = a:sub(i, i)
+			local bi = b:sub(i, i)
+			if ai == nil and bi then return true end
+			if bi == nil and ai then return false end
+			local a_order = symbol_order[ai] or default_order
+			local b_order = symbol_order[bi] or default_order
+			if a_order == b_order then
+				return a < b
+			else
+				return a_order < b_order
+			end
+		end
+	end
+end)()
+
 -- Creates in-between frames to animate value from `from` to `to` numbers.
 -- Returns function that terminates animation.
 -- `to` can be a function that returns target value, useful for movable targets.
@@ -510,14 +548,13 @@ function get_files_in_directory(directory, allowed_types)
 		end)
 	end
 
-	table.sort(files)
+	table.sort(files, word_order_comparator)
 
 	return files
 end
 
 function get_adjacent_media_file(file_path, direction)
 	local current_file = serialize_path(file_path)
-
 	local files = get_files_in_directory(current_file.dirname, options.media_types)
 
 	if not files then return end
@@ -1841,6 +1878,7 @@ function render_menu(this)
 
 		-- Title
 		if item.title then
+			item.ass_save_title = item.ass_save_title or item.title:gsub("([{}])","\\%1")
 			local title_clip_x = (this.bx - hint_width - this.item_content_spacing)
 			local title_clip = '\\clip('..this.ax..','..math.max(item_ay, this.ay)..','..title_clip_x..','..math.min(item_by, this.by)..')'
 			ass:new_event()
@@ -1848,17 +1886,18 @@ function render_menu(this)
 			ass:append(ass_opacity(options.menu_opacity, this.opacity))
 			ass:pos(this.ax + this.item_content_spacing, item_ay + (this.item_height / 2))
 			ass:an(4)
-			ass:append(item.title)
+			ass:append(item.ass_save_title)
 		end
 
 		-- Hint
 		if item.hint then
+			item.ass_save_hint = item.ass_save_hint or item.hint:gsub("([{}])","\\%1")
 			ass:new_event()
 			ass:append('{\\blur0\\bord0'..ass_shadow..'\\1c&H'..font_color..''..ass_shadow_color..'\\fn'..config.font..'\\fs'..(this.font_size - 2)..item_clip..'}')
 			ass:append(ass_opacity(options.menu_opacity * (has_submenu and 1 or 0.5), this.opacity))
 			ass:pos(this.bx - this.item_content_spacing, item_ay + (this.item_height / 2))
 			ass:an(6)
-			ass:append(item.hint)
+			ass:append(item.ass_save_hint)
 		elseif has_submenu then
 			ass:new_event()
 			ass:append(icon(
@@ -2579,7 +2618,7 @@ function open_file_navigation_menu(directory, handle_select, menu_options)
 	end
 
 	-- Files are already sorted
-	table.sort(directories)
+	table.sort(directories, word_order_comparator)
 
 	-- Pre-populate items with parent directory selector if not at root
 	local items = not directory.dirname and {} or {
