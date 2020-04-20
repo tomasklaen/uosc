@@ -271,6 +271,7 @@ local state = {
 	mouse_bindings_enabled = false,
 	cached_ranges = nil,
 }
+local forced_key_bindings -- defined at the bottom next to events
 
 -- HELPERS
 
@@ -594,8 +595,8 @@ end
 --[[
 Signature:
 {
-	-- disables window dragging when initiated above this element
-	interactive = true,
+	-- enables capturing button groups for this element
+	captures = {mouse_buttons = true, wheel = true},
 	-- element rectangle coordinates
 	ax = 0, ay = 0, bx = 0, by = 0,
 	-- cursor<>element relative proximity as a 0-1 floating number
@@ -617,7 +618,7 @@ Signature:
 }
 ]]
 local Element = {
-	interactive = false,
+	captures = nil,
 	belongs_to_interactive_proximity = true,
 	ax = 0, ay = 0, bx = 0, by = 0,
 	proximity = 0, proximity_raw = infinity,
@@ -769,7 +770,7 @@ function Menu:open(items, open_item, opts)
 	end
 
 	elements:add('menu', Element.new({
-		interactive = true,
+		captures = {mouse_buttons = true},
 		belongs_to_interactive_proximity = false,
 		type = nil, -- menu type such as `context-menu`, `navigate-chapters`, ...
 		title = nil,
@@ -1229,7 +1230,8 @@ function update_element_cursor_proximity(element)
 end
 
 function update_proximities()
-	local intercept_mouse_buttons = false
+	local capture_mouse_buttons = false
+	local capture_wheel = false
 	local highest_proximity = 0
 	local menu_only = menu:is_open()
 	local mouse_left_elements = {}
@@ -1241,7 +1243,7 @@ function update_proximities()
 
 		-- If menu is open, all other elements have to be disabled
 		if menu_only then
-			intercept_mouse_buttons = true
+			capture_mouse_buttons = true
 			if element.name == 'menu' then
 				update_element_cursor_proximity(element)
 			else
@@ -1258,7 +1260,8 @@ function update_proximities()
 
 		if element.proximity_raw == 0 then
 			-- Mouse is over interactive element
-			if element.interactive then intercept_mouse_buttons = true end
+			if element.captures and element.captures.mouse_buttons then capture_mouse_buttons = true end
+			if element.captures and element.captures.wheel then capture_wheel = true end
 
 			-- Mouse entered element area
 			if previous_proximity_raw ~= 0 then
@@ -1274,15 +1277,16 @@ function update_proximities()
 
 	state.interactive_proximity = highest_proximity
 
-	-- Enable cursor input interception only when cursor is over interactive
-	-- controls. Facilitates dragging stuff lime volume slider without breaking
-	-- users ability to drag the window.
-	if not state.mouse_buttons_intercepted and intercept_mouse_buttons then
-		state.mouse_buttons_intercepted = true
-		mp.enable_key_bindings('mouse_buttons')
-	elseif state.mouse_buttons_intercepted and not intercept_mouse_buttons then
-		state.mouse_buttons_intercepted = false
-		mp.disable_key_bindings('mouse_buttons')
+	-- Enable key group captures elements request.
+	if capture_mouse_buttons then
+		forced_key_bindings.mouse_buttons:enable()
+	else
+		forced_key_bindings.mouse_buttons:disable()
+	end
+	if capture_wheel then
+		forced_key_bindings.wheel:enable()
+	else
+		forced_key_bindings.wheel:disable()
 	end
 
 	-- Trigger `mouse_leave` and `mouse_enter` events
@@ -1981,7 +1985,7 @@ end
 -- STATIC ELEMENTS
 
 elements:add('timeline', Element.new({
-	interactive = true,
+	captures = {mouse_buttons = true},
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
 	size_min_override = nil, -- used for toggle-progress command
@@ -2068,7 +2072,7 @@ elements:add('window_controls', Element.new({
 	render = render_window_controls,
 }))
 elements:add('window_controls_minimize', Element.new({
-	interactive = true,
+	captures = {mouse_buttons = true},
 	on_display_resize = function(this)
 		this.ax = display.width - (config.window_controls.button_width * 3)
 		this.ay = 0
@@ -2078,7 +2082,7 @@ elements:add('window_controls_minimize', Element.new({
 	on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end
 }))
 elements:add('window_controls_maximize', Element.new({
-	interactive = true,
+	captures = {mouse_buttons = true},
 	on_display_resize = function(this)
 		this.ax = display.width - (config.window_controls.button_width * 2)
 		this.ay = 0
@@ -2088,7 +2092,7 @@ elements:add('window_controls_maximize', Element.new({
 	on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end
 }))
 elements:add('window_controls_close', Element.new({
-	interactive = true,
+	captures = {mouse_buttons = true},
 	on_display_resize = function(this)
 		this.ax = display.width - config.window_controls.button_width
 		this.ay = 0
@@ -2136,7 +2140,7 @@ if itable_find({'left', 'right'}, options.volume) then
 		render = render_volume,
 	}))
 	elements:add('volume_mute', Element.new({
-		interactive = true,
+		captures = {mouse_buttons = true},
 		width = 0,
 		height = 0,
 		on_display_resize = function(this)
@@ -2150,7 +2154,7 @@ if itable_find({'left', 'right'}, options.volume) then
 		on_mbtn_left_down = function(this) mp.commandv('cycle', 'mute') end
 	}))
 	elements:add('volume_slider', Element.new({
-		interactive = true,
+		captures = {mouse_buttons = true},
 		pressed = false,
 		width = 0,
 		height = 0,
@@ -2189,7 +2193,7 @@ if itable_find({'left', 'right'}, options.volume) then
 end
 if options.speed then
 	elements:add('speed', Element.new({
-		interactive = true,
+		captures = {mouse_buttons = true, wheel = true},
 		dragging = nil,
 		width = 0,
 		height = 0,
@@ -2489,6 +2493,10 @@ function dispatch_event_to_elements(name, ...)
 	end
 end
 
+function create_event_to_elements_dispatcher(name, ...)
+	return function(...) dispatch_event_to_elements(name, ...) end
+end
+
 function handle_mouse_leave()
 	local interactive_proximity_on_leave = state.interactive_proximity
 	cursor.hidden = true
@@ -2502,30 +2510,23 @@ function handle_mouse_leave()
 	end
 end
 
-function create_mouse_event_handler(source)
-	if source == 'mouse_move' then
-		return function()
-			if cursor.hidden then
-				tween_element_stop(state)
-			end
-			cursor.hidden = false
-			cursor.x, cursor.y = mp.get_mouse_pos()
-			update_proximities()
-			dispatch_event_to_elements(source)
-			request_render()
+function handle_mouse_enter()
+	cursor.hidden = false
+	cursor.x, cursor.y = mp.get_mouse_pos()
+	tween_element_stop(state)
+	dispatch_event_to_elements('mouse_enter')
+end
 
-			-- Restart timer that hides UI when mouse is autohidden
-			if options.autohide then
-				state.cursor_autohide_timer:kill()
-				state.cursor_autohide_timer:resume()
-			end
-		end
-	elseif source == 'mouse_leave' then
-		return handle_mouse_leave
-	else
-		return function()
-			dispatch_event_to_elements(source)
-		end
+function handle_mouse_move()
+	cursor.x, cursor.y = mp.get_mouse_pos()
+	update_proximities()
+	dispatch_event_to_elements('mouse_move')
+	request_render()
+
+	-- Restart timer that hides UI when mouse is autohidden
+	if options.autohide then
+		state.cursor_autohide_timer:kill()
+		state.cursor_autohide_timer:resume()
 	end
 end
 
@@ -2722,10 +2723,11 @@ end)
 
 -- CONTROLS
 
--- base keybinds
+-- Mouse movement key binds
 local base_keybinds = {
-	{'mouse_move', create_mouse_event_handler('mouse_move')},
-	{'mouse_leave', create_mouse_event_handler('mouse_leave')},
+	{'mouse_move', handle_mouse_move},
+	{'mouse_leave', handle_mouse_leave},
+	{'mouse_enter', handle_mouse_enter},
 }
 if options.pause_on_click_shorter_than > 0 then
 	-- Cycles pause when click is shorter than `options.pause_on_click_shorter_than`
@@ -2753,11 +2755,36 @@ end
 mp.set_key_bindings(base_keybinds, 'mouse_movement', 'force')
 mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 
--- mouse buttons
-mp.set_key_bindings({
-	{'mbtn_left', create_mouse_event_handler('mbtn_left_up'), create_mouse_event_handler('mbtn_left_down')},
-	{'mbtn_left_dbl', 'ignore'},
-}, 'mouse_buttons', 'force')
+-- Context based key bind groups
+
+forced_key_bindings = (function()
+	mp.set_key_bindings({
+		{'mbtn_left', create_event_to_elements_dispatcher('mbtn_left_up'), create_event_to_elements_dispatcher('mbtn_left_down')},
+		{'mbtn_left_dbl', 'ignore'},
+	}, 'mouse_buttons', 'force')
+	mp.set_key_bindings({
+		{'wheel_up', create_event_to_elements_dispatcher('wheel_test_up1'), create_event_to_elements_dispatcher('wheel_test_up2')},
+		{'wheel_down', create_event_to_elements_dispatcher('wheel_down'), create_event_to_elements_dispatcher('wheel_down')},
+	}, 'wheel', 'force')
+
+	local groups = {}
+	for _, group in ipairs({'mouse_buttons', 'wheel'}) do
+		groups[group] = {
+			is_enabled = false,
+			enable = function(this)
+				if this.is_enabled then return end
+				this.is_enabled = true
+				mp.enable_key_bindings(group)
+			end,
+			disable = function(this)
+				if not this.is_enabled then return end
+				this.is_enabled = false
+				mp.disable_key_bindings(group)
+			end,
+		}
+	end
+	return groups
+end)()
 
 -- KEY BINDABLE FEATURES
 
