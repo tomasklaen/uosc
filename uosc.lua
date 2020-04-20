@@ -28,6 +28,8 @@ timeline_opacity=0.8
 # top (and bottom in no-border mode) border of background color to help visually
 # separate elapsed bar from a video of similar color or desktop background
 timeline_border=1
+# when scrolling above timeline, wheel will seek by this amount of seconds
+timeline_step=5
 # display seekable buffered ranges for streaming videos, syntax `color:opacity`,
 # color is an BBGGRR hex code, set to empty or `no` to disable
 timeline_cached_ranges=345433:0.5
@@ -45,8 +47,8 @@ volume_size=40
 volume_size_fullscreen=40
 volume_opacity=0.8
 volume_border=1
-# when dragging the slider, volume will round to increments of this value
-volume_rounding=1
+# when dragging/scrolling the slider, volume will change by increments of this value
+volume_step=1
 # briefly show volume slider on external changes (e.g. changed by a hotkey)
 volume_flash=yes
 
@@ -55,8 +57,8 @@ speed=no
 speed_size=35
 speed_size_fullscreen=50
 speed_opacity=1
-# when dragging the slider, speed will round to increments of this value
-speed_rounding=0.1
+# when dragging/scrolling the slider, speed will change by increments of this value
+speed_step=0.1
 # briefly show speed slider on external changes (e.g. changed by a hotkey)
 speed_flash=yes
 
@@ -180,6 +182,7 @@ local options = {
 	timeline_size_max_fullscreen = 60,
 	timeline_opacity = 0.8,
 	timeline_border = 1,
+	timeline_step = 5,
 	timeline_cached_ranges = '345433:0.5',
 	timeline_flash = true,
 
@@ -191,14 +194,14 @@ local options = {
 	volume_size_fullscreen = 60,
 	volume_opacity = 0.8,
 	volume_border = 1,
-	volume_rounding = 1,
+	volume_step = 1,
 	volume_flash = true,
 
 	speed = false,
 	speed_size = 35,
 	speed_size_fullscreen = 50,
 	speed_opacity = 1,
-	speed_rounding = 0.1,
+	speed_step = 0.1,
 	speed_flash = true,
 
 	menu_item_height = 36,
@@ -1758,7 +1761,7 @@ function render_speed(this)
 	-- Notches
 	local speed_at_center = state.speed
 	if this.dragging then
-		speed_at_center = this.dragging.start_speed + ((-this.dragging.distance / this.step_distance) * options.speed_rounding)
+		speed_at_center = this.dragging.start_speed + ((-this.dragging.distance / this.step_distance) * options.speed_step)
 		speed_at_center = math.min(math.max(speed_at_center, 0.01), 100)
 	end
 	local nearest_notch_speed = round(speed_at_center / this.notch_every) * this.notch_every
@@ -2044,7 +2047,7 @@ if options.pause_indicator then
 	}))
 end
 elements:add('timeline', Element.new({
-	captures = {mouse_buttons = true},
+	captures = {mouse_buttons = true, wheel = true},
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
 	size_min_override = nil, -- used for toggle-progress command
@@ -2111,6 +2114,12 @@ elements:add('timeline', Element.new({
 	on_global_mouse_leave = function(this) this.pressed = false end,
 	on_global_mouse_move = function(this)
 		if this.pressed then this:set_from_cursor() end
+	end,
+	on_wheel_up = function(this)
+		if options.timeline_step > 0 then mp.commandv('seek', -options.timeline_step) end
+	end,
+	on_wheel_down = function(this)
+		if options.timeline_step > 0 then mp.commandv('seek', options.timeline_step) end
 	end,
 	render = render_timeline,
 }))
@@ -2236,7 +2245,7 @@ if itable_find({'left', 'right'}, options.volume) then
 		set_from_cursor = function(this)
 			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
 			local new_volume = math.min(math.max(volume_fraction, 0), 1) * state.volume_max
-			new_volume = round(new_volume / options.volume_rounding) * options.volume_rounding
+			new_volume = round(new_volume / options.volume_step) * options.volume_step
 			if state.volume ~= new_volume then mp.commandv('set', 'volume', new_volume) end
 		end,
 		on_mbtn_left_down = function(this)
@@ -2249,10 +2258,10 @@ if itable_find({'left', 'right'}, options.volume) then
 			if this.pressed then this:set_from_cursor() end
 		end,
 		on_wheel_up = function(this)
-			mp.set_property_native('volume', state.volume + options.volume_rounding)
+			mp.set_property_native('volume', state.volume + options.volume_step)
 		end,
 		on_wheel_down = function(this)
-			mp.set_property_native('volume', state.volume - options.volume_rounding)
+			mp.set_property_native('volume', state.volume - options.volume_step)
 		end,
 	}))
 end
@@ -2299,7 +2308,7 @@ if options.speed then
 			this.height = (state.fullscreen or state.maximized) and options.speed_size_fullscreen or options.speed_size
 			this.width = this.height * 5
 			this.notch_spacing = this.width / this.notches
-			this.step_distance = this.notch_spacing * (options.speed_rounding / this.notch_every)
+			this.step_distance = this.notch_spacing * (options.speed_step / this.notch_every)
 			this.ax = (display.width - this.width) / 2
 			this.by = display.height - elements.timeline.size_max - (this.height / 3)
 			this.ay = this.by - this.height
@@ -2309,7 +2318,7 @@ if options.speed then
 		set_from_cursor = function(this)
 			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
 			local new_volume = math.min(math.max(volume_fraction, 0), 1) * state.volume_max
-			new_volume = round(new_volume / options.volume_rounding) * options.volume_rounding
+			new_volume = round(new_volume / options.volume_step) * options.volume_step
 			if state.volume ~= new_volume then mp.commandv('set', 'volume', new_volume) end
 		end,
 		on_mbtn_left_down = function(this)
@@ -2326,7 +2335,7 @@ if options.speed then
 
 			this.dragging.distance = cursor.x - this.dragging.start_x
 			local steps_dragged = round(-this.dragging.distance / this.step_distance)
-			local new_speed = this.dragging.start_speed + (steps_dragged * options.speed_rounding)
+			local new_speed = this.dragging.start_speed + (steps_dragged * options.speed_step)
 			mp.set_property_native('speed', round(new_speed * 100) / 100)
 		end,
 		on_mbtn_left_up = function(this)
@@ -2347,10 +2356,10 @@ if options.speed then
 			request_render()
 		end,
 		on_wheel_up = function(this)
-			mp.set_property_native('speed', state.speed + options.speed_rounding)
+			mp.set_property_native('speed', state.speed + options.speed_step)
 		end,
 		on_wheel_down = function(this)
-			mp.set_property_native('speed', state.speed - options.speed_rounding)
+			mp.set_property_native('speed', state.speed - options.speed_step)
 		end,
 		render = render_speed,
 	}))
