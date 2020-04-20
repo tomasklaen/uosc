@@ -79,6 +79,8 @@ color_background=000000
 color_background_text=ffffff
 # hide UI when mpv autohides the cursor
 autohide=no
+# fades screen to background color and displays a pause icon when paused
+pause_indicator=no
 # display window title (filename) in top window controls bar in no-border mode
 title=no
 # load first file when calling next on a last file in a directory and vice versa
@@ -212,6 +214,7 @@ local options = {
 	color_background = '000000',
 	color_background_text = 'ffffff',
 	autohide = false,
+	pause_indicator = false,
 	title = false,
 	directory_navigation_loops = false,
 	media_types = '3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
@@ -2002,6 +2005,44 @@ end
 
 -- STATIC ELEMENTS
 
+if options.pause_indicator then
+	elements:add('pause_indicator', Element.new({
+		render = function(this)
+			if not state.paused then return end
+			local ass = assdraw.ass_new()
+
+			-- Background fadeout
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
+			ass:append(ass_opacity(0.3))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(0, 0, display.width, display.height)
+			ass:draw_stop()
+
+			-- Icon
+			local size = round(math.min(display.width, display.height) * 0.3)
+
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+			ass:append(ass_opacity(0.8))
+			ass:pos(display.width / 2, display.height / 2)
+			ass:draw_start()
+			ass:rect_cw(-size / 2, -size / 2, -size / 6, size / 2)
+			ass:draw_stop()
+
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+			ass:append(ass_opacity(0.8))
+			ass:pos(display.width / 2, display.height / 2)
+			ass:draw_start()
+			ass:rect_cw(size / 6, -size / 2, size / 2, size / 2)
+			ass:draw_stop()
+
+			return ass
+		end
+	}))
+end
 elements:add('timeline', Element.new({
 	captures = {mouse_buttons = true},
 	pressed = false,
@@ -2326,7 +2367,7 @@ elements:add('curtain', Element.new({
 		if this.opacity > 0 then
 			local ass = assdraw.ass_new()
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H000000}')
+			ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
 			ass:append(ass_opacity(0.4, this.opacity))
 			ass:pos(0, 0)
 			ass:draw_start()

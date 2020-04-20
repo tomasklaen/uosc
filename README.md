@@ -103,6 +103,8 @@ color_background=000000
 color_background_text=ffffff
 # hide UI when mpv autohides the cursor
 autohide=no
+# fades screen to background color and displays a pause icon when paused
+pause_indicator=no
 # display window title (filename) in top window controls bar in no-border mode
 title=no
 # load first file when calling next on a last file in a directory and vice versa
