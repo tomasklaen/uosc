@@ -2486,6 +2486,9 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 end
 
 function parse_chapters()
+	-- Sometimes state.duration is not initialized yet for some reason
+	state.duration = mp.get_property_native('duration')
+
 	local chapters = get_normalized_chapters()
 
 	if not chapters or not state.duration then return end
@@ -2758,14 +2761,7 @@ end)()
 
 -- HOOKS
 
-mp.register_event('file-loaded', function()
-	-- Ensure duration is available at this point, since `duration` observer
-	-- fires later.
-	state.duration = mp.get_property_native('duration')
-
-	parse_chapters()
-end)
-
+mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('duration', 'number', create_state_setter('duration'))
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen'))
