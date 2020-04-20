@@ -1064,8 +1064,6 @@ function Menu:enable_key_bindings()
 	menu:add_key_binding('enter',      'menu-select-alt3', self:create_action('open_selected_item'))
 	menu:add_key_binding('kp_enter',   'menu-select-alt4', self:create_action('open_selected_item'))
 	menu:add_key_binding('esc',        'menu-close',       self:create_action('close'))
-	menu:add_key_binding('wheel_up',   'menu-scroll-up',   self:create_action('on_wheel_up'))
-	menu:add_key_binding('wheel_down', 'menu-scroll-down', self:create_action('on_wheel_down'))
 	menu:add_key_binding('pgup',       'menu-page-up',     self:create_action('on_pgup'))
 	menu:add_key_binding('pgdwn',      'menu-page-down',   self:create_action('on_pgdwn'))
 	menu:add_key_binding('home',       'menu-home',        self:create_action('on_home'))
@@ -1243,8 +1241,9 @@ function update_proximities()
 
 		-- If menu is open, all other elements have to be disabled
 		if menu_only then
-			capture_mouse_buttons = true
 			if element.name == 'menu' then
+				capture_mouse_buttons = true
+				capture_wheel = true
 				update_element_cursor_proximity(element)
 			else
 				element.proximity_raw = infinity
@@ -2154,7 +2153,7 @@ if itable_find({'left', 'right'}, options.volume) then
 		on_mbtn_left_down = function(this) mp.commandv('cycle', 'mute') end
 	}))
 	elements:add('volume_slider', Element.new({
-		captures = {mouse_buttons = true},
+		captures = {mouse_buttons = true, wheel = true},
 		pressed = false,
 		width = 0,
 		height = 0,
@@ -2188,6 +2187,12 @@ if itable_find({'left', 'right'}, options.volume) then
 		on_global_mouse_leave = function(this) this.pressed = false end,
 		on_global_mouse_move = function(this)
 			if this.pressed then this:set_from_cursor() end
+		end,
+		on_wheel_up = function(this)
+			mp.set_property_native('volume', state.volume + options.volume_rounding)
+		end,
+		on_wheel_down = function(this)
+			mp.set_property_native('volume', state.volume - options.volume_rounding)
 		end,
 	}))
 end
@@ -2280,6 +2285,12 @@ if options.speed then
 		on_global_mouse_leave = function(this)
 			this.dragging = nil
 			request_render()
+		end,
+		on_wheel_up = function(this)
+			mp.set_property_native('speed', state.speed + options.speed_rounding)
+		end,
+		on_wheel_down = function(this)
+			mp.set_property_native('speed', state.speed - options.speed_rounding)
 		end,
 		render = render_speed,
 	}))
@@ -2763,8 +2774,8 @@ forced_key_bindings = (function()
 		{'mbtn_left_dbl', 'ignore'},
 	}, 'mouse_buttons', 'force')
 	mp.set_key_bindings({
-		{'wheel_up', create_event_to_elements_dispatcher('wheel_test_up1'), create_event_to_elements_dispatcher('wheel_test_up2')},
-		{'wheel_down', create_event_to_elements_dispatcher('wheel_down'), create_event_to_elements_dispatcher('wheel_down')},
+		{'wheel_up', create_event_to_elements_dispatcher('wheel_up')},
+		{'wheel_down', create_event_to_elements_dispatcher('wheel_down')},
 	}, 'wheel', 'force')
 
 	local groups = {}
