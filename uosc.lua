@@ -1809,7 +1809,7 @@ function render_speed(this)
 	ass:draw_stop()
 
 	-- Speed value
-	local speed_text = (state.speed == 1 and '1.0' or state.speed)..'x'
+	local speed_text = (round(state.speed * 100) / 100)..'x'
 	ass:new_event()
 	ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'}')
 	ass:append(ass_opacity(options.speed_opacity, opacity))
