@@ -787,9 +787,8 @@ function Menu:open(items, open_item, opts)
 		opacity = 0,
 		relative_parent_opacity = 0.4,
 		items = items,
-		selected_item = nil,
 		active_item = nil,
-		previous_selected_item = nil,
+		selected_item = nil,
 		open_item = open_item,
 		parent_menu = nil,
 		init = function(this)
@@ -804,7 +803,7 @@ function Menu:open(items, open_item, opts)
 			this:on_display_resize()
 
 			-- Scroll to active item
-			this:center_index(this.active_item)
+			this:scroll_to_item(this.active_item)
 
 			-- Transition in animation
 			menu.transition = {to = 'child', target = this}
@@ -816,13 +815,52 @@ function Menu:open(items, open_item, opts)
 				this:set_parent_opacity(1 - ((1 - config.menu_parent_opacity) * pos))
 			end, function()
 				menu.transition = nil
-				-- Helps select an item below cursor when appropriate
 				update_proximities()
-				this:on_global_mouse_move()
 			end)
 		end,
 		destroy = function(this)
 			request_render()
+		end,
+		on_display_resize = function(this)
+			this.item_height = (state.fullscreen or state.maximized) and options.menu_item_height_fullscreen or options.menu_item_height
+			this.font_size = round(this.item_height * 0.45)
+			this.item_content_spacing = round((this.item_height - this.font_size) * 0.6)
+			this.scroll_step = this.item_height + this.item_spacing
+
+			-- Estimate width of a widest item
+			local estimated_max_width = 0
+			for _, item in ipairs(items) do
+				local item_text_length = ((item.title and item.title:len() or 0) + (item.hint and item.hint:len() or 0))
+				local spacings_in_item = item.hint and 3 or 2
+				local estimated_width = text_width_estimate(item_text_length, this.font_size) + (this.item_content_spacing * spacings_in_item)
+				if estimated_width > estimated_max_width then
+					estimated_max_width = estimated_width
+				end
+			end
+
+			-- Also check menu title
+			local menu_title_length = this.title and this.title:len() or 0
+			local estimated_menu_title_width = text_width_estimate(menu_title_length, this.font_size)
+			if estimated_menu_title_width > estimated_max_width then
+				estimated_max_width = estimated_menu_title_width
+			end
+
+			-- Coordinates and sizes are of the scrollable area to make
+			-- consuming values in rendering easier. Title drawn above this, so
+			-- we need to account for that in max_height and ay position.
+			this.width = round(math.min(math.max(estimated_max_width, config.menu_min_width), display.width * 0.9))
+			local title_height = this.title and this.scroll_step or 0
+			local max_height = round(display.height * 0.9) - title_height
+			this.height = math.min(round(this.scroll_step * #items) - this.item_spacing, max_height)
+			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
+			this.ax = round((display.width - this.width) / 2) + this.offset_x
+			this.ay = round((display.height - this.height) / 2 + (title_height / 2))
+			this.bx = round(this.ax + this.width)
+			this.by = round(this.ay + this.height)
+
+			if this.parent_menu then
+				this.parent_menu:on_display_resize()
+			end
 		end,
 		set_offset_x = function(this, offset)
 			local delta = offset - this.offset_x
@@ -847,12 +885,26 @@ function Menu:open(items, open_item, opts)
 				this.parent_menu:set_parent_opacity(opacity * config.menu_parent_opacity)
 			end
 		end,
-		get_item_below_cursor = function(this)
+		get_item_index_below_cursor = function(this)
 			return math.ceil((cursor.y - this.ay + this.scroll_y) / this.scroll_step)
+		end,
+		get_first_visible_index = function(this)
+			return round(this.scroll_y / this.scroll_step) + 1
+		end,
+		get_last_visible_index = function(this)
+			return round((this.scroll_y + this.height) / this.scroll_step)
+		end,
+		get_centermost_visible_index = function(this)
+			return round((this.scroll_y + (this.height / 2)) / this.scroll_step)
 		end,
 		scroll_to = function(this, pos)
 			this.scroll_y = math.max(math.min(pos, this.scroll_height), 0)
 			request_render()
+		end,
+		scroll_to_item = function(this, index)
+			if (index and index >= 1 and index <= #this.items) then
+				this:scroll_to(round((this.scroll_step * (index - 1)) - ((this.height - this.scroll_step) / 2)))
+			end
 		end,
 		select_index = function(this, index)
 			this.selected_item = (index and index >= 1 and index <= #this.items) and index or nil
@@ -868,20 +920,17 @@ function Menu:open(items, open_item, opts)
 		activate_value = function(this, value)
 			this:activate_index(itable_find(this.items, function(_, item) return item.value == value end))
 		end,
-		center_index = function(this, index)
-			if (index and index >= 1 and index <= #this.items) then
-				this:scroll_to(round((this.scroll_step * (index - 1)) - ((this.height - this.scroll_step) / 2)))
-			end
-		end,
 		prev = function(this)
-			local current_index = this.selected_item or this.previous_selected_item or #this.items + 1
+			local default_anchor = this.scroll_height > this.scroll_step and this:get_centermost_visible_index() or this:get_last_visible_index()
+			local current_index = this.selected_item or default_anchor + 1
 			this.selected_item = math.max(current_index - 1, 1)
-			this:center_index(this.selected_item)
+			this:scroll_to_item(this.selected_item)
 		end,
 		next = function(this)
-			local current_index = this.selected_item or this.previous_selected_item or 0
+			local default_anchor = this.scroll_height > this.scroll_step and this:get_centermost_visible_index() or this:get_first_visible_index()
+			local current_index = this.selected_item or default_anchor - 1
 			this.selected_item = math.min(current_index + 1, #this.items)
-			this:center_index(this.selected_item)
+			this:scroll_to_item(this.selected_item)
 		end,
 		back = function(this)
 			if menu.transition then
@@ -944,50 +993,9 @@ function Menu:open(items, open_item, opts)
 		close = function(this)
 			menu:close()
 		end,
-		on_display_resize = function(this)
-			this.item_height = (state.fullscreen or state.maximized) and options.menu_item_height_fullscreen or options.menu_item_height
-			this.font_size = round(this.item_height * 0.45)
-			this.item_content_spacing = round((this.item_height - this.font_size) * 0.6)
-			this.scroll_step = this.item_height + this.item_spacing
-
-			-- Estimate width of a widest item
-			local estimated_max_width = 0
-			for _, item in ipairs(items) do
-				local item_text_length = ((item.title and item.title:len() or 0) + (item.hint and item.hint:len() or 0))
-				local spacings_in_item = item.hint and 3 or 2
-				local estimated_width = text_width_estimate(item_text_length, this.font_size) + (this.item_content_spacing * spacings_in_item)
-				if estimated_width > estimated_max_width then
-					estimated_max_width = estimated_width
-				end
-			end
-
-			-- Also check menu title
-			local menu_title_length = this.title and this.title:len() or 0
-			local estimated_menu_title_width = text_width_estimate(menu_title_length, this.font_size)
-			if estimated_menu_title_width > estimated_max_width then
-				estimated_max_width = estimated_menu_title_width
-			end
-
-			-- Coordinates and sizes are of the scrollable area to make
-			-- consuming values in rendering easier. Title drawn above this, so
-			-- we need to account for that in max_height and ay position.
-			this.width = round(math.min(math.max(estimated_max_width, config.menu_min_width), display.width * 0.9))
-			local title_height = this.title and this.scroll_step or 0
-			local max_height = round(display.height * 0.9) - title_height
-			this.height = math.min(round(this.scroll_step * #items) - this.item_spacing, max_height)
-			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
-			this.ax = round((display.width - this.width) / 2) + this.offset_x
-			this.ay = round((display.height - this.height) / 2 + (title_height / 2))
-			this.bx = round(this.ax + this.width)
-			this.by = round(this.ay + this.height)
-
-			if this.parent_menu then
-				this.parent_menu:on_display_resize()
-			end
-		end,
 		on_global_mbtn_left_down = function(this)
 			if this.proximity_raw == 0 then
-				this.selected_item = this:get_item_below_cursor()
+				this.selected_item = this:get_item_index_below_cursor()
 				this:open_selected_item()
 			else
 				-- check if this is clicking on any parent menus
@@ -1007,31 +1015,42 @@ function Menu:open(items, open_item, opts)
 		end,
 		on_global_mouse_move = function(this)
 			if this.proximity_raw == 0 then
-				this.selected_item = this:get_item_below_cursor()
+				this.selected_item = this:get_item_index_below_cursor()
 			else
-				if this.selected_item then
-					this.previous_selected_item = this.selected_item
-					this.selected_item = nil
-				end
+				if this.selected_item then this.selected_item = nil end
 			end
 			request_render()
 		end,
 		on_wheel_up = function(this)
+			this.selected_item = nil
 			this:scroll_to(this.scroll_y - this.scroll_step)
 			-- Selects item below cursor
 			this:on_global_mouse_move()
 			request_render()
 		end,
 		on_wheel_down = function(this)
+			this.selected_item = nil
 			this:scroll_to(this.scroll_y + this.scroll_step)
 			-- Selects item below cursor
 			this:on_global_mouse_move()
 			request_render()
 		end,
-		on_pgup = function(this) this:scroll_to(this.scroll_y - this.height) end,
-		on_pgdwn = function(this) this:scroll_to(this.scroll_y + this.height) end,
-		on_home = function(this) this:scroll_to(0) end,
-		on_end = function(this) this:scroll_to(this.scroll_height) end,
+		on_pgup = function(this)
+			this.selected_item = nil
+			this:scroll_to(this.scroll_y - this.height)
+		end,
+		on_pgdwn = function(this)
+			this.selected_item = nil
+			this:scroll_to(this.scroll_y + this.height)
+		end,
+		on_home = function(this)
+			this.selected_item = nil
+			this:scroll_to(0)
+		end,
+		on_end = function(this)
+			this.selected_item = nil
+			this:scroll_to(this.scroll_height)
+		end,
 		render = render_menu,
 	}))
 
