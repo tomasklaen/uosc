@@ -239,8 +239,8 @@ local display = {
 }
 local cursor = {
 	hidden = true, -- true when autohidden or outside of the player window
-	x = nil,
-	y = nil,
+	x = 0,
+	y = 0,
 }
 local state = {
 	os = (function()
@@ -594,7 +594,6 @@ function Element.new(props)
 	element._flash_out_timer = mp.add_timeout(options.flash_duration / 1000, function()
 		local getTo = function() return state.interactive_proximity end
 		element:tween_property('forced_proximity', 1, getTo, function()
-			print('what')
 			element.forced_proximity = nil
 		end)
 	end)
@@ -1440,7 +1439,7 @@ function render_timeline(this)
 
 	if (this.proximity_raw == 0 or this.pressed) and not (elements.speed and elements.speed.dragging) then
 		-- Hovered time
-		local hovered_seconds = mp.get_property_native('duration') * (cursor.x / display.width)
+		local hovered_seconds = state.duration * (cursor.x / display.width)
 		local box_half_width_guesstimate = (this.font_size * 4.2) / 2
 		ass:new_event()
 		ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'')
@@ -2356,7 +2355,7 @@ end
 function parse_chapters()
 	local chapters = get_normalized_chapters()
 
-	if not chapters then return end
+	if not chapters or not state.duration then return end
 
 	-- Reset custom ranges
 	for _, chapter_range in ipairs(state.chapter_ranges or {}) do
@@ -2627,7 +2626,14 @@ end)()
 
 -- HOOKS
 
-mp.observe_property('chapter-list', 'native', parse_chapters)
+mp.register_event('file-loaded', function()
+	-- Ensure duration is available at this point, since `duration` observer
+	-- fires later.
+	state.duration = mp.get_property_native('duration')
+
+	parse_chapters()
+end)
+
 mp.observe_property('duration', 'number', create_state_setter('duration'))
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen'))
@@ -2788,7 +2794,6 @@ mp.add_key_binding(nil, 'navigate-chapters', function()
 			hint = mp.format_time(chapter.time),
 			value = chapter.time
 		}
-		print('item', index, chapter.time, mp.format_time(chapter.time), chapter.title or '')
 	end
 
 	-- Select first chapter from the end with time lower
