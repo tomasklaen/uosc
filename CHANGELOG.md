@@ -1,3 +1,25 @@
+## 2.3.0 - 2020-Apr-20
+
+New:
+- Playback speed control widget. Off by default, enable with `speed=yes`. See docs for more options.
+- Pause indicator. Off by default, enable with `pause_indicator=yes`.
+
+Changed:
+- UI flashing refactored:
+	- `timeline_flash_duration=400` changed to `timeline_flash=yes`
+	- `volume_flash_duration=400` changed to `volume_flash=yes`
+	- Added `speed_flash=yes`
+	- Duration now controlled with unified `flash_duration=400` option.
+- All menus where it makes sense now update their active item as it changes. For example, if playlist navigation is open, the active item will update if you switch to a different playlist item with a hotkey. Same for directory and chapter navigation.
+- Improved menu navigation, which now differentiates between selected and active item.
+- File sorting now more closely (but not exactly) matches sorting of current OS.
+- You can now use mouse wheel when mouse is hovering over timeline, volume, or speed controls to step by their predefined `{element}_step` option values.
+
+Fixed:
+- Chapter ranges `{eof}` was resolving to `0` in some files, causing inaccurate ranges.
+- Glitchy menus when closing/reopening too fast.
+- Glitchy elements when flashing as mouse is moving near them.
+
 ## 2.2.0 - 2020-Apr-15
 
 New:
