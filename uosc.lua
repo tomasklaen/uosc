@@ -2078,16 +2078,18 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 			local ass = assdraw.ass_new()
 
 			-- Background fadeout
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-			ass:append(ass_opacity(0.3, this.opacity))
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(0, 0, display.width, display.height)
-			ass:draw_stop()
+			if options.pause_indicator == 'static' then
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
+				ass:append(ass_opacity(0.3, this.opacity))
+				ass:pos(0, 0)
+				ass:draw_start()
+				ass:rect_cw(0, 0, display.width, display.height)
+				ass:draw_stop()
+			end
 
 			-- Icon
-			local size = round((math.min(display.width, display.height) * 0.25) / 2)
+			local size = round((math.min(display.width, display.height) * 0.15) / 2)
 
 			size = size + size * (1 - this.opacity)
 
