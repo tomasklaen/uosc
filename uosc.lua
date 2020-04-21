@@ -490,18 +490,14 @@ function ass_opacity(opacity, fraction)
 	end
 end
 
--- Prepends current working directory to relative paths
-function ensure_absolute_path(path)
-	-- Naive check for absolute paths
-	if path:match('^/') or path:match('^%a+:[/\\]') or path:match('^\\\\') then
-		return normalize_path(path)
-	else
-		return normalize_path(utils.join_path(state.cwd, path))
-	end
-end
-
--- Normalizes slashes to the current platform
+-- Ensures path is absolute and normalizes slashes to the current platform
 function normalize_path(path)
+	-- Ensure path is absolute
+	if not (path:match('^/') or path:match('^%a+:[/\\]') or path:match('^\\\\')) then
+		path = utils.join_path(state.cwd, path)
+	end
+
+	-- Use proper slashes
 	if state.os == 'windows' then
 		return path:gsub('/', '\\')
 	else
@@ -527,7 +523,7 @@ end
 -- Serializes path into its semantic parts
 function serialize_path(path)
 	if is_protocol(path) then return end
-	path = ensure_absolute_path(path)
+	path = normalize_path(path)
 	local parts = split(path, '[\\/]+')
 	local basename = parts and parts[#parts] or path
 	local dirname = #parts > 1 and table.concat(itable_slice(parts, 1, #parts - 1), '/') or nil
@@ -870,6 +866,16 @@ function Menu:open(items, open_item, opts)
 				this.parent_menu:on_display_resize()
 			end
 		end,
+		set_items = function(this, items, props)
+			this.items = items
+			this.selected_item = nil
+			this.active_item = nil
+			if props then
+				for key, value in pairs(props) do this[key] = value end
+			end
+			this:on_display_resize()
+			request_render()
+		end,
 		set_offset_x = function(this, offset)
 			local delta = offset - this.offset_x
 			this.offset_x = offset
@@ -927,6 +933,18 @@ function Menu:open(items, open_item, opts)
 		end,
 		activate_value = function(this, value)
 			this:activate_index(itable_find(this.items, function(_, item) return item.value == value end))
+		end,
+		delete_index = function(this, index)
+			if (index and index >= 1 and index <= #this.items) then
+				local previous_active_value = this.active_index and this.items[this.active_index].value or nil
+				table.remove(this.items, index)
+				this:on_display_resize()
+				if previous_active_value then this:activate_value(previous_active_value) end
+				this:scroll_to_item(this.selected_item)
+			end
+		end,
+		delete_value = function(this, value)
+			this:delete_index(itable_find(this.items, function(_, item) return item.value == value end))
 		end,
 		prev = function(this)
 			local default_anchor = this.scroll_height > this.scroll_step and this:get_centermost_visible_index() or this:get_last_visible_index()
@@ -2916,28 +2934,35 @@ mp.add_key_binding(nil, 'select-subtitles', create_select_tracklist_type_menu_op
 mp.add_key_binding(nil, 'select-audio', create_select_tracklist_type_menu_opener('Audio', 'audio', 'aid'))
 mp.add_key_binding(nil, 'select-video', create_select_tracklist_type_menu_opener('Video', 'video', 'vid'))
 mp.add_key_binding(nil, 'navigate-playlist', function()
-	local items = {}
-	local pos = mp.get_property_number('playlist-pos-1', 0)
-	local active_item
+	function serialize_playlist()
+		local pos = mp.get_property_number('playlist-pos-1', 0)
+		local items = {}
+		local active_item
+		for index, item in ipairs(mp.get_property_native('playlist')) do
+			local is_url = item.filename:find('://')
+			items[index] = {
+				title = is_url and item.filename or serialize_path(item.filename).basename,
+				hint = tostring(index),
+				value = index
+			}
 
-	for index, item in ipairs(mp.get_property_native('playlist')) do
-		local is_url = item.filename:find('://')
-		items[index] = {
-			title = is_url and item.filename or serialize_path(item.filename).basename,
-			hint = tostring(index),
-			value = index
-		}
-
-		if index == pos then active_item = index end
+			if index == pos then active_item = index end
+		end
+		return items, active_item
 	end
 
-	-- Update selected file in playlist navigation menu
-	function handle_file_loaded()
+	-- Update active index and playlist content on playlist changes
+	function handle_playlist_change()
 		if menu:is_open('navigate-playlist') then
-			local index = mp.get_property_number('playlist-pos-1')
-			if index then elements.menu:select_index(index) end
+			local items, active_item = serialize_playlist()
+			elements.menu:set_items(items, {
+				active_item = active_item,
+				selected_item = active_item
+			})
 		end
 	end
+
+	local items, active_item = serialize_playlist()
 
 	menu:open(items, function(index)
 		mp.commandv('set', 'playlist-pos-1', tostring(index))
@@ -2945,8 +2970,13 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 		type = 'navigate-playlist',
 		title = 'Playlist',
 		active_item = active_item,
-		on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
-		on_close = function() mp.unregister_event(handle_file_loaded) end,
+		on_open = function()
+			mp.observe_property('playlist', 'native', handle_playlist_change)
+			mp.observe_property('playlist-pos-1', 'native', handle_playlist_change)
+		end,
+		on_close = function()
+			mp.unobserve_property(handle_playlist_change)
+		end,
 	})
 end)
 mp.add_key_binding(nil, 'navigate-chapters', function()
@@ -2994,7 +3024,7 @@ mp.add_key_binding(nil, 'show-in-directory', function()
 	-- Ignore URLs
 	if is_protocol(path) then return end
 
-	path = ensure_absolute_path(path)
+	path = normalize_path(path)
 
 	if state.os == 'windows' then
 		utils.subprocess_detached({args = {'explorer', '/select,', path}, cancellable = false})
@@ -3015,8 +3045,9 @@ mp.add_key_binding(nil, 'navigate-directory', function()
 		-- Update selected file in directory navigation menu
 		function handle_file_loaded()
 			if menu:is_open('navigate-directory') then
-				local path = mp.get_property_native('path')
-				elements.menu:activate_value(serialize_path(path).path)
+				local path = normalize_path(mp.get_property_native('path'))
+				elements.menu:activate_value(path)
+				elements.menu:select_value(path)
 			end
 		end
 
@@ -3043,12 +3074,18 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 
 	if is_protocol(path) then return end
 
+	path = normalize_path(path)
 	local playlist_count = mp.get_property_native('playlist-count')
 
 	if playlist_count > 1 then
-		mp.commandv('playlist-next', 'force')
+		mp.commandv('playlist-remove', 'current')
 	else
 		local next_file = get_adjacent_media_file(path, 'forward')
+
+		if menu:is_open('navigate-directory') then
+			elements.menu:delete_value(path)
+		end
+
 		if next_file then
 			mp.commandv('loadfile', next_file)
 		else
@@ -3056,11 +3093,11 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 		end
 	end
 
-	os.remove(ensure_absolute_path(path))
+	os.remove(path)
 end)
 mp.add_key_binding(nil, 'delete-file-quit', function()
 	local path = mp.get_property_native('path')
 	if is_protocol(path) then return end
-	os.remove(ensure_absolute_path(path))
+	os.remove(normalize_path(path))
 	mp.command('quit')
 end)
