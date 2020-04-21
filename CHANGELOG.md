@@ -1,3 +1,17 @@
+## 2.4.0 - 2020-Apr-21
+
+New:
+- Pause indicator received a `flash` mode, which is the default now. You can disable it completely with `pause_indicator=none`.
+
+Changed:
+- Window title no longer fades in the UI when enabled. I found that 3 sides of the window having proximity triggers was a bit too much, especially on small windows. Felt a bit like a game of Whac-A-Mole. If you want to see the title, hover window controls, volume, or timeline.
+
+Fixed:
+- Chapter indicators not updating after initial file load.
+- Volume slider nudge rendering issue when `volume-max=100`.
+- Sorting too inaccurate since lua's `<>` operators are weird.
+- Playlist and directory navigators now respond to and update on file delete commands.
+
 ## 2.3.0 - 2020-Apr-20
 
 New:
