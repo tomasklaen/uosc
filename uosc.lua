@@ -259,7 +259,7 @@ local state = {
 	media_title = '',
 	duration = nil,
 	position = nil,
-	paused = false,
+	pause = false,
 	chapters = nil,
 	chapter_ranges = nil,
 	fullscreen = mp.get_property_native('fullscreen'),
@@ -1630,100 +1630,106 @@ function render_volume(this)
 
 	local ass = assdraw.ass_new()
 
-	-- Background bar coordinates
-	local bax = slider.ax
-	local bay = slider.ay
-	local bbx = slider.bx
-	local bby = slider.by
+	if slider.height > 0 then
+		-- Background bar coordinates
+		local bax = slider.ax
+		local bay = slider.ay
+		local bbx = slider.bx
+		local bby = slider.by
 
-	-- Foreground bar coordinates
-	local height_without_border = slider.height - (options.volume_border * 2)
-	local fax = slider.ax + options.volume_border
-	local fay = slider.ay + (height_without_border * (1 - (state.volume / state.volume_max))) + options.volume_border
-	local fbx = slider.bx - options.volume_border
-	local fby = slider.by - options.volume_border
+		-- Foreground bar coordinates
+		local height_without_border = slider.height - (options.volume_border * 2)
+		local fax = slider.ax + options.volume_border
+		local fay = slider.ay + (height_without_border * (1 - (state.volume / state.volume_max))) + options.volume_border
+		local fbx = slider.bx - options.volume_border
+		local fby = slider.by - options.volume_border
 
-	-- Path to draw a foreground bar with a 100% volume indicator, already
-	-- clipped by volume level. Can't just clip it with rectangle, as it itself
-	-- also needs to be used as a path to clip the background bar and volume
-	-- number.
-	local fpath = assdraw.ass_new()
-	fpath:move_to(fbx, fby)
-	fpath:line_to(fax, fby)
-	local nudge_bottom_y = slider.volume_100_y + slider.nudge_size
-	if fay <= nudge_bottom_y then
-		fpath:line_to(fax, nudge_bottom_y)
-		if fay <= slider.volume_100_y then
-			fpath:line_to((fax + slider.nudge_size), slider.volume_100_y)
-			local nudge_top_y = slider.volume_100_y - slider.nudge_size
-			if fay <= nudge_top_y then
-				fpath:line_to(fax, nudge_top_y)
-				fpath:line_to(fax, fay)
-				fpath:line_to(fbx, fay)
-				fpath:line_to(fbx, nudge_top_y)
+		-- Path to draw a foreground bar with a 100% volume indicator, already
+		-- clipped by volume level. Can't just clip it with rectangle, as it itself
+		-- also needs to be used as a path to clip the background bar and volume
+		-- number.
+		local fpath = assdraw.ass_new()
+		fpath:move_to(fbx, fby)
+		fpath:line_to(fax, fby)
+		local nudge_bottom_y = slider.nudge_y + slider.nudge_size
+		if fay <= nudge_bottom_y and slider.draw_nudge then
+			fpath:line_to(fax, math.min(nudge_bottom_y))
+			if fay <= slider.nudge_y then
+				fpath:line_to((fax + slider.nudge_size), slider.nudge_y)
+				local nudge_top_y = slider.nudge_y - slider.nudge_size
+				if fay <= nudge_top_y then
+					fpath:line_to(fax, nudge_top_y)
+					fpath:line_to(fax, fay)
+					fpath:line_to(fbx, fay)
+					fpath:line_to(fbx, nudge_top_y)
+				else
+					local triangle_side = fay - nudge_top_y
+					fpath:line_to((fax + triangle_side), fay)
+					fpath:line_to((fbx - triangle_side), fay)
+				end
+				fpath:line_to((fbx - slider.nudge_size), slider.nudge_y)
 			else
-				local triangle_side = fay - nudge_top_y
+				local triangle_side = nudge_bottom_y - fay
 				fpath:line_to((fax + triangle_side), fay)
 				fpath:line_to((fbx - triangle_side), fay)
 			end
-			fpath:line_to((fbx - slider.nudge_size), slider.volume_100_y)
+			fpath:line_to(fbx, nudge_bottom_y)
 		else
-			local triangle_side = nudge_bottom_y - fay
-			fpath:line_to((fax + triangle_side), fay)
-			fpath:line_to((fbx - triangle_side), fay)
+			fpath:line_to(fax, fay)
+			fpath:line_to(fbx, fay)
 		end
-		fpath:line_to(fbx, nudge_bottom_y)
-	else
-		fpath:line_to(fax, fay)
-		fpath:line_to(fbx, fay)
-	end
-	fpath:line_to(fbx, fby)
+		fpath:line_to(fbx, fby)
 
-	-- Background
-	ass:new_event()
-	ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'\\iclip('..fpath.scale..', '..fpath.text..')}')
-	ass:append(ass_opacity(math.max(options.volume_opacity - 0.1, 0), opacity))
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:move_to(bax, bay)
-	ass:line_to(bbx, bay)
-	local half_border = options.volume_border / 2
-	ass:line_to(bbx, slider.volume_100_y - slider.nudge_size + half_border)
-	ass:line_to(bbx - slider.nudge_size + half_border, slider.volume_100_y)
-	ass:line_to(bbx, slider.volume_100_y + slider.nudge_size - half_border)
-	ass:line_to(bbx, bby)
-	ass:line_to(bax, bby)
-	ass:line_to(bax, slider.volume_100_y + slider.nudge_size - half_border)
-	ass:line_to(bax + slider.nudge_size - half_border, slider.volume_100_y)
-	ass:line_to(bax, slider.volume_100_y - slider.nudge_size + half_border)
-	ass:line_to(bax, bay)
-	ass:draw_stop()
-
-	-- Foreground
-	ass:new_event()
-	ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
-	ass:append(ass_opacity(options.volume_opacity, opacity))
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:append(fpath.text)
-	ass:draw_stop()
-
-	-- Current volume value
-	if fay < slider.by - slider.spacing then
+		-- Background
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..slider.font_size..'\\clip('..fpath.scale..', '..fpath.text..')}')
-		ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
-		ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
-		ass:an(2)
-		ass:append(state.volume)
-	end
-	if fay > slider.by - slider.spacing - slider.font_size then
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'\\iclip('..fpath.scale..', '..fpath.text..')}')
+		ass:append(ass_opacity(math.max(options.volume_opacity - 0.1, 0), opacity))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:move_to(bax, bay)
+		ass:line_to(bbx, bay)
+		local half_border = options.volume_border / 2
+		if slider.draw_nudge then
+			ass:line_to(bbx, math.max(slider.nudge_y - slider.nudge_size + half_border, bay))
+			ass:line_to(bbx - slider.nudge_size + half_border, slider.nudge_y)
+			ass:line_to(bbx, slider.nudge_y + slider.nudge_size - half_border)
+		end
+		ass:line_to(bbx, bby)
+		ass:line_to(bax, bby)
+		if slider.draw_nudge then
+			ass:line_to(bax, slider.nudge_y + slider.nudge_size - half_border)
+			ass:line_to(bax + slider.nudge_size - half_border, slider.nudge_y)
+			ass:line_to(bax, math.max(slider.nudge_y - slider.nudge_size + half_border, bay))
+		end
+		ass:line_to(bax, bay)
+		ass:draw_stop()
+
+		-- Foreground
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..slider.font_size..'\\iclip('..fpath.scale..', '..fpath.text..')}')
-		ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
-		ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
-		ass:an(2)
-		ass:append(state.volume)
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+		ass:append(ass_opacity(options.volume_opacity, opacity))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:append(fpath.text)
+		ass:draw_stop()
+
+		-- Current volume value
+		if fay < slider.by - slider.spacing then
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..slider.font_size..'\\clip('..fpath.scale..', '..fpath.text..')}')
+			ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
+			ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
+			ass:an(2)
+			ass:append(state.volume)
+		end
+		if fay > slider.by - slider.spacing - slider.font_size then
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..slider.font_size..'\\iclip('..fpath.scale..', '..fpath.text..')}')
+			ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
+			ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
+			ass:an(2)
+			ass:append(state.volume)
+		end
 	end
 
 	-- Mute button
@@ -2011,7 +2017,7 @@ end
 if options.pause_indicator then
 	elements:add('pause_indicator', Element.new({
 		render = function(this)
-			if not state.paused then return end
+			if not state.pause then return end
 			local ass = assdraw.ass_new()
 
 			-- Background fadeout
@@ -2190,7 +2196,6 @@ if itable_find({'left', 'right'}, options.volume) then
 			end
 		end,
 		on_display_resize = function(this)
-			local left = options.volume == 'left'
 			this.width = (state.fullscreen or state.maximized) and options.volume_size_fullscreen or options.volume_size
 			this.height = round(math.min(this.width * 10, (elements.timeline.ay - elements.window_controls.by) * 0.8))
 			-- Don't bother rendering this if too small
@@ -2225,7 +2230,7 @@ if itable_find({'left', 'right'}, options.volume) then
 		pressed = false,
 		width = 0,
 		height = 0,
-		volume_100_y = 0, -- vertical position where volume overflows 100
+		nudge_y = 0, -- vertical position where volume overflows 100
 		nudge_size = nil, -- set on resize
 		font_size = nil,
 		spacing = nil,
@@ -2236,8 +2241,9 @@ if itable_find({'left', 'right'}, options.volume) then
 			this.by = elements.volume_mute.ay
 			this.width = this.bx - this.ax
 			this.height = this.by - this.ay
-			this.volume_100_y = this.by - round(this.height * (100 / state.volume_max))
+			this.nudge_y = this.by - round(this.height * (100 / state.volume_max))
 			this.nudge_size = round(elements.volume.width * 0.18)
+			this.draw_nudge = this.ay < this.nudge_y
 			this.font_size = round(this.width * 0.5)
 			this.spacing = round(this.width * 0.2)
 		end,
@@ -2245,7 +2251,7 @@ if itable_find({'left', 'right'}, options.volume) then
 			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
 			local new_volume = math.min(math.max(volume_fraction, 0), 1) * state.volume_max
 			new_volume = round(new_volume / options.volume_step) * options.volume_step
-			if state.volume ~= new_volume then mp.commandv('set', 'volume', new_volume) end
+			if state.volume ~= new_volume then mp.commandv('set', 'volume', math.min(new_volume, state.volume_max)) end
 		end,
 		on_mbtn_left_down = function(this)
 			this.pressed = true
@@ -2257,10 +2263,12 @@ if itable_find({'left', 'right'}, options.volume) then
 			if this.pressed then this:set_from_cursor() end
 		end,
 		on_wheel_up = function(this)
-			mp.set_property_native('volume', state.volume + options.volume_step)
+			local current_rounded_volume = round(state.volume / options.volume_step) * options.volume_step
+			mp.commandv('set', 'volume', math.min(current_rounded_volume + options.volume_step, state.volume_max))
 		end,
 		on_wheel_down = function(this)
-			mp.set_property_native('volume', state.volume - options.volume_step)
+			local current_rounded_volume = round(state.volume / options.volume_step) * options.volume_step
+			mp.commandv('set', 'volume', math.min(current_rounded_volume - options.volume_step, state.volume_max))
 		end,
 	}))
 end
@@ -2767,7 +2775,7 @@ mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen'))
 mp.observe_property('window-maximized', 'bool', create_state_setter('maximized'))
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
 mp.observe_property('speed', 'number', create_state_setter('speed'))
-mp.observe_property('pause', 'bool', create_state_setter('paused'))
+mp.observe_property('pause', 'bool', create_state_setter('pause'))
 mp.observe_property('volume', 'number', create_state_setter('volume'))
 mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
 mp.observe_property('mute', 'bool', create_state_setter('mute'))
