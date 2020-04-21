@@ -386,6 +386,8 @@ local word_order_comparator = (function()
 	end
 
 	return function (a, b)
+		a = a:lower()
+		b = b:lower()
 		for i = 1, math.max(#a, #b) do
 			local ai = a:sub(i, i)
 			local bi = b:sub(i, i)
