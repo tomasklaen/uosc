@@ -8,9 +8,12 @@ uosc replaces the default osc UI, so that has to be disabled first.
 Place these options into your `mpv.conf` file:
 
 ```
-osc=no     # required so that the 2 UIs don't fight each other
-border=no  # if you disable window border, uosc will draw
-           # its own pretty window controls (minimize, maximize, close)
+# required so that the 2 UIs don't fight each other
+osc=no
+# uosc provides its own seeking/volume indicators, so you also don't need this
+osd-bar=no
+# uosc will draw its own window controls if you disable window border
+border=no
 ```
 
 Options go in `script-opts/uosc.conf`. Defaults:
@@ -31,17 +34,16 @@ timeline_border=1
 # when scrolling above timeline, wheel will seek by this amount of seconds
 timeline_step=5
 # display seekable buffered ranges for streaming videos, syntax `color:opacity`,
-# color is an BBGGRR hex code, set to empty or `no` to disable
+# color is an BBGGRR hex code, set to `none` to disable
 timeline_cached_ranges=345433:0.5
 # briefly show timeline on external changes (e.g. seeking with a hotkey)
 timeline_flash=yes
 
-# timeline chapters style: dots, lines, lines-top, lines-bottom
-# set to empty to disable
+# timeline chapters style: none, dots, lines, lines-top, lines-bottom
 chapters=dots
 chapters_opacity=0.3
 
-# where to display volume controls (`left` or `right`), set to empty to disable
+# where to display volume controls: none, left, right
 volume=right
 volume_size=40
 volume_size_fullscreen=40
@@ -81,8 +83,8 @@ color_background=000000
 color_background_text=ffffff
 # hide UI when mpv autohides the cursor
 autohide=no
-# fades screen to background color and displays a pause icon when paused
-pause_indicator=no
+# can be: none, flash, static
+pause_indicator=flash
 # display window title (filename) in top window controls bar in no-border mode
 title=no
 # load first file when calling next on a last file in a directory and vice versa
@@ -217,7 +219,7 @@ local options = {
 	color_background = '000000',
 	color_background_text = 'ffffff',
 	autohide = false,
-	pause_indicator = false,
+	pause_indicator = 'flash',
 	title = false,
 	directory_navigation_loops = false,
 	media_types = '3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
@@ -407,13 +409,18 @@ end)()
 -- Creates in-between frames to animate value from `from` to `to` numbers.
 -- Returns function that terminates animation.
 -- `to` can be a function that returns target value, useful for movable targets.
+-- `speed` is an optional float between 1-instant and 0-infinite duration
 -- `callback` is called either on animation end, or when animation is canceled
-function tween(from, to, setter, callback)
+function tween(from, to, setter, speed, callback)
+	if type(speed) ~= 'number' then
+		callback = speed
+		speed = 0.3
+	end
 	local timeout
 	local getTo = type(to) == 'function' and to or function() return to end
 	local cutoff = math.abs(getTo() - from) * 0.01
 	function tick()
-		from = from + ((getTo() - from) * 0.3)
+		from = from + ((getTo() - from) * speed)
 		local is_end = math.abs(getTo() - from) <= cutoff
 		setter(is_end and getTo() or from)
 		request_render()
@@ -433,12 +440,18 @@ end
 
 -- Kills ongoing animation if one is already running on this element.
 -- Killed animation will not get its `on_end` called.
-function tween_element(element, from, to, setter, callback)
+function tween_element(element, from, to, setter, speed, callback)
+	if type(speed) ~= 'number' then
+		callback = speed
+		speed = 0.3
+	end
+
 	tween_element_stop(element)
 
 	element.stop_current_animation = tween(
 		from, to,
 		function(value) setter(element, value) end,
+		speed,
 		function()
 			element.stop_current_animation = nil
 			call_me_maybe(callback, element)
@@ -457,8 +470,8 @@ function tween_element_stop(element)
 end
 
 -- Helper to automatically use an element property setter
-function tween_element_property(element, prop, from, to, callback)
-	tween_element(element, from, to, function(_, value) element[prop] = value end, callback)
+function tween_element_property(element, prop, from, to, speed, callback)
+	tween_element(element, from, to, function(_, value) element[prop] = value end, speed, callback)
 end
 
 function get_point_to_rectangle_proximity(point, rect)
@@ -1431,7 +1444,7 @@ function render_timeline(this)
 	end
 
 	-- Chapters
-	if options.chapters ~= '' and state.chapters ~= nil and #state.chapters > 0 then
+	if options.chapters ~= 'none' and state.chapters ~= nil and #state.chapters > 0 then
 		local half_size = size / 2
 		local dots = false
 		local chapter_size, chapter_y
@@ -2034,39 +2047,77 @@ end
 
 -- STATIC ELEMENTS
 
-if options.pause_indicator then
+if itable_find({'flash', 'static'}, options.pause_indicator) then
 	elements:add('pause_indicator', Element.new({
+		base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8,
+		paused = false,
+		opacity = 0,
+		init = function(this)
+			local initial_call = true
+			mp.observe_property('pause', 'bool', function(_, paused)
+				if initial_call then
+					initial_call = false
+					return
+				end
+
+				this.paused = paused
+
+				if options.pause_indicator == 'flash' then
+					this.opacity = 1
+					this:tween_property('opacity', 1, 0, 0.15)
+				else
+					this.opacity = paused and 1 or 0
+					request_render()
+				end
+
+			end)
+		end,
 		render = function(this)
-			if not state.pause then return end
+			if this.opacity == 0 then return end
+
 			local ass = assdraw.ass_new()
 
 			-- Background fadeout
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-			ass:append(ass_opacity(0.3))
+			ass:append(ass_opacity(0.3, this.opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
 			ass:rect_cw(0, 0, display.width, display.height)
 			ass:draw_stop()
 
 			-- Icon
-			local size = round(math.min(display.width, display.height) * 0.3)
+			local size = round((math.min(display.width, display.height) * 0.25) / 2)
 
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
-			ass:append(ass_opacity(0.8))
-			ass:pos(display.width / 2, display.height / 2)
-			ass:draw_start()
-			ass:rect_cw(-size / 2, -size / 2, -size / 6, size / 2)
-			ass:draw_stop()
+			size = size + size * (1 - this.opacity)
 
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
-			ass:append(ass_opacity(0.8))
-			ass:pos(display.width / 2, display.height / 2)
-			ass:draw_start()
-			ass:rect_cw(size / 6, -size / 2, size / 2, size / 2)
-			ass:draw_stop()
+			if this.paused then
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+				ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
+				ass:pos(display.width / 2, display.height / 2)
+				ass:draw_start()
+				ass:rect_cw(-size, -size, -size / 3, size)
+				ass:draw_stop()
+
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+				ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
+				ass:pos(display.width / 2, display.height / 2)
+				ass:draw_start()
+				ass:rect_cw(size / 3, -size, size, size)
+				ass:draw_stop()
+			elseif options.pause_indicator == 'flash' then
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+				ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
+				ass:pos(display.width / 2, display.height / 2)
+				ass:draw_start()
+				ass:move_to(-size * 0.6, -size)
+				ass:line_to(size, 0)
+				ass:line_to(-size * 0.6, size)
+				ass:draw_stop()
+			end
 
 			return ass
 		end
@@ -2778,6 +2829,7 @@ end
 
 -- VALUE SERIALIZATION/NORMALIZATION
 
+options.chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.chapters) and options.chapters or 'none'
 options.media_types = split(options.media_types, ' *, *')
 options.subtitle_types = split(options.subtitle_types, ' *, *')
 options.timeline_cached_ranges = (function()

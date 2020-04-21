@@ -26,9 +26,12 @@ Most notable features:
 In your `mpv.conf`:
 
 ```config
-osc=no     # required so that the 2 UIs don't fight each other
-border=no  # if you disable window border, uosc will draw
-           # its own pretty proximity based window controls
+# required so that the 2 UIs don't fight each other
+osc=no
+# uosc provides its own seeking/volume indicators, so you also don't need this
+osd-bar=no
+# uosc will draw its own window controls if you disable window border
+border=no
 ```
 
 Download and save [`uosc.lua`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.lua) into `scripts/` folder.
@@ -55,17 +58,16 @@ timeline_border=1
 # when scrolling above timeline, wheel will seek by this amount of seconds
 timeline_step=5
 # display seekable buffered ranges for streaming videos, syntax `color:opacity`,
-# color is an BBGGRR hex code, set to empty or `no` to disable
+# color is an BBGGRR hex code, set to `none` to disable
 timeline_cached_ranges=345433:0.5
 # briefly show timeline on external changes (e.g. seeking with a hotkey)
 timeline_flash=yes
 
-# timeline chapters style: dots, lines, lines-top, lines-bottom
-# set to empty to disable
+# timeline chapters style: none, dots, lines, lines-top, lines-bottom
 chapters=dots
 chapters_opacity=0.3
 
-# where to display volume controls (`left` or `right`), set to empty to disable
+# where to display volume controls: none, left, right
 volume=right
 volume_size=40
 volume_size_fullscreen=40
@@ -105,8 +107,8 @@ color_background=000000
 color_background_text=ffffff
 # hide UI when mpv autohides the cursor
 autohide=no
-# fades screen to background color and displays a pause icon when paused
-pause_indicator=no
+# can be: none, flash, static
+pause_indicator=flash
 # display window title (filename) in top window controls bar in no-border mode
 title=no
 # load first file when calling next on a last file in a directory and vice versa
