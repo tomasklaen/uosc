@@ -298,13 +298,11 @@ function split(str, pattern)
 	local last_end = 1
 	local start_index, end_index, capture = str:find(full_pattern, 1)
 	while start_index do
-		if start_index ~= 1 or capture ~= '' then
-			list[#list +1] = capture
-		end
+		list[#list +1] = capture
 		last_end = end_index + 1
 		start_index, end_index, capture = str:find(full_pattern, last_end)
 	end
-	if last_end <= #str then
+	if last_end <= (#str + 1) then
 		capture = str:sub(last_end)
 		list[#list +1] = capture
 	end
@@ -506,7 +504,7 @@ end
 -- Ensures path is absolute and normalizes slashes to the current platform
 function normalize_path(path)
 	-- Ensure path is absolute
-	if not (path:match('^/') or path:match('^%a+:[/\\]') or path:match('^\\\\')) then
+	if not is_absolute_path(path) then
 		path = utils.join_path(state.cwd, path)
 	end
 
