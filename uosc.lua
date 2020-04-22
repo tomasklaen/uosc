@@ -634,7 +634,7 @@ Signature:
 ]]
 local Element = {
 	captures = nil,
-	belongs_to_interactive_proximity = true,
+	is_interactive = false,
 	ax = 0, ay = 0, bx = 0, by = 0,
 	proximity = 0, proximity_raw = infinity,
 }
@@ -786,7 +786,6 @@ function Menu:open(items, open_item, opts)
 
 	elements:add('menu', Element.new({
 		captures = {mouse_buttons = true},
-		belongs_to_interactive_proximity = false,
 		type = nil, -- menu type such as `context-menu`, `navigate-chapters`, ...
 		title = nil,
 		width = nil,
@@ -1309,7 +1308,7 @@ function update_proximities()
 			update_element_cursor_proximity(element)
 		end
 
-		if element.belongs_to_interactive_proximity and element.proximity > highest_proximity then
+		if element.is_interactive and element.proximity > highest_proximity then
 			highest_proximity = element.proximity
 		end
 
@@ -2126,6 +2125,7 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 	}))
 end
 elements:add('timeline', Element.new({
+	is_interactive = true,
 	captures = {mouse_buttons = true, wheel = true},
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
@@ -2203,6 +2203,7 @@ elements:add('timeline', Element.new({
 	render = render_timeline,
 }))
 elements:add('window_controls', Element.new({
+	is_interactive = true,
 	enabled = false,
 	init = function(this)
 		mp.observe_property('border', 'bool', function(_, border)
@@ -2249,6 +2250,7 @@ elements:add('window_controls_close', Element.new({
 }))
 if itable_find({'left', 'right'}, options.volume) then
 	elements:add('volume', Element.new({
+		is_interactive = true,
 		width = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		height = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		margin = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
@@ -2347,6 +2349,7 @@ if itable_find({'left', 'right'}, options.volume) then
 end
 if options.speed then
 	elements:add('speed', Element.new({
+		is_interactive = true,
 		captures = {mouse_buttons = true, wheel = true},
 		dragging = nil,
 		width = 0,
