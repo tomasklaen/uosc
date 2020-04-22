@@ -1,3 +1,11 @@
+## 2.4.1 - 2020-Apr-22
+
+Changed:
+- Tweaked pause indicator styles.
+
+Fixed:
+- **!IMPORTANT!** File navigation not working on linux. I copy & pasted someone elses lua string splitting implementation from stack overflow and it was wrong. What a surprise.
+
 ## 2.4.0 - 2020-Apr-21
 
 New:
