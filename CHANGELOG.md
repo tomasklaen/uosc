@@ -1,3 +1,8 @@
+## 2.4.2 - 2020-Apr-23
+
+Fixed:
+- `delete-file-next` not starting next file on Linux.
+
 ## 2.4.1 - 2020-Apr-22
 
 Changed:
