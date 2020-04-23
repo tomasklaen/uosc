@@ -569,20 +569,20 @@ function get_files_in_directory(directory, allowed_types)
 	return files
 end
 
-function get_adjacent_media_file(file_path, direction)
+function get_adjacent_file(file_path, direction, allowed_types)
 	local current_file = serialize_path(file_path)
-	local files = get_files_in_directory(current_file.dirname, options.media_types)
+	local files = get_files_in_directory(current_file.dirname, allowed_types)
 
 	if not files then return end
 
 	for index, file in ipairs(files) do
 		if current_file.basename == file then
 			if direction == 'forward' then
-				if files[index + 1] then return files[index + 1] end
-				if options.directory_navigation_loops and files[1] then return files[1] end
+				if files[index + 1] then return utils.join_path(current_file.dirname, files[index + 1]) end
+				if options.directory_navigation_loops and files[1] then return utils.join_path(current_file.dirname, files[1]) end
 			else
-				if files[index - 1] then return files[index - 1] end
-				if options.directory_navigation_loops and files[#files] then return files[#files] end
+				if files[index - 1] then return utils.join_path(current_file.dirname, files[index - 1]) end
+				if options.directory_navigation_loops and files[#files] then return utils.join_path(current_file.dirname, files[#files]) end
 			end
 
 			-- This is the only file in directory
@@ -2702,7 +2702,7 @@ function create_navigate_directory(direction)
 
 		if is_protocol(path) then return end
 
-		local next_file = get_adjacent_media_file(path, direction)
+		local next_file = get_adjacent_file(path, direction, options.media_types)
 
 		if next_file then
 			mp.commandv("loadfile", utils.join_path(serialize_path(path).dirname, next_file))
@@ -3137,7 +3137,7 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 	if playlist_count > 1 then
 		mp.commandv('playlist-remove', 'current')
 	else
-		local next_file = get_adjacent_media_file(path, 'forward')
+		local next_file = get_adjacent_file(path, 'forward', options.media_types)
 
 		if menu:is_open('navigate-directory') then
 			elements.menu:delete_value(path)
