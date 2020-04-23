@@ -253,7 +253,7 @@ Open last file in current directory.
 
 Delete currently playing file and start next file in playlist (if there is a playlist) or current directory.
 
-Useful when watching periodic content.
+Useful when watching episodic content.
 
 #### `delete-file-quit`
 
