@@ -1778,7 +1778,7 @@ end
 function render_speed(this)
 	if not this.dragging and (elements.curtain.opacity > 0) then return end
 
-	local proximity = math.max(state.interactive_proximity, this.proximity)
+	local proximity = state.interactive_proximity
 	local opacity = this.forced_proximity and this.forced_proximity or (this.dragging and 1 or proximity)
 
 	if opacity == 0 then return end
@@ -2349,7 +2349,6 @@ if itable_find({'left', 'right'}, options.volume) then
 end
 if options.speed then
 	elements:add('speed', Element.new({
-		is_interactive = true,
 		captures = {mouse_buttons = true, wheel = true},
 		dragging = nil,
 		width = 0,
