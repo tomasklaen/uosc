@@ -16,6 +16,11 @@ Most notable features:
 	- Loading external subtitles.
 	- Selecting subtitle/audio/video track.
 	- Quick directory and playlist navigation.
+- Mouse scroll wheel does multiple things depending on what is the cursor hovering over:
+	- Timeline: seek by `timeline_step` seconds per scroll.
+	- Volume bar: change volume by `volume_step` per scroll.
+	- Speed bar: change speed by `speed_step` per scroll.
+	- Just hovering video with no UI widget below cursor: your configured wheel bindings from `input.conf`.
 - Transform chapters into timeline ranges (the red portion of the timeline in the preview).
 - And a lot of useful options and commands to bind keys to.
 
