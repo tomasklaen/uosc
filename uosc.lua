@@ -144,7 +144,7 @@ chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>
 Available keybindings (place into `input.conf`):
 
 ```
-Key  script-binding uosc/flash-timeline
+Key  script-binding uosc/peek-timeline
 Key  script-binding uosc/toggle-progress
 Key  script-binding uosc/context-menu
 Key  script-binding uosc/load-subtitles
@@ -2947,7 +2947,7 @@ end)()
 
 -- KEY BINDABLE FEATURES
 
-mp.add_key_binding(nil, 'flash-timeline', function()
+mp.add_key_binding(nil, 'peek-timeline', function()
 	if elements.timeline.proximity > 0.5 then
 		elements.timeline:tween_property('proximity', elements.timeline.proximity, 0)
 	else
