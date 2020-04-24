@@ -1,3 +1,12 @@
+## 2.5.0 - 2020-Apr-24
+
+New:
+- Added `timeline_start_hidden` options. Function the same as calling `toggle-progress` command once on startup.
+
+Changed:
+- Command `flash-timeline` renamed to `peek-timeline`.
+- Some cursor interaction tweaks.
+
 ## 2.4.2 - 2020-Apr-23
 
 Fixed:
