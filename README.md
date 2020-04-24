@@ -9,7 +9,7 @@
 
 Most notable features:
 
-- UI elements hide and show based on their proximity to cursor instead of the annoying last mouse move time. This gives you 100% control over when you see the UI and when you don't. Click on the preview above to see it in action.
+- UI elements hide and show based on their proximity to cursor instead of every time mouse moves. This gives you 100% control over when you see the UI and when you don't. Click on the preview above to see it in action.
 - Set min timeline size to make an always visible discrete progress bar.
 - Build your own context menu with nesting support by editing your `input.conf` file.
 - UIs for:
@@ -18,6 +18,8 @@ Most notable features:
 	- Quick directory and playlist navigation.
 - Transform chapters into timeline ranges (the red portion of the timeline in the preview).
 - And a lot of useful options and commands to bind keys to.
+
+[Changelog](./CHANGELOG.md).
 
 ## Installation
 
@@ -36,7 +38,7 @@ border=no
 
 Download and save [`uosc.lua`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.lua) into `scripts/` folder.
 
-To configure **uosc**, create a `script-opts/uosc.conf` file, or download [`uosc.conf`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.conf) from this repository.
+To configure **uosc**, create a `script-opts/uosc.conf` file, or download [`uosc.conf`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.conf) from this repository, and save into `script-opts/` folder.
 
 ## Options
 
@@ -50,6 +52,8 @@ timeline_size_max=40
 # same as ^ but when in fullscreen
 timeline_size_min_fullscreen=0
 timeline_size_max_fullscreen=60
+# same thing as calling toggle-progress command once on startup
+timeline_start_hidden=no
 # timeline opacity
 timeline_opacity=0.8
 # top (and bottom in no-border mode) border of background color to help visually
@@ -185,15 +189,15 @@ You can also click on a faded parent menu to go back to it.
 
 To add a keybind to one of this commands, open your `input.conf` file and add one on a new line. The command syntax is `script-binding uosc/{command-name}`.
 
-Example to bind the `tab` key to flash timeline:
+Example to bind the `tab` key to peek timeline:
 
 ```
-tab  script-binding uosc/flash-timeline
+tab  script-binding uosc/peek-timeline
 ```
 
 Available commands:
 
-#### `flash-timeline`
+#### `peek-timeline`
 
 Expands the bottom timeline until pressed again, or next mouse move. Useful to check times during playback.
 

@@ -26,6 +26,8 @@ timeline_size_max=40
 # same as ^ but when in fullscreen
 timeline_size_min_fullscreen=0
 timeline_size_max_fullscreen=60
+# same thing as calling toggle-progress command once on startup
+timeline_start_hidden=no
 # timeline opacity
 timeline_opacity=0.8
 # top (and bottom in no-border mode) border of background color to help visually
@@ -182,6 +184,7 @@ local options = {
 	timeline_size_max = 40,
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
+	timeline_start_hidden = false,
 	timeline_opacity = 0.8,
 	timeline_border = 1,
 	timeline_step = 5,
@@ -2129,7 +2132,7 @@ elements:add('timeline', Element.new({
 	captures = {mouse_buttons = true, wheel = true},
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
-	size_min_override = nil, -- used for toggle-progress command
+	size_min_override = options.timeline_start_hidden and 0 or nil, -- used for toggle-progress command
 	font_size = 0, -- calculated in on_display_resize
 	top_border = options.timeline_border,
 	bottom_border = 0, -- set dynamically in `border` property observer
