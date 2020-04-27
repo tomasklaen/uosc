@@ -506,8 +506,10 @@ end
 
 -- Ensures path is absolute and normalizes slashes to the current platform
 function normalize_path(path)
+	if is_protocol(path) then return path end
+
 	-- Ensure path is absolute
-	if not is_absolute_path(path) then
+	if not (path:match('^/') or path:match('^%a+:[/\\]') or path:match('^\\\\')) then
 		path = utils.join_path(state.cwd, path)
 	end
 
@@ -517,11 +519,6 @@ function normalize_path(path)
 	else
 		return path:gsub('\\', '/')
 	end
-end
-
--- Naive check for absolute paths
-function is_absolute_path(path)
-	return path:match('^/') or path:match('^%a+:[/\\]') or path:match('^\\\\')
 end
 
 -- Check if path is a protocol, such as `http://...`
