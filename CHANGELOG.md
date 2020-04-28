@@ -1,3 +1,11 @@
+## 2.6.0 - 2020-Apr-28
+
+New:
+- Added `open-config-directory` command.
+
+Fixed:
+- Volume bar extending past its borders when volume was higher than `volume-max` config.
+
 ## 2.5.0 - 2020-Apr-24
 
 New:
