@@ -342,6 +342,7 @@ ctrl+s      async screenshot                       #! Utils > Screenshot
 P           script-binding uosc/navigate-playlist  #! Utils > Navigate playlist
 C           script-binding uosc/navigate-chapters  #! Utils > Navigate chapters
 D           script-binding uosc/navigate-directory #! Utils > Navigate directory
+#           script-binding uosc/open-config-directory #! Utils > Open config directory
 #           set video-aspect-override "-1"         #! Aspect ratio > Default
 #           set video-aspect-override "16:9"       #! Aspect ratio > 16:9
 #           set video-aspect-override "4:3"        #! Aspect ratio > 4:3
