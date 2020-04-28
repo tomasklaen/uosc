@@ -1670,7 +1670,7 @@ function render_volume(this)
 		-- Foreground bar coordinates
 		local height_without_border = slider.height - (options.volume_border * 2)
 		local fax = slider.ax + options.volume_border
-		local fay = slider.ay + (height_without_border * (1 - (state.volume / state.volume_max))) + options.volume_border
+		local fay = slider.ay + (height_without_border * (1 - math.min(state.volume / state.volume_max, 1))) + options.volume_border
 		local fbx = slider.bx - options.volume_border
 		local fby = slider.by - options.volume_border
 
