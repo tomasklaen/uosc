@@ -272,6 +272,10 @@ Delete currently playing file and quit mpv.
 
 Show current file in your operating systems' file explorer.
 
+#### `open-config-directory`
+
+Open directory with `mpv.conf` in file explorer.
+
 ## Context menu
 
 **uosc** provides a way to build, display, and use your own context menu. Limitation is that the UI rendering API provided by mpv can only render stuff within window borders, so the menu can't float above it but needs to fit inside. This might be annoying for tiny videos but otherwise it accomplishes the same thing.

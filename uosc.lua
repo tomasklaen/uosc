@@ -163,6 +163,7 @@ Key  script-binding uosc/last-file
 Key  script-binding uosc/delete-file-next
 Key  script-binding uosc/delete-file-quit
 Key  script-binding uosc/show-in-directory
+Key  script-binding uosc/open-config-directory
 ```
 ]]
 
@@ -3156,4 +3157,18 @@ mp.add_key_binding(nil, 'delete-file-quit', function()
 	if is_protocol(path) then return end
 	os.remove(normalize_path(path))
 	mp.command('quit')
+end)
+mp.add_key_binding(nil, 'open-config-directory', function()
+	local config = serialize_path(mp.command_native({'expand-path', '~~/mpv.conf'}))
+	local args
+
+	if state.os == 'windows' then
+		args = {'explorer', '/select,', config.path}
+	elseif state.os == 'macos' then
+		args = {'open', '-R', config.path}
+	elseif state.os == 'linux' then
+		args = {'xdg-open', config.dirname}
+	end
+
+	utils.subprocess_detached({args = args, cancellable = false})
 end)
