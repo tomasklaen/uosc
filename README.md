@@ -210,33 +210,33 @@ Expands the bottom timeline until pressed again, or next mouse move. Useful to c
 
 Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
 
-#### `context-menu`
+#### `menu`
 
-Toggles context menu. Context menu is empty by default and won't show up when this is pressed. Read [Context menu](#context-menu-1) section below to find out how to fill it up with items you want there.
+Toggles menu. Menu is empty by default and won't show up when this is pressed. Read [Menu](#menu-1) section below to find out how to fill it up with items you want there.
 
 #### `load-subtitles`
 
 Displays a file explorer with directory navigation to load external subtitles. Explorer only displays file types defined in `subtitle_types` option.
 
-#### `select-subtitles`
+#### `subtitles`
 
 Menu to select a subtitle track.
 
-#### `select-audio`
+#### `audio`
 
 Menu to select an audio track.
 
-#### `select-video`
+#### `video`
 
 Menu to select a video track.
 
-#### `navigate-playlist`
+#### `playlist`
 
-Menu to select an item from playlist.
+Playlist navigation.
 
-#### `navigate-chapters`
+#### `chapters`
 
-Menu to seek to start of a specific chapter.
+Chapter navigation.
 
 #### `open-file`
 
@@ -276,15 +276,15 @@ Show current file in your operating systems' file explorer.
 
 Open directory with `mpv.conf` in file explorer.
 
-## Context menu
+## Menu
 
-**uosc** provides a way to build, display, and use your own context menu. Limitation is that the UI rendering API provided by mpv can only render stuff within window borders, so the menu can't float above it but needs to fit inside. This might be annoying for tiny videos but otherwise it accomplishes the same thing.
+**uosc** provides a way to build, display, and use your own menu. Limitation is that the UI rendering API provided by mpv can only render stuff within window borders, so the menu can't float above it but needs to fit inside. This might be annoying for tiny videos but otherwise it accomplishes the same thing.
 
-To display the menu, add **uosc**'s `context-menu` command to a key of your choice. Example to bind it to **right click** and **menu** buttons:
+To display the menu, add **uosc**'s `menu` command to a key of your choice. Example to bind it to **right click** and **menu** buttons:
 
 ```
-mbtn_right  script-binding uosc/context-menu
-menu        script-binding uosc/context-menu
+mbtn_right  script-binding uosc/menu
+menu        script-binding uosc/menu
 ```
 
 ***menu** button is the key between **win** and **right_ctrl** buttons that none uses (might not be on your keyboard).*
@@ -333,15 +333,15 @@ q    quit  #!
 Suggested minimal context menu setup to start with:
 
 ```
-menu        script-binding uosc/context-menu
-mbtn_right  script-binding uosc/context-menu
+menu        script-binding uosc/menu
+mbtn_right  script-binding uosc/menu
 o           script-binding uosc/open-file          #! Open file
 alt+s       script-binding uosc/load-subtitles     #! Load subtitles
-S           script-binding uosc/select-subtitles   #! Select subtitles
-A           script-binding uosc/select-audio       #! Select audio
+S           script-binding uosc/subtitles          #! Select subtitles
+A           script-binding uosc/audio              #! Select audio
 ctrl+s      async screenshot                       #! Utils > Screenshot
-P           script-binding uosc/navigate-playlist  #! Utils > Navigate playlist
-C           script-binding uosc/navigate-chapters  #! Utils > Navigate chapters
+P           script-binding uosc/playlist           #! Utils > Playlist
+C           script-binding uosc/chapters           #! Utils > Chapters
 #           script-binding uosc/open-config-directory #! Utils > Open config directory
 #           set video-aspect-override "-1"         #! Aspect ratio > Default
 #           set video-aspect-override "16:9"       #! Aspect ratio > 16:9

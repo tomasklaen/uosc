@@ -148,13 +148,13 @@ Available keybindings (place into `input.conf`):
 ```
 Key  script-binding uosc/peek-timeline
 Key  script-binding uosc/toggle-progress
-Key  script-binding uosc/context-menu
+Key  script-binding uosc/menu
 Key  script-binding uosc/load-subtitles
-Key  script-binding uosc/select-subtitles
-Key  script-binding uosc/select-audio
-Key  script-binding uosc/select-video
-Key  script-binding uosc/navigate-playlist
-Key  script-binding uosc/navigate-chapters
+Key  script-binding uosc/subtitles
+Key  script-binding uosc/audio
+Key  script-binding uosc/video
+Key  script-binding uosc/playlist
+Key  script-binding uosc/chapters
 Key  script-binding uosc/open-file
 Key  script-binding uosc/next-file
 Key  script-binding uosc/prev-file
@@ -789,7 +789,7 @@ function Menu:open(items, open_item, opts)
 
 	elements:add('menu', Element.new({
 		captures = {mouse_buttons = true},
-		type = nil, -- menu type such as `context-menu`, `navigate-chapters`, ...
+		type = nil, -- menu type such as `menu`, `chapters`, ...
 		title = nil,
 		width = nil,
 		height = nil,
@@ -2967,13 +2967,13 @@ mp.add_key_binding(nil, 'toggle-progress', function()
 		timeline:tween_property('size_min_override', timeline.size_min, 0)
 	end
 end)
-mp.add_key_binding(nil, 'context-menu', function()
-	if menu:is_open('context-menu') then
+mp.add_key_binding(nil, 'menu', function()
+	if menu:is_open('menu') then
 		menu:close()
 	elseif state.context_menu_items then
 		menu:open(state.context_menu_items, function(command)
 			mp.command(command)
-		end, {type = 'context-menu'})
+		end, {type = 'menu'})
 	end
 end)
 mp.add_key_binding(nil, 'load-subtitles', function()
@@ -2989,10 +2989,10 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 		)
 	end
 end)
-mp.add_key_binding(nil, 'select-subtitles', create_select_tracklist_type_menu_opener('Subtitles', 'sub', 'sid'))
-mp.add_key_binding(nil, 'select-audio', create_select_tracklist_type_menu_opener('Audio', 'audio', 'aid'))
-mp.add_key_binding(nil, 'select-video', create_select_tracklist_type_menu_opener('Video', 'video', 'vid'))
-mp.add_key_binding(nil, 'navigate-playlist', function()
+mp.add_key_binding(nil, 'subtitles', create_select_tracklist_type_menu_opener('Subtitles', 'sub', 'sid'))
+mp.add_key_binding(nil, 'audio', create_select_tracklist_type_menu_opener('Audio', 'audio', 'aid'))
+mp.add_key_binding(nil, 'video', create_select_tracklist_type_menu_opener('Video', 'video', 'vid'))
+mp.add_key_binding(nil, 'playlist', function()
 	function serialize_playlist()
 		local pos = mp.get_property_number('playlist-pos-1', 0)
 		local items = {}
@@ -3012,7 +3012,7 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 
 	-- Update active index and playlist content on playlist changes
 	function handle_playlist_change()
-		if menu:is_open('navigate-playlist') then
+		if menu:is_open('playlist') then
 			local items, active_item = serialize_playlist()
 			elements.menu:set_items(items, {
 				active_item = active_item,
@@ -3026,7 +3026,7 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 	menu:open(items, function(index)
 		mp.commandv('set', 'playlist-pos-1', tostring(index))
 	end, {
-		type = 'navigate-playlist',
+		type = 'playlist',
 		title = 'Playlist',
 		active_item = active_item,
 		on_open = function()
@@ -3038,7 +3038,7 @@ mp.add_key_binding(nil, 'navigate-playlist', function()
 		end,
 	})
 end)
-mp.add_key_binding(nil, 'navigate-chapters', function()
+mp.add_key_binding(nil, 'chapters', function()
 	local items = {}
 	local chapters = get_normalized_chapters()
 
@@ -3062,7 +3062,7 @@ mp.add_key_binding(nil, 'navigate-chapters', function()
 
 	-- Update selected chapter in chapter navigation menu
 	function seek_handler()
-		if menu:is_open('navigate-chapters') then
+		if menu:is_open('chapters') then
 			elements.menu:activate_index(get_selected_chapter_index())
 		end
 	end
@@ -3070,7 +3070,7 @@ mp.add_key_binding(nil, 'navigate-chapters', function()
 	menu:open(items, function(time)
 		mp.commandv('seek', tostring(time), 'absolute')
 	end, {
-		type = 'navigate-chapters',
+		type = 'chapters',
 		title = 'Chapters',
 		active_item = get_selected_chapter_index(),
 		on_open = function() mp.register_event('seek', seek_handler) end,
