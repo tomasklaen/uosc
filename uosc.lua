@@ -641,7 +641,6 @@ Signature:
 ]]
 local Element = {
 	captures = nil,
-	is_interactive = false,
 	ax = 0, ay = 0, bx = 0, by = 0,
 	proximity = 0, proximity_raw = infinity,
 }
@@ -1292,7 +1291,6 @@ end
 function update_proximities()
 	local capture_mouse_buttons = false
 	local capture_wheel = false
-	local highest_proximity = 0
 	local menu_only = menu:is_open()
 	local mouse_left_elements = {}
 	local mouse_entered_elements = {}
@@ -1315,10 +1313,6 @@ function update_proximities()
 			update_element_cursor_proximity(element)
 		end
 
-		if element.is_interactive and element.proximity > highest_proximity then
-			highest_proximity = element.proximity
-		end
-
 		if element.proximity_raw == 0 then
 			-- Mouse is over interactive element
 			if element.captures and element.captures.mouse_buttons then capture_mouse_buttons = true end
@@ -1335,8 +1329,6 @@ function update_proximities()
 			end
 		end
 	end
-
-	state.interactive_proximity = highest_proximity
 
 	-- Enable key group captures elements request.
 	if capture_mouse_buttons then
@@ -1563,9 +1555,9 @@ function render_timeline(this)
 end
 
 function render_window_controls(this)
-	local opacity = math.max(state.interactive_proximity, this.proximity)
+	local opacity = this:get_effective_proximity()
 
-	if not this.enabled or opacity == 0 or elements.curtain.opacity > 0 then return end
+	if not this.enabled or opacity == 0 then return end
 
 	local ass = assdraw.ass_new()
 
@@ -1660,10 +1652,9 @@ end
 
 function render_volume(this)
 	local slider = elements.volume_slider
-	local proximity = math.max(state.interactive_proximity, this.proximity)
-	local opacity = this.forced_proximity and this.forced_proximity or (slider.pressed and 1 or proximity)
+	local opacity = this:get_effective_proximity()
 
-	if this.width == 0 or opacity == 0 or elements.curtain.opacity > 0 then return end
+	if this.width == 0 or opacity == 0 then return end
 
 	local ass = assdraw.ass_new()
 
@@ -1785,7 +1776,8 @@ end
 function render_speed(this)
 	if not this.dragging and (elements.curtain.opacity > 0) then return end
 
-	local proximity = state.interactive_proximity
+	local timeline = elements.timeline
+	local proximity = timeline:get_effective_proximity()
 	local opacity = this.forced_proximity and this.forced_proximity or (this.dragging and 1 or proximity)
 
 	if opacity == 0 then return end
@@ -1793,7 +1785,6 @@ function render_speed(this)
 	local ass = assdraw.ass_new()
 
 	-- Coordinates
-	local timeline = elements.timeline
 	local ax = this.ax
 	local ay = this.ay + timeline.size_max - timeline:get_effective_size() - timeline.top_border - timeline.bottom_border
 	local bx = this.bx
@@ -2132,7 +2123,6 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 	}))
 end
 elements:add('timeline', Element.new({
-	is_interactive = true,
 	captures = {mouse_buttons = true, wheel = true},
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
@@ -2160,11 +2150,9 @@ elements:add('timeline', Element.new({
 		end
 	end,
 	get_effective_proximity = function(this)
-		if this.pressed then
-			return 1
-		else
-			return this.forced_proximity and this.forced_proximity or math.max(state.interactive_proximity, this.proximity)
-		end
+		if elements.volume_slider.pressed then return 0 end
+		if this.pressed then return 1 end
+		return this.forced_proximity and this.forced_proximity or this.proximity
 	end,
 	get_effective_size_min = function(this)
 		return this.size_min_override or this.size_min
@@ -2210,15 +2198,18 @@ elements:add('timeline', Element.new({
 	render = render_timeline,
 }))
 elements:add('window_controls', Element.new({
-	is_interactive = true,
 	enabled = false,
 	init = function(this)
 		mp.observe_property('border', 'bool', function(_, border)
 			this.enabled = not border
 		end)
 	end,
+	get_effective_proximity = function(this)
+		if elements.volume_slider.pressed or elements.curtain.opacity > 0 then return 0 end
+		return this.forced_proximity and this.forced_proximity or this.proximity
+	end,
 	on_display_resize = function(this)
-		this.ax = display.width - (config.window_controls.button_width * 3)
+		this.ax = options.title and 0 or (display.width - (config.window_controls.button_width * 3))
 		this.ay = 0
 		this.bx = display.width
 		this.by = config.window_controls.height
@@ -2257,7 +2248,6 @@ elements:add('window_controls_close', Element.new({
 }))
 if itable_find({'left', 'right'}, options.volume) then
 	elements:add('volume', Element.new({
-		is_interactive = true,
 		width = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		height = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		margin = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
@@ -2277,9 +2267,14 @@ if itable_find({'left', 'right'}, options.volume) then
 				end)
 			end
 		end,
+		get_effective_proximity = function(this)
+			if elements.volume_slider.pressed then return 1 end
+			if elements.timeline.proximity_raw == 0 or elements.curtain.opacity > 0 then return 0 end
+			return this.forced_proximity and this.forced_proximity or this.proximity
+		end,
 		on_display_resize = function(this)
 			this.width = (state.fullscreen or state.maximized) and options.volume_size_fullscreen or options.volume_size
-			this.height = round(math.min(this.width * 10, (elements.timeline.ay - elements.window_controls.by) * 0.8))
+			this.height = round(math.min(this.width * 8, (elements.timeline.ay - elements.window_controls.by) * 0.8))
 			-- Don't bother rendering this if too small
 			if this.height < (this.width * 2) then
 				this.height = 0
@@ -2388,7 +2383,7 @@ if options.speed then
 			end)
 		end,
 		fadein = function(this)
-			local get_current_proximity = function() return state.interactive_proximity end
+			local get_current_proximity = function() return this.proximity end
 			this:tween_property('forced_proximity', 0, get_current_proximity, function(this)
 				this.forced_proximity = nil
 			end)
@@ -2670,16 +2665,19 @@ function create_event_to_elements_dispatcher(name, ...)
 end
 
 function handle_mouse_leave()
-	local interactive_proximity_on_leave = state.interactive_proximity
+	-- Slowly fadeout elements that are currently visible
+	for _, element_name in ipairs({'timeline', 'volume', 'window_controls'}) do
+		local element = elements[element_name]
+		if element.proximity > 0 then
+			element:tween_property('forced_proximity', element:get_effective_proximity(), 0, function()
+				element.forced_proximity = nil
+			end)
+		end
+	end
+
 	cursor.hidden = true
 	update_proximities()
 	dispatch_event_to_elements('mouse_leave')
-	if interactive_proximity_on_leave > 0 then
-		tween_element(state, interactive_proximity_on_leave, 0, function(state, value)
-			state.interactive_proximity = value
-			request_render()
-		end)
-	end
 end
 
 function handle_mouse_enter()
