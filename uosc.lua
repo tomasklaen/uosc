@@ -2,7 +2,7 @@
 
 uosc 2.6.0 - 2020-Apr-24 | https://github.com/darsain/uosc
 
-Minimalistic cursor proximity based UI for MPV player.
+Minimalist cursor proximity based UI for MPV player.
 
 uosc replaces the default osc UI, so that has to be disabled first.
 Place these options into your `mpv.conf` file:
@@ -155,7 +155,7 @@ Key  script-binding uosc/select-audio
 Key  script-binding uosc/select-video
 Key  script-binding uosc/navigate-playlist
 Key  script-binding uosc/navigate-chapters
-Key  script-binding uosc/navigate-directory
+Key  script-binding uosc/open-file
 Key  script-binding uosc/next-file
 Key  script-binding uosc/prev-file
 Key  script-binding uosc/first-file
@@ -507,10 +507,10 @@ end
 
 -- Ensures path is absolute and normalizes slashes to the current platform
 function normalize_path(path)
-	if is_protocol(path) then return path end
+	if not path or is_protocol(path) then return path end
 
 	-- Ensure path is absolute
-	if not (path:match('^/') or path:match('^%a+:[/\\]') or path:match('^\\\\')) then
+	if not (path:match('^/') or path:match('^%a+:') or path:match('^\\\\')) then
 		path = utils.join_path(state.cwd, path)
 	end
 
@@ -534,15 +534,17 @@ end
 
 -- Serializes path into its semantic parts
 function serialize_path(path)
-	if is_protocol(path) then return end
+	if not path or is_protocol(path) then return end
 	path = normalize_path(path)
 	local parts = split(path, '[\\/]+')
+	if parts[#parts] == '' then table.remove(parts, #parts) end -- remove trailing separator
 	local basename = parts and parts[#parts] or path
-	local dirname = #parts > 1 and table.concat(itable_slice(parts, 1, #parts - 1), '/') or nil
+	local dirname = #parts > 1 and table.concat(itable_slice(parts, 1, #parts - 1), state.os == 'windows' and '\\' or '/') or nil
 	local dot_split = split(basename, '%.')
 	return {
 		path = path:sub(-1) == ':' and state.os == 'windows' and path..'\\' or path,
-		dirname = dirname and state.os == 'windows' and dirname:sub(-1) == ':' and dirname..'\\' or dirname,
+		is_root = dirname == nil,
+		dirname = dirname,
 		basename = basename,
 		filename = #dot_split > 1 and table.concat(itable_slice(dot_split, 1, #dot_split - 1), '.') or basename,
 		extension = #dot_split > 1 and dot_split[#dot_split] or nil,
@@ -1638,11 +1640,11 @@ function render_window_controls(this)
 	-- Window title
 	if options.title and state.media_title then
 		local spacing = math.ceil(config.window_controls.height * 0.25)
-		local fontsize = math.floor(config.window_controls.height - (spacing * 2))
+		local font_size = math.floor(config.window_controls.height - (spacing * 2))
 		local clip_coordinates = '0,0,'..(minimize.ax - spacing)..','..config.window_controls.height
 
 		ass:new_event()
-		ass:append('{\\q2\\blur0\\bord0\\shad1\\1c&HFFFFFF\\4c&H000000\\fn'..config.font..'\\fs'..fontsize..'\\clip('..clip_coordinates..')')
+		ass:append('{\\q2\\blur0\\bord0\\shad1\\1c&HFFFFFF\\4c&H000000\\fn'..config.font..'\\fs'..font_size..'\\clip('..clip_coordinates..')')
 		ass:append(ass_opacity(1, opacity))
 		ass:pos(0 + spacing, config.window_controls.height / 2)
 		ass:an(4)
@@ -2700,7 +2702,7 @@ function create_navigate_directory(direction)
 	return function()
 		local path = mp.get_property_native("path")
 
-		if is_protocol(path) then return end
+		if not path or is_protocol(path) then return end
 
 		local next_file = get_adjacent_file(path, direction, options.media_types)
 
@@ -2714,7 +2716,7 @@ function create_select_adjacent_media_file_index(index)
 	return function()
 		local path = mp.get_property_native("path")
 
-		if is_protocol(path) then return end
+		if not path or is_protocol(path) then return end
 
 		local dirname = serialize_path(path).dirname
 		local files = get_files_in_directory(dirname, options.media_types)
@@ -2976,7 +2978,7 @@ mp.add_key_binding(nil, 'context-menu', function()
 end)
 mp.add_key_binding(nil, 'load-subtitles', function()
 	local path = mp.get_property_native('path')
-	if not is_protocol(path) then
+	if path and not is_protocol(path) then
 		open_file_navigation_menu(
 			serialize_path(path).dirname,
 			function(path) mp.commandv('sub-add', path) end,
@@ -3058,7 +3060,7 @@ mp.add_key_binding(nil, 'navigate-chapters', function()
 		end
 	end
 
-	-- Update selected chapter in chaper navigation menu
+	-- Update selected chapter in chapter navigation menu
 	function seek_handler()
 		if menu:is_open('navigate-chapters') then
 			elements.menu:activate_index(get_selected_chapter_index())
@@ -3079,7 +3081,7 @@ mp.add_key_binding(nil, 'show-in-directory', function()
 	local path = mp.get_property_native('path')
 
 	-- Ignore URLs
-	if is_protocol(path) then return end
+	if not path or is_protocol(path) then return end
 
 	path = normalize_path(path)
 
@@ -3096,31 +3098,41 @@ mp.add_key_binding(nil, 'show-in-directory', function()
 		end
 	end
 end)
-mp.add_key_binding(nil, 'navigate-directory', function()
+mp.add_key_binding(nil, 'open-file', function()
 	local path = mp.get_property_native('path')
-	if not is_protocol(path) then
-		-- Update selected file in directory navigation menu
-		function handle_file_loaded()
-			if menu:is_open('navigate-directory') then
-				local path = normalize_path(mp.get_property_native('path'))
-				elements.menu:activate_value(path)
-				elements.menu:select_value(path)
-			end
-		end
+	local directory
+	local active_file
 
-		path = serialize_path(path)
-		open_file_navigation_menu(
-			path.dirname,
-			function(path) mp.commandv('loadfile', path) end,
-			{
-				type = 'navigate-directory',
-				allowed_types = options.media_types,
-				active_path = path.path,
-				on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
-				on_close = function() mp.unregister_event(handle_file_loaded) end,
-			}
-		)
+	if path == nil or is_protocol(path) then
+		local path = serialize_path(mp.command_native({'expand-path', '~/'}))
+		directory = path.path
+		active_file = nil
+	else
+		local path = serialize_path(path)
+		directory = path.dirname
+		active_file = path.path
 	end
+
+	-- Update selected file in directory navigation menu
+	function handle_file_loaded()
+		if menu:is_open('open-file') then
+			local path = normalize_path(mp.get_property_native('path'))
+			elements.menu:activate_value(path)
+			elements.menu:select_value(path)
+		end
+	end
+
+	open_file_navigation_menu(
+		directory,
+		function(path) mp.commandv('loadfile', path) end,
+		{
+			type = 'open-file',
+			allowed_types = options.media_types,
+			active_path = active_file,
+			on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
+			on_close = function() mp.unregister_event(handle_file_loaded) end,
+		}
+	)
 end)
 mp.add_key_binding(nil, 'next-file', create_navigate_directory('forward'))
 mp.add_key_binding(nil, 'prev-file', create_navigate_directory('backward'))
@@ -3129,7 +3141,7 @@ mp.add_key_binding(nil, 'last-file', create_select_adjacent_media_file_index(-1)
 mp.add_key_binding(nil, 'delete-file-next', function()
 	local path = mp.get_property_native('path')
 
-	if is_protocol(path) then return end
+	if not path or is_protocol(path) then return end
 
 	path = normalize_path(path)
 	local playlist_count = mp.get_property_native('playlist-count')
@@ -3139,7 +3151,7 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 	else
 		local next_file = get_adjacent_file(path, 'forward', options.media_types)
 
-		if menu:is_open('navigate-directory') then
+		if menu:is_open('open-file') then
 			elements.menu:delete_value(path)
 		end
 
@@ -3154,7 +3166,7 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 end)
 mp.add_key_binding(nil, 'delete-file-quit', function()
 	local path = mp.get_property_native('path')
-	if is_protocol(path) then return end
+	if not path or is_protocol(path) then return end
 	os.remove(normalize_path(path))
 	mp.command('quit')
 end)

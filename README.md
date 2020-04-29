@@ -238,9 +238,9 @@ Menu to select an item from playlist.
 
 Menu to seek to start of a specific chapter.
 
-#### `navigate-directory`
+#### `open-file`
 
-Menu to navigate media files in current files' directory with current file preselected.
+Open file menu. Browsing starts in current file directory, or user directory when file not available.
 
 #### `next-file`
 
@@ -335,19 +335,19 @@ Suggested minimal context menu setup to start with:
 ```
 menu        script-binding uosc/context-menu
 mbtn_right  script-binding uosc/context-menu
+o           script-binding uosc/open-file          #! Open file
 alt+s       script-binding uosc/load-subtitles     #! Load subtitles
 S           script-binding uosc/select-subtitles   #! Select subtitles
 A           script-binding uosc/select-audio       #! Select audio
 ctrl+s      async screenshot                       #! Utils > Screenshot
 P           script-binding uosc/navigate-playlist  #! Utils > Navigate playlist
 C           script-binding uosc/navigate-chapters  #! Utils > Navigate chapters
-D           script-binding uosc/navigate-directory #! Utils > Navigate directory
 #           script-binding uosc/open-config-directory #! Utils > Open config directory
 #           set video-aspect-override "-1"         #! Aspect ratio > Default
 #           set video-aspect-override "16:9"       #! Aspect ratio > 16:9
 #           set video-aspect-override "4:3"        #! Aspect ratio > 4:3
 #           set video-aspect-override "2.35:1"     #! Aspect ratio > 2.35:1
-o           script-binding uosc/show-in-directory  #! Show in directory
+O           script-binding uosc/show-in-directory  #! Show in directory
 esc         quit #! Quit
 q           quit #!
 ```
