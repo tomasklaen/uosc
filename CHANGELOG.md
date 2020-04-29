@@ -1,3 +1,26 @@
+## 2.7.0 - 2020-Apr-29
+
+New:
+- Added context aware navigation commands:
+	- `next` - open next item in playlist, or file in current directory when there is no playlist
+	- `prev` - open previous item in playlist, or file in current directory when there is no playlist
+	- `first` - open first item in playlist, or file in current directory when there is no playlist
+	- `last` - open next item in playlist, or file current directory when there is no playlist
+	Previously playlist and file navigation required separate bindings, now you can merge them together.
+
+Changed:
+- Renamed commands (sorry :x):
+	- `context-menu` -> `menu`
+	- `select-subtitles` -> `subtitles`
+	- `select-audio` -> `audio`
+	- `select-video` -> `video`
+	- `navigate-playlist` -> `playlist`
+	- `navigate-chapters` -> `chapters`
+	- `navigate-directory` -> `open-file`
+- `open-file` command now starts in user directory when current file path not available.
+- All controls now respond to their own proximity instead of fading in whenever cursor is around any of them. This used to be the original behavior, than I changed it to shared proximity thinking it feels better, but after a lot of use I decided to revert it back.
+- All floating texts now use border instead of shadow to make them more readable above light backgrounds. Shadows looked better, but usability won.
+
 ## 2.6.0 - 2020-Apr-28
 
 New:
