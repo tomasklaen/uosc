@@ -242,6 +242,22 @@ Chapter navigation.
 
 Open file menu. Browsing starts in current file directory, or user directory when file not available.
 
+#### `next`
+
+Open next item in playlist, or file in current directory when there is no playlist.
+
+#### `prev`
+
+Open previous item in playlist, or file in current directory when there is no playlist.
+
+#### `first`
+
+Open first item in playlist, or file in current directory when there is no playlist.
+
+#### `last`
+
+Open last item in playlist, or file in current directory when there is no playlist.
+
 #### `next-file`
 
 Open next file in current directory. Set `directory_navigation_loops=yes` to open first file when at the end.
@@ -278,7 +294,7 @@ Open directory with `mpv.conf` in file explorer.
 
 ## Menu
 
-**uosc** provides a way to build, display, and use your own menu. Limitation is that the UI rendering API provided by mpv can only render stuff within window borders, so the menu can't float above it but needs to fit inside. This might be annoying for tiny videos but otherwise it accomplishes the same thing.
+**uosc** provides a way to build, display, and use your own menu. By default the menu is empty and won't show up.
 
 To display the menu, add **uosc**'s `menu` command to a key of your choice. Example to bind it to **right click** and **menu** buttons:
 

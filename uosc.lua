@@ -156,6 +156,10 @@ Key  script-binding uosc/video
 Key  script-binding uosc/playlist
 Key  script-binding uosc/chapters
 Key  script-binding uosc/open-file
+Key  script-binding uosc/next
+Key  script-binding uosc/prev
+Key  script-binding uosc/first
+Key  script-binding uosc/last
 Key  script-binding uosc/next-file
 Key  script-binding uosc/prev-file
 Key  script-binding uosc/first-file
@@ -2698,35 +2702,31 @@ function handle_mouse_move()
 	end
 end
 
-function create_navigate_directory(direction)
-	return function()
-		local path = mp.get_property_native("path")
+function navigate_directory(direction)
+	local path = mp.get_property_native("path")
 
-		if not path or is_protocol(path) then return end
+	if not path or is_protocol(path) then return end
 
-		local next_file = get_adjacent_file(path, direction, options.media_types)
+	local next_file = get_adjacent_file(path, direction, options.media_types)
 
-		if next_file then
-			mp.commandv("loadfile", utils.join_path(serialize_path(path).dirname, next_file))
-		end
+	if next_file then
+		mp.commandv("loadfile", utils.join_path(serialize_path(path).dirname, next_file))
 	end
 end
 
-function create_select_adjacent_media_file_index(index)
-	return function()
-		local path = mp.get_property_native("path")
+function load_file_in_current_directory(index)
+	local path = mp.get_property_native("path")
 
-		if not path or is_protocol(path) then return end
+	if not path or is_protocol(path) then return end
 
-		local dirname = serialize_path(path).dirname
-		local files = get_files_in_directory(dirname, options.media_types)
+	local dirname = serialize_path(path).dirname
+	local files = get_files_in_directory(dirname, options.media_types)
 
-		if not files then return end
-		if index < 0 then index = #files + index + 1 end
+	if not files then return end
+	if index < 0 then index = #files + index + 1 end
 
-		if files[index] then
-			mp.commandv("loadfile", utils.join_path(dirname, files[index]))
-		end
+	if files[index] then
+		mp.commandv("loadfile", utils.join_path(dirname, files[index]))
 	end
 end
 
@@ -3134,10 +3134,39 @@ mp.add_key_binding(nil, 'open-file', function()
 		}
 	)
 end)
-mp.add_key_binding(nil, 'next-file', create_navigate_directory('forward'))
-mp.add_key_binding(nil, 'prev-file', create_navigate_directory('backward'))
-mp.add_key_binding(nil, 'first-file', create_select_adjacent_media_file_index(1))
-mp.add_key_binding(nil, 'last-file', create_select_adjacent_media_file_index(-1))
+mp.add_key_binding(nil, 'next', function()
+	if mp.get_property_native('playlist-count') > 1 then
+		mp.command('playlist-next')
+	else
+		navigate_directory('forward')
+	end
+end)
+mp.add_key_binding(nil, 'prev', function()
+	if mp.get_property_native('playlist-count') > 1 then
+		mp.command('playlist-prev')
+	else
+		navigate_directory('backward')
+	end
+end)
+mp.add_key_binding(nil, 'next-file', function() navigate_directory('forward') end)
+mp.add_key_binding(nil, 'prev-file', function() navigate_directory('backward') end)
+mp.add_key_binding(nil, 'first', function()
+	if mp.get_property_native('playlist-count') > 1 then
+		mp.commandv('set', 'playlist-pos-1', '1')
+	else
+		load_file_in_current_directory(1)
+	end
+end)
+mp.add_key_binding(nil, 'last', function()
+	local playlist_count = mp.get_property_native('playlist-count')
+	if playlist_count > 1 then
+		mp.commandv('set', 'playlist-pos-1', tostring(playlist_count))
+	else
+		load_file_in_current_directory(-1)
+	end
+end)
+mp.add_key_binding(nil, 'first-file', function() load_file_in_current_directory(1) end)
+mp.add_key_binding(nil, 'last-file', function() load_file_in_current_directory(-1) end)
 mp.add_key_binding(nil, 'delete-file-next', function()
 	local path = mp.get_property_native('path')
 
