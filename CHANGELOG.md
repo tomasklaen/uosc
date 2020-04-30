@@ -1,8 +1,8 @@
-## 2.7.1 - 2020-Apr-30
+## 2.7.2 - 2020-Apr-30
 
 Fixed:
 - Crash when `volume` set to `none`.
-
+- Element flashing overwriting proximity state.
 
 ## 2.7.0 - 2020-Apr-29
 
@@ -12,6 +12,7 @@ New:
 	- `prev` - open previous item in playlist, or file in current directory when there is no playlist
 	- `first` - open first item in playlist, or file in current directory when there is no playlist
 	- `last` - open next item in playlist, or file current directory when there is no playlist
+
 	Previously playlist and file navigation required separate bindings, now you can merge them together.
 
 Changed:
