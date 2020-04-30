@@ -2686,6 +2686,13 @@ function handle_mouse_enter()
 end
 
 function handle_mouse_move()
+	-- Handle case when we are in cursor hidden state but not left the actual
+	-- window (i.e. when autohide simulates mouse_leave).
+	if cursor.hidden then
+		handle_mouse_enter()
+		return
+	end
+
 	cursor.x, cursor.y = mp.get_mouse_pos()
 	update_proximities()
 	dispatch_event_to_elements('mouse_move')
