@@ -1,3 +1,9 @@
+## 2.7.1 - 2020-Apr-30
+
+Fixed:
+- Crash when `volume` set to `none`.
+
+
 ## 2.7.0 - 2020-Apr-29
 
 New:
