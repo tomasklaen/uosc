@@ -1,8 +1,10 @@
-## 2.7.2 - 2020-Apr-30
+## 2.7.3 - 2020-Apr-30
 
 Fixed:
 - Crash when `volume` set to `none`.
 - Element flashing overwriting proximity state.
+- Fix mouse leave fadeout crashing uosc when volume element is disabled.
+- Fix autohide hiding elements until mouse leaves and enters the window.
 
 ## 2.7.0 - 2020-Apr-29
 
