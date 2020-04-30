@@ -1218,7 +1218,6 @@ end
 
 function icons._volume(muted, pos_x, pos_y, size)
 	local ass = assdraw.ass_new()
-	if elements.volume.width == nil then return '' end
 	local scale = size / 200
 	function x(number) return pos_x + (number * scale) end
 	function y(number) return pos_y + (number * scale) end
@@ -1247,7 +1246,6 @@ function icons.volume_muted(pos_x, pos_y, size) return icons._volume(true, pos_x
 
 function icons.arrow_right(pos_x, pos_y, size)
 	local ass = assdraw.ass_new()
-	if elements.volume.width == nil then return '' end
 	local scale = size / 200
 	function x(number) return pos_x + (number * scale) end
 	function y(number) return pos_y + (number * scale) end
