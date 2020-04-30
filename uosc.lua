@@ -2150,7 +2150,7 @@ elements:add('timeline', Element.new({
 		end
 	end,
 	get_effective_proximity = function(this)
-		if elements.volume_slider.pressed then return 0 end
+		if (elements.volume_slider and elements.volume_slider.pressed) then return 0 end
 		if this.pressed then return 1 end
 		return this.forced_proximity and this.forced_proximity or this.proximity
 	end,
@@ -2205,7 +2205,7 @@ elements:add('window_controls', Element.new({
 		end)
 	end,
 	get_effective_proximity = function(this)
-		if elements.volume_slider.pressed or elements.curtain.opacity > 0 then return 0 end
+		if (elements.volume_slider and elements.volume_slider.pressed) or elements.curtain.opacity > 0 then return 0 end
 		return this.forced_proximity and this.forced_proximity or this.proximity
 	end,
 	on_display_resize = function(this)
