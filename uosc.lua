@@ -279,7 +279,6 @@ local state = {
 	volume = nil,
 	volume_max = nil,
 	mute = nil,
-	interactive_proximity = 0, -- highest relative proximity to any interactive element
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		if not options.autohide then return end
 		handle_mouse_leave()
@@ -652,7 +651,7 @@ function Element.new(props)
 
 	-- Flash timer
 	element._flash_out_timer = mp.add_timeout(options.flash_duration / 1000, function()
-		local getTo = function() return state.interactive_proximity end
+		local getTo = function() return element.proximity end
 		element:tween_property('forced_proximity', 1, getTo, function()
 			element.forced_proximity = nil
 		end)
@@ -703,7 +702,7 @@ end
 -- Useful to visualize changes of volume and timeline when changed via hotkeys.
 -- Implemented by briefly adding animated `forced_proximity` property to the element.
 function Element:flash()
-	if options.flash_duration > 0 and (state.interactive_proximity < 1 or self._flash_out_timer:is_enabled()) then
+	if options.flash_duration > 0 and (self.proximity < 1 or self._flash_out_timer:is_enabled()) then
 		self:tween_stop()
 		self.forced_proximity = 1
 		self._flash_out_timer:kill()
@@ -1314,7 +1313,7 @@ function update_proximities()
 		end
 
 		if element.proximity_raw == 0 then
-			-- Mouse is over interactive element
+			-- Mouse is over element
 			if element.captures and element.captures.mouse_buttons then capture_mouse_buttons = true end
 			if element.captures and element.captures.wheel then capture_wheel = true end
 
@@ -2170,7 +2169,6 @@ elements:add('timeline', Element.new({
 			this.size_min = options.timeline_size_min
 			this.size_max = options.timeline_size_max
 		end
-		this.interactive = this.size_max > 0
 		this.font_size = math.floor(math.min((this.size_max + 60) * 0.2, this.size_max * 0.96))
 		this.ax = 0
 		this.ay = display.height - this.size_max - this.top_border - this.bottom_border
