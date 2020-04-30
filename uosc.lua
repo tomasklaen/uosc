@@ -2666,7 +2666,7 @@ function handle_mouse_leave()
 	-- Slowly fadeout elements that are currently visible
 	for _, element_name in ipairs({'timeline', 'volume', 'window_controls'}) do
 		local element = elements[element_name]
-		if element.proximity > 0 then
+		if element and element.proximity > 0 then
 			element:tween_property('forced_proximity', element:get_effective_proximity(), 0, function()
 				element.forced_proximity = nil
 			end)
