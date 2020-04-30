@@ -5,6 +5,7 @@ Fixed:
 - Element flashing overwriting proximity state.
 - Fix mouse leave fadeout crashing uosc when volume element is disabled.
 - Fix autohide hiding elements until mouse leaves and enters the window.
+- Fix icons crashing uosc when volume element is disabled.
 
 ## 2.7.0 - 2020-Apr-29
 
