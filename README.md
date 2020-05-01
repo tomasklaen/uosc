@@ -180,6 +180,8 @@ font_height_to_letter_width_ratio=0.5
 chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end
 ```
 
+**uosc** respects `osd-font` option, so to change the font you want it to use, you have to change `osd-font` in `mpv.conf`.
+
 ## Keybindings
 
 The only keybinds **uosc** defines by default are menu navigation keys that are active only when one of the menus (context menu, load/select subtitles,...) is active. They are:

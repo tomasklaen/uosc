@@ -1,4 +1,13 @@
-## 2.7.3 - 2020-Apr-30
+## 2.8.0 - 2020-May-01
+
+New:
+- `{element}_font_scale` and `font_bold` options to tweak font sizes and weight.
+- `window_controls` option to disable window controls even in no-border mode.
+
+Changed:
+- All commands that open menus now toggle the menu instead of always reopening them.
+
+### 2.7.3 - 2020-Apr-30
 
 Fixed:
 - Crash when `volume` set to `none`.
