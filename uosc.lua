@@ -2748,6 +2748,8 @@ end
 
 function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop)
 	return function()
+		if menu:is_open(track_type) then menu:close() return end
+
 		local items = {}
 		local active_item = nil
 
@@ -2782,7 +2784,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 			end
 
 			menu:close()
-		end, {title = menu_title, active_item = active_item})
+		end, {type = track_type, title = menu_title, active_item = active_item})
 	end
 end
 
@@ -2991,6 +2993,8 @@ mp.add_key_binding(nil, 'menu', function()
 	end
 end)
 mp.add_key_binding(nil, 'load-subtitles', function()
+	if menu:is_open('load-subtitles') then menu:close() return end
+
 	local path = mp.get_property_native('path')
 	if path and not is_protocol(path) then
 		open_file_navigation_menu(
@@ -3007,6 +3011,8 @@ mp.add_key_binding(nil, 'subtitles', create_select_tracklist_type_menu_opener('S
 mp.add_key_binding(nil, 'audio', create_select_tracklist_type_menu_opener('Audio', 'audio', 'aid'))
 mp.add_key_binding(nil, 'video', create_select_tracklist_type_menu_opener('Video', 'video', 'vid'))
 mp.add_key_binding(nil, 'playlist', function()
+	if menu:is_open('playlist') then menu:close() return end
+
 	function serialize_playlist()
 		local pos = mp.get_property_number('playlist-pos-1', 0)
 		local items = {}
@@ -3053,6 +3059,8 @@ mp.add_key_binding(nil, 'playlist', function()
 	})
 end)
 mp.add_key_binding(nil, 'chapters', function()
+	if menu:is_open('chapters') then menu:close() return end
+
 	local items = {}
 	local chapters = get_normalized_chapters()
 
@@ -3113,6 +3121,8 @@ mp.add_key_binding(nil, 'show-in-directory', function()
 	end
 end)
 mp.add_key_binding(nil, 'open-file', function()
+	if menu:is_open('open-file') then menu:close() return end
+
 	local path = mp.get_property_native('path')
 	local directory
 	local active_file
