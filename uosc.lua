@@ -38,6 +38,8 @@ timeline_step=5
 # display seekable buffered ranges for streaming videos, syntax `color:opacity`,
 # color is an BBGGRR hex code, set to `none` to disable
 timeline_cached_ranges=345433:0.5
+# floating number font scale adjustment
+timeline_font_scale=1
 # briefly show timeline on external changes (e.g. seeking with a hotkey)
 timeline_flash=yes
 
@@ -51,25 +53,24 @@ volume_size=40
 volume_size_fullscreen=40
 volume_opacity=0.8
 volume_border=1
-# when dragging/scrolling the slider, volume will change by increments of this value
 volume_step=1
-# briefly show volume slider on external changes (e.g. changed by a hotkey)
+volume_font_scale=1
 volume_flash=yes
 
-# playback speed widget: drag left-right to change, click to reset
+# playback speed widget: mouse drag or wheel to change, click to reset
 speed=no
 speed_size=35
 speed_size_fullscreen=50
 speed_opacity=1
-# when dragging/scrolling the slider, speed will change by increments of this value
 speed_step=0.1
-# briefly show speed slider on external changes (e.g. changed by a hotkey)
+speed_font_scale=1
 speed_flash=yes
 
 # controls all menus, such as context menu, subtitle loader/selector, etc
 menu_item_height=30
 menu_item_height_fullscreen=45
 menu_opacity=0.8
+menu_font_scale=1
 
 # pause video on clicks shorter than this number of milliseconds, 0 to disable
 pause_on_click_shorter_than=0
@@ -83,6 +84,8 @@ color_foreground=ffffff
 color_foreground_text=000000
 color_background=000000
 color_background_text=ffffff
+# use bold font weight throughout the whole UI
+font_bold=no
 # hide UI when mpv autohides the cursor
 autohide=no
 # can be: none, flash, static
@@ -197,6 +200,7 @@ local options = {
 	timeline_border = 1,
 	timeline_step = 5,
 	timeline_cached_ranges = '345433:0.5',
+	timeline_font_scale = 1,
 	timeline_flash = true,
 
 	chapters = 'dots',
@@ -208,6 +212,7 @@ local options = {
 	volume_opacity = 0.8,
 	volume_border = 1,
 	volume_step = 1,
+	volume_font_scale = 1,
 	volume_flash = true,
 
 	speed = false,
@@ -215,11 +220,13 @@ local options = {
 	speed_size_fullscreen = 50,
 	speed_opacity = 1,
 	speed_step = 0.1,
+	speed_font_scale = 1,
 	speed_flash = true,
 
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
 	menu_opacity = 0.8,
+	menu_font_scale = 1,
 
 	pause_on_click_shorter_than = 0,
 	flash_duration = 400,
@@ -229,6 +236,7 @@ local options = {
 	color_foreground_text = '000000',
 	color_background = '000000',
 	color_background_text = 'ffffff',
+	font_bold = false,
 	autohide = false,
 	pause_indicator = 'flash',
 	window_controls = true,
@@ -252,6 +260,7 @@ local config = {
 		background_opacity = 0.8,
 	}
 }
+local bold_tag = options.font_bold and '\\b1' or ''
 local display = {
 	width = 1280,
 	height = 720,
@@ -846,7 +855,7 @@ function Menu:open(items, open_item, opts)
 		end,
 		on_display_resize = function(this)
 			this.item_height = (state.fullscreen or state.maximized) and options.menu_item_height_fullscreen or options.menu_item_height
-			this.font_size = round(this.item_height * 0.45)
+			this.font_size = round(this.item_height * 0.5 * options.menu_font_scale)
 			this.item_content_spacing = round((this.item_height - this.font_size) * 0.6)
 			this.scroll_step = this.item_height + this.item_spacing
 
@@ -1501,13 +1510,13 @@ function render_timeline(this)
 		-- Elapsed time
 		if state.elapsed_seconds then
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..'\\clip('..foreground_coordinates..')')
+			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(spacing, fay + (size / 2))
 			ass:an(4)
 			ass:append(state.elapsed_time)
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'\\iclip('..foreground_coordinates..')')
+			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(spacing, fay + (size / 2))
 			ass:an(4)
@@ -1517,13 +1526,13 @@ function render_timeline(this)
 		-- Remaining time
 		if state.remaining_seconds then
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..'\\clip('..foreground_coordinates..')')
+			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(display.width - spacing, fay + (size / 2))
 			ass:an(6)
 			ass:append(state.remaining_time)
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'\\iclip('..foreground_coordinates..')')
+			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(display.width - spacing, fay + (size / 2))
 			ass:an(6)
@@ -1536,7 +1545,7 @@ function render_timeline(this)
 		local hovered_seconds = state.duration * (cursor.x / display.width)
 		local box_half_width_guesstimate = (this.font_size * 4.2) / 2
 		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'')
+		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'')
 		ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1)))
 		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), fay)
 		ass:an(2)
@@ -1641,7 +1650,7 @@ function render_window_controls(this)
 		local clip_coordinates = '0,0,'..(minimize.ax - spacing)..','..config.window_controls.height
 
 		ass:new_event()
-		ass:append('{\\q2\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000\\fn'..config.font..'\\fs'..font_size..'\\clip('..clip_coordinates..')')
+		ass:append('{\\q2\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000\\fn'..config.font..'\\fs'..font_size..bold_tag..'\\clip('..clip_coordinates..')')
 		ass:append(ass_opacity(1, opacity))
 		ass:pos(0 + spacing, config.window_controls.height / 2)
 		ass:an(4)
@@ -1745,7 +1754,7 @@ function render_volume(this)
 		-- Current volume value
 		if fay < slider.by - slider.spacing then
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..slider.font_size..'\\clip('..fpath.scale..', '..fpath.text..')}')
+			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..slider.font_size..bold_tag..'\\clip('..fpath.scale..', '..fpath.text..')}')
 			ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
 			ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
 			ass:an(2)
@@ -1753,7 +1762,7 @@ function render_volume(this)
 		end
 		if fay > slider.by - slider.spacing - slider.font_size then
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..slider.font_size..'\\iclip('..fpath.scale..', '..fpath.text..')}')
+			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..slider.font_size..bold_tag..'\\iclip('..fpath.scale..', '..fpath.text..')}')
 			ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
 			ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
 			ass:an(2)
@@ -1849,7 +1858,7 @@ function render_speed(this)
 	-- Speed value
 	local speed_text = (round(state.speed * 100) / 100)..'x'
 	ass:new_event()
-	ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'}')
+	ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'}')
 	ass:append(ass_opacity(options.speed_opacity, opacity))
 	ass:pos(half_x, ay)
 	ass:an(8)
@@ -1945,7 +1954,7 @@ function render_menu(this)
 			local title_clip_x = (this.bx - hint_width - this.item_content_spacing)
 			local title_clip = '\\clip('..this.ax..','..math.max(item_ay, this.ay)..','..title_clip_x..','..math.min(item_by, this.by)..')'
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..font_color..'\\4c&H'..background_color..'\\fn'..config.font..'\\fs'..this.font_size..title_clip..'\\q2}')
+			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..font_color..'\\4c&H'..background_color..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..title_clip..'\\q2}')
 			ass:append(ass_opacity(options.menu_opacity, this.opacity))
 			ass:pos(this.ax + this.item_content_spacing, item_ay + (this.item_height / 2))
 			ass:an(4)
@@ -1956,7 +1965,7 @@ function render_menu(this)
 		if item.hint then
 			item.ass_save_hint = item.ass_save_hint or item.hint:gsub("([{}])","\\%1")
 			ass:new_event()
-			ass:append('{\\blur0\\bord0'..ass_shadow..'\\1c&H'..font_color..''..ass_shadow_color..'\\fn'..config.font..'\\fs'..(this.font_size - 2)..item_clip..'}')
+			ass:append('{\\blur0\\bord0'..ass_shadow..'\\1c&H'..font_color..''..ass_shadow_color..'\\fn'..config.font..'\\fs'..(this.font_size - 1)..bold_tag..item_clip..'}')
 			ass:append(ass_opacity(options.menu_opacity * (has_submenu and 1 or 0.5), this.opacity))
 			ass:pos(this.bx - this.item_content_spacing, item_ay + (this.item_height / 2))
 			ass:an(6)
@@ -2171,7 +2180,7 @@ elements:add('timeline', Element.new({
 			this.size_min = options.timeline_size_min
 			this.size_max = options.timeline_size_max
 		end
-		this.font_size = math.floor(math.min((this.size_max + 60) * 0.2, this.size_max * 0.96))
+		this.font_size = math.floor(math.min((this.size_max + 60) * 0.2, this.size_max * 0.96) * options.timeline_font_scale)
 		this.ax = 0
 		this.ay = display.height - this.size_max - this.top_border - this.bottom_border
 		this.bx = display.width
@@ -2253,7 +2262,6 @@ if itable_find({'left', 'right'}, options.volume) then
 		width = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		height = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		margin = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
-		font_size = nil, -- calculated in on_display_resize
 		init = function(this)
 			-- FLash on external changes
 			if options.volume_flash then
@@ -2281,7 +2289,6 @@ if itable_find({'left', 'right'}, options.volume) then
 			if this.height < (this.width * 2) then
 				this.height = 0
 			end
-			this.font_size = math.floor(this.width * 0.2)
 			this.margin = this.width / 2
 			this.ax = round(options.volume == 'left' and this.margin or display.width - this.margin - this.width)
 			this.ay = round((display.height - this.height) / 2)
@@ -2323,7 +2330,7 @@ if itable_find({'left', 'right'}, options.volume) then
 			this.nudge_y = this.by - round(this.height * (100 / state.volume_max))
 			this.nudge_size = round(elements.volume.width * 0.18)
 			this.draw_nudge = this.ay < this.nudge_y
-			this.font_size = round(this.width * 0.5)
+			this.font_size = round(this.width * 0.5 * options.volume_font_scale)
 			this.spacing = round(this.width * 0.2)
 		end,
 		set_from_cursor = function(this)
@@ -2399,7 +2406,7 @@ if options.speed then
 			this.by = display.height - elements.timeline.size_max - (this.height / 3)
 			this.ay = this.by - this.height
 			this.bx = this.ax + this.width
-			this.font_size = round(this.height * 0.6)
+			this.font_size = round(this.height * 0.6 * options.speed_font_scale)
 		end,
 		set_from_cursor = function(this)
 			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
