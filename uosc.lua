@@ -87,13 +87,16 @@ color_background_text=ffffff
 autohide=no
 # can be: none, flash, static
 pause_indicator=flash
-# display window title (filename) in top window controls bar in no-border mode
+# window controls (minimize, maximize, close, title) show only in no-border
+# mode, but you can disable them completely by setting this to `no`
+window_controls=yes
+# display current media title in top window controls bar
 title=no
 # load first file when calling next on a last file in a directory and vice versa
 directory_navigation_loops=no
-# file types to display in file explorer when navigating media files
+# file types to look for when navigating media files
 media_types=3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv
-# file types to display in file explorer when loading external subtitles
+# file types to look for when loading external subtitles
 subtitle_types=aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt
 # used to approximate text width
 # if you are using some wide font and see a lot of right side clipping in menus,
@@ -228,6 +231,7 @@ local options = {
 	color_background_text = 'ffffff',
 	autohide = false,
 	pause_indicator = 'flash',
+	window_controls = true,
 	title = false,
 	directory_navigation_loops = false,
 	media_types = '3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
@@ -2193,55 +2197,57 @@ elements:add('timeline', Element.new({
 	end,
 	render = render_timeline,
 }))
-elements:add('window_controls', Element.new({
-	enabled = false,
-	init = function(this)
-		mp.observe_property('border', 'bool', function(_, border)
-			this.enabled = not border
-		end)
-	end,
-	get_effective_proximity = function(this)
-		if (elements.volume_slider and elements.volume_slider.pressed) or elements.curtain.opacity > 0 then return 0 end
-		return this.forced_proximity and this.forced_proximity or this.proximity
-	end,
-	on_display_resize = function(this)
-		this.ax = options.title and 0 or (display.width - (config.window_controls.button_width * 3))
-		this.ay = 0
-		this.bx = display.width
-		this.by = config.window_controls.height
-	end,
-	render = render_window_controls,
-}))
-elements:add('window_controls_minimize', Element.new({
-	captures = {mouse_buttons = true},
-	on_display_resize = function(this)
-		this.ax = display.width - (config.window_controls.button_width * 3)
-		this.ay = 0
-		this.bx = this.ax + config.window_controls.button_width
-		this.by = config.window_controls.height
-	end,
-	on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end
-}))
-elements:add('window_controls_maximize', Element.new({
-	captures = {mouse_buttons = true},
-	on_display_resize = function(this)
-		this.ax = display.width - (config.window_controls.button_width * 2)
-		this.ay = 0
-		this.bx = this.ax + config.window_controls.button_width
-		this.by = config.window_controls.height
-	end,
-	on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end
-}))
-elements:add('window_controls_close', Element.new({
-	captures = {mouse_buttons = true},
-	on_display_resize = function(this)
-		this.ax = display.width - config.window_controls.button_width
-		this.ay = 0
-		this.bx = this.ax + config.window_controls.button_width
-		this.by = config.window_controls.height
-	end,
-	on_mbtn_left_down = function() mp.commandv('quit') end
-}))
+if options.window_controls then
+	elements:add('window_controls', Element.new({
+		enabled = false,
+		init = function(this)
+			mp.observe_property('border', 'bool', function(_, border)
+				this.enabled = not border
+			end)
+		end,
+		get_effective_proximity = function(this)
+			if (elements.volume_slider and elements.volume_slider.pressed) or elements.curtain.opacity > 0 then return 0 end
+			return this.forced_proximity and this.forced_proximity or this.proximity
+		end,
+		on_display_resize = function(this)
+			this.ax = options.title and 0 or (display.width - (config.window_controls.button_width * 3))
+			this.ay = 0
+			this.bx = display.width
+			this.by = config.window_controls.height
+		end,
+		render = render_window_controls,
+	}))
+	elements:add('window_controls_minimize', Element.new({
+		captures = {mouse_buttons = true},
+		on_display_resize = function(this)
+			this.ax = display.width - (config.window_controls.button_width * 3)
+			this.ay = 0
+			this.bx = this.ax + config.window_controls.button_width
+			this.by = config.window_controls.height
+		end,
+		on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end
+	}))
+	elements:add('window_controls_maximize', Element.new({
+		captures = {mouse_buttons = true},
+		on_display_resize = function(this)
+			this.ax = display.width - (config.window_controls.button_width * 2)
+			this.ay = 0
+			this.bx = this.ax + config.window_controls.button_width
+			this.by = config.window_controls.height
+		end,
+		on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end
+	}))
+	elements:add('window_controls_close', Element.new({
+		captures = {mouse_buttons = true},
+		on_display_resize = function(this)
+			this.ax = display.width - config.window_controls.button_width
+			this.ay = 0
+			this.bx = this.ax + config.window_controls.button_width
+			this.by = config.window_controls.height
+		end,
+		on_mbtn_left_down = function() mp.commandv('quit') end
+	}))
+end
 if itable_find({'left', 'right'}, options.volume) then
 	elements:add('volume', Element.new({
 		width = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
@@ -2270,7 +2276,7 @@ if itable_find({'left', 'right'}, options.volume) then
 		end,
 		on_display_resize = function(this)
 			this.width = (state.fullscreen or state.maximized) and options.volume_size_fullscreen or options.volume_size
-			this.height = round(math.min(this.width * 8, (elements.timeline.ay - elements.window_controls.by) * 0.8))
+			this.height = round(math.min(this.width * 8, (elements.timeline.ay - config.window_controls.height) * 0.8))
 			-- Don't bother rendering this if too small
 			if this.height < (this.width * 2) then
 				this.height = 0
