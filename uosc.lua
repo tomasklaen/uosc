@@ -2862,7 +2862,7 @@ options.timeline_cached_ranges = (function()
 end)()
 
 -- HOOKS
-
+mp.register_event('file-loaded', parse_chapters)
 mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('duration', 'number', create_state_setter('duration'))
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
