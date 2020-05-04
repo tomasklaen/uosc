@@ -1,3 +1,8 @@
+### 2.8.1 - 2020-May-04
+
+Fixed:
+- Chapters not clearing when new file with no chapters is loaded.
+
 ## 2.8.0 - 2020-May-01
 
 New:
