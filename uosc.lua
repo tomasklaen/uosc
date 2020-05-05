@@ -2852,6 +2852,7 @@ end
 
 -- VALUE SERIALIZATION/NORMALIZATION
 
+options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
 options.chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.chapters) and options.chapters or 'none'
 options.media_types = split(options.media_types, ' *, *')
 options.subtitle_types = split(options.subtitle_types, ' *, *')
