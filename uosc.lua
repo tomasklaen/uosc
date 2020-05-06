@@ -59,8 +59,8 @@ volume_flash=yes
 
 # playback speed widget: mouse drag or wheel to change, click to reset
 speed=no
-speed_size=35
-speed_size_fullscreen=50
+speed_size=46
+speed_size_fullscreen=68
 speed_opacity=1
 speed_step=0.1
 speed_font_scale=1
@@ -216,8 +216,8 @@ local options = {
 	volume_flash = true,
 
 	speed = false,
-	speed_size = 35,
-	speed_size_fullscreen = 50,
+	speed_size = 46,
+	speed_size_fullscreen = 68,
 	speed_opacity = 1,
 	speed_step = 0.1,
 	speed_font_scale = 1,
@@ -1810,9 +1810,11 @@ function render_speed(this)
 	end
 	local nearest_notch_speed = round(speed_at_center / this.notch_every) * this.notch_every
 	local nearest_notch_x = half_x + (((nearest_notch_speed - speed_at_center) / this.notch_every) * this.notch_spacing)
-	local notch_ay_big = by - (this.height * 0.4)
-	local notch_ay_medium = by - (this.height * 0.25)
-	local notch_ay_small = by - (this.height * 0.15)
+	local guide_size = math.floor(this.height / 7.5)
+	local notch_by = by - guide_size
+	local notch_ay_big = ay + round(this.font_size * 1.1)
+	local notch_ay_medium = notch_ay_big + ((notch_by - notch_ay_big) * 0.2)
+	local notch_ay_small = notch_ay_big + ((notch_by - notch_ay_big) * 0.4)
 	local from_to_index = math.floor(this.notches / 2)
 
 	for i = -from_to_index, from_to_index do
@@ -1837,8 +1839,8 @@ function render_speed(this)
 		ass:draw_start()
 		ass:move_to(notch_x - notch_thickness, notch_ay)
 		ass:line_to(notch_x + notch_thickness, notch_ay)
-		ass:line_to(notch_x + notch_thickness, by)
-		ass:line_to(notch_x - notch_thickness, by)
+		ass:line_to(notch_x + notch_thickness, notch_by)
+		ass:line_to(notch_x - notch_thickness, notch_by)
 		ass:draw_stop()
 
 		::continue::
@@ -1850,9 +1852,9 @@ function render_speed(this)
 	ass:append(ass_opacity(options.speed_opacity, opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
-	ass:move_to(half_x, by - 2)
-	ass:line_to(half_x + 6, by + 4)
-	ass:line_to(half_x - 6, by + 4)
+	ass:move_to(half_x, by - 2 - guide_size)
+	ass:line_to(half_x + guide_size, by - 2)
+	ass:line_to(half_x - guide_size, by - 2)
 	ass:draw_stop()
 
 	-- Speed value
@@ -2399,14 +2401,14 @@ if options.speed then
 		end,
 		on_display_resize = function(this)
 			this.height = (state.fullscreen or state.maximized) and options.speed_size_fullscreen or options.speed_size
-			this.width = this.height * 5
+			this.width = round(this.height * 3.6)
 			this.notch_spacing = this.width / this.notches
 			this.step_distance = this.notch_spacing * (options.speed_step / this.notch_every)
 			this.ax = (display.width - this.width) / 2
-			this.by = display.height - elements.timeline.size_max - (this.height / 3)
+			this.by = display.height - elements.timeline.size_max
 			this.ay = this.by - this.height
 			this.bx = this.ax + this.width
-			this.font_size = round(this.height * 0.6 * options.speed_font_scale)
+			this.font_size = round(this.height * 0.48 * options.speed_font_scale)
 		end,
 		set_from_cursor = function(this)
 			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
@@ -2433,7 +2435,7 @@ if options.speed then
 		end,
 		on_mbtn_left_up = function(this)
 			-- Reset speed on short clicks
-			if this.dragging and this.dragging.distance < 10 and mp.get_time() - this.dragging.start_time < 0.15 then
+			if this.dragging and math.abs(this.dragging.distance) < 6 and mp.get_time() - this.dragging.start_time < 0.15 then
 				mp.set_property_native('speed', 1)
 			end
 		end,
