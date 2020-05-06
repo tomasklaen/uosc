@@ -1,3 +1,11 @@
+### 2.8.2 - 2020-May-06
+
+Changed:
+- Tweaked speed widget tiny bit. Default size values changed so if you had them modified they now have to be bigger to achieve the same size as before.
+
+Fixed:
+- Speed widget sometimes resetting speed to 1x on fast drags left.
+
 ### 2.8.1 - 2020-May-04
 
 Fixed:
