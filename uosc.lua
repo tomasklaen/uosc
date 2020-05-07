@@ -1752,21 +1752,23 @@ function render_volume(this)
 		ass:draw_stop()
 
 		-- Current volume value
+		local volume_string = tostring(round(state.volume * 10) / 10)
+		local font_size = round(((this.width * 0.6) - (#volume_string * (this.width / 20))) * options.volume_font_scale)
 		if fay < slider.by - slider.spacing then
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..slider.font_size..bold_tag..'\\clip('..fpath.scale..', '..fpath.text..')}')
+			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..font_size..bold_tag..'\\clip('..fpath.scale..', '..fpath.text..')}')
 			ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
 			ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
 			ass:an(2)
-			ass:append(state.volume)
+			ass:append(volume_string)
 		end
-		if fay > slider.by - slider.spacing - slider.font_size then
+		if fay > slider.by - slider.spacing - font_size then
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..slider.font_size..bold_tag..'\\iclip('..fpath.scale..', '..fpath.text..')}')
+			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..font_size..bold_tag..'\\iclip('..fpath.scale..', '..fpath.text..')}')
 			ass:append(ass_opacity(math.min(options.volume_opacity + 0.1, 1), opacity))
 			ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
 			ass:an(2)
-			ass:append(state.volume)
+			ass:append(volume_string)
 		end
 	end
 
@@ -2332,7 +2334,6 @@ if itable_find({'left', 'right'}, options.volume) then
 			this.nudge_y = this.by - round(this.height * (100 / state.volume_max))
 			this.nudge_size = round(elements.volume.width * 0.18)
 			this.draw_nudge = this.ay < this.nudge_y
-			this.font_size = round(this.width * 0.5 * options.volume_font_scale)
 			this.spacing = round(this.width * 0.2)
 		end,
 		set_from_cursor = function(this)
