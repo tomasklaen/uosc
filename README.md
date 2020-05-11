@@ -126,7 +126,7 @@ pause_indicator=flash
 # window controls (minimize, maximize, close, title) show only in no-border
 # mode, but you can disable them completely by setting this to `no`
 window_controls=yes
-# display current media title in top window controls bar
+# display current media title in top bar in no-border mode
 title=no
 # load first file when calling next on a last file in a directory and vice versa
 directory_navigation_loops=no

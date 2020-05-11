@@ -95,7 +95,7 @@ pause_indicator=flash
 # window controls (minimize, maximize, close, title) show only in no-border
 # mode, but you can disable them completely by setting this to `no`
 window_controls=yes
-# display current media title in top window controls bar
+# display current media title in top bar in no-border mode
 title=no
 # load first file when calling next on a last file in a directory and vice versa
 directory_navigation_loops=no
@@ -1575,90 +1575,92 @@ function render_timeline(this)
 	return ass
 end
 
-function render_window_controls(this)
+function render_top_bar(this)
 	local opacity = this:get_effective_proximity()
 
 	if not this.enabled or opacity == 0 then return end
 
 	local ass = assdraw.ass_new()
 
-	-- Close button
-	local close = elements.window_controls_close
-	if close.proximity_raw == 0 then
-		-- Background on hover
+	if options.window_controls then
+		-- Close button
+		local close = elements.window_controls_close
+		if close.proximity_raw == 0 then
+			-- Background on hover
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H2311e8}')
+			ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(close.ax, close.ay, close.bx, close.by)
+			ass:draw_stop()
+		end
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H2311e8}')
-		ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
-		ass:pos(0, 0)
+		ass:append('{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}')
+		ass:append(ass_opacity(config.window_controls.icon_opacity, opacity))
+		ass:pos(close.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 		ass:draw_start()
-		ass:rect_cw(close.ax, close.ay, close.bx, close.by)
+		ass:move_to(-5, 5)
+		ass:line_to(5, -5)
+		ass:move_to(-5, -5)
+		ass:line_to(5, 5)
 		ass:draw_stop()
-	end
-	ass:new_event()
-	ass:append('{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}')
-	ass:append(ass_opacity(config.window_controls.icon_opacity, opacity))
-	ass:pos(close.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
-	ass:draw_start()
-	ass:move_to(-5, 5)
-	ass:line_to(5, -5)
-	ass:move_to(-5, -5)
-	ass:line_to(5, 5)
-	ass:draw_stop()
 
-	-- Maximize button
-	local maximize = elements.window_controls_maximize
-	if maximize.proximity_raw == 0 then
-		-- Background on hover
+		-- Maximize button
+		local maximize = elements.window_controls_maximize
+		if maximize.proximity_raw == 0 then
+			-- Background on hover
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H222222}')
+			ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(maximize.ax, maximize.ay, maximize.bx, maximize.by)
+			ass:draw_stop()
+		end
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H222222}')
-		ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
-		ass:pos(0, 0)
+		ass:append('{\\blur0\\bord2\\shad0\\1c\\3c&H000000}')
+		ass:append(ass_opacity({[3] = config.window_controls.icon_opacity}, opacity))
+		ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 		ass:draw_start()
-		ass:rect_cw(maximize.ax, maximize.ay, maximize.bx, maximize.by)
+		ass:rect_cw(-4, -4, 6, 6)
 		ass:draw_stop()
-	end
-	ass:new_event()
-	ass:append('{\\blur0\\bord2\\shad0\\1c\\3c&H000000}')
-	ass:append(ass_opacity({[3] = config.window_controls.icon_opacity}, opacity))
-	ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
-	ass:draw_start()
-	ass:rect_cw(-4, -4, 6, 6)
-	ass:draw_stop()
-	ass:new_event()
-	ass:append('{\\blur0\\bord2\\shad0\\1c\\3c&HFFFFFF}')
-	ass:append(ass_opacity({[3] = config.window_controls.icon_opacity}, opacity))
-	ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
-	ass:draw_start()
-	ass:rect_cw(-5, -5, 5, 5)
-	ass:draw_stop()
+		ass:new_event()
+		ass:append('{\\blur0\\bord2\\shad0\\1c\\3c&HFFFFFF}')
+		ass:append(ass_opacity({[3] = config.window_controls.icon_opacity}, opacity))
+		ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
+		ass:draw_start()
+		ass:rect_cw(-5, -5, 5, 5)
+		ass:draw_stop()
 
-	-- Minimize button
-	local minimize = elements.window_controls_minimize
-	if minimize.proximity_raw == 0 then
-		-- Background on hover
+		-- Minimize button
+		local minimize = elements.window_controls_minimize
+		if minimize.proximity_raw == 0 then
+			-- Background on hover
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H222222}')
+			ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(minimize.ax, minimize.ay, minimize.bx, minimize.by)
+			ass:draw_stop()
+		end
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H222222}')
-		ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
-		ass:pos(0, 0)
+		ass:append('{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}')
+		ass:append(ass_opacity(config.window_controls.icon_opacity, opacity))
+		ass:append('{\\1a&HFF&}')
+		ass:pos(minimize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
 		ass:draw_start()
-		ass:rect_cw(minimize.ax, minimize.ay, minimize.bx, minimize.by)
+		ass:move_to(-5, 0)
+		ass:line_to(5, 0)
 		ass:draw_stop()
 	end
-	ass:new_event()
-	ass:append('{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}')
-	ass:append(ass_opacity(config.window_controls.icon_opacity, opacity))
-	ass:append('{\\1a&HFF&}')
-	ass:pos(minimize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
-	ass:draw_start()
-	ass:move_to(-5, 0)
-	ass:line_to(5, 0)
-	ass:draw_stop()
 
 	-- Window title
 	if options.title and state.media_title then
 		local spacing = math.ceil(config.window_controls.height * 0.25)
 		local font_size = math.floor(config.window_controls.height - (spacing * 2))
-		local clip_coordinates = '0,0,'..(minimize.ax - spacing)..','..config.window_controls.height
+		local clip_coordinates = '0,0,'..(this.title_bx - spacing)..','..config.window_controls.height
 
 		ass:new_event()
 		ass:append('{\\q2\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000\\fn'..config.font..'\\fs'..font_size..bold_tag..'\\clip('..clip_coordinates..')')
@@ -2221,8 +2223,8 @@ elements:add('timeline', Element.new({
 	end,
 	render = render_timeline,
 }))
-if options.window_controls then
-	elements:add('window_controls', Element.new({
+if options.window_controls or options.title then
+	elements:add('top_bar', Element.new({
 		enabled = false,
 		init = function(this)
 			mp.observe_property('border', 'bool', function(_, border)
@@ -2234,13 +2236,16 @@ if options.window_controls then
 			return this.forced_proximity and this.forced_proximity or this.proximity
 		end,
 		on_display_resize = function(this)
-			this.ax = options.title and 0 or (display.width - (config.window_controls.button_width * 3))
+			this.title_bx = display.width - (config.window_controls.button_width * 3)
+			this.ax = options.title and 0 or this.title_bx
 			this.ay = 0
 			this.bx = display.width
 			this.by = config.window_controls.height
 		end,
-		render = render_window_controls,
+		render = render_top_bar,
 	}))
+end
+if options.window_controls then
 	elements:add('window_controls_minimize', Element.new({
 		captures = {mouse_buttons = true},
 		on_display_resize = function(this)
@@ -2689,7 +2694,7 @@ end
 
 function handle_mouse_leave()
 	-- Slowly fadeout elements that are currently visible
-	for _, element_name in ipairs({'timeline', 'volume', 'window_controls'}) do
+	for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
 		local element = elements[element_name]
 		if element and element.proximity > 0 then
 			element:tween_property('forced_proximity', element:get_effective_proximity(), 0, function()
