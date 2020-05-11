@@ -100,6 +100,8 @@ speed_flash=yes
 # controls all menus, such as context menu, subtitle loader/selector, etc
 menu_item_height=36
 menu_item_height_fullscreen=50
+menu_wasd_navigation=no
+menu_hjkl_navigation=no
 menu_opacity=0.8
 menu_font_scale=1
 

@@ -69,6 +69,8 @@ speed_flash=yes
 # controls all menus, such as context menu, subtitle loader/selector, etc
 menu_item_height=36
 menu_item_height_fullscreen=50
+menu_wasd_navigation=no
+menu_hjkl_navigation=no
 menu_opacity=0.8
 menu_font_scale=1
 
@@ -225,6 +227,8 @@ local options = {
 
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
+	menu_wasd_navigation = false,
+	menu_hjkl_navigation = false,
 	menu_opacity = 0.8,
 	menu_font_scale = 1,
 
@@ -1121,19 +1125,26 @@ function Menu:enable_key_bindings()
 	-- The `mp.set_key_bindings()` method would be easier here, but that
 	-- doesn't support 'repeatable' flag, so we are stuck with this monster.
 	menu:add_key_binding('up',         'menu-prev',        self:create_action('prev'), 'repeatable')
-	menu:add_key_binding('w',          'menu-prev-alt',    self:create_action('prev'), 'repeatable')
-	menu:add_key_binding('k',          'menu-prev-alt2',   self:create_action('prev'), 'repeatable')
 	menu:add_key_binding('down',       'menu-next',        self:create_action('next'), 'repeatable')
-	menu:add_key_binding('s',          'menu-next-alt',    self:create_action('next'), 'repeatable')
-	menu:add_key_binding('j',          'menu-next-alt2',   self:create_action('next'), 'repeatable')
 	menu:add_key_binding('left',       'menu-back',        self:create_action('back'))
-	menu:add_key_binding('a',          'menu-back-alt',    self:create_action('back'))
-	menu:add_key_binding('h',          'menu-back-alt2',   self:create_action('back'))
+	menu:add_key_binding('right',      'menu-select',      self:create_action('open_selected_item'))
+
+	if options.menu_wasd_navigation then
+		menu:add_key_binding('w', 'menu-prev-alt',   self:create_action('prev'), 'repeatable')
+		menu:add_key_binding('a', 'menu-back-alt',   self:create_action('back'))
+		menu:add_key_binding('s', 'menu-next-alt',   self:create_action('next'), 'repeatable')
+		menu:add_key_binding('d', 'menu-select-alt', self:create_action('open_selected_item'))
+	end
+
+	if options.menu_hjkl_navigation then
+		menu:add_key_binding('h', 'menu-back-alt2',   self:create_action('back'))
+		menu:add_key_binding('j', 'menu-next-alt2',   self:create_action('next'), 'repeatable')
+		menu:add_key_binding('k', 'menu-prev-alt2',   self:create_action('prev'), 'repeatable')
+		menu:add_key_binding('l', 'menu-select-alt2', self:create_action('open_selected_item'))
+	end
+
 	menu:add_key_binding('mbtn_back',  'menu-back-alt3',   self:create_action('back'))
 	menu:add_key_binding('bs',         'menu-back-alt4',   self:create_action('back'))
-	menu:add_key_binding('right',      'menu-select',      self:create_action('open_selected_item'))
-	menu:add_key_binding('d',          'menu-select-alt',  self:create_action('open_selected_item'))
-	menu:add_key_binding('l',          'menu-select-alt2', self:create_action('open_selected_item'))
 	menu:add_key_binding('enter',      'menu-select-alt3', self:create_action('open_selected_item'))
 	menu:add_key_binding('kp_enter',   'menu-select-alt4', self:create_action('open_selected_item'))
 	menu:add_key_binding('esc',        'menu-close',       self:create_action('close'))
