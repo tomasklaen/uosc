@@ -1,3 +1,23 @@
+## 2.9.0 - 2020-May-11
+
+Changed:
+- Window controls and title bar (displayed only in no border mode) have been merged into a more configurable `top_bar` entity.
+
+	These options are now gone:
+	- `window_controls=yes`
+	- `title=no`
+
+	Replaced with:
+	- `top_bar_size=40`
+	- `top_bar_size_fullscreen=46`
+	- `top_bar_controls=yes`
+	- `top_bar_title=yes`
+- Menu navigation with **wasd** and **hjkl** keys is now off by default, and can be enabled with `menu_wasd_navigation=yes` and `menu_hjkl_navigation=yes`.
+- Remaining time now prefixed with a minus sign.
+
+Fixed:
+- Volume number bugging out on floating point values.
+
 ### 2.8.2 - 2020-May-06
 
 Changed:
