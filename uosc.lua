@@ -74,6 +74,12 @@ menu_hjkl_navigation=no
 menu_opacity=0.8
 menu_font_scale=1
 
+# top bar with window controls and media title shown only in no-border mode
+top_bar_size=40
+top_bar_size_fullscreen=46
+top_bar_controls=yes
+top_bar_title=yes
+
 # pause video on clicks shorter than this number of milliseconds, 0 to disable
 pause_on_click_shorter_than=0
 # for how long in milliseconds to show elements they're it's being flashed
@@ -92,11 +98,6 @@ font_bold=no
 autohide=no
 # can be: none, flash, static
 pause_indicator=flash
-# window controls (minimize, maximize, close, title) show only in no-border
-# mode, but you can disable them completely by setting this to `no`
-window_controls=yes
-# display current media title in top bar in no-border mode
-title=no
 # load first file when calling next on a last file in a directory and vice versa
 directory_navigation_loops=no
 # file types to look for when navigating media files
@@ -232,6 +233,11 @@ local options = {
 	menu_opacity = 0.8,
 	menu_font_scale = 1,
 
+	top_bar_size = 40,
+	top_bar_size_fullscreen = 46,
+	top_bar_controls = true,
+	top_bar_title = true,
+
 	pause_on_click_shorter_than = 0,
 	flash_duration = 400,
 	proximity_in = 40,
@@ -243,8 +249,6 @@ local options = {
 	font_bold = false,
 	autohide = false,
 	pause_indicator = 'flash',
-	window_controls = true,
-	title = false,
 	directory_navigation_loops = false,
 	media_types = '3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
 	subtitle_types = 'aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt',
@@ -256,13 +260,7 @@ local config = {
 	render_delay = 0.03, -- sets max rendering frequency
 	font = mp.get_property('options/osd-font'),
 	menu_parent_opacity = 0.4,
-	menu_min_width = 260,
-	window_controls = {
-		button_width = 46,
-		height = 40,
-		icon_opacity = 0.8,
-		background_opacity = 0.8,
-	}
+	menu_min_width = 260
 }
 local bold_tag = options.font_bold and '\\b1' or ''
 local display = {
@@ -1582,14 +1580,14 @@ function render_top_bar(this)
 
 	local ass = assdraw.ass_new()
 
-	if options.window_controls then
+	if options.top_bar_controls then
 		-- Close button
 		local close = elements.window_controls_close
 		if close.proximity_raw == 0 then
 			-- Background on hover
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\1c&H2311e8}')
-			ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
+			ass:append(ass_opacity(this.button_opacity, opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
 			ass:rect_cw(close.ax, close.ay, close.bx, close.by)
@@ -1597,13 +1595,13 @@ function render_top_bar(this)
 		end
 		ass:new_event()
 		ass:append('{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}')
-		ass:append(ass_opacity(config.window_controls.icon_opacity, opacity))
-		ass:pos(close.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
+		ass:append(ass_opacity(this.button_opacity, opacity))
+		ass:pos(close.ax + (this.button_width / 2), (this.size / 2))
 		ass:draw_start()
-		ass:move_to(-5, 5)
-		ass:line_to(5, -5)
-		ass:move_to(-5, -5)
-		ass:line_to(5, 5)
+		ass:move_to(-this.icon_size, this.icon_size)
+		ass:line_to(this.icon_size, -this.icon_size)
+		ass:move_to(-this.icon_size, -this.icon_size)
+		ass:line_to(this.icon_size, this.icon_size)
 		ass:draw_stop()
 
 		-- Maximize button
@@ -1612,7 +1610,7 @@ function render_top_bar(this)
 			-- Background on hover
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\1c&H222222}')
-			ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
+			ass:append(ass_opacity(this.button_opacity, opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
 			ass:rect_cw(maximize.ax, maximize.ay, maximize.bx, maximize.by)
@@ -1620,17 +1618,17 @@ function render_top_bar(this)
 		end
 		ass:new_event()
 		ass:append('{\\blur0\\bord2\\shad0\\1c\\3c&H000000}')
-		ass:append(ass_opacity({[3] = config.window_controls.icon_opacity}, opacity))
-		ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
+		ass:append(ass_opacity({[3] = this.button_opacity}, opacity))
+		ass:pos(maximize.ax + (this.button_width / 2), (this.size / 2))
 		ass:draw_start()
-		ass:rect_cw(-4, -4, 6, 6)
+		ass:rect_cw(-this.icon_size + 1, -this.icon_size + 1, this.icon_size + 1, this.icon_size + 1)
 		ass:draw_stop()
 		ass:new_event()
 		ass:append('{\\blur0\\bord2\\shad0\\1c\\3c&HFFFFFF}')
-		ass:append(ass_opacity({[3] = config.window_controls.icon_opacity}, opacity))
-		ass:pos(maximize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
+		ass:append(ass_opacity({[3] = this.button_opacity}, opacity))
+		ass:pos(maximize.ax + (this.button_width / 2), (this.size / 2))
 		ass:draw_start()
-		ass:rect_cw(-5, -5, 5, 5)
+		ass:rect_cw(-this.icon_size, -this.icon_size, this.icon_size, this.icon_size)
 		ass:draw_stop()
 
 		-- Minimize button
@@ -1639,7 +1637,7 @@ function render_top_bar(this)
 			-- Background on hover
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\1c&H222222}')
-			ass:append(ass_opacity(config.window_controls.background_opacity, opacity))
+			ass:append(ass_opacity(this.button_opacity, opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
 			ass:rect_cw(minimize.ax, minimize.ay, minimize.bx, minimize.by)
@@ -1647,25 +1645,23 @@ function render_top_bar(this)
 		end
 		ass:new_event()
 		ass:append('{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}')
-		ass:append(ass_opacity(config.window_controls.icon_opacity, opacity))
+		ass:append(ass_opacity(this.button_opacity, opacity))
 		ass:append('{\\1a&HFF&}')
-		ass:pos(minimize.ax + (config.window_controls.button_width / 2), (config.window_controls.height / 2))
+		ass:pos(minimize.ax + (this.button_width / 2), (this.size / 2))
 		ass:draw_start()
-		ass:move_to(-5, 0)
-		ass:line_to(5, 0)
+		ass:move_to(-this.icon_size, 0)
+		ass:line_to(this.icon_size, 0)
 		ass:draw_stop()
 	end
 
 	-- Window title
-	if options.title and state.media_title then
-		local spacing = math.ceil(config.window_controls.height * 0.25)
-		local font_size = math.floor(config.window_controls.height - (spacing * 2))
-		local clip_coordinates = '0,0,'..(this.title_bx - spacing)..','..config.window_controls.height
+	if options.top_bar_title and state.media_title then
+		local clip_coordinates = '0,0,'..(this.title_bx - this.spacing)..','..this.size
 
 		ass:new_event()
-		ass:append('{\\q2\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000\\fn'..config.font..'\\fs'..font_size..bold_tag..'\\clip('..clip_coordinates..')')
+		ass:append('{\\q2\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..clip_coordinates..')')
 		ass:append(ass_opacity(1, opacity))
-		ass:pos(0 + spacing, config.window_controls.height / 2)
+		ass:pos(0 + this.spacing, this.size / 2)
 		ass:an(4)
 		ass:append(state.media_title)
 	end
@@ -2223,8 +2219,9 @@ elements:add('timeline', Element.new({
 	end,
 	render = render_timeline,
 }))
-if options.window_controls or options.title then
+if options.top_bar_controls or options.top_bar_title then
 	elements:add('top_bar', Element.new({
+		button_opacity = 0.8,
 		enabled = false,
 		init = function(this)
 			mp.observe_property('border', 'bool', function(_, border)
@@ -2236,43 +2233,48 @@ if options.window_controls or options.title then
 			return this.forced_proximity and this.forced_proximity or this.proximity
 		end,
 		on_display_resize = function(this)
-			this.title_bx = display.width - (config.window_controls.button_width * 3)
-			this.ax = options.title and 0 or this.title_bx
+			this.size = (state.fullscreen or state.maximized) and options.top_bar_size_fullscreen or options.top_bar_size
+			this.icon_size = round(this.size / 8)
+			this.spacing = math.ceil(this.size * 0.25)
+			this.font_size = math.floor(this.size - (this.spacing * 2))
+			this.button_width = round(this.size * 1.15)
+			this.title_bx = display.width - (options.top_bar_controls and (this.button_width * 3) or 0)
+			this.ax = options.top_bar_title and 0 or this.title_bx
 			this.ay = 0
 			this.bx = display.width
-			this.by = config.window_controls.height
+			this.by = this.size
 		end,
 		render = render_top_bar,
 	}))
 end
-if options.window_controls then
+if options.top_bar_controls then
 	elements:add('window_controls_minimize', Element.new({
 		captures = {mouse_buttons = true},
 		on_display_resize = function(this)
-			this.ax = display.width - (config.window_controls.button_width * 3)
+			this.ax = display.width - (elements.top_bar.button_width * 3)
 			this.ay = 0
-			this.bx = this.ax + config.window_controls.button_width
-			this.by = config.window_controls.height
+			this.bx = this.ax + elements.top_bar.button_width
+			this.by = elements.top_bar.size
 		end,
 		on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end
 	}))
 	elements:add('window_controls_maximize', Element.new({
 		captures = {mouse_buttons = true},
 		on_display_resize = function(this)
-			this.ax = display.width - (config.window_controls.button_width * 2)
+			this.ax = display.width - (elements.top_bar.button_width * 2)
 			this.ay = 0
-			this.bx = this.ax + config.window_controls.button_width
-			this.by = config.window_controls.height
+			this.bx = this.ax + elements.top_bar.button_width
+			this.by = elements.top_bar.size
 		end,
 		on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end
 	}))
 	elements:add('window_controls_close', Element.new({
 		captures = {mouse_buttons = true},
 		on_display_resize = function(this)
-			this.ax = display.width - config.window_controls.button_width
+			this.ax = display.width - elements.top_bar.button_width
 			this.ay = 0
-			this.bx = this.ax + config.window_controls.button_width
-			this.by = config.window_controls.height
+			this.bx = this.ax + elements.top_bar.button_width
+			this.by = elements.top_bar.size
 		end,
 		on_mbtn_left_down = function() mp.commandv('quit') end
 	}))
@@ -2304,7 +2306,7 @@ if itable_find({'left', 'right'}, options.volume) then
 		end,
 		on_display_resize = function(this)
 			this.width = (state.fullscreen or state.maximized) and options.volume_size_fullscreen or options.volume_size
-			this.height = round(math.min(this.width * 8, (elements.timeline.ay - config.window_controls.height) * 0.8))
+			this.height = round(math.min(this.width * 8, (elements.timeline.ay - elements.top_bar.size) * 0.8))
 			-- Don't bother rendering this if too small
 			if this.height < (this.width * 2) then
 				this.height = 0
