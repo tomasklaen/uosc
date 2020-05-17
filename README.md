@@ -398,11 +398,11 @@ To see all the commands you can bind keys or menu items to, refer to [mpv's list
 
 ## Tips
 
-If the UI feels sluggish/slow to you, it's because when video is playing, the UI rendering frequency is chained to its frame rate, so unless you are the type of person that can't see above 24fps, it does feel sluggish.
+**uosc** places performance as one of the top priorities, so why does the UI feels a bit sluggish/slow/laggy (e.g. seeking indicator lags a bit behind cursor)? Well, it really isn't, **uosc** is **fast**, it just doesn't feel like it because when video is playing, the UI rendering frequency is chained to its frame rate, so unless you are the type of person that can't see above 24fps, it *does* feel sluggish. This is an mpv limitation and I can't do anything about it :(
 
 You can test the smoother operation by pausing the video and then using the UI, which will make it render closer to your display refresh rate.
 
-To get this smoothness also while playing a video, add this to your `mpv.conf` file to enable interpolation:
+You can remedy this a tiny bit by enabling interpolation. Add this to your `mpv.conf` file:
 
 ```
 interpolation=yes
