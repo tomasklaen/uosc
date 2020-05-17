@@ -1,3 +1,34 @@
+## 2.10.0 - 2020-May-17
+
+Element flashing on external changes was a bit too magical. Especially timeline flashing had to implement several filters to not flash on frame steps, or when video loops, and you still couldn't control which seeks were flashing the timeline and which not, so this updated replaces magical flashing option with explicit flashing commands.
+
+New:
+- Commands for flashing elements:
+	- `flash-timeline`
+	- `flash-volume`
+	- `flash-speed`
+
+	You can use them in your keybindings like so:
+
+	```
+	right        seek  5
+	left         seek -5
+	shift+right  seek  30; script-binding uosc/flash-timeline
+	shift+left   seek -30; script-binding uosc/flash-timeline
+	m            cycle mute; script-binding uosc/flash-volume
+	up           add volume  10; script-binding uosc/flash-volume
+	down         add volume -10; script-binding uosc/flash-volume
+	[            add speed -0.25; script-binding uosc/flash-speed
+	]            add speed  0.25; script-binding uosc/flash-speed
+	\            set speed 1; script-binding uosc/flash-speed
+	```
+
+Removed:
+- Since flashing commands above do the job better, options to flash elements automatically have been removed:
+	- `timeline_flash=400`
+	- `volume_flash=400`
+	- `speed_flash=400`
+
 ## 2.9.0 - 2020-May-11
 
 Changed:
