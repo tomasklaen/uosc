@@ -303,6 +303,8 @@ local state = {
 }
 local forced_key_bindings -- defined at the bottom next to events
 
+local no_osd_l_max = 0 -- maximum seek length for which timeline_flash is suppressed
+
 -- HELPERS
 
 function round(number)
@@ -2167,7 +2169,7 @@ elements:add('timeline', Element.new({
 				if position and state.position then
 					local seek_length = math.abs(position - state.position)
 					-- Don't flash on video looping (seek to 0) or tiny seeks (frame-step)
-					if position > 0.5 and seek_length > 0.5 then this:flash() end
+					if position > 0.5 and seek_length > (no_osd_l_max+0.5) then this:flash() end
 				end
 			end)
 		end
@@ -2666,6 +2668,20 @@ state.context_menu_items = (function()
 				end
 			end
 		end
+
+		-- look into input.conf for preferences about flashing the osd on seek events
+		if not string.match(line, '#.*') then
+			local no_osd_l_str = string.match(line, '.*no%-osd.*seek +[ %-](%d+).*')
+			if no_osd_l_str ~= nil then
+				local no_osd_l = tonumber(no_osd_l_str)
+				if no_osd_l > no_osd_l_max then
+					no_osd_l_max = no_osd_l
+				end
+			end
+		end
+		-- if input.conf doesn't have any no-osd seek entries, then no_osd_l_max is left at 0.
+		-- 0.5 will still be added afterwards to correct for single frame differences between requested seek and performed seek. 
+
 	end
 
 	if #items > 0 then return items end
