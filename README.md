@@ -109,7 +109,7 @@ top_bar_title=yes
 
 # pause video on clicks shorter than this number of milliseconds, 0 to disable
 pause_on_click_shorter_than=0
-# for how long in milliseconds to show elements they're it's being flashed
+# flash duration in milliseconds used by `flash-{element}` commands
 flash_duration=400
 # distances in pixels below which elements are fully faded in/out
 proximity_in=40
