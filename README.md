@@ -71,8 +71,6 @@ timeline_step=5
 timeline_cached_ranges=345433:0.5
 # floating number font scale adjustment
 timeline_font_scale=1
-# briefly show timeline on external changes (e.g. seeking with a hotkey)
-timeline_flash=yes
 
 # timeline chapters style: none, dots, lines, lines-top, lines-bottom
 chapters=dots
@@ -86,7 +84,6 @@ volume_opacity=0.8
 volume_border=1
 volume_step=1
 volume_font_scale=1
-volume_flash=yes
 
 # playback speed widget: mouse drag or wheel to change, click to reset
 speed=no
@@ -95,7 +92,6 @@ speed_size_fullscreen=68
 speed_opacity=1
 speed_step=0.1
 speed_font_scale=1
-speed_flash=yes
 
 # controls all menus, such as context menu, subtitle loader/selector, etc
 menu_item_height=36
@@ -220,6 +216,25 @@ Expands the bottom timeline until pressed again, or next mouse move. Useful to c
 #### `toggle-progress`
 
 Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
+
+#### `flash-timeline`
+#### `flash-volume`
+#### `flash-speed`
+
+Commands to briefly flash a specified element. You can use it in your bindings like so:
+
+```
+right        seek  5
+left         seek -5
+shift+right  seek  30; script-binding uosc/flash-timeline
+shift+left   seek -30; script-binding uosc/flash-timeline
+m            cycle mute; script-binding uosc/flash-volume
+up           add volume  10; script-binding uosc/flash-volume
+down         add volume -10; script-binding uosc/flash-volume
+[            add speed -0.25; script-binding uosc/flash-speed
+]            add speed  0.25; script-binding uosc/flash-speed
+\            set speed 1; script-binding uosc/flash-speed
+```
 
 #### `menu`
 

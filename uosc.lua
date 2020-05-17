@@ -40,8 +40,6 @@ timeline_step=5
 timeline_cached_ranges=345433:0.5
 # floating number font scale adjustment
 timeline_font_scale=1
-# briefly show timeline on external changes (e.g. seeking with a hotkey)
-timeline_flash=yes
 
 # timeline chapters style: none, dots, lines, lines-top, lines-bottom
 chapters=dots
@@ -55,7 +53,6 @@ volume_opacity=0.8
 volume_border=1
 volume_step=1
 volume_font_scale=1
-volume_flash=yes
 
 # playback speed widget: mouse drag or wheel to change, click to reset
 speed=no
@@ -64,7 +61,6 @@ speed_size_fullscreen=68
 speed_opacity=1
 speed_step=0.1
 speed_font_scale=1
-speed_flash=yes
 
 # controls all menus, such as context menu, subtitle loader/selector, etc
 menu_item_height=36
@@ -157,6 +153,9 @@ Available keybindings (place into `input.conf`):
 ```
 Key  script-binding uosc/peek-timeline
 Key  script-binding uosc/toggle-progress
+Key  script-binding uosc/flash-timeline
+Key  script-binding uosc/flash-volume
+Key  script-binding uosc/flash-speed
 Key  script-binding uosc/menu
 Key  script-binding uosc/load-subtitles
 Key  script-binding uosc/subtitles
@@ -204,7 +203,6 @@ local options = {
 	timeline_step = 5,
 	timeline_cached_ranges = '345433:0.5',
 	timeline_font_scale = 1,
-	timeline_flash = true,
 
 	chapters = 'dots',
 	chapters_opacity = 0.3,
@@ -216,7 +214,6 @@ local options = {
 	volume_border = 1,
 	volume_step = 1,
 	volume_font_scale = 1,
-	volume_flash = true,
 
 	speed = false,
 	speed_size = 46,
@@ -224,7 +221,6 @@ local options = {
 	speed_opacity = 1,
 	speed_step = 0.1,
 	speed_font_scale = 1,
-	speed_flash = true,
 
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
@@ -2159,18 +2155,6 @@ elements:add('timeline', Element.new({
 			this.bottom_border = not border and options.timeline_border or 0
 			request_render()
 		end)
-
-		-- Flash on external changes
-		if options.timeline_flash then
-			mp.register_event('seek', function()
-				local position = mp.get_property_native('playback-time')
-				if position and state.position then
-					local seek_length = math.abs(position - state.position)
-					-- Don't flash on video looping (seek to 0) or tiny seeks (frame-step)
-					if position > 0.5 and seek_length > 0.5 then this:flash() end
-				end
-			end)
-		end
 	end,
 	get_effective_proximity = function(this)
 		if (elements.volume_slider and elements.volume_slider.pressed) then return 0 end
@@ -2284,21 +2268,6 @@ if itable_find({'left', 'right'}, options.volume) then
 		width = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		height = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
 		margin = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
-		init = function(this)
-			-- FLash on external changes
-			if options.volume_flash then
-				local is_initial_volume_call = true
-				mp.observe_property('volume', 'number', function(_, value)
-					if not is_initial_volume_call then this:flash() end
-					is_initial_volume_call = false
-				end)
-				local is_initial_mute_call = true
-				mp.observe_property('mute', 'bool', function(_, value)
-					if not is_initial_mute_call then this:flash() end
-					is_initial_mute_call = false
-				end)
-			end
-		end,
 		get_effective_proximity = function(this)
 			if elements.volume_slider.pressed then return 1 end
 			if elements.timeline.proximity_raw == 0 or elements.curtain.opacity > 0 then return 0 end
@@ -2397,15 +2366,6 @@ if options.speed then
 			elements.timeline:on('mouse_leave', function()
 				if not this.dragging then this:fadein() end
 			end)
-
-			-- Flash on external changes
-			if options.speed_flash then
-				local initial_call = true
-				mp.observe_property('speed', 'number', function()
-					if not initial_call and not this.dragging then this:flash() end
-					initial_call = false
-				end)
-			end
 		end,
 		fadeout = function(this)
 			this:tween_property('forced_proximity', 1, 0, function(this)
@@ -3004,6 +2964,15 @@ mp.add_key_binding(nil, 'toggle-progress', function()
 	else
 		timeline:tween_property('size_min_override', timeline.size_min, 0)
 	end
+end)
+mp.add_key_binding(nil, 'flash-timeline', function()
+	elements.timeline:flash()
+end)
+mp.add_key_binding(nil, 'flash-volume', function()
+	if elements.volume then elements.volume:flash() end
+end)
+mp.add_key_binding(nil, 'flash-speed', function()
+	if elements.speed then elements.speed:flash() end
 end)
 mp.add_key_binding(nil, 'menu', function()
 	if menu:is_open('menu') then
