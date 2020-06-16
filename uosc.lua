@@ -1365,7 +1365,7 @@ end
 -- ELEMENT RENDERERS
 
 function render_timeline(this)
-	if this.size_max == 0 or state.duration == nil or state.position == nil then return end
+	if this.size_max == 0 or state.duration == nil or state.duration == 0 or state.position == nil then return end
 
 	local size_min = this:get_effective_size_min()
 	local size = this:get_effective_size()
