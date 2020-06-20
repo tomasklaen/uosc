@@ -1,3 +1,9 @@
+### 2.10.1 - 2020-Jun-20
+
+Fixed:
+- Crash when video had no duration (viewing images).
+- Support for new sponsor block categories.
+
 ## 2.10.0 - 2020-May-17
 
 Element flashing on external changes was a bit too magical. Especially timeline flashing had to implement several filters to not flash on frame steps, or when video loops, and you still couldn't control which seeks were flashing the timeline and which not, so this updated replaces magical flashing option with explicit flashing commands.
