@@ -145,7 +145,7 @@ font_height_to_letter_width_ratio=0.5
 # ```
 # chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}
 # ```
-chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end
+chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor segment start<00aa00:0.5>sponsor segment end, sponsor start<00aa00:0.5>sponsor end, preview segment start<9944AA:0.5>preview segment end, submitted segment start<33AADD:0.5>submitted segment end, intro segment start<ffff00:0.5>intro segment end, outro segment start<ed0202:0.5>outro segment end, interaction segment start<808000:0.5>interaction segment end, selfpromo segment start<00ffff:0.5>selfpromo segment end
 ```
 
 Available keybindings (place into `input.conf`):
@@ -249,7 +249,7 @@ local options = {
 	media_types = '3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
 	subtitle_types = 'aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt',
 	font_height_to_letter_width_ratio = 0.5,
-	chapter_ranges = '^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end',
+	chapter_ranges = '^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor segment start<00aa00:0.5>sponsor segment end, sponsor start<00aa00:0.5>sponsor end, preview segment start<9944AA:0.5>preview segment end, submitted segment start<33AADD:0.5>submitted segment end, intro segment start<ffff00:0.5>intro segment end, outro segment start<ed0202:0.5>outro segment end, interaction segment start<808000:0.5>interaction segment end, selfpromo segment start<00ffff:0.5>selfpromo segment end',
 }
 opt.read_options(options, 'uosc')
 local config = {
