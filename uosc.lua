@@ -608,6 +608,13 @@ function get_adjacent_file(file_path, direction, allowed_types)
 	end
 end
 
+-- Can't use `os.remove()` as it fails on paths with unicode characters.
+-- Returns `result, error`, result is table of `status:number(<0=error), stdout, stderr, error_string, killed_by_us:boolean`
+function delete_file(file_path)
+	local args = state.os == 'windows' and {'cmd', '/C', 'del', file_path} or {'rm', file_path}
+	return mp.command_native({name = 'subprocess', args = args, playback_only = false, capture_stdout = true, capture_stderr = true})
+end
+
 -- Ensures chapters are in chronological order
 function get_normalized_chapters()
 	local chapters = mp.get_property_native('chapter-list')
@@ -3208,12 +3215,14 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 		end
 	end
 
-	os.remove(path)
+	delete_file(path)
 end)
 mp.add_key_binding(nil, 'delete-file-quit', function()
 	local path = mp.get_property_native('path')
+	print('native path', path)
 	if not path or is_protocol(path) then return end
-	os.remove(normalize_path(path))
+	mp.command('stop')
+	delete_file(normalize_path(path))
 	mp.command('quit')
 end)
 mp.add_key_binding(nil, 'open-config-directory', function()
