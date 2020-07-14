@@ -90,6 +90,8 @@ color_background=000000
 color_background_text=ffffff
 # use bold font weight throughout the whole UI
 font_bold=no
+# show total time instead of time remaining
+total_time=no
 # hide UI when mpv autohides the cursor
 autohide=no
 # can be: none, flash, static
@@ -242,6 +244,7 @@ local options = {
 	color_foreground_text = '000000',
 	color_background = '000000',
 	color_background_text = 'ffffff',
+	total_time = false,
 	font_bold = false,
 	autohide = false,
 	pause_indicator = 'flash',
@@ -1537,20 +1540,26 @@ function render_timeline(this)
 			ass:append(state.elapsed_time)
 		end
 
-		-- Remaining time
-		if state.remaining_seconds then
+		-- End time
+		local end_time
+		if options.total_time then
+			end_time = state.total_time
+		else
+			end_time = state.remaining_time
+		end
+		if end_time then
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(display.width - spacing, fay + (size / 2))
 			ass:an(6)
-			ass:append('-'..state.remaining_time)
+			ass:append('-'..end_time)
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(display.width - spacing, fay + (size / 2))
 			ass:an(6)
-			ass:append('-'..state.remaining_time)
+			ass:append('-'..end_time)
 		end
 	end
 
@@ -2855,7 +2864,10 @@ end)()
 -- HOOKS
 mp.register_event('file-loaded', parse_chapters)
 mp.observe_property('chapter-list', 'native', parse_chapters)
-mp.observe_property('duration', 'number', create_state_setter('duration'))
+mp.observe_property('duration', 'number', function(name, val)
+	state.duration = val
+	state.total_time = val and mp.format_time(val) or nil
+end)
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen'))
 mp.observe_property('window-maximized', 'bool', create_state_setter('maximized'))

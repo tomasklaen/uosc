@@ -121,6 +121,8 @@ color_background=000000
 color_background_text=ffffff
 # use bold font weight throughout the whole UI
 font_bold=no
+# show total time instead of time remaining
+total_time=no
 # hide UI when mpv autohides the cursor
 autohide=no
 # can be: none, flash, static
