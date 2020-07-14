@@ -1424,9 +1424,11 @@ function render_timeline(this)
 			ass:append(ass_opacity(options.timeline_cached_ranges.opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
+			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
+			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
 			ass:rect_cw(
-				bbx * (range['start'] / state.duration), range_ay,
-				bbx * (range['end'] / state.duration), range_ay + range_height
+				bbx * (range_start / state.duration), range_ay,
+				bbx * (range_end / state.duration), range_ay + range_height
 			)
 			ass:draw_stop()
 		end
