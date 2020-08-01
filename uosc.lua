@@ -1545,7 +1545,7 @@ function render_timeline(this)
 		if options.total_time then
 			end_time = state.total_time
 		else
-			end_time = state.remaining_time
+			end_time = state.remaining_time and '-'..state.remaining_time
 		end
 		if end_time then
 			ass:new_event()
@@ -1553,13 +1553,13 @@ function render_timeline(this)
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(display.width - spacing, fay + (size / 2))
 			ass:an(6)
-			ass:append('-'..end_time)
+			ass:append(end_time)
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 			ass:pos(display.width - spacing, fay + (size / 2))
 			ass:an(6)
-			ass:append('-'..end_time)
+			ass:append(end_time)
 		end
 	end
 
