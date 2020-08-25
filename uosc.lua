@@ -76,6 +76,9 @@ top_bar_size_fullscreen=46
 top_bar_controls=yes
 top_bar_title=yes
 
+# UI rendering delay in seconds
+# note: rendering will be limited by content framerate while playing
+render_delay=0.03
 # pause video on clicks shorter than this number of milliseconds, 0 to disable
 pause_on_click_shorter_than=0
 # flash duration in milliseconds used by `flash-{element}` commands
@@ -236,6 +239,7 @@ local options = {
 	top_bar_controls = true,
 	top_bar_title = true,
 
+	render_delay = 0.03,
 	pause_on_click_shorter_than = 0,
 	flash_duration = 400,
 	proximity_in = 40,
@@ -256,7 +260,6 @@ local options = {
 }
 opt.read_options(options, 'uosc')
 local config = {
-	render_delay = 0.03, -- sets max rendering frequency
 	font = mp.get_property('options/osd-font'),
 	menu_parent_opacity = 0.4,
 	menu_min_width = 260
@@ -2042,7 +2045,7 @@ function request_render()
 
 	if not state.render_timer:is_enabled() then
 		local now = mp.get_time()
-		local timeout = config.render_delay - (now - state.render_last_time)
+		local timeout = options.render_delay - (now - state.render_last_time)
 		if timeout < 0 then
 			timeout = 0
 		end
