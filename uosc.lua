@@ -33,6 +33,8 @@ timeline_opacity=0.8
 # top (and bottom in no-border mode) border of background color to help visually
 # separate elapsed bar from a video of similar color or desktop background
 timeline_border=1
+# seek to keyframes for faster but more imprecise seeking
+timeline_fast_seek=no
 # when scrolling above timeline, wheel will seek by this amount of seconds
 timeline_step=5
 # display seekable buffered ranges for streaming videos, syntax `color:opacity`,
@@ -205,6 +207,7 @@ local options = {
 	timeline_start_hidden = false,
 	timeline_opacity = 0.8,
 	timeline_border = 1,
+	timeline_fast_seek = false,
 	timeline_step = 5,
 	timeline_cached_ranges = '345433:0.5',
 	timeline_font_scale = 1,
@@ -2205,7 +2208,8 @@ elements:add('timeline', Element.new({
 		this.by = display.height
 	end,
 	set_from_cursor = function(this)
-		mp.commandv('seek', ((cursor.x / display.width) * 100), 'absolute-percent+exact')
+		local seek_flags = 'absolute-percent'..(options.timeline_fast_seek and '' or '+exact')
+		mp.commandv('seek', ((cursor.x / display.width) * 100), seek_flags)
 	end,
 	on_mbtn_left_down = function(this)
 		this.pressed = true
