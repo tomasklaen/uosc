@@ -315,9 +315,9 @@ local forced_key_bindings -- defined at the bottom next to events
 
 -- HELPERS
 
--- Get x position within range ax - bx by a 0-1 floating number
-function get_pos_x(f, ax, bx)
-	return ax + (bx - ax) * f
+-- Get the position in a range based on a 0-1 floating number
+function get_pos_in_range(fp, range_start, range_end)
+	return range_start + (range_end - range_start) * fp
 end
 
 function round(number)
@@ -1428,7 +1428,7 @@ function render_playback_controls(this)
 	local progress = state.position / state.duration
 
 	-- Background bar coordinates
-	local bax = get_pos_x(0, offset_x, display.width)
+	local bax = get_pos_in_range(0, offset_x, display.width)
 	local bay = display.height - size - this.bottom_border - this.top_border
 	local bbx = display.width
 	local bby = display.height
@@ -1436,7 +1436,7 @@ function render_playback_controls(this)
 	-- Foreground bar coordinates
 	local fax = options.play_pause and bax + this.top_border or bax
 	local fay = bay + this.top_border
-	local fbx = get_pos_x(progress, fax, bbx)
+	local fbx = get_pos_in_range(progress, fax, bbx)
 	local fby = bby - this.bottom_border
 	local foreground_size = bby - bay
 	local foreground_coordinates -- for clipping
@@ -1512,8 +1512,8 @@ function render_playback_controls(this)
 			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
 			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
 			ass:rect_cw(
-				get_pos_x(range_start / state.duration, fax, bbx), range_ay,
-				get_pos_x(range_end / state.duration, fax, bbx), range_ay + range_height
+				get_pos_in_range(range_start / state.duration, fax, bbx), range_ay,
+				get_pos_in_range(range_end / state.duration, fax, bbx), range_ay + range_height
 			)
 			ass:draw_stop()
 		end
@@ -1523,8 +1523,8 @@ function render_playback_controls(this)
 	if state.chapter_ranges ~= nil then
 		for i, chapter_range in ipairs(state.chapter_ranges) do
 			for i, range in ipairs(chapter_range.ranges) do
-				local rax = get_pos_x(range['start'].time / state.duration, fax, bbx)
-				local rbx = get_pos_x(range['end'].time / state.duration, fax, bbx)
+				local rax = get_pos_in_range(range['start'].time / state.duration, fax, bbx)
+				local rbx = get_pos_in_range(range['end'].time / state.duration, fax, bbx)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\1c&H'..chapter_range.color..'}')
 				ass:append(ass_opacity(chapter_range.opacity))
@@ -1567,7 +1567,7 @@ function render_playback_controls(this)
 			local chapter_half_size = chapter_size / 2
 
 			for i, chapter in ipairs(state.chapters) do
-				local chapter_x = get_pos_x(chapter.time / state.duration, fax, bbx)
+				local chapter_x = get_pos_in_range(chapter.time / state.duration, fax, bbx)
 				local color = chapter_x > fbx and options.color_foreground or options.color_background
 
 				ass:new_event()
