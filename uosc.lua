@@ -19,6 +19,9 @@ border=no
 Options go in `script-opts/uosc.conf`. Defaults:
 
 ```
+# show play/pause button
+play_pause=no
+
 # timeline size when fully retracted, 0 will hide it completely
 timeline_size_min=2
 # timeline size when fully expanded, in pixels, 0 to disable
@@ -200,6 +203,8 @@ local infinity = 1e309
 
 -- OPTIONS/CONFIG/STATE
 local options = {
+	play_pause = false,
+
 	timeline_size_min = 2,
 	timeline_size_max = 40,
 	timeline_size_min_fullscreen = 0,
@@ -309,6 +314,11 @@ local state = {
 local forced_key_bindings -- defined at the bottom next to events
 
 -- HELPERS
+
+-- Get x position within range ax - bx by a 0-1 floating number
+function get_pos_x(f, ax, bx)
+	return ax + (bx - ax) * f
+end
 
 function round(number)
 	local modulus = number % 1
@@ -1250,6 +1260,24 @@ function icon(name, icon_x, icon_y, icon_size, shad_x, shad_y, shad_size, backdr
 	return ass.text
 end
 
+function icons.play_pause(paused, pos_x, pos_y, size)
+	local ass = assdraw.ass_new()
+	local scale = size / 200
+	function x(number) return pos_x + (number * scale) end
+	function y(number) return pos_y + (number * scale) end
+	if paused then
+		ass:move_to(x(-48), y(-60))
+		ass:line_to(x(58), y(0))
+		ass:line_to(x(-48), y(60))
+	else
+		ass:rect_cw(x(-48), y(-54), x(-16), y(54))
+		ass:rect_cw(x(16), y(-54), x(48), y(54))
+	end
+	return ass.text
+end
+function icons.play(pos_x, pos_y, size) return icons.play_pause(true, pos_x, pos_y, size) end
+function icons.pause(pos_x, pos_y, size) return icons.play_pause(false, pos_x, pos_y, size) end
+
 function icons._volume(muted, pos_x, pos_y, size)
 	local ass = assdraw.ass_new()
 	local scale = size / 200
@@ -1380,7 +1408,7 @@ end
 
 -- ELEMENT RENDERERS
 
-function render_timeline(this)
+function render_playback_controls(this)
 	if this.size_max == 0 or state.duration == nil or state.duration == 0 or state.position == nil then return end
 
 	local size_min = this:get_effective_size_min()
@@ -1395,19 +1423,20 @@ function render_timeline(this)
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = math.max(math.min(size - hide_text_below, hide_text_ramp), 0) / hide_text_ramp
 
-	local spacing = math.max(math.floor((this.size_max - this.font_size) / 2.5), 4)
+	local offset_x = options.play_pause and this.size_max or 0
+	local spacing = math.max(math.floor((this.size_max - this.font_size) / 2.5), options.play_pause and 12 or 4)
 	local progress = state.position / state.duration
 
 	-- Background bar coordinates
-	local bax = 0
+	local bax = get_pos_x(0, offset_x, display.width)
 	local bay = display.height - size - this.bottom_border - this.top_border
 	local bbx = display.width
 	local bby = display.height
 
 	-- Foreground bar coordinates
-	local fax = bax
+	local fax = options.play_pause and bax + this.top_border or bax
 	local fay = bay + this.top_border
-	local fbx = bbx * progress
+	local fbx = get_pos_x(progress, fax, bbx)
 	local fby = bby - this.bottom_border
 	local foreground_size = bby - bay
 	local foreground_coordinates = fax..','..fay..','..fbx..','..fby -- for clipping
@@ -1443,8 +1472,8 @@ function render_timeline(this)
 			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
 			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
 			ass:rect_cw(
-				bbx * (range_start / state.duration), range_ay,
-				bbx * (range_end / state.duration), range_ay + range_height
+				get_pos_x(range_start / state.duration, fax, bbx), range_ay,
+				get_pos_x(range_end / state.duration, fax, bbx), range_ay + range_height
 			)
 			ass:draw_stop()
 		end
@@ -1454,8 +1483,8 @@ function render_timeline(this)
 	if state.chapter_ranges ~= nil then
 		for i, chapter_range in ipairs(state.chapter_ranges) do
 			for i, range in ipairs(chapter_range.ranges) do
-				local rax = display.width * (range['start'].time / state.duration)
-				local rbx = display.width * (range['end'].time / state.duration)
+				local rax = get_pos_x(range['start'].time / state.duration, fax, bbx)
+				local rbx = get_pos_x(range['end'].time / state.duration, fax, bbx)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\1c&H'..chapter_range.color..'}')
 				ass:append(ass_opacity(chapter_range.opacity))
@@ -1498,7 +1527,7 @@ function render_timeline(this)
 			local chapter_half_size = chapter_size / 2
 
 			for i, chapter in ipairs(state.chapters) do
-				local chapter_x = display.width * (chapter.time / state.duration)
+				local chapter_x = get_pos_x(chapter.time / state.duration, fax, bbx)
 				local color = chapter_x > fbx and options.color_foreground or options.color_background
 
 				ass:new_event()
@@ -1535,13 +1564,13 @@ function render_timeline(this)
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
-			ass:pos(spacing, fay + (size / 2))
+			ass:pos(fax + spacing, fay + (size / 2))
 			ass:an(4)
 			ass:append(state.elapsed_time)
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
 			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
-			ass:pos(spacing, fay + (size / 2))
+			ass:pos(fax + spacing, fay + (size / 2))
 			ass:an(4)
 			ass:append(state.elapsed_time)
 		end
@@ -1571,7 +1600,7 @@ function render_timeline(this)
 
 	if (this.proximity_raw == 0 or this.pressed) and not (elements.speed and elements.speed.dragging) then
 		-- Hovered time
-		local hovered_seconds = state.duration * (cursor.x / display.width)
+		local hovered_seconds = math.min(math.max(state.duration * ((cursor.x - fax) / (display.width - fax)), 0), state.duration)
 		local box_half_width_guesstimate = (this.font_size * 4.2) / 2
 		ass:new_event()
 		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'')
@@ -1586,10 +1615,46 @@ function render_timeline(this)
 		ass:append(ass_opacity(0.2))
 		ass:pos(0, 0)
 		ass:draw_start()
-		ass:rect_cw(cursor.x, fay, cursor.x + 1, fby)
+		ass:rect_cw(math.max(cursor.x, fax), fay, math.max(cursor.x + 1, fax), fby)
 		ass:draw_stop()
 	end
 
+	-- Play/pause button
+	if elements.play_pause then
+		local pp = elements.play_pause
+		foreground_coordinates = pp.ax..','..fay..','..pp.bx..','..fby -- for clipping
+
+		-- Background
+		ass:new_event()
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'\\iclip('..foreground_coordinates..')}')
+		ass:append(ass_opacity(math.max(options.timeline_opacity - 0.1, 0)))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:rect_cw(pp.ax, fay - this.top_border, pp.bx, fby + this.bottom_border)
+		ass:draw_stop()
+
+		-- Foreground
+		ass:new_event()
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+		ass:append(ass_opacity(options.timeline_opacity))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:rect_cw(pp.ax, fay, pp.bx, fby)
+		ass:draw_stop()
+
+		if text_opacity > 0 then
+			-- Icon
+			local icon_name = state.pause and 'play' or 'pause'
+			ass:new_event()
+			ass:append('{\\clip('..foreground_coordinates..')}')
+			ass:append(icon(
+				icon_name,
+				0 + (pp.width / 2), fay + (size / 2), pp.width * 0.65, -- x, y, size
+				0, 0, 0, -- shadow_x, shadow_y, shadow_size
+				'foreground', options.timeline_opacity * text_opacity -- backdrop, opacity
+			))
+		end
+	end
 	return ass
 end
 
@@ -2202,14 +2267,14 @@ elements:add('timeline', Element.new({
 			this.size_max = options.timeline_size_max
 		end
 		this.font_size = math.floor(math.min((this.size_max + 60) * 0.2, this.size_max * 0.96) * options.timeline_font_scale)
-		this.ax = 0
+		this.ax = options.play_pause and this.size_max or 0
 		this.ay = display.height - this.size_max - this.top_border - this.bottom_border
 		this.bx = display.width
 		this.by = display.height
 	end,
 	set_from_cursor = function(this)
 		local seek_flags = 'absolute-percent'..(options.timeline_fast_seek and '' or '+exact')
-		mp.commandv('seek', ((cursor.x / display.width) * 100), seek_flags)
+		mp.commandv('seek', (((cursor.x - this.ax) / (display.width - this.ax)) * 100), seek_flags)
 	end,
 	on_mbtn_left_down = function(this)
 		this.pressed = true
@@ -2226,8 +2291,24 @@ elements:add('timeline', Element.new({
 	on_wheel_down = function(this)
 		if options.timeline_step > 0 then mp.commandv('seek', options.timeline_step) end
 	end,
-	render = render_timeline,
+	render = render_playback_controls,
 }))
+if options.play_pause then
+	elements:add('play_pause', Element.new({
+		captures = {mouse_buttons = true},
+		width = 0,
+		height = 0,
+		on_display_resize = function(this)
+			this.width = elements.timeline.size_max
+			this.height = this.width
+			this.ax = 0
+			this.ay = elements.timeline.ay
+			this.bx = this.width
+			this.by = elements.timeline.by
+		end,
+		on_mbtn_left_down = function(this) mp.commandv('cycle', 'pause') end
+	}))
+end
 if options.top_bar_controls or options.top_bar_title then
 	elements:add('top_bar', Element.new({
 		button_opacity = 0.8,
