@@ -1439,7 +1439,47 @@ function render_playback_controls(this)
 	local fbx = get_pos_x(progress, fax, bbx)
 	local fby = bby - this.bottom_border
 	local foreground_size = bby - bay
-	local foreground_coordinates = fax..','..fay..','..fbx..','..fby -- for clipping
+	local foreground_coordinates -- for clipping
+
+	-- Play/pause button
+	if elements.play_pause then
+		local pp = elements.play_pause
+		foreground_coordinates = pp.ax..','..fay..','..pp.bx..','..fby -- for clipping
+
+		-- Background
+		ass:new_event()
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'\\iclip('..foreground_coordinates..')}')
+		ass:append(ass_opacity(math.max(options.timeline_opacity - 0.1, 0)))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:rect_cw(pp.ax, bay, pp.bx, bby)
+		ass:draw_stop()
+
+		-- Foreground
+		ass:new_event()
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+		ass:append(ass_opacity(options.timeline_opacity))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:rect_cw(pp.ax, fay, pp.bx, fby)
+		ass:draw_stop()
+
+		if text_opacity > 0 then
+			-- Icon
+			local icon_name = state.pause and 'play' or 'pause'
+			ass:new_event()
+			ass:append('{\\clip('..foreground_coordinates..')}')
+			ass:append(icon(
+				icon_name,
+				0 + (pp.width / 2), fay + (size / 2), pp.width * 0.65, -- x, y, size
+				0, 0, 0, -- shadow_x, shadow_y, shadow_size
+				'foreground', options.timeline_opacity * text_opacity -- backdrop, opacity
+			))
+		end
+	end
+
+	-- Timeline
+	foreground_coordinates = fax..','..fay..','..fbx..','..fby
 
 	-- Background
 	ass:new_event()
@@ -1619,42 +1659,6 @@ function render_playback_controls(this)
 		ass:draw_stop()
 	end
 
-	-- Play/pause button
-	if elements.play_pause then
-		local pp = elements.play_pause
-		foreground_coordinates = pp.ax..','..fay..','..pp.bx..','..fby -- for clipping
-
-		-- Background
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'\\iclip('..foreground_coordinates..')}')
-		ass:append(ass_opacity(math.max(options.timeline_opacity - 0.1, 0)))
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(pp.ax, fay - this.top_border, pp.bx, fby + this.bottom_border)
-		ass:draw_stop()
-
-		-- Foreground
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
-		ass:append(ass_opacity(options.timeline_opacity))
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(pp.ax, fay, pp.bx, fby)
-		ass:draw_stop()
-
-		if text_opacity > 0 then
-			-- Icon
-			local icon_name = state.pause and 'play' or 'pause'
-			ass:new_event()
-			ass:append('{\\clip('..foreground_coordinates..')}')
-			ass:append(icon(
-				icon_name,
-				0 + (pp.width / 2), fay + (size / 2), pp.width * 0.65, -- x, y, size
-				0, 0, 0, -- shadow_x, shadow_y, shadow_size
-				'foreground', options.timeline_opacity * text_opacity -- backdrop, opacity
-			))
-		end
-	end
 	return ass
 end
 
