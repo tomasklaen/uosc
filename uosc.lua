@@ -161,6 +161,7 @@ chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>
 Available keybindings (place into `input.conf`):
 
 ```
+Key  script-binding uosc/frame-step
 Key  script-binding uosc/peek-timeline
 Key  script-binding uosc/toggle-progress
 Key  script-binding uosc/flash-timeline
@@ -2182,7 +2183,7 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 			end)
 		end,
 		render = function(this)
-			if this.opacity == 0 then return end
+			if this.opacity == 0 or elements.frame_step.is_stepping then return end
 
 			local ass = assdraw.ass_new()
 
@@ -3061,6 +3062,36 @@ end)()
 
 -- KEY BINDABLE FEATURES
 
+-- A workaround for when frame-step briefly unpauses video so
+-- audio is played and the pause indicator flashes if enabled
+elements:add('frame_step', Element.new({
+	muted = false,
+	is_stepping = false,
+	play = function(this)
+		this.is_stepping = false
+		if not this.muted then mp.command('no-osd set mute no') end
+		mp.command('set pause no')
+	end,
+	step_timer = mp.add_timeout(1, function() elements.frame_step.is_stepping = false end),
+	play_timer = mp.add_timeout(mp.get_property('input-ar-delay') / 1000, function() elements.frame_step:play() end),
+	step = function(this, e)
+		if e.event == 'down' then
+			this.muted = state.mute
+			this.is_stepping = true
+			this.step_timer:kill()
+			this.step_timer:resume()
+			mp.command('no-osd set mute yes')
+			mp.command('frame-step')
+			this.play_timer:resume()
+		end
+		if e.event == 'up' then
+			this.play_timer:kill()
+			mp.command('set pause yes')
+			if not this.muted then mp.command('no-osd set mute no') end
+		end
+	end
+}))
+mp.add_key_binding(nil, 'frame-step', function(e) elements.frame_step:step(e) end, {complex=true})
 mp.add_key_binding(nil, 'peek-timeline', function()
 	if elements.timeline.proximity > 0.5 then
 		elements.timeline:tween_property('proximity', elements.timeline.proximity, 0)
