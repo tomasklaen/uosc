@@ -161,6 +161,7 @@ chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>
 Available keybindings (place into `input.conf`):
 
 ```
+Key  script-binding uosc/cycle-pause
 Key  script-binding uosc/frame-step
 Key  script-binding uosc/peek-timeline
 Key  script-binding uosc/toggle-progress
@@ -2183,7 +2184,7 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 			end)
 		end,
 		render = function(this)
-			if this.opacity == 0 or elements.frame_step.is_stepping then return end
+			if this.opacity == 0 or frame_step.is_stepping then return end
 
 			local ass = assdraw.ass_new()
 
@@ -2311,7 +2312,7 @@ if options.play_pause then
 			this.bx = this.width
 			this.by = elements.timeline.by
 		end,
-		on_mbtn_left_down = function(this) mp.commandv('cycle', 'pause') end
+		on_mbtn_left_down = function() frame_step:pause() end
 	}))
 end
 if options.top_bar_controls or options.top_bar_title then
@@ -3064,34 +3065,50 @@ end)()
 
 -- A workaround for when frame-step briefly unpauses video so
 -- audio is played and the pause indicator flashes if enabled
-elements:add('frame_step', Element.new({
+frame_step = {
 	muted = false,
 	is_stepping = false,
+	has_stepped = false,
 	play = function(this)
 		this.is_stepping = false
+		this.has_stepped = false
 		if not this.muted then mp.command('no-osd set mute no') end
+		mp.command('frame-back-step')
 		mp.command('set pause no')
 	end,
-	step_timer = mp.add_timeout(1, function() elements.frame_step.is_stepping = false end),
-	play_timer = mp.add_timeout(mp.get_property('input-ar-delay') / 1000, function() elements.frame_step:play() end),
-	step = function(this, e)
-		if e.event == 'down' then
-			this.muted = state.mute
-			this.is_stepping = true
-			this.step_timer:kill()
-			this.step_timer:resume()
-			mp.command('no-osd set mute yes')
-			mp.command('frame-step')
-			this.play_timer:resume()
-		end
-		if e.event == 'up' then
-			this.play_timer:kill()
+	pause = function(this)
+		if state.pause then
+			if this.has_stepped then mp.command('frame-back-step') end
+			mp.command('set pause no')
+			this.has_stepped = false
+		else
 			mp.command('set pause yes')
-			if not this.muted then mp.command('no-osd set mute no') end
 		end
+	end,
+	step_timer = mp.add_timeout(1, function() frame_step.is_stepping = false end),
+	play_timer = mp.add_timeout(mp.get_property('input-ar-delay') / 1000, function() frame_step:play() end),
+	step = function(this)
+		this.muted = state.mute
+		this.is_stepping = true
+		this.has_stepped = true
+		this.step_timer:kill()
+		this.step_timer:resume()
+		mp.command('no-osd set mute yes')
+		mp.command('frame-step')
+		this.play_timer:resume()
+	end,
+	stop = function(this)
+		this.play_timer:kill()
+		mp.command('set pause yes')
+		if not this.muted then mp.command('no-osd set mute no') end
+	end,
+	on_key = function(this, e)
+		if e.event == 'down' then this:step(e)
+		elseif e.event == 'up' then this:stop(e) end
 	end
-}))
-mp.add_key_binding(nil, 'frame-step', function(e) elements.frame_step:step(e) end, {complex=true})
+}
+mp.add_key_binding(nil, 'cycle-pause', function() frame_step:pause() end)
+mp.add_key_binding(nil, 'frame-step', function(e) frame_step:on_key(e) end, {complex=true})
 mp.add_key_binding(nil, 'peek-timeline', function()
 	if elements.timeline.proximity > 0.5 then
 		elements.timeline:tween_property('proximity', elements.timeline.proximity, 0)
