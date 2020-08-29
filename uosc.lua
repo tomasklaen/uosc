@@ -3069,7 +3069,9 @@ frame_step = {
 	muted = false,
 	is_stepping = false,
 	has_stepped = false,
+	init = true,
 	play = function(this)
+		if this.init then this.init = false; return end
 		this.is_stepping = false
 		this.has_stepped = false
 		if not this.muted then mp.command('no-osd set mute no') end
