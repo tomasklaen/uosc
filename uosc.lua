@@ -1426,7 +1426,7 @@ function render_playback_controls(this)
 	local text_opacity = math.max(math.min(size - hide_text_below, hide_text_ramp), 0) / hide_text_ramp
 
 	local offset_x = options.play_pause and this.size_max or 0
-	local spacing = math.max(math.floor((this.size_max - this.font_size) / 2.5), options.play_pause and 12 or 4)
+	local spacing = math.max(math.floor((this.size_max - this.font_size) / 2.5), options.play_pause and this.size_max / 3.4 or 4)
 	local progress = state.position / state.duration
 
 	-- Background bar coordinates
@@ -1647,7 +1647,7 @@ function render_playback_controls(this)
 		ass:new_event()
 		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'')
 		ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1)))
-		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), fay)
+		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate + spacing / 2.4), display.width - box_half_width_guesstimate - spacing / 2.4), fay)
 		ass:an(2)
 		ass:append(mp.format_time(hovered_seconds))
 
