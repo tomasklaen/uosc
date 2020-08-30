@@ -1268,12 +1268,12 @@ function icons.play_pause(paused, pos_x, pos_y, size)
 	function x(number) return pos_x + (number * scale) end
 	function y(number) return pos_y + (number * scale) end
 	if paused then
-		ass:move_to(x(-48), y(-60))
-		ass:line_to(x(58), y(0))
-		ass:line_to(x(-48), y(60))
+		ass:move_to(x(-44), y(-60))
+		ass:line_to(x(62), y(0))
+		ass:line_to(x(-44), y(60))
 	else
-		ass:rect_cw(x(-48), y(-54), x(-16), y(54))
-		ass:rect_cw(x(16), y(-54), x(48), y(54))
+		ass:rect_cw(x(-44), y(-54), x(-14), y(54))
+		ass:rect_cw(x(14), y(-54), x(44), y(54))
 	end
 	return ass.text
 end
