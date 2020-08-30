@@ -296,6 +296,7 @@ local state = {
 	media_title = '',
 	duration = nil,
 	position = nil,
+	eof = false,
 	pause = false,
 	chapters = nil,
 	chapter_ranges = nil,
@@ -1498,7 +1499,7 @@ function render_playback_controls(this)
 	ass:append(ass_opacity(options.timeline_opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
-	ass:rect_cw(fax - 1, fay, fbx, fby)
+	ass:rect_cw(fax - 1, fay, state.eof and fbx + 1 or fbx, fby)
 	ass:draw_stop()
 
 	-- Seekable ranges
@@ -2983,6 +2984,7 @@ mp.observe_property('playback-time', 'number', function(name, val)
 
 	request_render()
 end)
+mp.observe_property('eof-reached', 'bool', create_state_setter('eof'))
 mp.observe_property('osd-dimensions', 'native', function(name, val)
 	update_display_dimensions()
 	request_render()
