@@ -1439,7 +1439,7 @@ function render_playback_controls(this)
 	-- Foreground bar coordinates
 	local fax = options.play_pause and bax + this.top_border or bax
 	local fay = bay + this.top_border
-	local fbx = get_pos_in_range(progress, fax, bbx)
+	local fbx = state.eof and math.ceil(get_pos_in_range(progress, fax, bbx)) or get_pos_in_range(progress, fax, bbx)
 	local fby = bby - this.bottom_border
 	local foreground_size = bby - bay
 	local foreground_coordinates -- for clipping
@@ -1469,7 +1469,7 @@ function render_playback_controls(this)
 
 		if text_opacity > 0 then
 			-- Icon
-			local icon_name = state.pause and 'play' or 'pause'
+			local icon_name = (state.pause or state.eof) and 'play' or 'pause'
 			ass:new_event()
 			ass:append('{\\clip('..foreground_coordinates..')}')
 			ass:append(icon(
@@ -1499,7 +1499,7 @@ function render_playback_controls(this)
 	ass:append(ass_opacity(options.timeline_opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
-	ass:rect_cw(fax - 1, fay, state.eof and fbx + 1 or fbx, fby)
+	ass:rect_cw(fax - 1, fay, fbx, fby)
 	ass:draw_stop()
 
 	-- Seekable ranges
@@ -2313,7 +2313,7 @@ if options.play_pause then
 			this.bx = this.width
 			this.by = elements.timeline.by
 		end,
-		on_mbtn_left_down = function() frame_step:pause() end
+		on_mbtn_left_down = function() frame_step:cycle_pause() end
 	}))
 end
 if options.top_bar_controls or options.top_bar_title then
@@ -3080,14 +3080,17 @@ frame_step = {
 		mp.command('frame-back-step')
 		mp.command('set pause no')
 	end,
-	pause = function(this)
-		if state.pause then
+	cycle_pause = function(this)
+		if state.eof then
+			mp.commandv('seek', 0, 'absolute')
+			mp.command('set pause no')
+		elseif state.pause then
 			if this.has_stepped then mp.command('frame-back-step') end
 			mp.command('set pause no')
-			this.has_stepped = false
 		else
 			mp.command('set pause yes')
 		end
+		this.has_stepped = false
 	end,
 	step_timer = mp.add_timeout(1, function() frame_step.is_stepping = false end),
 	play_timer = mp.add_timeout(mp.get_property('input-ar-delay') / 1000, function() frame_step:play() end),
@@ -3111,7 +3114,7 @@ frame_step = {
 		elseif e.event == 'up' then this:stop(e) end
 	end
 }
-mp.add_key_binding(nil, 'cycle-pause', function() frame_step:pause() end)
+mp.add_key_binding(nil, 'cycle-pause', function() frame_step:cycle_pause() end)
 mp.add_key_binding(nil, 'frame-step', function(e) frame_step:on_key(e) end, {complex=true})
 mp.add_key_binding(nil, 'peek-timeline', function()
 	if elements.timeline.proximity > 0.5 then
