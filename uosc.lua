@@ -1446,7 +1446,7 @@ function render_playback_controls(this)
 	-- Play/pause button
 	if elements.play_pause then
 		local pp = elements.play_pause
-		foreground_coordinates = pp.ax..','..fay..','..pp.bx..','..fby -- for clipping
+		foreground_coordinates = pp.ax..','..fay..','..pp.bx..','..fby
 
 		-- Background
 		ass:new_event()
@@ -1494,11 +1494,11 @@ function render_playback_controls(this)
 
 	-- Foreground
 	ass:new_event()
-	ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+	ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'\\iclip('..(fax - 1)..','..fay..','..fax..','..fby..')}')
 	ass:append(ass_opacity(options.timeline_opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
-	ass:rect_cw(fax, fay, fbx, fby)
+	ass:rect_cw(fax - 1, fay, fbx, fby)
 	ass:draw_stop()
 
 	-- Seekable ranges
