@@ -1439,7 +1439,7 @@ function render_playback_controls(this)
 	-- Foreground bar coordinates
 	local fax = options.play_pause and bax + this.top_border or bax
 	local fay = bay + this.top_border
-	local fbx = state.eof and math.ceil(get_pos_in_range(progress, fax, bbx)) or get_pos_in_range(progress, fax, bbx)
+	local fbx = state.eof and (get_pos_in_range(progress, fax, bbx) + 10) or get_pos_in_range(progress, fax, bbx)
 	local fby = bby - this.bottom_border
 	local foreground_size = bby - bay
 	local foreground_coordinates -- for clipping
