@@ -1467,7 +1467,14 @@ function render_timeline(this)
 	end
 
 	-- Chapters
-	if options.chapters ~= 'none' and state.chapters ~= nil and #state.chapters > 0 then
+	if (
+		options.chapters ~= 'none'
+		and (
+			state.chapters ~= nil and #state.chapters > 0
+			or state.ab_loop_a and state.ab_loop_a > 0
+			or state.ab_loop_b and state.ab_loop_b > 0
+		)
+	) then
 		local half_size = size / 2
 		local dots = false
 		local chapter_size, chapter_y
@@ -1490,9 +1497,8 @@ function render_timeline(this)
 			-- for 1px chapter size, use the whole size of the bar including padding
 			chapter_size = size <= 1 and foreground_size or chapter_size
 			local chapter_half_size = chapter_size / 2
-
-			for i, chapter in ipairs(state.chapters) do
-				local chapter_x = display.width * (chapter.time / state.duration)
+			local draw_chapter = function (time)
+				local chapter_x = display.width * (time / state.duration)
 				local color = chapter_x > fbx and options.color_foreground or options.color_background
 
 				ass:new_event()
@@ -1519,6 +1525,18 @@ function render_timeline(this)
 				end
 
 				ass:draw_stop()
+			end
+
+			for i, chapter in ipairs(state.chapters) do
+				draw_chapter(chapter.time)
+			end
+
+			if state.ab_loop_a and state.ab_loop_a > 0 then
+				draw_chapter(state.ab_loop_a)
+			end
+
+			if state.ab_loop_b and state.ab_loop_b > 0 then
+				draw_chapter(state.ab_loop_b)
 			end
 		end
 	end
@@ -2864,6 +2882,8 @@ end)()
 -- HOOKS
 mp.register_event('file-loaded', parse_chapters)
 mp.observe_property('chapter-list', 'native', parse_chapters)
+mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
+mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
 mp.observe_property('duration', 'number', function(name, val)
 	state.duration = val
 	state.total_time = val and mp.format_time(val) or nil
