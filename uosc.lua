@@ -161,8 +161,6 @@ chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>
 Available keybindings (place into `input.conf`):
 
 ```
-Key  script-binding uosc/cycle-pause
-Key  script-binding uosc/frame-step
 Key  script-binding uosc/peek-timeline
 Key  script-binding uosc/toggle-progress
 Key  script-binding uosc/flash-timeline
@@ -2274,7 +2272,7 @@ elements:add('timeline', Element.new({
 			this.size_max = options.timeline_size_max
 		end
 		this.font_size = math.floor(math.min((this.size_max + 60) * 0.2, this.size_max * 0.96) * options.timeline_font_scale)
-		this.ax = options.play_pause and this.size_max or 0
+		this.ax = options.play_pause and this.size_max + 1 or 0
 		this.ay = display.height - this.size_max - this.top_border - this.bottom_border
 		this.bx = display.width
 		this.by = display.height
