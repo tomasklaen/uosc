@@ -199,6 +199,7 @@ local opt = require('mp.options')
 local utils = require('mp.utils')
 local msg = require('mp.msg')
 local osd = mp.create_osd_overlay('ass-events')
+local render_fix = mp.create_osd_overlay('ass-events')
 local infinity = 1e309
 
 -- OPTIONS/CONFIG/STATE
@@ -2151,6 +2152,12 @@ function render()
 	osd.data = ass.text
 	osd.z = 2000
 	osd:update()
+
+	-- Windows rendering fix when paused
+    mp.add_timeout(0.05, function()
+		render_fix:update()
+		render_fix:remove()
+	end)
 end
 
 -- STATIC ELEMENTS
