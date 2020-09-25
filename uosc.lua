@@ -2154,10 +2154,12 @@ function render()
 	osd:update()
 
 	-- Windows rendering fix when paused
-    mp.add_timeout(0.05, function()
-		render_fix:update()
-		render_fix:remove()
-	end)
+	if state.pause then
+		mp.add_timeout(0.05, function()
+			render_fix:update()
+			render_fix:remove()
+		end)
+	end
 end
 
 -- STATIC ELEMENTS
