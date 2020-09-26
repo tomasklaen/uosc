@@ -1475,7 +1475,7 @@ function render_playback_controls(this)
 				icon_name,
 				0 + (pp.width / 2), fay + (size / 2), pp.width * 0.65, -- x, y, size
 				0, 0, 0, -- shadow_x, shadow_y, shadow_size
-				'foreground', options.timeline_opacity * text_opacity -- backdrop, opacity
+				'foreground', math.min(options.timeline_opacity + 0.1, 1) * text_opacity -- backdrop, opacity
 			))
 		end
 	end
