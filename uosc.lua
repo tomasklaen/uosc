@@ -199,7 +199,7 @@ local opt = require('mp.options')
 local utils = require('mp.utils')
 local msg = require('mp.msg')
 local osd = mp.create_osd_overlay('ass-events')
-local render_fix = mp.create_osd_overlay('ass-events')
+local render_fix_osd = mp.create_osd_overlay('ass-events')
 local infinity = 1e309
 
 -- OPTIONS/CONFIG/STATE
@@ -2168,12 +2168,14 @@ function render()
 	osd.data = ass.text
 	osd.z = 2000
 	osd:update()
+end
 
-	-- Windows rendering fix when paused
+-- Windows rendering fix when pausing
+function render_fix()
 	if state.pause then
 		mp.add_timeout(0.05, function()
-			render_fix:update()
-			render_fix:remove()
+			render_fix_osd:update()
+			render_fix_osd:remove()
 		end)
 	end
 end
@@ -2999,6 +3001,7 @@ mp.observe_property('window-maximized', 'bool', create_state_setter('maximized')
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
 mp.observe_property('speed', 'number', create_state_setter('speed'))
 mp.observe_property('pause', 'bool', create_state_setter('pause'))
+mp.observe_property('pause', nil, render_fix)
 mp.observe_property('volume', 'number', create_state_setter('volume'))
 mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
 mp.observe_property('mute', 'bool', create_state_setter('mute'))
