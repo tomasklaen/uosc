@@ -1262,11 +1262,26 @@ function icon(name, icon_x, icon_y, icon_size, shad_x, shad_y, shad_size, backdr
 	return ass.text
 end
 
-function icons.play_pause(paused, pos_x, pos_y, size)
+function icons.play_pause(eof, paused, pos_x, pos_y, size)
 	local ass = assdraw.ass_new()
 	local scale = size / 200
 	function x(number) return pos_x + (number * scale) end
 	function y(number) return pos_y + (number * scale) end
+	if eof then
+		local offset_y = 8
+		ass:move_to(x(54), y(0 + offset_y))
+		ass:bezier_curve(x(54), y(30 + offset_y), x(30), y(54 + offset_y), x(0), y(54 + offset_y))
+		ass:bezier_curve(x(-30), y(54 + offset_y), x(-54), y(30 + offset_y), x(-54), y(0 + offset_y))
+		ass:bezier_curve(x(-54), y(-30 + offset_y), x(-30), y(-54 + offset_y), x(0), y(-54 + offset_y))
+		ass:line_to(x(0), y(-80 + offset_y))
+		ass:line_to(x(36), y(-44 + offset_y))
+		ass:line_to(x(0), y(-8 + offset_y))
+		ass:line_to(x(0), y(-34 + offset_y))
+		ass:bezier_curve(x(-19), y(-34 + offset_y), x(-34), y(-19 + offset_y), x(-34), y(0 + offset_y))
+		ass:bezier_curve(x(-34), y(19 + offset_y), x(-19), y(34 + offset_y), x(0), y(34 + offset_y))
+		ass:bezier_curve(x(19), y(34 + offset_y), x(34), y(19 + offset_y), x(34), y(0 + offset_y))
+		return ass.text
+	end
 	if paused then
 		ass:move_to(x(-44), y(-60))
 		ass:line_to(x(62), y(0))
@@ -1277,8 +1292,9 @@ function icons.play_pause(paused, pos_x, pos_y, size)
 	end
 	return ass.text
 end
-function icons.play(pos_x, pos_y, size) return icons.play_pause(true, pos_x, pos_y, size) end
-function icons.pause(pos_x, pos_y, size) return icons.play_pause(false, pos_x, pos_y, size) end
+function icons.play(pos_x, pos_y, size) return icons.play_pause(nil, true, pos_x, pos_y, size) end
+function icons.pause(pos_x, pos_y, size) return icons.play_pause(nil, false, pos_x, pos_y, size) end
+function icons.replay(pos_x, pos_y, size) return icons.play_pause(true, nil, pos_x, pos_y, size) end
 
 function icons._volume(muted, pos_x, pos_y, size)
 	local ass = assdraw.ass_new()
@@ -1468,7 +1484,7 @@ function render_playback_controls(this)
 
 		if text_opacity > 0 then
 			-- Icon
-			local icon_name = (state.pause or state.eof) and 'play' or 'pause'
+			local icon_name = state.eof and 'replay' or (state.pause and 'play' or 'pause')
 			ass:new_event()
 			ass:append('{\\clip('..foreground_coordinates..')}')
 			ass:append(icon(
