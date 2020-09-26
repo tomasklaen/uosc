@@ -2991,7 +2991,7 @@ mp.observe_property('playback-time', 'number', function(name, val)
 	if val == nil then return end
 
 	state.position = val
-	state.elapsed_seconds = val
+	state.elapsed_seconds = math.max(val, 0)
 	state.elapsed_time = state.elapsed_seconds and mp.format_time(state.elapsed_seconds) or nil
 	state.remaining_seconds = mp.get_property_native('playtime-remaining')
 	state.remaining_time = state.remaining_seconds and mp.format_time(state.remaining_seconds) or nil
