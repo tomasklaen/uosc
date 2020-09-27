@@ -1226,7 +1226,7 @@ Function has to return ass path coordinates to draw the icon centered at pox_x
 and pos_y of passed size.
 ]]
 local icons = {}
-function icon(name, icon_x, icon_y, icon_size, shad_x, shad_y, shad_size, backdrop, opacity, clip)
+function icon(name, icon_x, icon_y, icon_size, shad_x, shad_y, shad_size, backdrop, opacity, clip, iclip)
 	local ass = assdraw.ass_new()
 	local icon_path = icons[name](icon_x, icon_y, icon_size)
 	local icon_color = options['color_'..backdrop..'_text']
@@ -1241,6 +1241,10 @@ function icon(name, icon_x, icon_y, icon_size, shad_x, shad_y, shad_size, backdr
 		clip = ''
 	end
 
+	if not iclip then
+		iclip = ''
+	end
+
 	if not use_border then
 		ass:new_event()
 		ass:append('{\\blur0\\bord0\\shad0\\1c&H'..shad_color..'\\iclip('..ass.scale..', '..icon_path..')}')
@@ -1252,7 +1256,7 @@ function icon(name, icon_x, icon_y, icon_size, shad_x, shad_y, shad_size, backdr
 	end
 
 	ass:new_event()
-	ass:append('{\\blur0\\bord'..icon_border..'\\shad0\\1c&H'..icon_color..'\\3c&H'..shad_color..clip..'}')
+	ass:append('{\\blur0\\bord'..icon_border..'\\shad0\\1c&H'..icon_color..'\\3c&H'..shad_color..clip..iclip..'}')
 	ass:append(ass_opacity(opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -1268,18 +1272,30 @@ function icons.play_pause(eof, paused, pos_x, pos_y, size)
 	function x(number) return pos_x + (number * scale) end
 	function y(number) return pos_y + (number * scale) end
 	if eof then
-		local offset_y = 8
+		local offset_y = options.font_bold and 8 or 14
 		ass:move_to(x(54), y(0 + offset_y))
 		ass:bezier_curve(x(54), y(30 + offset_y), x(30), y(54 + offset_y), x(0), y(54 + offset_y))
 		ass:bezier_curve(x(-30), y(54 + offset_y), x(-54), y(30 + offset_y), x(-54), y(0 + offset_y))
 		ass:bezier_curve(x(-54), y(-30 + offset_y), x(-30), y(-54 + offset_y), x(0), y(-54 + offset_y))
-		ass:line_to(x(0), y(-80 + offset_y))
-		ass:line_to(x(36), y(-44 + offset_y))
-		ass:line_to(x(0), y(-8 + offset_y))
-		ass:line_to(x(0), y(-34 + offset_y))
-		ass:bezier_curve(x(-19), y(-34 + offset_y), x(-34), y(-19 + offset_y), x(-34), y(0 + offset_y))
-		ass:bezier_curve(x(-34), y(19 + offset_y), x(-19), y(34 + offset_y), x(0), y(34 + offset_y))
-		ass:bezier_curve(x(19), y(34 + offset_y), x(34), y(19 + offset_y), x(34), y(0 + offset_y))
+		if options.font_bold then
+			ass:line_to(x(0), y(-80 + offset_y))
+			ass:line_to(x(36), y(-44 + offset_y))
+			ass:line_to(x(0), y(-8 + offset_y))
+			ass:line_to(x(0), y(-34 + offset_y))
+			ass:bezier_curve(x(-19), y(-34 + offset_y), x(-34), y(-19 + offset_y), x(-34), y(0 + offset_y))
+			ass:bezier_curve(x(-34), y(19 + offset_y), x(-19), y(34 + offset_y), x(0), y(34 + offset_y))
+			ass:bezier_curve(x(19), y(34 + offset_y), x(34), y(19 + offset_y), x(34), y(0 + offset_y))
+		else
+			ass:line_to(x(36), y(-54 + offset_y))
+			ass:line_to(x(0), y(-90 + offset_y))
+			ass:line_to(x(36), y(-54 + offset_y))
+			ass:line_to(x(0), y(-18 + offset_y))
+			ass:line_to(x(36), y(-54 + offset_y))
+			ass:line_to(x(0), y(-54 + offset_y))
+			ass:bezier_curve(x(-30), y(-54 + offset_y), x(-54), y(-30 + offset_y), x(-54), y(0 + offset_y))
+			ass:bezier_curve(x(-54), y(30 + offset_y), x(-30), y(54 + offset_y), x(0), y(54 + offset_y))
+			ass:bezier_curve(x(30), y(54 + offset_y), x(54), y(30 + offset_y), x(54), y(0 + offset_y))
+		end
 		return ass.text
 	end
 	if paused then
@@ -1287,8 +1303,8 @@ function icons.play_pause(eof, paused, pos_x, pos_y, size)
 		ass:line_to(x(62), y(0))
 		ass:line_to(x(-44), y(60))
 	else
-		ass:rect_cw(x(-44), y(-54), x(-14), y(54))
-		ass:rect_cw(x(14), y(-54), x(44), y(54))
+		ass:rect_cw(x(-44), y(-54), options.font_bold and x(-14) or x(-18), y(54))
+		ass:rect_cw(options.font_bold and x(14) or x(18), y(-54), x(44), y(54))
 	end
 	return ass.text
 end
@@ -1485,13 +1501,16 @@ function render_playback_controls(this)
 		if text_opacity > 0 then
 			-- Icon
 			local icon_name = state.eof and 'replay' or (state.pause and 'play' or 'pause')
+			local x, y, s = 0 + pp.width / 2, fay + size / 2, pp.width * 0.65
+			local clip = '\\clip('..foreground_coordinates..')'
+			local iclip = options.font_bold and '' or '\\iclip('..ass.scale..', '..icons[icon_name](x, y, s)..')'
 			ass:new_event()
-			ass:append('{\\clip('..foreground_coordinates..')}')
 			ass:append(icon(
 				icon_name,
-				0 + (pp.width / 2), fay + (size / 2), pp.width * 0.65, -- x, y, size
-				0, 0, 0, -- shadow_x, shadow_y, shadow_size
-				'foreground', math.min(options.timeline_opacity + 0.1, 1) * text_opacity -- backdrop, opacity
+				x, y, s, -- x, y, size
+				0, 0, options.font_bold and 0 or (icon_name == 'replay' and 0.2 + pp.width / 120 or 1 + pp.width / 80), -- shadow_x, shadow_y, shadow_size
+				options.font_bold and 'foreground' or 'background', math.min(options.timeline_opacity + 0.1, 1) * text_opacity, -- backdrop, opacity
+				clip, iclip
 			))
 		end
 	end
