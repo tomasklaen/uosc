@@ -1610,7 +1610,7 @@ function render_playback_controls(this)
 			chapter_size = size <= 1 and foreground_size or chapter_size
 			local chapter_half_size = chapter_size / 2
 			local draw_chapter = function (time)
-				local chapter_x = display.width * (time / state.duration)
+				local chapter_x = get_pos_in_range(time / state.duration, fax, bbx)
 				local color = chapter_x > fbx and options.color_foreground or options.color_background
 
 				ass:new_event()
