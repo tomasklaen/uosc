@@ -1,6 +1,6 @@
 --[[
 
-uosc 2.10.1 - 2020-Jun-20 | https://github.com/darsain/uosc
+uosc 2.10.2 - 2020-Jun-20 | https://github.com/darsain/uosc
 
 Minimalist cursor proximity based UI for MPV player.
 
@@ -2125,7 +2125,6 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 					this.opacity = paused and 1 or 0
 					request_render()
 				end
-
 			end)
 		end,
 		render = function(this)

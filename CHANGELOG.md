@@ -1,3 +1,12 @@
+### 2.10.2 - 2020-Oct-19
+
+Changed:
+- `flash_duration` default value bumped from `400` to `1000` milliseconds.
+
+Fixed:
+- Switching between fullscreen and windowed mode not working when windowed dimensions matched fullscreen dimensions.
+- Elements not updating their cursor proximity when switching to fullscreen.
+
 ### 2.10.1 - 2020-Jun-20
 
 Fixed:
