@@ -637,8 +637,6 @@ end
 --[[
 Signature:
 {
-	-- enables capturing button groups for this element
-	captures = {mouse_buttons = true, wheel = true},
 	-- element rectangle coordinates
 	ax = 0, ay = 0, bx = 0, by = 0,
 	-- cursor<>element relative proximity as a 0-1 floating number
@@ -660,7 +658,6 @@ Signature:
 }
 ]]
 local Element = {
-	captures = nil,
 	ax = 0, ay = 0, bx = 0, by = 0,
 	proximity = 0, proximity_raw = infinity,
 }
@@ -760,6 +757,10 @@ function Elements:remove(name, props)
 	request_render()
 end
 
+function Elements:trigger(name, ...)
+	for _, element in self:ipairs() do element:trigger(name, ...) end
+end
+
 function Elements:has(name) return self[name] ~= nil end
 function Elements:ipairs() return ipairs(Elements.itable) end
 function Elements:pairs(elements) return pairs(self) end
@@ -811,7 +812,6 @@ function Menu:open(items, open_item, opts)
 	end
 
 	elements:add('menu', Element.new({
-		captures = {mouse_buttons = true},
 		type = nil, -- menu type such as `menu`, `chapters`, ...
 		title = nil,
 		width = nil,
@@ -840,7 +840,7 @@ function Menu:open(items, open_item, opts)
 			this.selected_item = this.active_item
 
 			-- Set initial dimensions
-			this:on_display_resize()
+			this:on_display_change()
 
 			-- Scroll to active item
 			this:scroll_to_item(this.active_item)
@@ -861,7 +861,7 @@ function Menu:open(items, open_item, opts)
 		destroy = function(this)
 			request_render()
 		end,
-		on_display_resize = function(this)
+		on_display_change = function(this)
 			this.item_height = (state.fullscreen or state.maximized) and options.menu_item_height_fullscreen or options.menu_item_height
 			this.font_size = round(this.item_height * 0.48 * options.menu_font_scale)
 			this.item_content_spacing = round((this.item_height - this.font_size) * 0.6)
@@ -899,7 +899,7 @@ function Menu:open(items, open_item, opts)
 			this.by = round(this.ay + this.height)
 
 			if this.parent_menu then
-				this.parent_menu:on_display_resize()
+				this.parent_menu:on_display_change()
 			end
 		end,
 		set_items = function(this, items, props)
@@ -909,7 +909,7 @@ function Menu:open(items, open_item, opts)
 			if props then
 				for key, value in pairs(props) do this[key] = value end
 			end
-			this:on_display_resize()
+			this:on_display_change()
 			request_render()
 		end,
 		set_offset_x = function(this, offset)
@@ -974,7 +974,7 @@ function Menu:open(items, open_item, opts)
 			if (index and index >= 1 and index <= #this.items) then
 				local previous_active_value = this.active_index and this.items[this.active_index].value or nil
 				table.remove(this.items, index)
-				this:on_display_resize()
+				this:on_display_change()
 				if previous_active_value then this:activate_value(previous_active_value) end
 				this:scroll_to_item(this.selected_item)
 			end
@@ -1295,11 +1295,11 @@ function update_display_dimensions()
 	display.aspect = o.aspect
 
 	-- Tell elements about this
-	for _, element in elements:ipairs() do
-		if element.on_display_resize ~= nil then
-			element.on_display_resize(element)
-		end
-	end
+	elements:trigger('display_change')
+
+	-- Some elements probably changed their rectangles as a reaction to `display_change`
+	update_proximities()
+	request_render()
 end
 
 function update_element_cursor_proximity(element)
@@ -1314,11 +1314,11 @@ function update_element_cursor_proximity(element)
 end
 
 function update_proximities()
-	local capture_mouse_buttons = false
+	local capture_mbtn_left = false
 	local capture_wheel = false
 	local menu_only = menu:is_open()
-	local mouse_left_elements = {}
-	local mouse_entered_elements = {}
+	local mouse_leave_elements = {}
+	local mouse_enter_elements = {}
 
 	-- Calculates proximities and opacities for defined elements
 	for _, element in elements:ipairs() do
@@ -1327,7 +1327,7 @@ function update_proximities()
 		-- If menu is open, all other elements have to be disabled
 		if menu_only then
 			if element.name == 'menu' then
-				capture_mouse_buttons = true
+				capture_mbtn_left = true
 				capture_wheel = true
 				update_element_cursor_proximity(element)
 			else
@@ -1338,28 +1338,32 @@ function update_proximities()
 			update_element_cursor_proximity(element)
 		end
 
+		-- Element has global forced key listeners
+		if element.on_global_mbtn_left_down then capture_mbtn_left = true end
+		if element.on_global_wheel_up or element.on_global_wheel_down then capture_wheel = true end
+
 		if element.proximity_raw == 0 then
-			-- Mouse is over element
-			if element.captures and element.captures.mouse_buttons then capture_mouse_buttons = true end
-			if element.captures and element.captures.wheel then capture_wheel = true end
+			-- Element has local forced key listeners
+			if element.on_mbtn_left_down then capture_mbtn_left = true end
+			if element.on_wheel_up or element.on_wheel_up then capture_wheel = true end
 
 			-- Mouse entered element area
 			if previous_proximity_raw ~= 0 then
-				mouse_entered_elements[#mouse_entered_elements + 1] = element
+				mouse_enter_elements[#mouse_enter_elements + 1] = element
 			end
 		else
 			-- Mouse left element area
 			if previous_proximity_raw == 0 then
-				mouse_left_elements[#mouse_left_elements + 1] = element
+				mouse_leave_elements[#mouse_leave_elements + 1] = element
 			end
 		end
 	end
 
 	-- Enable key group captures elements request.
-	if capture_mouse_buttons then
-		forced_key_bindings.mouse_buttons:enable()
+	if capture_mbtn_left then
+		forced_key_bindings.mbtn_left:enable()
 	else
-		forced_key_bindings.mouse_buttons:disable()
+		forced_key_bindings.mbtn_left:disable()
 	end
 	if capture_wheel then
 		forced_key_bindings.wheel:enable()
@@ -1368,8 +1372,8 @@ function update_proximities()
 	end
 
 	-- Trigger `mouse_leave` and `mouse_enter` events
-	for _, element in ipairs(mouse_left_elements) do element:trigger('mouse_leave') end
-	for _, element in ipairs(mouse_entered_elements) do element:trigger('mouse_enter') end
+	for _, element in ipairs(mouse_leave_elements) do element:trigger('mouse_leave') end
+	for _, element in ipairs(mouse_enter_elements) do element:trigger('mouse_enter') end
 end
 
 -- ELEMENT RENDERERS
@@ -2178,11 +2182,10 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 	}))
 end
 elements:add('timeline', Element.new({
-	captures = {mouse_buttons = true, wheel = true},
 	pressed = false,
-	size_max = 0, size_min = 0, -- set in `on_display_resize` handler based on `state.fullscreen`
+	size_max = 0, size_min = 0, -- set in `on_display_change` handler based on `state.fullscreen`
 	size_min_override = options.timeline_start_hidden and 0 or nil, -- used for toggle-progress command
-	font_size = 0, -- calculated in on_display_resize
+	font_size = 0, -- calculated in on_display_change
 	top_border = options.timeline_border,
 	bottom_border = 0, -- set dynamically in `border` property observer
 	init = function(this)
@@ -2205,7 +2208,7 @@ elements:add('timeline', Element.new({
 		local size_min = this:get_effective_size_min()
 		return size_min + math.ceil((this.size_max - size_min) * this:get_effective_proximity())
 	end,
-	on_display_resize = function(this)
+	on_display_change = function(this)
 		if state.fullscreen or state.maximized then
 			this.size_min = options.timeline_size_min_fullscreen
 			this.size_max = options.timeline_size_max_fullscreen
@@ -2252,7 +2255,7 @@ if options.top_bar_controls or options.top_bar_title then
 			if (elements.volume_slider and elements.volume_slider.pressed) or elements.curtain.opacity > 0 then return 0 end
 			return this.forced_proximity and this.forced_proximity or this.proximity
 		end,
-		on_display_resize = function(this)
+		on_display_change = function(this)
 			this.size = (state.fullscreen or state.maximized) and options.top_bar_size_fullscreen or options.top_bar_size
 			this.icon_size = round(this.size / 8)
 			this.spacing = math.ceil(this.size * 0.25)
@@ -2269,8 +2272,7 @@ if options.top_bar_controls or options.top_bar_title then
 end
 if options.top_bar_controls then
 	elements:add('window_controls_minimize', Element.new({
-		captures = {mouse_buttons = true},
-		on_display_resize = function(this)
+		on_display_change = function(this)
 			this.ax = display.width - (elements.top_bar.button_width * 3)
 			this.ay = 0
 			this.bx = this.ax + elements.top_bar.button_width
@@ -2279,8 +2281,7 @@ if options.top_bar_controls then
 		on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end
 	}))
 	elements:add('window_controls_maximize', Element.new({
-		captures = {mouse_buttons = true},
-		on_display_resize = function(this)
+		on_display_change = function(this)
 			this.ax = display.width - (elements.top_bar.button_width * 2)
 			this.ay = 0
 			this.bx = this.ax + elements.top_bar.button_width
@@ -2289,8 +2290,7 @@ if options.top_bar_controls then
 		on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end
 	}))
 	elements:add('window_controls_close', Element.new({
-		captures = {mouse_buttons = true},
-		on_display_resize = function(this)
+		on_display_change = function(this)
 			this.ax = display.width - elements.top_bar.button_width
 			this.ay = 0
 			this.bx = this.ax + elements.top_bar.button_width
@@ -2301,15 +2301,15 @@ if options.top_bar_controls then
 end
 if itable_find({'left', 'right'}, options.volume) then
 	elements:add('volume', Element.new({
-		width = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
-		height = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
-		margin = nil, -- set in `on_display_resize` handler based on `state.fullscreen`
+		width = nil, -- set in `on_display_change` handler based on `state.fullscreen`
+		height = nil, -- set in `on_display_change` handler based on `state.fullscreen`
+		margin = nil, -- set in `on_display_change` handler based on `state.fullscreen`
 		get_effective_proximity = function(this)
 			if elements.volume_slider.pressed then return 1 end
 			if elements.timeline.proximity_raw == 0 or elements.curtain.opacity > 0 then return 0 end
 			return this.forced_proximity and this.forced_proximity or this.proximity
 		end,
-		on_display_resize = function(this)
+		on_display_change = function(this)
 			this.width = (state.fullscreen or state.maximized) and options.volume_size_fullscreen or options.volume_size
 			this.height = round(math.min(this.width * 8, (elements.timeline.ay - elements.top_bar.size) * 0.8))
 			-- Don't bother rendering this if too small
@@ -2325,10 +2325,9 @@ if itable_find({'left', 'right'}, options.volume) then
 		render = render_volume,
 	}))
 	elements:add('volume_mute', Element.new({
-		captures = {mouse_buttons = true},
 		width = 0,
 		height = 0,
-		on_display_resize = function(this)
+		on_display_change = function(this)
 			this.width = elements.volume.width
 			this.height = this.width
 			this.ax = elements.volume.ax
@@ -2339,7 +2338,6 @@ if itable_find({'left', 'right'}, options.volume) then
 		on_mbtn_left_down = function(this) mp.commandv('cycle', 'mute') end
 	}))
 	elements:add('volume_slider', Element.new({
-		captures = {mouse_buttons = true, wheel = true},
 		pressed = false,
 		width = 0,
 		height = 0,
@@ -2347,7 +2345,8 @@ if itable_find({'left', 'right'}, options.volume) then
 		nudge_size = nil, -- set on resize
 		font_size = nil,
 		spacing = nil,
-		on_display_resize = function(this)
+		on_display_change = function(this)
+			if state.volume_max == nil or state.volume_max == 0 then return end
 			this.ax = elements.volume.ax
 			this.ay = elements.volume.ay
 			this.bx = elements.volume.bx
@@ -2386,7 +2385,6 @@ if itable_find({'left', 'right'}, options.volume) then
 end
 if options.speed then
 	elements:add('speed', Element.new({
-		captures = {mouse_buttons = true, wheel = true},
 		dragging = nil,
 		width = 0,
 		height = 0,
@@ -2414,7 +2412,7 @@ if options.speed then
 				this.forced_proximity = nil
 			end)
 		end,
-		on_display_resize = function(this)
+		on_display_change = function(this)
 			this.height = (state.fullscreen or state.maximized) and options.speed_size_fullscreen or options.speed_size
 			this.width = round(this.height * 3.6)
 			this.notch_spacing = this.width / this.notches
@@ -2672,22 +2670,15 @@ end)()
 function create_state_setter(name)
 	return function(_, value)
 		state[name] = value
-		dispatch_event_to_elements('prop_'..name, value)
+		elements:trigger('prop_'..name, value)
 		request_render()
 	end
 end
 
-function dispatch_event_to_elements(name, ...)
-	for _, element in pairs(elements) do
-		if element.proximity_raw == 0 then
-			element:maybe('on_'..name, ...)
-		end
-		element:maybe('on_global_'..name, ...)
-	end
-end
-
-function create_event_to_elements_dispatcher(name, ...)
-	return function(...) dispatch_event_to_elements(name, ...) end
+function update_cursor_position()
+	cursor.x, cursor.y = mp.get_mouse_pos()
+	update_proximities()
+	request_render()
 end
 
 function handle_mouse_leave()
@@ -2703,14 +2694,14 @@ function handle_mouse_leave()
 
 	cursor.hidden = true
 	update_proximities()
-	dispatch_event_to_elements('mouse_leave')
+	elements:trigger('global_mouse_leave')
 end
 
 function handle_mouse_enter()
 	cursor.hidden = false
-	cursor.x, cursor.y = mp.get_mouse_pos()
+	update_cursor_position()
 	tween_element_stop(state)
-	dispatch_event_to_elements('mouse_enter')
+	elements:trigger('global_mouse_enter')
 end
 
 function handle_mouse_move()
@@ -2721,9 +2712,8 @@ function handle_mouse_move()
 		return
 	end
 
-	cursor.x, cursor.y = mp.get_mouse_pos()
-	update_proximities()
-	dispatch_event_to_elements('mouse_move')
+	update_cursor_position()
+	elements:trigger('global_mouse_move')
 	request_render()
 
 	-- Restart timer that hides UI when mouse is autohidden
@@ -2889,8 +2879,16 @@ mp.observe_property('duration', 'number', function(name, val)
 	state.total_time = val and mp.format_time(val) or nil
 end)
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
-mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen'))
-mp.observe_property('window-maximized', 'bool', create_state_setter('maximized'))
+mp.observe_property('fullscreen', 'bool', function(_, value)
+	state.fullscreen = value
+	elements:trigger('prop_fullscreen', value)
+	update_display_dimensions()
+end)
+mp.observe_property('window-maximized', 'bool', function(_, value)
+	state.maximized = value
+	elements:trigger('prop_maximized', value)
+	update_display_dimensions()
+end)
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
 mp.observe_property('speed', 'number', create_state_setter('speed'))
 mp.observe_property('pause', 'bool', create_state_setter('pause'))
@@ -2959,17 +2957,28 @@ mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 -- Context based key bind groups
 
 forced_key_bindings = (function()
+	function create_mouse_event_dispatcher(name)
+		return function(...)
+			for _, element in pairs(elements) do
+				if element.proximity_raw == 0 then
+					element:trigger(name, ...)
+				end
+				element:trigger('global_'..name, ...)
+			end
+		end
+	end
+
 	mp.set_key_bindings({
-		{'mbtn_left', create_event_to_elements_dispatcher('mbtn_left_up'), create_event_to_elements_dispatcher('mbtn_left_down')},
+		{'mbtn_left', create_mouse_event_dispatcher('mbtn_left_up'), create_mouse_event_dispatcher('mbtn_left_down')},
 		{'mbtn_left_dbl', 'ignore'},
-	}, 'mouse_buttons', 'force')
+	}, 'mbtn_left', 'force')
 	mp.set_key_bindings({
-		{'wheel_up', create_event_to_elements_dispatcher('wheel_up')},
-		{'wheel_down', create_event_to_elements_dispatcher('wheel_down')},
+		{'wheel_up', create_mouse_event_dispatcher('wheel_up')},
+		{'wheel_down', create_mouse_event_dispatcher('wheel_down')},
 	}, 'wheel', 'force')
 
 	local groups = {}
-	for _, group in ipairs({'mouse_buttons', 'wheel'}) do
+	for _, group in ipairs({'mbtn_left', 'wheel'}) do
 		groups[group] = {
 			is_enabled = false,
 			enable = function(this)
@@ -3251,7 +3260,6 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 end)
 mp.add_key_binding(nil, 'delete-file-quit', function()
 	local path = mp.get_property_native('path')
-	print('native path', path)
 	if not path or is_protocol(path) then return end
 	mp.command('stop')
 	delete_file(normalize_path(path))
