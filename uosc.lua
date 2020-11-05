@@ -722,6 +722,7 @@ function Element:trigger(name, ...)
 	self:maybe('on_'..name, ...)
 	if self._eventListeners[name] == nil then return end
 	for _, handler in ipairs(self._eventListeners[name]) do handler(...) end
+	request_render()
 end
 
 -- Briefly flashes the element for `options.flash_duration` milliseconds.
@@ -1575,7 +1576,7 @@ function render_timeline(this)
 		-- End time
 		local end_time
 		if options.total_time then
-			end_time = state.total_time
+			end_time = this.total_time
 		else
 			end_time = state.remaining_time and '-'..state.remaining_time
 		end
@@ -2223,6 +2224,7 @@ elements:add('timeline', Element.new({
 	size_max = 0, size_min = 0, -- set in `on_display_change` handler based on `state.fullormaxed`
 	size_min_override = options.timeline_start_hidden and 0 or nil, -- used for toggle-progress command
 	font_size = 0, -- calculated in on_display_change
+	total_time = nil, -- set in op_prop_duration listener
 	top_border = options.timeline_border,
 	get_effective_proximity = function(this)
 		if (elements.volume_slider and elements.volume_slider.pressed) then return 0 end
@@ -2255,6 +2257,9 @@ elements:add('timeline', Element.new({
 	on_prop_border = function(this) this:update_dimensions() end,
 	on_prop_fullormaxed = function(this) this:update_dimensions() end,
 	on_display_change = function(this) this:update_dimensions() end,
+	on_prop_duration = function(this, value)
+		this.total_time = value and mp.format_time(value) or nil
+	end,
 	set_from_cursor = function(this)
 		mp.commandv('seek', (((cursor.x - this.ax) / this.width) * 100), 'absolute-percent+exact')
 	end,
@@ -2712,7 +2717,6 @@ function create_state_setter(name)
 	return function(_, value)
 		state[name] = value
 		elements:trigger('prop_'..name, value)
-		request_render()
 	end
 end
 
@@ -2916,24 +2920,21 @@ mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
-mp.observe_property('duration', 'number', function(name, val)
-	state.duration = val
-	state.total_time = val and mp.format_time(val) or nil
-end)
+mp.observe_property('duration', 'number', create_state_setter('duration'))
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('fullscreen', 'bool', function(_, value)
 	state.fullscreen = value
 	state.fullormaxed = state.fullscreen or state.maximized
+	update_display_dimensions()
 	elements:trigger('prop_fullscreen', value)
 	elements:trigger('prop_fullormaxed', state.fullormaxed)
-	update_display_dimensions()
 end)
 mp.observe_property('window-maximized', 'bool', function(_, value)
 	state.maximized = value
 	state.fullormaxed = state.fullscreen or state.maximized
+	update_display_dimensions()
 	elements:trigger('prop_maximized', value)
 	elements:trigger('prop_fullormaxed', state.fullormaxed)
-	update_display_dimensions()
 end)
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
 mp.observe_property('speed', 'number', create_state_setter('speed'))
