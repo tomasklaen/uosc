@@ -1450,8 +1450,8 @@ function render_timeline(this)
 			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
 			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
 			ass:rect_cw(
-				bbx * (range_start / state.duration), range_ay,
-				bbx * (range_end / state.duration), range_ay + range_height
+				bax + this.width * (range_start / state.duration), range_ay,
+				bax + this.width * (range_end / state.duration), range_ay + range_height
 			)
 			ass:draw_stop()
 		end
@@ -1461,8 +1461,8 @@ function render_timeline(this)
 	if state.chapter_ranges ~= nil then
 		for i, chapter_range in ipairs(state.chapter_ranges) do
 			for i, range in ipairs(chapter_range.ranges) do
-				local rax = display.width * (range['start'].time / state.duration)
-				local rbx = display.width * (range['end'].time / state.duration)
+				local rax = bax + this.width * (range['start'].time / state.duration)
+				local rbx = bax + this.width * (range['end'].time / state.duration)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\1c&H'..chapter_range.color..'}')
 				ass:append(ass_opacity(chapter_range.opacity))
@@ -1511,7 +1511,7 @@ function render_timeline(this)
 			chapter_size = size <= 1 and foreground_size or chapter_size
 			local chapter_half_size = chapter_size / 2
 			local draw_chapter = function (time)
-				local chapter_x = display.width * (time / state.duration)
+				local chapter_x = bax + this.width * (time / state.duration)
 				local color = chapter_x > fbx and options.color_foreground or options.color_background
 
 				ass:new_event()
