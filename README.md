@@ -131,6 +131,8 @@ total_time=no
 autohide=no
 # can be: none, flash, static
 pause_indicator=flash
+# sizes to list in stream quality menu
+stream_quality_options=4320,2160,1440,1080,720,480,360,240,144
 # load first file when calling next on a last file in a directory and vice versa
 directory_navigation_loops=no
 # file types to look for when navigating media files
@@ -269,6 +271,10 @@ Playlist navigation.
 #### `chapters`
 
 Chapter navigation.
+
+#### `stream-quality`
+
+Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv property from predefined options (configurable with `stream_quality_options`) and video reload, there is no fetching of available formats going on.
 
 #### `open-file`
 

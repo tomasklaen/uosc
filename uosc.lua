@@ -100,6 +100,8 @@ total_time=no
 autohide=no
 # can be: none, flash, static
 pause_indicator=flash
+# sizes to list in stream quality menu
+stream_quality_options=4320,2160,1440,1080,720,480,360,240,144
 # load first file when calling next on a last file in a directory and vice versa
 directory_navigation_loops=no
 # file types to look for when navigating media files
@@ -169,6 +171,7 @@ Key  script-binding uosc/audio
 Key  script-binding uosc/video
 Key  script-binding uosc/playlist
 Key  script-binding uosc/chapters
+Key  script-binding uosc/stream-quality
 Key  script-binding uosc/open-file
 Key  script-binding uosc/next
 Key  script-binding uosc/prev
@@ -254,6 +257,7 @@ local options = {
 	font_bold = false,
 	autohide = false,
 	pause_indicator = 'flash',
+	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
 	directory_navigation_loops = false,
 	media_types = '3gp,asf,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
 	subtitle_types = 'aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt',
@@ -2908,6 +2912,7 @@ options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1
 options.chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.chapters) and options.chapters or 'none'
 options.media_types = split(options.media_types, ' *, *')
 options.subtitle_types = split(options.subtitle_types, ' *, *')
+options.stream_quality_options = split(options.stream_quality_options, ' *, *')
 options.timeline_cached_ranges = (function()
 	if options.timeline_cached_ranges == '' or options.timeline_cached_ranges == 'no' then return nil end
 	local parts = split(options.timeline_cached_ranges, ':')
@@ -3207,6 +3212,53 @@ mp.add_key_binding(nil, 'show-in-directory', function()
 			utils.subprocess({args = {'xdg-open', serialize_path(path).dirname}, cancellable = false})
 		end
 	end
+end)
+mp.add_key_binding(nil, 'stream-quality', function()
+	if menu:is_open('stream-quality') then menu:close() return end
+
+	local ytdl_format = mp.get_property_native('ytdl-format')
+	local active_item = nil
+	local formats = {}
+
+	for index, height in ipairs(options.stream_quality_options) do
+		local format = 'bestvideo[height<=?'..height..']+bestaudio/best[height<=?'..height..']'
+		formats[#formats + 1] = {
+			title = height..'p',
+			value = format
+		}
+		if format == ytdl_format then active_item = index end
+	end
+
+	menu:open(formats, function(format)
+		mp.set_property('ytdl-format', format)
+
+		-- Reload the video to apply new format
+		-- This is taken from https://github.com/jgreco/mpv-youtube-quality
+		-- which is in turn taken from https://github.com/4e6/mpv-reload/
+		-- Dunno if playlist_pos shenanigans below are necessary.
+		local playlist_pos = mp.get_property_number('playlist-pos')
+		local duration = mp.get_property_native('duration')
+		local time_pos = mp.get_property('time-pos')
+
+		mp.set_property_number('playlist-pos', playlist_pos)
+
+		-- Tries to determine live stream vs. pre-recordered VOD. VOD has non-zero
+		-- duration property. When reloading VOD, to keep the current time position
+		-- we should provide offset from the start. Stream doesn't have fixed start.
+		-- Decent choice would be to reload stream from it's current 'live' positon.
+		-- That's the reason we don't pass the offset when reloading streams.
+		if duration and duration > 0 then
+			local function seeker()
+				mp.commandv('seek', time_pos, 'absolute')
+				mp.unregister_event(seeker)
+			end
+			mp.register_event('file-loaded', seeker)
+		end
+	end, {
+		type = 'stream-quality',
+		title = 'Stream quality',
+		active_item = active_item,
+	})
 end)
 mp.add_key_binding(nil, 'open-file', function()
 	if menu:is_open('open-file') then menu:close() return end
