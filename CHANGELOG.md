@@ -1,3 +1,15 @@
+## 2.11.0 - 2020-Nov-07
+
+Added:
+- Stream quality menu. Trigger it with `script-binding uosc/stream-quality` command. This is just a quick change of mpv `ytdl-format` option to `bestvideo[height<=?{height}]+bestaudio/best[height<=?{height}]` and reload+resume. There is no fetching of available formats going on. You can change which formats appear in the menu by changing the stream quality options option, which is `stream_quality_options=4320,2160,1440,1080,720,480,360,240,144` by default.
+- Window border rendering in no-border & no-fullscreen mode to help separate window from background. `window_border_size=1` by default, set to `0` to disable. You can also change the opacity, which is `window_border_opacity=0.8` by default. Uses `color_background`.
+
+Changed:
+- Directory navigation now preselects first file.
+
+Fixed:
+- Timeline now updates when paused and duration changes (live streams).
+
 ### 2.10.2 - 2020-Oct-19
 
 Changed:
