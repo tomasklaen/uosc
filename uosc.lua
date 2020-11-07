@@ -850,7 +850,10 @@ function Menu:open(items, open_item, opts)
 
 			-- Apply options
 			for key, value in pairs(opts) do this[key] = value end
-			this.selected_item = this.active_item
+
+			if not this.selected_item then
+				this.selected_item = this.active_item
+			end
 
 			-- Set initial dimensions
 			this:on_display_change()
@@ -2852,6 +2855,7 @@ function open_file_navigation_menu(directory, handle_select, menu_options)
 	directory = serialize_path(directory)
 	local directories, error = utils.readdir(directory.path, 'dirs')
 	local files, error = get_files_in_directory(directory.path, menu_options.allowed_types)
+	local is_root = not directory.dirname
 
 	if not files or not directories then
 		msg.error('Retrieving files from '..directory..' failed: '..(error or ''))
@@ -2862,7 +2866,7 @@ function open_file_navigation_menu(directory, handle_select, menu_options)
 	table.sort(directories, word_order_comparator)
 
 	-- Pre-populate items with parent directory selector if not at root
-	local items = not directory.dirname and {} or {
+	local items = is_root and {} or {
 		{title = '..', hint = 'parent dir', value = directory.dirname}
 	}
 
@@ -2887,6 +2891,7 @@ function open_file_navigation_menu(directory, handle_select, menu_options)
 		end
 	end
 
+	menu_options.selected_item = menu_options.active_item or ((is_root == false and #files > 1) and 2 or 1)
 	menu_options.title = directory.basename..'/'
 
 	menu:open(items, function(path)
