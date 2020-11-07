@@ -1,5 +1,5 @@
 <div align="center">
-	<a href="https://darsain.github.io/uosc/preview.webm"><img src="https://darsain.github.io/uosc/preview.png" width="914" height="568"></a>
+	<a href="https://darsain.github.io/uosc/preview.webm"><img src="https://darsain.github.io/uosc/preview.png"></a>
 	<h1>uosc</h1>
 	<p>
 		Minimalist cursor proximity based UI for <a href="https://mpv.io">MPV player</a>.
@@ -15,6 +15,7 @@ Most notable features:
 - UIs for:
 	- Loading external subtitles.
 	- Selecting subtitle/audio/video track.
+	- Selecting stream quality.
 	- Quick directory and playlist navigation.
 - Mouse scroll wheel does multiple things depending on what is the cursor hovering over:
 	- Timeline: seek by `timeline_step` seconds per scroll.
