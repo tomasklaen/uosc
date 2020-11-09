@@ -1,3 +1,8 @@
+## 2.11.1 - 2020-Nov-09
+
+Fixed:
+- UI not re-rendering on some property changes when paused.
+
 ## 2.11.0 - 2020-Nov-07
 
 Added:
