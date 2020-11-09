@@ -2723,6 +2723,7 @@ function create_state_setter(name)
 	return function(_, value)
 		state[name] = value
 		elements:trigger('prop_'..name, value)
+		request_render()
 	end
 end
 
