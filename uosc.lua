@@ -97,7 +97,7 @@ font_bold=no
 total_time=no
 # hide UI when mpv autohides the cursor
 autohide=no
-# can be: none, flash, static
+# can be: none, flash, static, manual (controlled by flash-pause-indicator and decide-pause-indicator commands)
 pause_indicator=flash
 # sizes to list in stream quality menu
 stream_quality_options=4320,2160,1440,1080,720,480,360,240,144
@@ -163,6 +163,8 @@ Key  script-binding uosc/toggle-progress
 Key  script-binding uosc/flash-timeline
 Key  script-binding uosc/flash-volume
 Key  script-binding uosc/flash-speed
+Key  script-binding uosc/flash-pause-indicator
+Key  script-binding uosc/decide-pause-indicator
 Key  script-binding uosc/menu
 Key  script-binding uosc/load-subtitles
 Key  script-binding uosc/subtitles
@@ -2146,103 +2148,101 @@ elements:add('window_border', Element.new({
 		end
 	end
 }))
-if itable_find({'flash', 'static'}, options.pause_indicator) then
-	elements:add('pause_indicator', Element.new({
-		base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8,
-		paused = false,
-		is_flash = options.pause_indicator == 'flash',
-		is_static = options.pause_indicator == 'static',
-		fadeout_requested = false,
-		opacity = 0,
-		init = function(this)
-			local initial_call = true
-			mp.observe_property('pause', 'bool', function(_, paused)
-				if initial_call then
-					initial_call = false
-					return
-				end
-
-				this.paused = paused
-
-				if options.pause_indicator == 'flash' then
-					this:request_fadeout()
-				else
-					this.opacity = paused and 1 or 0
-					request_render()
-				end
-			end)
-		end,
-		-- The purpose of this is to wait some short duration and flash the indicator only when paused state didn't
-		-- revert back in the meantime. This filters out short resume->pause events triggered by mpv during frame steps.
-		request_fadeout = function(this)
-			if this.fadeout_requested then return end
-
-			this.fadeout_requested = true
-			local original_paused = this.paused
-
-			mp.add_timeout(0.08, function()
-				this.fadeout_requested = false
-				if original_paused ~= this.paused then return end
-				this:fadeout()
-			end)
-		end,
-		fadeout = function(this)
-			this.opacity = 1
-			this:tween_property('opacity', 1, 0, 0.15)
-		end,
-		render = function(this)
-			if this.opacity == 0 then return end
-
-			local ass = assdraw.ass_new()
-
-			-- Background fadeout
-			if this.is_static then
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-				ass:append(ass_opacity(0.3, this.opacity))
-				ass:pos(0, 0)
-				ass:draw_start()
-				ass:rect_cw(0, 0, display.width, display.height)
-				ass:draw_stop()
+elements:add('pause_indicator', Element.new({
+	base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8,
+	paused = false,
+	type = options.pause_indicator,
+	is_manual = options.pause_indicator == 'manual',
+	fadeout_requested = false,
+	opacity = 0,
+	init = function(this)
+		local initial_call = true
+		mp.observe_property('pause', 'bool', function(_, paused)
+			if initial_call then
+				initial_call = false
+				return
 			end
 
-			-- Icon
-			local size = round((math.min(display.width, display.height) * (this.is_static and 0.20 or 0.15)) / 2)
+			this.paused = paused
 
-			size = size + size * (1 - this.opacity)
-
-			if this.paused then
-				ass:new_event()
-				ass:append('{\\blur0\\bord1\\1c&H'..options.color_foreground..'\\3c&H'..options.color_background..'}')
-				ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
-				ass:pos(display.width / 2, display.height / 2)
-				ass:draw_start()
-				ass:rect_cw(-size, -size, -size / 3, size)
-				ass:draw_stop()
-
-				ass:new_event()
-				ass:append('{\\blur0\\bord1\\1c&H'..options.color_foreground..'\\3c&H'..options.color_background..'}')
-				ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
-				ass:pos(display.width / 2, display.height / 2)
-				ass:draw_start()
-				ass:rect_cw(size / 3, -size, size, size)
-				ass:draw_stop()
-			elseif this.is_flash then
-				ass:new_event()
-				ass:append('{\\blur0\\bord1\\1c&H'..options.color_foreground..'\\3c&H'..options.color_background..'}')
-				ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
-				ass:pos(display.width / 2, display.height / 2)
-				ass:draw_start()
-				ass:move_to(-size * 0.6, -size)
-				ass:line_to(size, 0)
-				ass:line_to(-size * 0.6, size)
-				ass:draw_stop()
+			if options.pause_indicator == 'flash' then
+				this:flash()
+			elseif options.pause_indicator == 'static' then
+				this:decide()
 			end
+		end)
+	end,
+	flash = function(this)
+		if not this.is_manual and this.type ~= 'flash' then return end
+		-- can't wait for pause property event listener to set this, because when this is used inside a binding like:
+		-- cycle pause; script-binding uosc/flash-pause-indicator
+		-- the pause event is not fired fast enough, and indicator starts rendering with old icon
+		this.paused = mp.get_property_native('pause')
+		if this.is_manual then this.type = 'flash' end
+		this.opacity = 1
+		this:tween_property('opacity', 1, 0, 0.15)
+	end,
+	-- decides whether static indicator should be visible or not
+	decide = function(this)
+		if not this.is_manual and this.type ~= 'static' then return end
+		this.paused = mp.get_property_native('pause') -- see flash() for why this line is necessary
+		if this.is_manual then this.type = 'static' end
+		this.opacity = this.paused and 1 or 0
+		request_render()
+	end,
+	render = function(this)
+		if this.opacity == 0 then return end
 
-			return ass
+		local ass = assdraw.ass_new()
+		local is_static = this.type == 'static'
+
+		-- Background fadeout
+		if is_static then
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
+			ass:append(ass_opacity(0.3, this.opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:rect_cw(0, 0, display.width, display.height)
+			ass:draw_stop()
 		end
-	}))
-end
+
+		-- Icon
+		local size = round((math.min(display.width, display.height) * (is_static and 0.20 or 0.15)) / 2)
+
+		size = size + size * (1 - this.opacity)
+
+		if this.paused then
+			ass:new_event()
+			ass:append('{\\blur0\\bord1\\1c&H'..options.color_foreground..'\\3c&H'..options.color_background..'}')
+			ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
+			ass:pos(display.width / 2, display.height / 2)
+			ass:draw_start()
+			ass:rect_cw(-size, -size, -size / 3, size)
+			ass:draw_stop()
+
+			ass:new_event()
+			ass:append('{\\blur0\\bord1\\1c&H'..options.color_foreground..'\\3c&H'..options.color_background..'}')
+			ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
+			ass:pos(display.width / 2, display.height / 2)
+			ass:draw_start()
+			ass:rect_cw(size / 3, -size, size, size)
+			ass:draw_stop()
+		else
+			ass:new_event()
+			ass:append('{\\blur0\\bord1\\1c&H'..options.color_foreground..'\\3c&H'..options.color_background..'}')
+			ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
+			ass:pos(display.width / 2, display.height / 2)
+			ass:draw_start()
+			ass:move_to(-size * 0.6, -size)
+			ass:line_to(size, 0)
+			ass:line_to(-size * 0.6, size)
+			ass:draw_stop()
+		end
+
+		return ass
+	end
+}))
 elements:add('timeline', Element.new({
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_change` handler based on `state.fullormaxed`
@@ -3098,6 +3098,12 @@ mp.add_key_binding(nil, 'flash-volume', function()
 end)
 mp.add_key_binding(nil, 'flash-speed', function()
 	if elements.speed then elements.speed:flash() end
+end)
+mp.add_key_binding(nil, 'flash-pause-indicator', function()
+	elements.pause_indicator:flash()
+end)
+mp.add_key_binding(nil, 'decide-pause-indicator', function()
+	elements.pause_indicator:decide()
 end)
 mp.add_key_binding(nil, 'menu', function()
 	if menu:is_open('menu') then

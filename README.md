@@ -129,7 +129,7 @@ font_bold=no
 total_time=no
 # hide UI when mpv autohides the cursor
 autohide=no
-# can be: none, flash, static
+# can be: none, flash, static, manual (controlled by flash-pause-indicator and decide-pause-indicator commands)
 pause_indicator=flash
 # sizes to list in stream quality menu
 stream_quality_options=4320,2160,1440,1080,720,480,360,240,144
@@ -228,10 +228,13 @@ Toggles the always visible portion of the timeline. You can look at it as switch
 #### `flash-timeline`
 #### `flash-volume`
 #### `flash-speed`
+#### `flash-pause-indicator`
+#### `decide-pause-indicator`
 
 Commands to briefly flash a specified element. You can use it in your bindings like so:
 
 ```
+space        cycle pause; script-binding uosc/flash-pause-indicator
 right        seek  5
 left         seek -5
 shift+right  seek  30; script-binding uosc/flash-timeline
@@ -243,6 +246,8 @@ down         add volume -10; script-binding uosc/flash-volume
 ]            add speed  0.25; script-binding uosc/flash-speed
 \            set speed 1; script-binding uosc/flash-speed
 ```
+
+Case for `(flash/decide)-pause-indicator`: mpv handles frame stepping forward by briefly resuming the video, which causes pause indicator to flash, and none likes that when they are trying to compare frames. The solution is to enable manual pause indicator (`pause_indicator=manual`) and use `flash-pause-indicator` (for a brief flash) or `decide-pause-indicator` (for a static indicator) as a secondary command to all bindings you wish would display it (see space binding example above).
 
 #### `menu`
 
