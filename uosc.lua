@@ -28,6 +28,8 @@ timeline_size_min_fullscreen=0
 timeline_size_max_fullscreen=60
 # same thing as calling toggle-progress command once on startup
 timeline_start_hidden=no
+# comma separated states when timeline should always be visible. available: paused, audio
+timeline_persistency=
 # timeline opacity
 timeline_opacity=0.8
 # top border of background color to help visually separate timeline from video
@@ -48,6 +50,7 @@ chapters_opacity=0.3
 volume=right
 volume_size=40
 volume_size_fullscreen=60
+volume_persistency=
 volume_opacity=0.8
 volume_border=1
 volume_step=1
@@ -57,6 +60,7 @@ volume_font_scale=1
 speed=no
 speed_size=46
 speed_size_fullscreen=68
+speed_persistency=
 speed_opacity=1
 speed_step=0.1
 speed_font_scale=1
@@ -72,6 +76,7 @@ menu_font_scale=1
 # top bar with window controls and media title shown only in no-border mode
 top_bar_size=40
 top_bar_size_fullscreen=46
+top_bar_persistency=
 top_bar_controls=yes
 top_bar_title=yes
 
@@ -208,6 +213,7 @@ local options = {
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
 	timeline_start_hidden = false,
+	timeline_persistency = '',
 	timeline_opacity = 0.8,
 	timeline_border = 1,
 	timeline_step = 5,
@@ -220,6 +226,7 @@ local options = {
 	volume = 'right',
 	volume_size = 40,
 	volume_size_fullscreen = 60,
+	volume_persistency = '',
 	volume_opacity = 0.8,
 	volume_border = 1,
 	volume_step = 1,
@@ -228,6 +235,7 @@ local options = {
 	speed = false,
 	speed_size = 46,
 	speed_size_fullscreen = 68,
+	speed_persistency = '',
 	speed_opacity = 1,
 	speed_step = 0.1,
 	speed_font_scale = 1,
@@ -241,6 +249,7 @@ local options = {
 
 	top_bar_size = 40,
 	top_bar_size_fullscreen = 46,
+	top_bar_persistency = '',
 	top_bar_controls = true,
 	top_bar_title = true,
 
@@ -306,6 +315,7 @@ local state = {
 	volume = nil,
 	volume_max = nil,
 	mute = nil,
+	is_audio = nil, -- true if file is audio only (mp3, etc)
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		if not options.autohide then return end
 		handle_mouse_leave()
@@ -644,6 +654,11 @@ function get_normalized_chapters()
 	table.sort(chapters, function(a, b) return a.time < b.time end)
 
 	return chapters
+end
+
+function is_element_persistent(name)
+	local option_name = name..'_persistency';
+	return (options[option_name].audio and state.is_audio) or (options[option_name].paused and state.pause)
 end
 
 -- Element
@@ -2250,9 +2265,9 @@ elements:add('timeline', Element.new({
 	total_time = nil, -- set in op_prop_duration listener
 	top_border = options.timeline_border,
 	get_effective_proximity = function(this)
-		if (elements.volume_slider and elements.volume_slider.pressed) then return 0 end
-		if this.pressed then return 1 end
-		return this.forced_proximity and this.forced_proximity or this.proximity
+		if this.pressed or is_element_persistent('timeline') then return 1 end
+		if this.forced_proximity then return this.forced_proximity end
+		return (elements.volume_slider and elements.volume_slider.pressed) and 0 or this.proximity
 	end,
 	get_effective_size_min = function(this)
 		return this.size_min_override or this.size_min
@@ -2307,8 +2322,9 @@ elements:add('top_bar', Element.new({
 	button_opacity = 0.8,
 	enabled = false,
 	get_effective_proximity = function(this)
-		if (elements.volume_slider and elements.volume_slider.pressed) or elements.curtain.opacity > 0 then return 0 end
-		return this.forced_proximity and this.forced_proximity or this.proximity
+		if is_element_persistent('top_bar') then return 1 end
+		if this.forced_proximity then return this.forced_proximity end
+		return (elements.volume_slider and elements.volume_slider.pressed) and 0 or this.proximity
 	end,
 	update_dimensions = function(this)
 		this.size = state.fullormaxed and options.top_bar_size_fullscreen or options.top_bar_size
@@ -2370,9 +2386,9 @@ if itable_find({'left', 'right'}, options.volume) then
 		height = nil, -- set in `on_display_change` handler based on `state.fullormaxed`
 		margin = nil, -- set in `on_display_change` handler based on `state.fullormaxed`
 		get_effective_proximity = function(this)
-			if elements.volume_slider.pressed then return 1 end
-			if elements.timeline.proximity_raw == 0 or elements.curtain.opacity > 0 then return 0 end
-			return this.forced_proximity and this.forced_proximity or this.proximity
+			if is_element_persistent('volume') or elements.volume_slider.pressed then return 1 end
+			if this.forced_proximity then return this.forced_proximity end
+			return elements.timeline.proximity_raw == 0 and 0 or this.proximity
 		end,
 		update_dimensions = function(this)
 			this.width = state.fullormaxed and options.volume_size_fullscreen or options.volume_size
@@ -2459,29 +2475,12 @@ if options.speed then
 		notch_every = 0.1,
 		step_distance = nil,
 		font_size = nil,
-		init = function(this)
-			-- Fade out/in on timeline mouse enter/leave
-			elements.timeline:on('mouse_enter', function()
-				if not this.dragging then this:fadeout() end
-			end)
-			elements.timeline:on('mouse_leave', function()
-				if not this.dragging then this:fadein() end
-			end)
-		end,
 		get_effective_proximity = function(this)
-			local proximity = math.max(this.proximity, elements.timeline:get_effective_proximity())
-			return this.forced_proximity and this.forced_proximity or proximity
-		end,
-		fadeout = function(this)
-			this:tween_property('forced_proximity', 1, 0, function(this)
-				this.forced_proximity = 0
-			end)
-		end,
-		fadein = function(this)
-			local get_current_proximity = function() return this.proximity end
-			this:tween_property('forced_proximity', 0, get_current_proximity, function(this)
-				this.forced_proximity = nil
-			end)
+			if elements.timeline.proximity_raw == 0 then return 0 end
+			if is_element_persistent('speed') then return 1 end
+			if this.forced_proximity then return this.forced_proximity end
+			local timeline_proximity = elements.timeline.forced_proximity or elements.timeline.proximity
+			return this.forced_proximity or math[cursor.hidden and 'min' or 'max'](this.proximity, timeline_proximity)
 		end,
 		update_dimensions = function(this)
 			this.height = state.fullormaxed and options.speed_size_fullscreen or options.speed_size
@@ -2944,9 +2943,27 @@ options.timeline_cached_ranges = (function()
 	local parts = split(options.timeline_cached_ranges, ':')
 	return parts[1] and {color = parts[1], opacity = tonumber(parts[2])} or nil
 end)()
+for _, name in ipairs({'timeline', 'volume', 'top_bar', 'speed'}) do
+	local option_name = name..'_persistency'
+	local flags = {}
+	for _, state in ipairs(split(options[option_name], ' *, *')) do
+		flags[state] = true
+	end
+	options[option_name] = flags
+end
 
 -- HOOKS
 mp.register_event('file-loaded', parse_chapters)
+mp.observe_property('track-list', 'native', function(name, value)
+	-- checks if the file is audio only (mp3, etc)
+	local has_audio = false
+	local has_video = false
+	for _, track in ipairs(value) do
+		if track.type == 'audio' then has_audio = true end
+		if track.type == 'video' and not track.albumart then has_video = true end
+	end
+	state.is_audio = not has_video and has_audio
+end)
 mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
