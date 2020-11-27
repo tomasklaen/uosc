@@ -1854,9 +1854,8 @@ end
 function render_speed(this)
 	if not this.dragging and (elements.curtain.opacity > 0) then return end
 
-	local timeline = elements.timeline
-	local proximity = timeline:get_effective_proximity()
-	local opacity = this.forced_proximity and this.forced_proximity or (this.dragging and 1 or proximity)
+	local proximity = this:get_effective_proximity()
+	local opacity = this.dragging and 1 or proximity
 
 	if opacity == 0 then return end
 
@@ -2468,6 +2467,10 @@ if options.speed then
 			elements.timeline:on('mouse_leave', function()
 				if not this.dragging then this:fadein() end
 			end)
+		end,
+		get_effective_proximity = function(this)
+			local proximity = math.max(this.proximity, elements.timeline:get_effective_proximity())
+			return this.forced_proximity and this.forced_proximity or proximity
 		end,
 		fadeout = function(this)
 			this:tween_property('forced_proximity', 1, 0, function(this)
