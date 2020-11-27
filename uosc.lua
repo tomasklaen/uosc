@@ -2152,6 +2152,7 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 		paused = false,
 		is_flash = options.pause_indicator == 'flash',
 		is_static = options.pause_indicator == 'static',
+		fadeout_requested = false,
 		opacity = 0,
 		init = function(this)
 			local initial_call = true
@@ -2164,13 +2165,30 @@ if itable_find({'flash', 'static'}, options.pause_indicator) then
 				this.paused = paused
 
 				if options.pause_indicator == 'flash' then
-					this.opacity = 1
-					this:tween_property('opacity', 1, 0, 0.15)
+					this:request_fadeout()
 				else
 					this.opacity = paused and 1 or 0
 					request_render()
 				end
 			end)
+		end,
+		-- The purpose of this is to wait some short duration and flash the indicator only when paused state didn't
+		-- revert back in the meantime. This filters out short resume->pause events triggered by mpv during frame steps.
+		request_fadeout = function(this)
+			if this.fadeout_requested then return end
+
+			this.fadeout_requested = true
+			local original_paused = this.paused
+
+			mp.add_timeout(0.08, function()
+				this.fadeout_requested = false
+				if original_paused ~= this.paused then return end
+				this:fadeout()
+			end)
+		end,
+		fadeout = function(this)
+			this.opacity = 1
+			this:tween_property('opacity', 1, 0, 0.15)
 		end,
 		render = function(this)
 			if this.opacity == 0 then return end
