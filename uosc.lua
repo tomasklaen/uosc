@@ -2203,6 +2203,10 @@ elements:add('pause_indicator', Element.new({
 		if this.is_manual then this.type = 'static' end
 		this.opacity = this.paused and 1 or 0
 		request_render()
+
+		-- works around an mpv race condition bug during pause on windows builds, which cause osd updates to be ignored
+		-- .03 was still loosing renders, .04 was fine, but to be safe I added 10ms more
+		mp.add_timeout(.05, function() osd:update() end)
 	end,
 	render = function(this)
 		if this.opacity == 0 then return end
