@@ -901,7 +901,7 @@ function Menu:open(items, open_item, opts)
 
 			-- Estimate width of a widest item
 			local estimated_max_width = 0
-			for _, item in ipairs(items) do
+			for _, item in ipairs(this.items) do
 				local item_text_length = ((item.title and item.title:len() or 0) + (item.hint and item.hint:len() or 0))
 				local spacings_in_item = item.hint and 3 or 2
 				local estimated_width = text_width_estimate(item_text_length, this.font_size) + (this.item_content_spacing * spacings_in_item)
@@ -923,7 +923,7 @@ function Menu:open(items, open_item, opts)
 			this.width = round(math.min(math.max(estimated_max_width, config.menu_min_width), display.width * 0.9))
 			local title_height = this.title and this.scroll_step or 0
 			local max_height = round(display.height * 0.9) - title_height
-			this.height = math.min(round(this.scroll_step * #items) - this.item_spacing, max_height)
+			this.height = math.min(round(this.scroll_step * #this.items) - this.item_spacing, max_height)
 			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
 			this.ax = round((display.width - this.width) / 2) + this.offset_x
 			this.ay = round((display.height - this.height) / 2 + (title_height / 2))
@@ -934,13 +934,17 @@ function Menu:open(items, open_item, opts)
 				this.parent_menu:on_display_change()
 			end
 		end,
-		set_items = function(this, items, props)
-			this.items = items
-			this.selected_item = nil
-			this.active_item = nil
+		update = function(this, props)
 			if props then
 				for key, value in pairs(props) do this[key] = value end
 			end
+
+			-- Reset indexes and scroll
+			this:select_index(this.selected_item)
+			this:activate_index(this.active_item)
+			this:scroll_to(this.scroll_y)
+
+			-- Trigger changes and re-render
 			this:on_display_change()
 			request_render()
 		end,
@@ -3180,21 +3184,20 @@ mp.add_key_binding(nil, 'playlist', function()
 	function handle_playlist_change()
 		if menu:is_open('playlist') then
 			local items, active_item = serialize_playlist()
-			elements.menu:set_items(items, {
-				active_item = active_item,
-				selected_item = active_item
+			elements.menu:update({
+				items = items,
+				active_item = active_item
 			})
 		end
 	end
 
-	local items, active_item = serialize_playlist()
-
-	menu:open(items, function(index)
+	-- Items and active_item are set in the handle_playlist_change callback, since adding
+	-- a property observer triggers its handler immediately, we just let that initialize the items.
+	menu:open({}, function(index)
 		mp.commandv('set', 'playlist-pos-1', tostring(index))
 	end, {
 		type = 'playlist',
 		title = 'Playlist',
-		active_item = active_item,
 		on_open = function()
 			mp.observe_property('playlist', 'native', handle_playlist_change)
 			mp.observe_property('playlist-pos-1', 'native', handle_playlist_change)
