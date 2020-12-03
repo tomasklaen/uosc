@@ -1,4 +1,30 @@
-## 2.11.1 - 2020-Nov-09
+## 2.12.0 - 2020-Dec-03
+
+Added:
+- Persistency options (`timeline_persistency`, `volume_persistency`, `speed_persistency`, `top_bar_persistency`) to persist specific UI elements in some states. Currently available states:
+	- `paused` - playback is paused
+	- `audio` - audio file is open
+
+	Example:
+	```
+	timeline_persistency=pause,audio
+	```
+	Will keep timeline visible if playback is paused, or always when audio file is open.
+- `pause_indicator=manual` option, which enables usage of new commands:
+	- `flash-pause-indicator` - flash pause indicator
+	- `decide-pause-indicator` - decide static indicator (when called will either remove the indicator when playing, or add display a static indicator when paused)
+
+	Use case: mpv handles frame stepping forward by briefly resuming the video, which causes automatic pause indicator to flash, and none likes that when they are trying to compare frames. The solution is to enable manual pause indicator and use these as a secondary command to all bindings you wish would display an indicator. Example:
+	```
+	space  cycle pause; script-binding uosc/flash-pause-indicator
+	```
+
+Fixed:
+- Video duration length changes (streaming video) were not triggering UI updates.
+- Updating playlist menu while open was buggy.
+- Speed control was only looking at timeline proximity, so sometimes it was still faded out even when cursor was near/above it.
+
+### 2.11.1 - 2020-Nov-09
 
 Fixed:
 - UI not re-rendering on some property changes when paused.
