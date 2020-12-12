@@ -2706,8 +2706,7 @@ state.context_menu_items = (function()
 	-- File doesn't exist
 	if not input_conf_meta or not input_conf_meta.is_file then return end
 
-	local items = {}
-	local items_by_command = {}
+	local main_menu = {items = {}, items_by_command = {}}
 	local submenus_by_id = {}
 
 	for line in io.lines(input_conf_path) do
@@ -2715,7 +2714,7 @@ state.context_menu_items = (function()
 		if key then
 			local is_dummy = key:sub(1, 1) == '#'
 			local submenu_id = ''
-			local target_menu = items
+			local target_menu = main_menu
 			local title_parts = split(title or '', ' *> *')
 
 			for index, title_part in ipairs(#title_parts > 0 and title_parts or {''}) do
@@ -2723,29 +2722,32 @@ state.context_menu_items = (function()
 					submenu_id = submenu_id .. title_part
 
 					if not submenus_by_id[submenu_id] then
-						submenus_by_id[submenu_id] = {title = title_part, items = {}}
-						target_menu[#target_menu + 1] = submenus_by_id[submenu_id]
+						local items = {}
+						submenus_by_id[submenu_id] = {items = items, items_by_command = {}}
+						target_menu.items[#target_menu.items + 1] = {title = title_part, items = items}
 					end
 
-					target_menu = submenus_by_id[submenu_id].items
+					target_menu = submenus_by_id[submenu_id]
 				else
 					-- If command is already in menu, just append the key to it
-					if items_by_command[command] then
-						items_by_command[command].hint = items_by_command[command].hint..', '..key
+					if target_menu.items_by_command[command] then
+						local hint = target_menu.items_by_command[command].hint
+						target_menu.items_by_command[command].hint = hint and hint..', '..key or key
 					else
-						items_by_command[command] = {
+						local item = {
 							title = title_part,
 							hint = not is_dummy and key or nil,
 							value = command
 						}
-						target_menu[#target_menu + 1] = items_by_command[command]
+						target_menu.items_by_command[command] = item
+						target_menu.items[#target_menu.items + 1] = item
 					end
 				end
 			end
 		end
 	end
 
-	if #items > 0 then return items end
+	if #main_menu.items > 0 then return main_menu.items end
 end)()
 
 -- EVENT HANDLERS
