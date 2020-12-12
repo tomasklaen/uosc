@@ -104,6 +104,8 @@ total_time=no
 autohide=no
 # can be: none, flash, static, manual (controlled by flash-pause-indicator and decide-pause-indicator commands)
 pause_indicator=flash
+# screen dim when stuff like menu is open, 0 to disable
+curtain_opacity=0.5
 # sizes to list in stream quality menu
 stream_quality_options=4320,2160,1440,1080,720,480,360,240,144
 # load first file when calling next on a last file in a directory and vice versa
@@ -267,6 +269,7 @@ local options = {
 	font_bold = false,
 	autohide = false,
 	pause_indicator = 'flash',
+	curtain_opacity = 0.5,
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
 	directory_navigation_loops = false,
 	media_types = '3gp,asf,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
@@ -2561,11 +2564,11 @@ elements:add('curtain', Element.new({
 		this:tween_property('opacity', this.opacity, 1);
 	end,
 	render = function(this)
-		if this.opacity > 0 then
+		if this.opacity > 0 and options.curtain_opacity > 0 then
 			local ass = assdraw.ass_new()
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'}')
-			ass:append(ass_opacity(0.4, this.opacity))
+			ass:append(ass_opacity(options.curtain_opacity, this.opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
 			ass:rect_cw(0, 0, display.width, display.height)
