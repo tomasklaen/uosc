@@ -1066,7 +1066,7 @@ function Menu:open(items, open_item, opts)
 				update_proximities()
 			end)
 		end,
-		open_selected_item = function(this)
+		open_selected_item = function(this, soft)
 			-- If there is a transition active and this method got called, it
 			-- means we are animating from this menu to parent menu, and all
 			-- calls to this method should be relayed to the parent menu.
@@ -1074,7 +1074,7 @@ function Menu:open(items, open_item, opts)
 				local target = menu.transition.target
 				tween_element_stop(target)
 				menu.transition = nil
-				target:open_selected_item()
+				target:open_selected_item(soft)
 				return
 			end
 
@@ -1086,14 +1086,13 @@ function Menu:open(items, open_item, opts)
 					opts.parent_menu = this
 					menu:open(item.items, this.open_item, opts)
 				else
-					menu:close(true)
+					if soft ~= true then menu:close(true) end
 					this.open_item(item.value)
 				end
 			end
 		end,
-		close = function(this)
-			menu:close()
-		end,
+		open_selected_item_soft = function(this) this:open_selected_item(true) end,
+		close = function(this) menu:close() end,
 		on_global_mbtn_left_down = function(this)
 			if this.proximity_raw == 0 then
 				this.selected_item = this:get_item_index_below_cursor()
@@ -1167,23 +1166,27 @@ function Menu:enable_key_bindings()
 	menu.key_bindings = {}
 	-- The `mp.set_key_bindings()` method would be easier here, but that
 	-- doesn't support 'repeatable' flag, so we are stuck with this monster.
-	menu:add_key_binding('up',         'menu-prev',        self:create_action('prev'), 'repeatable')
-	menu:add_key_binding('down',       'menu-next',        self:create_action('next'), 'repeatable')
-	menu:add_key_binding('left',       'menu-back',        self:create_action('back'))
-	menu:add_key_binding('right',      'menu-select',      self:create_action('open_selected_item'))
+	menu:add_key_binding('up',              'menu-prev1',        self:create_action('prev'), 'repeatable')
+	menu:add_key_binding('down',            'menu-next1',        self:create_action('next'), 'repeatable')
+	menu:add_key_binding('left',            'menu-back1',        self:create_action('back'))
+	menu:add_key_binding('right',           'menu-select1',      self:create_action('open_selected_item'))
+	menu:add_key_binding('shift+right',     'menu-select-soft1', self:create_action('open_selected_item_soft'))
+	menu:add_key_binding('shift+mbtn_left', 'menu-select-soft',  self:create_action('open_selected_item_soft'))
 
 	if options.menu_wasd_navigation then
-		menu:add_key_binding('w', 'menu-prev-alt',   self:create_action('prev'), 'repeatable')
-		menu:add_key_binding('a', 'menu-back-alt',   self:create_action('back'))
-		menu:add_key_binding('s', 'menu-next-alt',   self:create_action('next'), 'repeatable')
-		menu:add_key_binding('d', 'menu-select-alt', self:create_action('open_selected_item'))
+		menu:add_key_binding('w',       'menu-prev2',        self:create_action('prev'), 'repeatable')
+		menu:add_key_binding('a',       'menu-back2',        self:create_action('back'))
+		menu:add_key_binding('s',       'menu-next2',        self:create_action('next'), 'repeatable')
+		menu:add_key_binding('d',       'menu-select2',      self:create_action('open_selected_item'))
+		menu:add_key_binding('shift+d', 'menu-select-soft2', self:create_action('open_selected_item_soft'))
 	end
 
 	if options.menu_hjkl_navigation then
-		menu:add_key_binding('h', 'menu-back-alt2',   self:create_action('back'))
-		menu:add_key_binding('j', 'menu-next-alt2',   self:create_action('next'), 'repeatable')
-		menu:add_key_binding('k', 'menu-prev-alt2',   self:create_action('prev'), 'repeatable')
-		menu:add_key_binding('l', 'menu-select-alt2', self:create_action('open_selected_item'))
+		menu:add_key_binding('h',       'menu-back3',        self:create_action('back'))
+		menu:add_key_binding('j',       'menu-next3',        self:create_action('next'), 'repeatable')
+		menu:add_key_binding('k',       'menu-prev3',        self:create_action('prev'), 'repeatable')
+		menu:add_key_binding('l',       'menu-select3',      self:create_action('open_selected_item'))
+		menu:add_key_binding('shift+l', 'menu-select-soft3', self:create_action('open_selected_item_soft'))
 	end
 
 	menu:add_key_binding('mbtn_back',  'menu-back-alt3',   self:create_action('back'))

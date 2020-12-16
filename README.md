@@ -208,7 +208,9 @@ The only keybinds **uosc** defines by default are menu navigation keys that are 
 - `wheel_up`, `wheel_down` - scroll menu
 - `pgup`, `pgdwn`, `home`, `end` - self explanatory
 
-You can also click on a faded parent menu to go back to it.
+Click on a faded parent menu to go back to it.
+
+Hold `shift` to activate menu item without closing the menu.
 
 **uosc** also provides various commands with useful features to bind your preferred keys to. See [Commands](#commands) section below.
 
