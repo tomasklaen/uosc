@@ -1,3 +1,12 @@
+## 2.13.0 - 2020-Dec-16
+
+Added:
+- `curtain_opacity=0.5` option for controlling the background fadeout when stuff like menu is open. Set to `0` to disable.
+- Holding `shift` while activating items in menu now activates the item without closing the menu.
+
+Changed:
+- Menu now concatenates items with the same command only within the same menu group.
+
 ## 2.12.0 - 2020-Dec-03
 
 Added:
