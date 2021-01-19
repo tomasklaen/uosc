@@ -3396,36 +3396,39 @@ end)
 mp.add_key_binding(nil, 'first-file', function() load_file_in_current_directory(1) end)
 mp.add_key_binding(nil, 'last-file', function() load_file_in_current_directory(-1) end)
 mp.add_key_binding(nil, 'delete-file-next', function()
-	local path = mp.get_property_native('path')
-
-	if not path or is_protocol(path) then return end
-
-	path = normalize_path(path)
 	local playlist_count = mp.get_property_native('playlist-count')
 
 	if playlist_count > 1 then
 		mp.commandv('playlist-remove', 'current')
-	else
-		local next_file = get_adjacent_file(path, 'forward', options.media_types)
+	end
+
+	local next_file = nil
+
+	local path = mp.get_property_native('path')
+	local is_local_file = path and not is_protocol(path)
+
+	if is_local_file then
+		path = normalize_path(path)
+
+		next_file = get_adjacent_file(path, 'forward', options.media_types)
 
 		if menu:is_open('open-file') then
 			elements.menu:delete_value(path)
 		end
-
-		if next_file then
-			mp.commandv('loadfile', next_file)
-		else
-			mp.commandv('stop')
-		end
 	end
 
-	delete_file(path)
+	if next_file then
+		mp.commandv('loadfile', next_file)
+	else
+		mp.commandv('stop')
+	end
+
+	if is_local_file then delete_file(path) end
 end)
 mp.add_key_binding(nil, 'delete-file-quit', function()
 	local path = mp.get_property_native('path')
-	if not path or is_protocol(path) then return end
 	mp.command('stop')
-	delete_file(normalize_path(path))
+	if path and not is_protocol(path) then delete_file(normalize_path(path)) end
 	mp.command('quit')
 end)
 mp.add_key_binding(nil, 'open-config-directory', function()
