@@ -1,3 +1,8 @@
+### 2.13.1 - 2021-Jan-19
+
+Changed:
+- The file deletion in `delete-file-ACTION` (`delete-file-next`, `delete-file-quit`) is now optional, meaning if file is not a file (watching a stream), uosc will just execute the action. Previously, nothing would happen.
+
 ## 2.13.0 - 2020-Dec-16
 
 Added:
