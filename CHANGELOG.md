@@ -1,4 +1,4 @@
-### 2.13.1 - 2021-Jan-19
+## 2.13.1 - 2021-Jan-19
 
 Changed:
 - The file deletion in `delete-file-ACTION` (`delete-file-next`, `delete-file-quit`) is now optional, meaning if file is not a file (watching a stream), uosc will just execute the action. Previously, nothing would happen.
@@ -38,7 +38,7 @@ Fixed:
 - Updating playlist menu while open was buggy.
 - Speed control was only looking at timeline proximity, so sometimes it was still faded out even when cursor was near/above it.
 
-### 2.11.1 - 2020-Nov-09
+## 2.11.1 - 2020-Nov-09
 
 Fixed:
 - UI not re-rendering on some property changes when paused.
@@ -55,7 +55,7 @@ Changed:
 Fixed:
 - Timeline now updates when paused and duration changes (live streams).
 
-### 2.10.2 - 2020-Oct-19
+## 2.10.2 - 2020-Oct-19
 
 Changed:
 - `flash_duration` default value bumped from `400` to `1000` milliseconds.
@@ -64,7 +64,7 @@ Fixed:
 - Switching between fullscreen and windowed mode not working when windowed dimensions matched fullscreen dimensions.
 - Elements not updating their cursor proximity when switching to fullscreen.
 
-### 2.10.1 - 2020-Jun-20
+## 2.10.1 - 2020-Jun-20
 
 Fixed:
 - Crash when video had no duration (viewing images).
@@ -121,7 +121,7 @@ Changed:
 Fixed:
 - Volume number bugging out on floating point values.
 
-### 2.8.2 - 2020-May-06
+## 2.8.2 - 2020-May-06
 
 Changed:
 - Tweaked speed widget tiny bit. Default size values changed so if you had them modified they now have to be bigger to achieve the same size as before.
@@ -129,7 +129,7 @@ Changed:
 Fixed:
 - Speed widget sometimes resetting speed to 1x on fast drags left.
 
-### 2.8.1 - 2020-May-04
+## 2.8.1 - 2020-May-04
 
 Fixed:
 - Chapters not clearing when new file with no chapters is loaded.
@@ -143,7 +143,7 @@ New:
 Changed:
 - All commands that open menus now toggle the menu instead of always reopening them.
 
-### 2.7.3 - 2020-Apr-30
+## 2.7.3 - 2020-Apr-30
 
 Fixed:
 - Crash when `volume` set to `none`.
@@ -253,7 +253,7 @@ Changed:
 Fixed:
 - Escape button not closing open menus.
 
-### 2.1.1 - 2020-Apr-13
+## 2.1.1 - 2020-Apr-13
 
 Changed:
 - Tweaked vertical alignment, scroll indicators, and button handling, for tall menus.
@@ -375,15 +375,15 @@ Changed:
 Fixed:
 - Default examples as well as `uosc.conf` file were not working because comments were on the same line as option declarations, which apparently mpv can't parse. So that's fixed now.
 
-### 1.0.5 - 2020-Mar-07
+## 1.0.5 - 2020-Mar-07
 
 Ensures time text seen above the cursor during seeking doesn't overflow the screen. This is a naive implementation that is only guessing the width of the text, since there is no other API to use for this.
 
-### 1.0.4 - 2020-Mar-04
+## 1.0.4 - 2020-Mar-04
 
 Tweaked styling of window controls to be more visible against pure black backgrounds.
 
-### 1.0.3 - 2020-Mar-04
+## 1.0.3 - 2020-Mar-04
 
 Simplified options and made them more explicit.
 
@@ -408,11 +408,11 @@ seekbar_size=40            # seekbar size in pixels, 0 to disable
 seekbar_size_fullscreen=40 # same as ^ but when in fullscreen
 ```
 
-### 1.0.2 - 2020-Mar-03
+## 1.0.2 - 2020-Mar-03
 
 Fixed long window titles wrapping all over the place instead of being clipped by control buttons.
 
-### 1.0.1 - 2020-Mar-03
+## 1.0.1 - 2020-Mar-03
 
 **uosc** now won't render when default osc is not disabled (`osc=no`).
 
