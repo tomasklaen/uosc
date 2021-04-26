@@ -1573,8 +1573,10 @@ function render_timeline(this)
 				ass:draw_stop()
 			end
 
-			for i, chapter in ipairs(state.chapters) do
-				draw_chapter(chapter.time)
+			if state.chapters ~= nil then
+				for i, chapter in ipairs(state.chapters) do
+					draw_chapter(chapter.time)
+				end
 			end
 
 			if state.ab_loop_a and state.ab_loop_a > 0 then
