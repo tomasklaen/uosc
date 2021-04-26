@@ -1,3 +1,8 @@
+## 2.13.2 - 2021-Apr-26
+
+Fixed:
+- Crash when ab loop is created on videos with no chapters.
+
 ## 2.13.1 - 2021-Jan-19
 
 Changed:
