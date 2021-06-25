@@ -2715,7 +2715,7 @@ state.context_menu_items = (function()
 	local submenus_by_id = {}
 
 	for line in io.lines(input_conf_path) do
-		local key, command, title = string.match(line, ' *([%S]+) +(.*) #! *(.*)')
+		local key, command, title = string.match(line, '%s*([%S]+)%s+(.*)%s#!%s*(.*)')
 		if key then
 			local is_dummy = key:sub(1, 1) == '#'
 			local submenu_id = ''
