@@ -73,7 +73,9 @@ menu_hjkl_navigation=no
 menu_opacity=0.8
 menu_font_scale=1
 
-# top bar with window controls and media title shown only in no-border mode
+# top bar with window controls and media title
+# can be: never, no-border, always
+top_bar=no-border
 top_bar_size=40
 top_bar_size_fullscreen=46
 top_bar_persistency=
@@ -249,6 +251,7 @@ local options = {
 	menu_opacity = 0.8,
 	menu_font_scale = 1,
 
+	top_bar = 'no-border',
 	top_bar_size = 40,
 	top_bar_size_fullscreen = 46,
 	top_bar_persistency = '',
@@ -2342,6 +2345,16 @@ elements:add('top_bar', Element.new({
 		if this.forced_proximity then return this.forced_proximity end
 		return (elements.volume_slider and elements.volume_slider.pressed) and 0 or this.proximity
 	end,
+	decide_enabled = function(this)
+		if options.top_bar == 'no-border' then
+			this.enabled = not state.border or state.fullormaxed
+		elseif options.top_bar == 'always' then
+			this.enabled = true
+		else
+			this.enabled = false
+		end
+		this.enabled = this.enabled and (options.top_bar_controls or options.top_bar_title)
+	end,
 	update_dimensions = function(this)
 		this.size = state.fullormaxed and options.top_bar_size_fullscreen or options.top_bar_size
 		this.icon_size = round(this.size / 8)
@@ -2354,8 +2367,12 @@ elements:add('top_bar', Element.new({
 		this.title_bx = this.bx - (options.top_bar_controls and (this.button_width * 3) or 0)
 		this.ax = options.top_bar_title and elements.window_border.size or this.title_bx
 	end,
-	on_prop_border = function(this, value)
-		this.enabled = not value and (options.top_bar_controls or options.top_bar_title)
+	on_prop_border = function(this)
+		this:decide_enabled()
+		this:update_dimensions()
+	end,
+	on_prop_fullormaxed = function(this)
+		this:decide_enabled()
 		this:update_dimensions()
 	end,
 	on_display_change = function(this) this:update_dimensions() end,
