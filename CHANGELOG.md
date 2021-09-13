@@ -1,3 +1,8 @@
+## 2.14.0 - 2021-Sep-13
+
+Added:
+- `top_bar` option to specify when you wan to see window controls (title and min/max/close buttons). Possible values: `never`, `no-border`, `always`.
+
 ## 2.13.2 - 2021-Apr-26
 
 Fixed:
