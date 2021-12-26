@@ -3173,16 +3173,17 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 	if menu:is_open('load-subtitles') then menu:close() return end
 
 	local path = mp.get_property_native('path')
-	if path and not is_protocol(path) then
-		open_file_navigation_menu(
-			serialize_path(path).dirname,
-			function(path) mp.commandv('sub-add', path) end,
-			{
-				type = 'load-subtitles',
-				allowed_types = options.subtitle_types
-			}
-		)
+	if path and is_protocol(path) then
+		path='$HOME'
 	end
+	open_file_navigation_menu(
+		serialize_path(path).dirname,
+		function(path) mp.commandv('sub-add', path) end,
+		{
+			type = 'load-subtitles',
+			allowed_types = options.subtitle_types
+		}
+	)
 end)
 mp.add_key_binding(nil, 'subtitles', create_select_tracklist_type_menu_opener('Subtitles', 'sub', 'sid'))
 mp.add_key_binding(nil, 'audio', create_select_tracklist_type_menu_opener('Audio', 'audio', 'aid'))
