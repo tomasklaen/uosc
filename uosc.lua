@@ -73,6 +73,13 @@ menu_hjkl_navigation=no
 menu_opacity=0.8
 menu_font_scale=1
 
+# menu button widget
+menu_button=no
+menu_button_size=40
+menu_button_size_fullscreen=50
+menu_button_opacity=0.5
+menu_button_border=1
+
 # top bar with window controls and media title
 # can be: never, no-border, always
 top_bar=no-border
@@ -250,6 +257,12 @@ local options = {
 	menu_hjkl_navigation = false,
 	menu_opacity = 0.8,
 	menu_font_scale = 1,
+
+  menu_button = false,
+  menu_button_size = 40,
+  menu_button_size_fullscreen = 50,
+  menu_button_opacity = 0.5,
+  menu_button_border = 1,
 
 	top_bar = 'no-border',
 	top_bar_size = 40,
@@ -1317,6 +1330,23 @@ end
 function icons.volume(pos_x, pos_y, size) return icons._volume(false, pos_x, pos_y, size) end
 function icons.volume_muted(pos_x, pos_y, size) return icons._volume(true, pos_x, pos_y, size) end
 
+function icons.menu_button(pos_x, pos_y, size)
+  local ass = assdraw.ass_new()
+  local scale = size / 100
+  function x(number) return pos_x + (number * scale) end
+  function y(number) return pos_y + (number * scale) end
+  local line_height = 14
+  local line_spacing = 18
+  for i = -1, 1 do
+    local offs = i * (line_height + line_spacing)
+    ass:move_to(x(-50), y(offs - line_height/2))
+    ass:line_to(x(50), y(offs - line_height/2))
+    ass:line_to(x(50), y(offs + line_height/2))
+    ass:line_to(x(-50), y(offs + line_height/2))
+  end
+  return ass.text
+end
+
 function icons.arrow_right(pos_x, pos_y, size)
 	local ass = assdraw.ass_new()
 	local scale = size / 200
@@ -1967,6 +1997,24 @@ function render_speed(this)
 	return ass
 end
 
+function render_menu_button(this)
+  local opacity = this:get_effective_proximity()
+
+  if this.width == 0 or opacity == 0 then return end
+
+  local ass = assdraw.ass_new()
+  -- Menu button
+  local burger = elements.menu_button
+  ass:new_event()
+  ass:append(icon(
+    'menu_button',
+    burger.ax + (burger.width / 2), burger.ay + (burger.height / 2), burger.width, -- x, y, size
+    0, 0, options.menu_button_border, -- shadow_x, shadow_y, shadow_size
+    'background', options.menu_button_opacity * opacity -- backdrop, opacity
+  ))
+  return ass
+end
+
 function render_menu(this)
 	local ass = assdraw.ass_new()
 
@@ -2498,6 +2546,31 @@ if itable_find({'left', 'right'}, options.volume) then
 			mp.commandv('set', 'volume', math.min(current_rounded_volume - options.volume_step, state.volume_max))
 		end,
 	}))
+end
+if options.menu_button then
+  elements:add('menu_button', Element.new({
+    width = 0, height = 0,
+    get_effective_proximity = function(this)
+      if menu:is_open() then return 0 end
+      if this.forced_proximity then return this.forced_proximity end
+      return this.proximity
+    end,
+    update_dimensions = function(this)
+      this.width = state.fullormaxed and options.menu_button_size_fullscreen or options.menu_button_size
+      this.height = this.width
+
+      this.ax = round((display.width - this.width) / 2)
+      this.ay = round((display.height - this.height) / 2)
+      this.bx = round(this.ax + this.width)
+      this.by = round(this.ay + this.height)
+    end,
+    on_display_change = function(this) this:update_dimensions() end,
+    on_prop_border = function(this) this:update_dimensions() end,
+    on_mbtn_left_down = function(this)
+      if this.proximity_raw == 0 then menu_key_binding() end
+    end,
+    render = render_menu_button,
+  }))
 end
 if options.speed then
 	elements:add('speed', Element.new({
@@ -3160,15 +3233,16 @@ end)
 mp.add_key_binding(nil, 'decide-pause-indicator', function()
 	elements.pause_indicator:decide()
 end)
-mp.add_key_binding(nil, 'menu', function()
-	if menu:is_open('menu') then
-		menu:close()
-	elseif state.context_menu_items then
-		menu:open(state.context_menu_items, function(command)
-			mp.command(command)
-		end, {type = 'menu'})
-	end
-end)
+function menu_key_binding()
+  if menu:is_open('menu') then
+    menu:close()
+  elseif state.context_menu_items then
+    menu:open(state.context_menu_items, function(command)
+      mp.command(command)
+    end, {type = 'menu'})
+  end
+end
+mp.add_key_binding(nil, 'menu', menu_key_binding)
 mp.add_key_binding(nil, 'load-subtitles', function()
 	if menu:is_open('load-subtitles') then menu:close() return end
 
