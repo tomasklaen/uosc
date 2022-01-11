@@ -1,3 +1,8 @@
+## 2.15.0 - 2022-Jan-11
+
+Added:
+- Menu button widget. `menu_button` config can be set to `bottom-bar` or `center`. Default is `never`.
+
 ## 2.14.0 - 2021-Sep-13
 
 Added:
