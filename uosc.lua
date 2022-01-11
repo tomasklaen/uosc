@@ -74,10 +74,12 @@ menu_opacity=0.8
 menu_font_scale=1
 
 # menu button widget
-menu_button=no
-menu_button_size=40
-menu_button_size_fullscreen=50
-menu_button_opacity=0.5
+# can be: never, bottom-bar, center
+menu_button=never
+menu_button_size=26
+menu_button_size_fullscreen=30
+menu_button_persistency=
+menu_button_opacity=1
 menu_button_border=1
 
 # top bar with window controls and media title
@@ -245,7 +247,7 @@ local options = {
 
 	speed = false,
 	speed_size = 46,
-	speed_size_fullscreen = 68,
+	speed_size_fullscreen = 60,
 	speed_persistency = '',
 	speed_opacity = 1,
 	speed_step = 0.1,
@@ -258,11 +260,12 @@ local options = {
 	menu_opacity = 0.8,
 	menu_font_scale = 1,
 
-  menu_button = false,
-  menu_button_size = 40,
-  menu_button_size_fullscreen = 50,
-  menu_button_opacity = 0.5,
-  menu_button_border = 1,
+	menu_button = 'never',
+	menu_button_size = 26,
+	menu_button_size_fullscreen = 30,
+	menu_button_opacity = 1,
+	menu_button_persistency = '',
+	menu_button_border = 1,
 
 	top_bar = 'no-border',
 	top_bar_size = 40,
@@ -1331,20 +1334,20 @@ function icons.volume(pos_x, pos_y, size) return icons._volume(false, pos_x, pos
 function icons.volume_muted(pos_x, pos_y, size) return icons._volume(true, pos_x, pos_y, size) end
 
 function icons.menu_button(pos_x, pos_y, size)
-  local ass = assdraw.ass_new()
-  local scale = size / 100
-  function x(number) return pos_x + (number * scale) end
-  function y(number) return pos_y + (number * scale) end
-  local line_height = 14
-  local line_spacing = 18
-  for i = -1, 1 do
-    local offs = i * (line_height + line_spacing)
-    ass:move_to(x(-50), y(offs - line_height/2))
-    ass:line_to(x(50), y(offs - line_height/2))
-    ass:line_to(x(50), y(offs + line_height/2))
-    ass:line_to(x(-50), y(offs + line_height/2))
-  end
-  return ass.text
+	local ass = assdraw.ass_new()
+	local scale = size / 100
+	function x(number) return pos_x + (number * scale) end
+	function y(number) return pos_y + (number * scale) end
+	local line_height = 14
+	local line_spacing = 18
+	for i = -1, 1 do
+	local offs = i * (line_height + line_spacing)
+		ass:move_to(x(-50), y(offs - line_height/2))
+		ass:line_to(x(50), y(offs - line_height/2))
+		ass:line_to(x(50), y(offs + line_height/2))
+		ass:line_to(x(-50), y(offs + line_height/2))
+	end
+	return ass.text
 end
 
 function icons.arrow_right(pos_x, pos_y, size)
@@ -1998,21 +2001,23 @@ function render_speed(this)
 end
 
 function render_menu_button(this)
-  local opacity = this:get_effective_proximity()
+	local opacity = this:get_effective_proximity()
 
-  if this.width == 0 or opacity == 0 then return end
+	if this.width == 0 or opacity == 0 then return end
 
-  local ass = assdraw.ass_new()
-  -- Menu button
-  local burger = elements.menu_button
-  ass:new_event()
-  ass:append(icon(
-    'menu_button',
-    burger.ax + (burger.width / 2), burger.ay + (burger.height / 2), burger.width, -- x, y, size
-    0, 0, options.menu_button_border, -- shadow_x, shadow_y, shadow_size
-    'background', options.menu_button_opacity * opacity -- backdrop, opacity
-  ))
-  return ass
+	if this.proximity_raw > 0 then opacity = opacity / 2 end
+
+	local ass = assdraw.ass_new()
+	-- Menu button
+	local burger = elements.menu_button
+	ass:new_event()
+	ass:append(icon(
+	'menu_button',
+		burger.ax + (burger.width / 2), burger.ay + (burger.height / 2), burger.width, -- x, y, size
+		0, 0, options.menu_button_border, -- shadow_x, shadow_y, shadow_size
+		'background', options.menu_button_opacity * opacity -- backdrop, opacity
+	))
+	return ass
 end
 
 function render_menu(this)
@@ -2547,30 +2552,43 @@ if itable_find({'left', 'right'}, options.volume) then
 		end,
 	}))
 end
-if options.menu_button then
-  elements:add('menu_button', Element.new({
-    width = 0, height = 0,
-    get_effective_proximity = function(this)
-      if menu:is_open() then return 0 end
-      if this.forced_proximity then return this.forced_proximity end
-      return this.proximity
-    end,
-    update_dimensions = function(this)
-      this.width = state.fullormaxed and options.menu_button_size_fullscreen or options.menu_button_size
-      this.height = this.width
+if itable_find({'center', 'bottom-bar'}, options.menu_button) then
+	elements:add('menu_button', Element.new({
+		width = 0, height = 0,
+		get_effective_proximity = function(this)
+			if menu:is_open() then return 0 end
+			if is_element_persistent('menu_button') then return 1 end
+			if elements.timeline.proximity_raw == 0 then return 0 end
+			if this.forced_proximity then return this.forced_proximity end
+			if options.menu_button == 'bottom-bar' then
+				local timeline_proximity = elements.timeline.forced_proximity or elements.timeline.proximity
+				return this.forced_proximity or math[cursor.hidden and 'min' or 'max'](this.proximity, timeline_proximity)
+			end
+			return this.proximity
+		end,
+		update_dimensions = function(this)
+			this.width = state.fullormaxed and options.menu_button_size_fullscreen or options.menu_button_size
+			this.height = this.width
 
-      this.ax = round((display.width - this.width) / 2)
-      this.ay = round((display.height - this.height) / 2)
-      this.bx = round(this.ax + this.width)
-      this.by = round(this.ay + this.height)
-    end,
-    on_display_change = function(this) this:update_dimensions() end,
-    on_prop_border = function(this) this:update_dimensions() end,
-    on_mbtn_left_down = function(this)
-      if this.proximity_raw == 0 then menu_key_binding() end
-    end,
-    render = render_menu_button,
-  }))
+			if options.menu_button == 'bottom-bar' then
+				this.ax = 15
+				this.bx = this.ax + this.width
+				this.by = display.height - 10 - elements.window_border.size - elements.timeline.size_max - elements.timeline.top_border
+				this.ay = this.by - this.height
+			else
+				this.ax = round((display.width - this.width) / 2)
+				this.ay = round((display.height - this.height) / 2)
+				this.bx = this.ax + this.width
+				this.by = this.ay + this.height
+			end
+		end,
+		on_display_change = function(this) this:update_dimensions() end,
+		on_prop_border = function(this) this:update_dimensions() end,
+		on_mbtn_left_down = function(this)
+			if this.proximity_raw == 0 then menu_key_binding() end
+		end,
+		render = render_menu_button,
+	}))
 end
 if options.speed then
 	elements:add('speed', Element.new({

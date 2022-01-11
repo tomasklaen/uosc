@@ -105,6 +105,15 @@ menu_hjkl_navigation=no
 menu_opacity=0.8
 menu_font_scale=1
 
+# menu button widget
+# can be: never, bottom-bar, center
+menu_button=never
+menu_button_size=26
+menu_button_size_fullscreen=30
+menu_button_persistency=
+menu_button_opacity=1
+menu_button_border=1
+
 # top bar with window controls and media title
 # can be: never, no-border, always
 top_bar=no-border
