@@ -2875,6 +2875,12 @@ end
 
 function update_cursor_position()
 	cursor.x, cursor.y = mp.get_mouse_pos()
+	-- mpv reports initial mouse position on linux as (0, 0), which always
+	-- displays the top bar, so we just swap this one coordinate to infinity
+	if cursor.x == 0 and cursor.y == 0 then
+		cursor.x = infinity
+		cursor.y = infinity
+	end
 	update_proximities()
 	request_render()
 end
