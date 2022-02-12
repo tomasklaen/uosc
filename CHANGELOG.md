@@ -1,3 +1,8 @@
+## 2.15.1 - 2022-Feb-12
+
+Fixed:
+- On linux, top bar was showing every time the app started even when cursor was nowhere near it.
+
 ## 2.15.0 - 2022-Jan-11
 
 Added:
