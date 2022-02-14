@@ -73,6 +73,9 @@ menu_hjkl_navigation=no
 menu_opacity=0.8
 menu_font_scale=1
 
+# Menu font (Uncomment to use)
+#font=
+
 # menu button widget
 # can be: never, bottom-bar, center
 menu_button=never
@@ -259,6 +262,7 @@ local options = {
 	menu_hjkl_navigation = false,
 	menu_opacity = 0.8,
 	menu_font_scale = 1,
+	font = mp.get_property('options/osd-font'),
 
 	menu_button = 'never',
 	menu_button_size = 26,
@@ -299,7 +303,7 @@ local options = {
 opt.read_options(options, 'uosc')
 local config = {
 	render_delay = 0.03, -- sets max rendering frequency
-	font = mp.get_property('options/osd-font'),
+	font = options.font,
 	menu_parent_opacity = 0.4,
 	menu_min_width = 260
 }
