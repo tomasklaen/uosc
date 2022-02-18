@@ -179,6 +179,7 @@ Available keybindings (place into `input.conf`):
 Key  script-binding uosc/peek-timeline
 Key  script-binding uosc/toggle-progress
 Key  script-binding uosc/flash-timeline
+Key  script-binding uosc/flash-top-bar
 Key  script-binding uosc/flash-volume
 Key  script-binding uosc/flash-speed
 Key  script-binding uosc/flash-pause-indicator
@@ -3244,6 +3245,9 @@ mp.add_key_binding(nil, 'toggle-progress', function()
 end)
 mp.add_key_binding(nil, 'flash-timeline', function()
 	elements.timeline:flash()
+end)
+mp.add_key_binding(nil, 'flash-top-bar', function()
+	elements.top_bar:flash()
 end)
 mp.add_key_binding(nil, 'flash-volume', function()
 	if elements.volume then elements.volume:flash() end

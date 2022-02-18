@@ -246,6 +246,7 @@ Expands the bottom timeline until pressed again, or next mouse move. Useful to c
 Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
 
 #### `flash-timeline`
+#### `flash-top-bar`
 #### `flash-volume`
 #### `flash-speed`
 #### `flash-pause-indicator`
@@ -265,6 +266,8 @@ down         add volume -10; script-binding uosc/flash-volume
 [            add speed -0.25; script-binding uosc/flash-speed
 ]            add speed  0.25; script-binding uosc/flash-speed
 \            set speed 1; script-binding uosc/flash-speed
+>            script-binding uosc/next; script-binding flash-top-bar; script-binding flash-timeline
+<            script-binding uosc/prev; script-binding flash-top-bar; script-binding flash-timeline
 ```
 
 Case for `(flash/decide)-pause-indicator`: mpv handles frame stepping forward by briefly resuming the video, which causes pause indicator to flash, and none likes that when they are trying to compare frames. The solution is to enable manual pause indicator (`pause_indicator=manual`) and use `flash-pause-indicator` (for a brief flash) or `decide-pause-indicator` (for a static indicator) as a secondary command to all bindings you wish would display it (see space binding example above).
