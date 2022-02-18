@@ -3520,10 +3520,6 @@ mp.add_key_binding(nil, 'last-file', function() load_file_in_current_directory(-
 mp.add_key_binding(nil, 'delete-file-next', function()
 	local playlist_count = mp.get_property_native('playlist-count')
 
-	if playlist_count > 1 then
-		mp.commandv('playlist-remove', 'current')
-	end
-
 	local next_file = nil
 
 	local path = mp.get_property_native('path')
@@ -3532,17 +3528,23 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 	if is_local_file then
 		path = normalize_path(path)
 
-		next_file = get_adjacent_file(path, 'forward', options.media_types)
-
 		if menu:is_open('open-file') then
 			elements.menu:delete_value(path)
 		end
 	end
 
-	if next_file then
-		mp.commandv('loadfile', next_file)
+	if playlist_count > 1 then
+		mp.commandv('playlist-remove', 'current')
 	else
-		mp.commandv('stop')
+		if is_local_file then
+			next_file = get_adjacent_file(path, 'forward', options.media_types)
+		end
+		
+		if next_file then
+			mp.commandv('loadfile', next_file)
+		else
+			mp.commandv('stop')
+		end
 	end
 
 	if is_local_file then delete_file(path) end
