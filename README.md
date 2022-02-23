@@ -379,7 +379,7 @@ Adding items to menu is facilitated by commenting your keybinds in `input.conf` 
 
 Comment has to be at the end of the line with the binding.
 
-Comment has to start with `#!`.
+Comment has to start with `#!` (or `#menu:`).
 
 Text after `#!` is an item title.
 
