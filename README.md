@@ -266,8 +266,8 @@ down         add volume -10; script-binding uosc/flash-volume
 [            add speed -0.25; script-binding uosc/flash-speed
 ]            add speed  0.25; script-binding uosc/flash-speed
 \            set speed 1; script-binding uosc/flash-speed
->            script-binding uosc/next; script-binding flash-top-bar; script-binding flash-timeline
-<            script-binding uosc/prev; script-binding flash-top-bar; script-binding flash-timeline
+>            script-binding uosc/next; script-binding uosc/flash-top-bar; script-binding uosc/flash-timeline
+<            script-binding uosc/prev; script-binding uosc/flash-top-bar; script-binding uosc/flash-timeline
 ```
 
 Case for `(flash/decide)-pause-indicator`: mpv handles frame stepping forward by briefly resuming the video, which causes pause indicator to flash, and none likes that when they are trying to compare frames. The solution is to enable manual pause indicator (`pause_indicator=manual`) and use `flash-pause-indicator` (for a brief flash) or `decide-pause-indicator` (for a static indicator) as a secondary command to all bindings you wish would display it (see space binding example above).
