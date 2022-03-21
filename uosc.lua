@@ -1,6 +1,6 @@
 --[[
 
-uosc 2.15.1 - 2022-Feb-12 | https://github.com/darsain/uosc
+uosc 2.16.0 - 2022-Mar-21 | https://github.com/darsain/uosc
 
 Minimalist cursor proximity based UI for MPV player.
 
@@ -3542,7 +3542,7 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 		if is_local_file then
 			next_file = get_adjacent_file(path, 'forward', options.media_types)
 		end
-		
+
 		if next_file then
 			mp.commandv('loadfile', next_file)
 		else

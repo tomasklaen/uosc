@@ -1,3 +1,14 @@
+## 2.16.0 - 2022-Mar-21
+
+Added:
+- `flash-top-bar` command, useful when navigating between files.
+
+Changed:
+- Apart of `#!`, you can also use `#menu:` to declare menu items. This adds compatibility with mpv.net.
+
+Fixed:
+- `delete-file-next` command now correctly uses playlist to decide next item to play.
+
 ## 2.15.1 - 2022-Feb-12
 
 Fixed:
