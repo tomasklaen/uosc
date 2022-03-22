@@ -9,27 +9,29 @@
 
 Most notable features:
 
-- UI elements hide and show based on their proximity to cursor instead of every time mouse moves. This gives you 100% control over when you see the UI and when you don't. Click on the preview above to see it in action.
-- Set min timeline size to make an always visible discrete progress bar.
-- Build your own context menu with nesting support by editing your `input.conf` file.
-- UIs for:
-	- Loading external subtitles.
-	- Selecting subtitle/audio/video track.
-	- Selecting stream quality.
-	- Quick directory and playlist navigation.
-- Mouse scroll wheel does multiple things depending on what is the cursor hovering over:
-	- Timeline: seek by `timeline_step` seconds per scroll.
-	- Volume bar: change volume by `volume_step` per scroll.
-	- Speed bar: change speed by `speed_step` per scroll.
-	- Just hovering video with no UI widget below cursor: your configured wheel bindings from `input.conf`.
-- Transform chapters into timeline ranges (the red portion of the timeline in the preview).
-- And a lot of useful options and commands to bind keys to.
+-   UI elements hide and show based on their proximity to cursor instead of every time mouse moves. This gives you 100% control over when you see the UI and when you don't. Click on the preview above to see it in action.
+-   Set min timeline size to make an always visible discrete progress bar.
+-   Build your own context menu with nesting support by editing your `input.conf` file.
+-   UIs for:
+    -   Loading external subtitles.
+    -   Selecting subtitle/audio/video track.
+    -   Selecting stream quality.
+    -   Quick directory and playlist navigation.
+-   Mouse scroll wheel does multiple things depending on what is the cursor hovering over:
+    -   Timeline: seek by `timeline_step` seconds per scroll.
+    -   Volume bar: change volume by `volume_step` per scroll.
+    -   Speed bar: change speed by `speed_step` per scroll.
+    -   Just hovering video with no UI widget below cursor: your configured wheel bindings from `input.conf`.
+-   Transform chapters into timeline ranges (the red portion of the timeline in the preview).
+-   And a lot of useful options and commands to bind keys to.
 
 [Changelog](./CHANGELOG.md).
 
 ## Installation
 
 **uosc** is a replacement for the built in osc, so that has to be disabled first.
+
+_List of all the possible places the configuration files & folders below can be located at is documented here: https://mpv.io/manual/master/#files_
 
 In your `mpv.conf`:
 
@@ -50,7 +52,7 @@ To configure **uosc**, create a `script-opts/uosc.conf` file, or download [`uosc
 
 All available options with their default values:
 
-```conf
+````conf
 # timeline size when fully retracted, 0 will hide it completely
 timeline_size_min=2
 # timeline size when fully expanded, in pixels, 0 to disable
@@ -203,7 +205,7 @@ font_height_to_letter_width_ratio=0.5
 # chapter_ranges=sponsor start<3535a5:.5>sponsor end, segment start<3535a5:0.5>segment end
 # ```
 chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end, segment start<3535a5:0.5>segment end
-```
+````
 
 **uosc** respects `osd-font` option, so to change the font you want it to use, you have to change `osd-font` in `mpv.conf`.
 
@@ -211,13 +213,13 @@ chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>
 
 The only keybinds **uosc** defines by default are menu navigation keys that are active only when one of the menus (context menu, load/select subtitles,...) is active. They are:
 
-- `↑`, `↓`, `←`, `→` - up, down, previous menu or close, select item
-- `k`, `j`, `h`, `l` - up, down, previous menu or close, select item
-- `w`, `s`, `a`, `d` - up, down, previous menu or close, select item
-- `enter` - select item
-- `esc` - close menu
-- `wheel_up`, `wheel_down` - scroll menu
-- `pgup`, `pgdwn`, `home`, `end` - self explanatory
+-   `↑`, `↓`, `←`, `→` - up, down, previous menu or close, select item
+-   `k`, `j`, `h`, `l` - up, down, previous menu or close, select item
+-   `w`, `s`, `a`, `d` - up, down, previous menu or close, select item
+-   `enter` - select item
+-   `esc` - close menu
+-   `wheel_up`, `wheel_down` - scroll menu
+-   `pgup`, `pgdwn`, `home`, `end` - self explanatory
 
 Click on a faded parent menu to go back to it.
 
@@ -246,10 +248,15 @@ Expands the bottom timeline until pressed again, or next mouse move. Useful to c
 Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
 
 #### `flash-timeline`
+
 #### `flash-top-bar`
+
 #### `flash-volume`
+
 #### `flash-speed`
+
 #### `flash-pause-indicator`
+
 #### `decide-pause-indicator`
 
 Commands to briefly flash a specified element. You can use it in your bindings like so:
@@ -369,7 +376,7 @@ mbtn_right  script-binding uosc/menu
 menu        script-binding uosc/menu
 ```
 
-***menu** button is the key between **win** and **right_ctrl** buttons that none uses (might not be on your keyboard).*
+**\*menu** button is the key between **win** and **right_ctrl** buttons that none uses (might not be on your keyboard).\*
 
 ### Adding items to menu
 
@@ -438,7 +445,7 @@ To see all the commands you can bind keys or menu items to, refer to [mpv's list
 
 ## Tips
 
-**uosc** places performance as one of the top priorities, so why does the UI feels a bit sluggish/slow/laggy (e.g. seeking indicator lags a bit behind cursor)? Well, it really isn't, **uosc** is **fast**, it just doesn't feel like it because when video is playing, the UI rendering frequency is chained to its frame rate, so unless you are the type of person that can't see above 24fps, it *does* feel sluggish. This is an mpv limitation and I can't do anything about it :(
+**uosc** places performance as one of the top priorities, so why does the UI feels a bit sluggish/slow/laggy (e.g. seeking indicator lags a bit behind cursor)? Well, it really isn't, **uosc** is **fast**, it just doesn't feel like it because when video is playing, the UI rendering frequency is chained to its frame rate, so unless you are the type of person that can't see above 24fps, it _does_ feel sluggish. This is an mpv limitation and I can't do anything about it :(
 
 You can test the smoother operation by pausing the video and then using the UI, which will make it render closer to your display refresh rate.
 
