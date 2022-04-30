@@ -163,6 +163,8 @@ subtitle_types=aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,
 # if you are using some wide font and see a lot of right side clipping in menus,
 # try bumping this up
 font_height_to_letter_width_ratio=0.5
+# default open-file menu directory
+default_directory=~/
 
 # `chapter_ranges` lets you transform chapter indicators into range indicators.
 #
