@@ -1,3 +1,8 @@
+## 2.17.0 - 2022-Apr-30
+
+Added
+- `default_directory` option - if there is no file open, this is the open-file menu directory that will be used. `~/` by default.
+
 ## 2.16.0 - 2022-Mar-21
 
 Added:
