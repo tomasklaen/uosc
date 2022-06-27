@@ -3305,8 +3305,9 @@ mp.add_key_binding(nil, 'playlist', function()
 		local active_item
 		for index, item in ipairs(mp.get_property_native('playlist')) do
 			local is_url = item.filename:find('://')
+			local item_title = type(item.title) == 'string' and #item.title > 0 and item.title or false
 			items[index] = {
-				title = is_url and item.filename or serialize_path(item.filename).basename,
+				title = item_title or (is_url and item.filename or serialize_path(item.filename).basename),
 				hint = tostring(index),
 				value = index
 			}
