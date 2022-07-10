@@ -2387,10 +2387,10 @@ elements:add('timeline', Element.new({
 		if this.pressed then this:set_from_cursor() end
 	end,
 	on_wheel_up = function(this)
-		if options.timeline_step > 0 then mp.commandv('seek', -options.timeline_step) end
+		mp.commandv('seek', -options.timeline_step)
 	end,
 	on_wheel_down = function(this)
-		if options.timeline_step > 0 then mp.commandv('seek', options.timeline_step) end
+		mp.commandv('seek', options.timeline_step)
 	end,
 	render = render_timeline,
 }))
