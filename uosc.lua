@@ -562,34 +562,115 @@ end
 
 function text_width_estimate(text, font_size)
 	if not text or text == "" then return 0 end
-
 	local text_width = 0
-	local char_width = font_size
-	local byte_len = #text
-	local byte_end = 0
+	for _, _, width in utf8_iter(text) do
+		text_width = text_width + width
+	end
+	return text_width * font_size * options.font_height_to_letter_width_ratio
+end
 
-	for byte_start = 1, byte_len do
-		if byte_start > byte_end then
-			local char_width = char_width
-			local char_byte = string.byte(text, byte_start)
+function utf8_iter(string)
+	local byte_start = 1
+	local byte_count = 1
 
-			local byte_count = 1;
-			if     char_byte < 192 then byte_count = 1
-			elseif char_byte < 224 then byte_count = 2
-			elseif char_byte < 240 then byte_count = 3
-			elseif char_byte < 248 then byte_count = 4
-			elseif char_byte < 252 then byte_count = 5
-			elseif char_byte < 254 then byte_count = 6
+	return function()
+		if #string < byte_start then return nil end
+
+		local char_byte = string.byte(string, byte_start)
+
+		byte_count = 1;
+		if     char_byte < 192 then byte_count = 1
+		elseif char_byte < 224 then byte_count = 2
+		elseif char_byte < 240 then byte_count = 3
+		elseif char_byte < 248 then byte_count = 4
+		elseif char_byte < 252 then byte_count = 5
+		elseif char_byte < 254 then byte_count = 6
+		end
+
+		local start = byte_start
+		byte_start = byte_start + byte_count
+
+		return start, byte_count, (byte_count > 2 and 2 or 1)
+	end
+end
+
+function wrap_text(text, line_width_requested)
+	local line_width = 0
+	local wrap_at_chars = {' ', '　', '-', '–'}
+	local remove_when_wrap = {' ', '　'}
+	local lines = {}
+	local line_start = 1
+	local before_end = nil
+	local before_width = 0
+	local before_line_start = 0
+	local before_removed_width = 0
+	local max_width = 0
+	for char_start, count, char_width in utf8_iter(text) do
+		local char_end = char_start + count - 1
+		local char = text.sub(text, char_start, char_end)
+		local can_wrap = false
+		for _, c in ipairs(wrap_at_chars) do
+			if char == c then
+				can_wrap = true
+				break
 			end
-
-			if byte_count ~= 1 then char_width = char_width * 2 end
-
-			text_width = text_width + char_width
-			byte_end = byte_start + byte_count - 1
+		end
+		line_width = line_width + char_width
+		if can_wrap or (char_end == #text) then
+			local remove = false
+			for _, c in ipairs(remove_when_wrap) do
+				if char == c then
+					remove = true
+					break
+				end
+			end
+			local line_width_after_remove = line_width - (remove and char_width or 0)
+			if line_width_after_remove < line_width_requested then
+				before_end = remove and char_start - 1 or char_end
+				before_width = line_width_after_remove
+				before_line_start = char_end + 1
+				before_removed_width = remove and char_width or 0
+			else
+				if (line_width_requested - before_width) <
+				   (line_width_after_remove - line_width_requested) then
+					lines[#lines+1] = text.sub(text, line_start, before_end)
+					line_start = before_line_start
+					line_width = line_width - before_width - before_removed_width
+					if before_width > max_width then max_width = before_width end
+				else
+					lines[#lines+1] = text.sub(text, line_start, remove and char_start - 1 or char_end)
+					line_start = char_end + 1
+					line_width = remove and line_width - char_width or line_width
+					if line_width > max_width then max_width = line_width end
+					line_width = 0
+				end
+				before_end = line_start
+				before_width = 0
+			end
 		end
 	end
+	if #text >= line_start then
+		lines[#lines+1] = string.sub(text, line_start)
+		if line_width > max_width then max_width = line_width end
+	end
+	return table.concat(lines, '\n'), max_width
+end
 
-	return text_width * options.font_height_to_letter_width_ratio
+-- Escape a string for verbatim display on the OSD
+function ass_escape(str)
+    -- There is no escape for '\' in ASS (I think?) but '\' is used verbatim if
+    -- it isn't followed by a recognised character, so add a zero-width
+    -- non-breaking space
+    str = str:gsub('\\', '\\\239\187\191')
+    str = str:gsub('{', '\\{')
+    str = str:gsub('}', '\\}')
+    -- Precede newlines with a ZWNBSP to prevent ASS's weird collapsing of
+    -- consecutive newlines
+    str = str:gsub('\n', '\239\187\191\\N')
+    -- Turn leading spaces into hard spaces to prevent ASS from stripping them
+    str = str:gsub('\\N ', '\\N\\h')
+    str = str:gsub('^ ', '\\h')
+    return str
 end
 
 function opacity_to_alpha(opacity)
@@ -1665,7 +1746,9 @@ function render_timeline(this)
 
 			if state.chapters ~= nil then
 				for i, chapter in ipairs(state.chapters) do
-					draw_chapter(chapter.time)
+					if not chapter._uosc_used_as_range_point then
+						draw_chapter(chapter.time)
+					end
 				end
 			end
 
@@ -1724,15 +1807,35 @@ function render_timeline(this)
 	end
 
 	if (this.proximity_raw == 0 or this.pressed) and not (elements.speed and elements.speed.dragging) then
-		-- Hovered time
+		-- Hovered time and chapter
 		local hovered_seconds = state.duration * (cursor.x / display.width)
-		local box_half_width_guesstimate = (this.font_size * 4.2) / 2
+		local chapter_title = ''
+		local chapter_title_width = 0
+		if (state.chapters and options.chapters ~= 'none') then
+			for i = #state.chapters, 1, -1 do
+				local chapter = state.chapters[i]
+				if hovered_seconds >= chapter.time then
+					chapter_title = chapter.title_wrapped
+					chapter_title_width = chapter.title_wrapped_width
+					break
+				end
+			end
+		end
+		local time_formatted = mp.format_time(hovered_seconds)
+		local margin_time = text_width_estimate(time_formatted, this.font_size) / 2
+		local margin_title = chapter_title_width * this.font_size * options.font_height_to_letter_width_ratio / 2
 		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'')
+		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'\\b1')
 		ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1)))
-		ass:pos(math.min(math.max(cursor.x, box_half_width_guesstimate), display.width - box_half_width_guesstimate), fay)
+		ass:pos(math.min(math.max(cursor.x, margin_title), display.width - margin_title), fay - this.font_size * 1.5)
 		ass:an(2)
-		ass:append(mp.format_time(hovered_seconds))
+		ass:append(chapter_title)
+		ass:new_event()
+		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag)
+		ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1)))
+		ass:pos(math.min(math.max(cursor.x, margin_time), display.width - margin_time), fay)
+		ass:an(2)
+		ass:append(time_formatted)
 
 		-- Cursor line
 		ass:new_event()
@@ -2881,10 +2984,12 @@ function parse_chapters()
 		chapter_range.serialize(chapters)
 	end
 
-	-- Filter out chapters that were used as ranges
-	state.chapters = itable_remove(chapters, function(chapter)
-		return chapter._uosc_used_as_range_point == true
-	end)
+	for _, chapter in ipairs(chapters) do
+		chapter.title_wrapped, chapter.title_wrapped_width = wrap_text(chapter.title, 25)
+		chapter.title_wrapped = ass_escape(chapter.title_wrapped)
+	end
+
+	state.chapters = chapters
 
 	request_render()
 end
