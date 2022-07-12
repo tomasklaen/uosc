@@ -3152,6 +3152,7 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	end
 	local cache_ranges = cache_state['seekable-ranges']
 	state.cached_ranges = #cache_ranges > 0 and cache_ranges or nil
+	request_render()
 end)
 
 -- CONTROLS
