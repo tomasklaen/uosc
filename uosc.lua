@@ -95,6 +95,8 @@ top_bar_title=yes
 window_border_size=1
 window_border_opacity=0.8
 
+# scale the interface by this factor
+ui_scale=1
 # pause video on clicks shorter than this number of milliseconds, 0 to disable
 pause_on_click_shorter_than=0
 # flash duration in milliseconds used by `flash-{element}` commands
@@ -279,6 +281,8 @@ local options = {
 
 	window_border_size = 1,
 	window_border_opacity = 0.8,
+
+	ui_scale=1,
 	pause_on_click_shorter_than = 0,
 	flash_duration = 1000,
 	proximity_in = 40,
@@ -1371,10 +1375,13 @@ end
 -- STATE UPDATES
 
 function update_display_dimensions()
-	local o = mp.get_property_native('osd-dimensions')
-	display.width = o.w
-	display.height = o.h
-	display.aspect = o.aspect
+	local dpi_scale = mp.get_property_native("display-hidpi-scale", 1.0)
+	dpi_scale = dpi_scale * options.ui_scale
+
+	local width, height, aspect = mp.get_osd_size()
+	display.width = width / dpi_scale
+	display.height = height / dpi_scale
+	display.aspect = aspect
 
 	-- Tell elements about this
 	elements:trigger('display_change')
@@ -2888,6 +2895,13 @@ function update_cursor_position()
 		cursor.x = infinity
 		cursor.y = infinity
 	end
+
+	local dpi_scale = mp.get_property_native("display-hidpi-scale", 1.0)
+	dpi_scale = dpi_scale * options.ui_scale
+
+	cursor.x = cursor.x / dpi_scale
+	cursor.y = cursor.y / dpi_scale
+
 	update_proximities()
 	request_render()
 end
@@ -3145,6 +3159,7 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 	update_display_dimensions()
 	request_render()
 end)
+mp.observe_property('display-hidpi-scale', 'native', update_display_dimensions)
 mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	if cache_state == nil then
 		state.cached_ranges = nil
