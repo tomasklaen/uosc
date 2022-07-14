@@ -329,7 +329,7 @@ local state = {
 	media_title = '',
 	duration = nil,
 	position = nil,
-	pause = false,
+	pause = mp.get_property_native('pause'),
 	chapters = nil,
 	chapter_ranges = nil,
 	border = mp.get_property_native('border'),
@@ -2236,22 +2236,15 @@ elements:add('window_border', Element.new({
 }))
 elements:add('pause_indicator', Element.new({
 	base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8,
-	paused = false,
+	paused = state.pause,
 	type = options.pause_indicator,
 	is_manual = options.pause_indicator == 'manual',
 	fadeout_requested = false,
 	opacity = 0,
 	init = function(this)
-		local initial_call = true
 		mp.observe_property('pause', 'bool', function(_, paused)
-			if initial_call then
-				initial_call = false
-				return
-			end
-
-			this.paused = paused
-
 			if options.pause_indicator == 'flash' then
+				if this.paused == paused then return end
 				this:flash()
 			elseif options.pause_indicator == 'static' then
 				this:decide()
