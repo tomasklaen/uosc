@@ -3372,12 +3372,12 @@ mp.add_key_binding(nil, 'chapters', function()
 	end
 
 	-- Select first chapter from the end with time lower
-	-- than current playing position (with 100ms leeway).
+	-- than current playing position.
 	function get_selected_chapter_index()
 		local position = mp.get_property_native('playback-time')
 		if not position then return nil end
 		for index = #items, 1, -1 do
-			if position - 0.1 > items[index].value then return index end
+			if position >= items[index].value then return index end
 		end
 	end
 
