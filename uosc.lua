@@ -2974,14 +2974,52 @@ end
 
 -- MENUS
 
-function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop)
+function create_self_updating_menu_opener(params)
 	return function()
-		if menu:is_open(track_type) then menu:close() return end
+		if menu:is_open(params.type) then menu:close() return end
 
+		-- Update active index and playlist content on playlist changes
+		local function handle_list_prop_change(name, value)
+			if menu:is_open(params.type) then
+				local items, active_item = params.list_change_handler(name, value)
+				elements.menu:update({
+					items = items,
+					active_item = active_item
+				})
+			end
+		end
+
+		local function handle_active_prop_change(name, value)
+			if menu:is_open(params.type) then
+				elements.menu:activate_index(params.active_change_handler(name, value))
+			end
+		end
+
+		-- Items and active_item are set in the handle_prop_change callback, since adding
+		-- a property observer triggers its handler immediately, we just let that initialize the items.
+		menu:open({}, params.selection_handler, {
+			type = params.type,
+			title = params.title,
+			on_open = function()
+				mp.observe_property(params.list_prop, 'native', handle_list_prop_change)
+				if params.active_prop then
+					mp.observe_property(params.active_prop, 'native', handle_active_prop_change)
+				end
+			end,
+			on_close = function()
+				mp.unobserve_property(handle_list_prop_change)
+				mp.unobserve_property(handle_active_prop_change)
+			end,
+		})
+	end
+end
+
+function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop)
+	local function tracklist_change_handler(_, tracklist)
 		local items = {}
 		local active_item = nil
 
-		for index, track in ipairs(mp.get_property_native('track-list')) do
+		for _, track in ipairs(tracklist) do
 			if track.type == track_type then
 				if track.selected then active_item = track.id end
 
@@ -3002,18 +3040,25 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 			active_item = active_item and active_item + 1 or 1
 			table.insert(items, 1, {hint = 'disabled', value = nil})
 		end
-
-		menu:open(items, function(id)
-			mp.commandv('set', track_prop, id and id or 'no')
-
-			-- If subtitle track was selected, assume user also wants to see it
-			if id and track_type == 'sub' then
-				mp.commandv('set', 'sub-visibility', 'yes')
-			end
-
-			menu:close()
-		end, {type = track_type, title = menu_title, active_item = active_item})
+		return items, active_item
 	end
+
+	local function selection_handler(id)
+		mp.commandv('set', track_prop, id and id or 'no')
+
+		-- If subtitle track was selected, assume user also wants to see it
+		if id and track_type == 'sub' then
+			mp.commandv('set', 'sub-visibility', 'yes')
+		end
+	end
+
+	return create_self_updating_menu_opener({
+		title = menu_title,
+		type = track_type,
+		list_prop = 'track-list',
+		list_change_handler = tracklist_change_handler,
+		selection_handler = selection_handler
+	})
 end
 
 -- `menu_options`:
@@ -3309,14 +3354,13 @@ end)
 mp.add_key_binding(nil, 'subtitles', create_select_tracklist_type_menu_opener('Subtitles', 'sub', 'sid'))
 mp.add_key_binding(nil, 'audio', create_select_tracklist_type_menu_opener('Audio', 'audio', 'aid'))
 mp.add_key_binding(nil, 'video', create_select_tracklist_type_menu_opener('Video', 'video', 'vid'))
-mp.add_key_binding(nil, 'playlist', function()
-	if menu:is_open('playlist') then menu:close() return end
-
-	function serialize_playlist()
-		local pos = mp.get_property_number('playlist-pos-1', 0)
+mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
+	title = 'Playlist',
+	type = 'playlist',
+	list_prop = 'playlist',
+	list_change_handler = function(_, playlist)
 		local items = {}
-		local active_item
-		for index, item in ipairs(mp.get_property_native('playlist')) do
+		for index, item in ipairs(playlist) do
 			local is_url = item.filename:find('://')
 			local item_title = type(item.title) == 'string' and #item.title > 0 and item.title or false
 			items[index] = {
@@ -3324,80 +3368,49 @@ mp.add_key_binding(nil, 'playlist', function()
 				hint = tostring(index),
 				value = index
 			}
-
-			if index == pos then active_item = index end
 		end
-		return items, active_item
-	end
-
-	-- Update active index and playlist content on playlist changes
-	function handle_playlist_change()
-		if menu:is_open('playlist') then
-			local items, active_item = serialize_playlist()
-			elements.menu:update({
-				items = items,
-				active_item = active_item
-			})
-		end
-	end
-
-	-- Items and active_item are set in the handle_playlist_change callback, since adding
-	-- a property observer triggers its handler immediately, we just let that initialize the items.
-	menu:open({}, function(index)
+		return items
+	end,
+	active_prop = 'playlist-pos-1',
+	active_change_handler = function(_, playlist_pos)
+		return playlist_pos
+	end,
+	selection_handler = function(index)
 		mp.commandv('set', 'playlist-pos-1', tostring(index))
-	end, {
-		type = 'playlist',
-		title = 'Playlist',
-		on_open = function()
-			mp.observe_property('playlist', 'native', handle_playlist_change)
-			mp.observe_property('playlist-pos-1', 'native', handle_playlist_change)
-		end,
-		on_close = function()
-			mp.unobserve_property(handle_playlist_change)
-		end,
-	})
-end)
-mp.add_key_binding(nil, 'chapters', function()
-	if menu:is_open('chapters') then menu:close() return end
-
-	local items = {}
-	local chapters = get_normalized_chapters()
-
-	for index, chapter in ipairs(chapters) do
-		items[#items + 1] = {
-			title = chapter.title or '',
-			hint = mp.format_time(chapter.time),
-			value = chapter.time
-		}
 	end
+}))
+mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
+	title = 'Chapters',
+	type = 'chapters',
+	list_prop = 'chapter-list',
+	list_change_handler = function(_, _)
+		local items = {}
+		local chapters = get_normalized_chapters()
 
-	-- Select first chapter from the end with time lower
-	-- than current playing position.
-	function get_selected_chapter_index()
-		local position = mp.get_property_native('playback-time')
+		for index, chapter in ipairs(chapters) do
+			items[#items + 1] = {
+				title = chapter.title or '',
+				hint = mp.format_time(chapter.time),
+				value = chapter.time
+			}
+		end
+		return items
+	end,
+	active_prop = 'playback-time',
+	active_change_handler = function(_, playback_time)
+		-- Select first chapter from the end with time lower
+		-- than current playing position.
+		local position = playback_time
 		if not position then return nil end
+		local items = elements.menu.items
 		for index = #items, 1, -1 do
 			if position >= items[index].value then return index end
 		end
-	end
-
-	-- Update selected chapter in chapter navigation menu
-	function seek_handler()
-		if menu:is_open('chapters') then
-			elements.menu:activate_index(get_selected_chapter_index())
-		end
-	end
-
-	menu:open(items, function(time)
+	end,
+	selection_handler = function(time)
 		mp.commandv('seek', tostring(time), 'absolute')
-	end, {
-		type = 'chapters',
-		title = 'Chapters',
-		active_item = get_selected_chapter_index(),
-		on_open = function() mp.register_event('seek', seek_handler) end,
-		on_close = function() mp.unregister_event(seek_handler) end
-	})
-end)
+	end
+}))
 mp.add_key_binding(nil, 'show-in-directory', function()
 	local path = mp.get_property_native('path')
 
