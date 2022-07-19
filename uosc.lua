@@ -903,8 +903,8 @@ function Menu:open(items, open_item, opts)
 			-- Set initial dimensions
 			this:on_display_change()
 
-			-- Scroll to active item
-			this:scroll_to_item(this.active_item)
+			-- Scroll to selected item
+			this:scroll_to_item(this.selected_item)
 
 			-- Transition in animation
 			menu.transition = {to = 'child', target = this}
@@ -968,13 +968,13 @@ function Menu:open(items, open_item, opts)
 				for key, value in pairs(props) do this[key] = value end
 			end
 
+			-- Trigger changes and re-render
+			this:on_display_change()
+
 			-- Reset indexes and scroll
 			this:select_index(this.selected_item)
 			this:activate_index(this.active_item)
 			this:scroll_to(this.scroll_y)
-
-			-- Trigger changes and re-render
-			this:on_display_change()
 			request_render()
 		end,
 		set_offset_x = function(this, offset)
@@ -1030,6 +1030,10 @@ function Menu:open(items, open_item, opts)
 		end,
 		activate_index = function(this, index)
 			this.active_item = (index and index >= 1 and index <= #this.items) and index or nil
+			if not this.selected_item then
+				this.selected_item = this.active_item
+				this:scroll_to_item(this.selected_item)
+			end
 			request_render()
 		end,
 		activate_value = function(this, value)
