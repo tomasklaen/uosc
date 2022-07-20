@@ -2837,9 +2837,9 @@ state.context_menu_items = (function()
 	local submenus_by_id = {}
 
 	for line in io.lines(input_conf_path) do
-		local key, command, title = string.match(line, '%s*([%S]+)%s+(.*)%s#!%s*(.-)%s*$')
+		local key, command, title = string.match(line, '%s*([%S]+)%s+(.-)%s+#!%s*(.-)%s*$')
 		if not key then
-			key, command, title = string.match(line, '%s*([%S]+)%s+(.*)%s#menu:%s*(.-)%s*$')
+			key, command, title = string.match(line, '%s*([%S]+)%s+(.-)%s+#menu:%s*(.-)%s*$')
 		end
 		if key then
 			local is_dummy = key:sub(1, 1) == '#'
@@ -2859,6 +2859,7 @@ state.context_menu_items = (function()
 
 					target_menu = submenus_by_id[submenu_id]
 				else
+					if command == 'ignore' then break end
 					-- If command is already in menu, just append the key to it
 					if target_menu.items_by_command[command] then
 						local hint = target_menu.items_by_command[command].hint

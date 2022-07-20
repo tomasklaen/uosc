@@ -253,6 +253,9 @@ If multiple menu items with the same command are defined, **uosc** will concaten
 
 Menu items are displayed in the order they are defined in `input.conf` file.
 
+The command `ignore` does not result in a menu item, however all the folders leading up to it will still be created.
+This allows more flexible structuring of the `input.conf` file.
+
 #### Examples
 
 Adds a menu item to load subtitles:
@@ -272,6 +275,12 @@ Define and display multiple shortcuts in single items' menu hint (items with sam
 ```
 esc  quit  #! Quit
 q    quit  #!
+```
+
+Define a folder without defining any of its contents:
+
+```
+#  ignore  #! Folder title >
 ```
 
 Suggested minimal context menu setup to start with:
