@@ -2985,9 +2985,27 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 			if track.type == track_type then
 				if track.selected then active_item = track.id end
 
+				local hint_vals = {
+					track.lang and track.lang:upper() or nil,
+					track['demux-h'] and (track['demux-w'] and track['demux-w'] .. 'x' .. track['demux-h']
+					                      or track['demux-h'] .. 'p'),
+					track['demux-fps'] and string.format('%.5gfps', track['demux-fps']) or nil,
+					track.codec,
+					track['audio-channels'] and track['audio-channels'] .. ' channels' or nil,
+					track['demux-samplerate'] and string.format('%.3gkHz', track['demux-samplerate']/1000) or nil,
+					track.forced and 'forced' or nil,
+					track.default and 'default' or nil,
+				}
+				local hint_vals_filtered = {}
+				for i = 1, #hint_vals do
+					if hint_vals[i] then
+						hint_vals_filtered[#hint_vals_filtered+1] = hint_vals[i]
+					end
+				end
+
 				items[#items + 1] = {
 					title = (track.title and track.title or 'Track '..track.id),
-					hint = track.lang and track.lang:upper() or nil,
+					hint = table.concat(hint_vals_filtered, ', '),
 					value = track.id
 				}
 			end
