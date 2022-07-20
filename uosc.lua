@@ -3908,6 +3908,65 @@ mp.add_key_binding(nil, 'stream-quality', function()
 		active_index = active_index,
 	})
 end)
+
+function create_stream_quality_menu(menu_title, format_type)
+	return function()
+		local menu_type = format_type .. '_formats'
+		if menu:is_open(menu_type) then menu:close() return end
+
+		local path = ''
+
+		local function options_callback(url, foptions, format_id)
+			if url == path and menu:is_open(menu_type) then
+				foptions = utils.parse_json(foptions)
+				local items = {}
+				local active_index = nil
+				for i, option in ipairs(foptions) do
+					items[i] = {
+						title = option.label,
+						value = {format_id = option.format, url = url},
+					}
+					if option.format == format_id then active_index = i end
+				end
+				elements.menu:update({
+					items = items,
+					active_index = active_index
+				})
+			end
+		end
+
+		local function selection_handler(format_value)
+			mp.commandv('script-message-to', 'quality_menu', format_type .. '_format_set',
+			            format_value.url, format_value.format_id)
+		end
+
+		local function path_change_handler(_, url)
+			elements.menu:update({items = {}, active_index = nil})
+			path = url
+			mp.commandv('script-message-to', 'quality_menu', format_type .. '_formats_get', url, mp.get_script_name())
+		end
+
+		-- Items and active_index are set in the handle_prop_change callback, since adding
+		-- a property observer triggers its handler immediately, we just let that initialize the items.
+		menu:open({}, selection_handler, {
+			type=menu_type,
+			title=menu_title,
+			on_open = function()
+				mp.register_script_message(format_type .. '_formats', options_callback)
+				mp.observe_property('path', 'native', path_change_handler)
+			end,
+			on_close = function()
+				mp.unregister_script_message(format_type .. '_formats')
+				mp.unobserve_property(path_change_handler)
+			end
+		})
+	end
+end
+
+mp.add_key_binding(nil, 'quality-menu-video', create_stream_quality_menu('Video Formats', 'video'))
+mp.add_key_binding(nil, 'quality-menu-audio', create_stream_quality_menu('Audio Formats', 'audio'))
+mp.commandv('script-message-to', 'quality_menu', 'register_ui',
+            mp.get_script_name(), 'quality-menu-video', 'quality-menu-audio')
 mp.add_key_binding(nil, 'open-file', function()
 	if menu:is_open('open-file') then menu:close() return end
 
