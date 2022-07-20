@@ -2823,9 +2823,9 @@ state.context_menu_items = (function()
 	local submenus_by_id = {}
 
 	for line in io.lines(input_conf_path) do
-		local key, command, title = string.match(line, '%s*([%S]+)%s+(.*)%s#!%s*(.*)')
+		local key, command, title = string.match(line, '%s*([%S]+)%s+(.*)%s#!%s*(.-)%s*$')
 		if not key then
-			key, command, title = string.match(line, '%s*([%S]+)%s+(.*)%s#menu:%s*(.*)')
+			key, command, title = string.match(line, '%s*([%S]+)%s+(.*)%s#menu:%s*(.-)%s*$')
 		end
 		if key then
 			local is_dummy = key:sub(1, 1) == '#'
