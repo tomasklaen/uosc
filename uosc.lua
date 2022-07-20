@@ -2653,9 +2653,6 @@ if options.speed then
 			end
 		end,
 		on_global_mbtn_left_up = function(this)
-			if this.dragging and elements.timeline.proximity_raw == 0 then
-				this:fadeout()
-			end
 			this.dragging = nil
 			request_render()
 		end,
