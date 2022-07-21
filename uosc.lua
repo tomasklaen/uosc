@@ -879,6 +879,7 @@ function Menu:open(items, open_item, opts)
 		item_spacing = 1,
 		item_content_spacing = nil,
 		font_size = nil,
+		font_size_hint = nil,
 		scroll_step = nil,
 		scroll_height = nil,
 		scroll_y = 0,
@@ -925,15 +926,17 @@ function Menu:open(items, open_item, opts)
 		on_display_change = function(this)
 			this.item_height = state.fullormaxed and options.menu_item_height_fullscreen or options.menu_item_height
 			this.font_size = round(this.item_height * 0.48 * options.menu_font_scale)
+			this.font_size_hint = this.font_size - 1
 			this.item_content_spacing = round((this.item_height - this.font_size) * 0.6)
 			this.scroll_step = this.item_height + this.item_spacing
 
 			-- Estimate width of a widest item
 			local estimated_max_width = 0
 			for _, item in ipairs(this.items) do
-				local item_text_length = ((item.title and item.title:len() or 0) + (item.hint and item.hint:len() or 0))
 				local spacings_in_item = item.hint and 3 or 2
-				local estimated_width = text_width_estimate(item_text_length, this.font_size) + (this.item_content_spacing * spacings_in_item)
+				local estimated_width = (item.title and text_width_estimate(item.title:len(), this.font_size) or 0)
+				                        + (item.hint and text_width_estimate(item.hint:len(), this.font_size_hint) or 0)
+				                        + (this.item_content_spacing * spacings_in_item)
 				if estimated_width > estimated_max_width then
 					estimated_max_width = estimated_width
 				end
@@ -2083,9 +2086,9 @@ function render_menu(this)
 		local has_submenu = item.items ~= nil
 		local hint_width = 0
 		if item.hint then
-			hint_width = text_width_estimate(item.hint:len(), this.font_size) + this.item_content_spacing
+			hint_width = text_width_estimate(item.hint:len(), this.font_size_hint)
 		elseif has_submenu then
-			hint_width = icon_size + this.item_content_spacing
+			hint_width = icon_size
 		end
 
 		-- Background
@@ -2125,7 +2128,7 @@ function render_menu(this)
 		if item.hint then
 			item.ass_save_hint = item.ass_save_hint or item.hint:gsub("([{}])","\\%1")
 			ass:new_event()
-			ass:append('{\\blur0\\bord0'..ass_shadow..'\\1c&H'..font_color..''..ass_shadow_color..'\\fn'..config.font..'\\fs'..(this.font_size - 1)..bold_tag..item_clip..'}')
+			ass:append('{\\blur0\\bord0'..ass_shadow..'\\1c&H'..font_color..''..ass_shadow_color..'\\fn'..config.font..'\\fs'..this.font_size_hint..bold_tag..item_clip..'}')
 			ass:append(ass_opacity(options.menu_opacity * (has_submenu and 1 or 0.5), this.opacity))
 			ass:pos(this.bx - this.item_content_spacing, item_ay + (this.item_height / 2))
 			ass:an(6)
