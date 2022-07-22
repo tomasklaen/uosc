@@ -3146,9 +3146,12 @@ mp.observe_property('playback-time', 'number', function(name, val)
 	state.position = val
 	state.elapsed_seconds = val
 	state.elapsed_time = state.elapsed_seconds and mp.format_time(state.elapsed_seconds) or nil
+
+	request_render()
+end)
+mp.observe_property('playtime-remaining', 'number', function(name, val)
 	state.remaining_seconds = mp.get_property_native('playtime-remaining')
 	state.remaining_time = state.remaining_seconds and mp.format_time(state.remaining_seconds) or nil
-
 	request_render()
 end)
 mp.observe_property('osd-dimensions', 'native', function(name, val)
