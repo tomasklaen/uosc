@@ -1075,7 +1075,7 @@ function Menu:open(items, open_item, opts)
 					elements:add('menu', transition_target)
 				end
 				menu.transition = nil
-				transition_target:back()
+				if transition_target then transition_target:back() end
 				return
 			else
 				menu.transition = {to = 'parent', target = this.parent_menu}
@@ -1107,7 +1107,7 @@ function Menu:open(items, open_item, opts)
 				local target = menu.transition.target
 				tween_element_stop(target)
 				menu.transition = nil
-				target:open_selected_item(soft)
+				if target then target:open_selected_item(soft) end
 				return
 			end
 
