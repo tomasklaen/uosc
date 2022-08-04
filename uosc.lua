@@ -2640,7 +2640,7 @@ if options.speed then
 			this.dragging.distance = cursor.x - this.dragging.start_x
 			local steps_dragged = round(-this.dragging.distance / this.step_distance)
 			local new_speed = this.dragging.start_speed + (steps_dragged * options.speed_step)
-			mp.set_property_native('speed', round(new_speed * 100) / 100)
+			mp.set_property_native('speed', new_speed)
 		end,
 		on_mbtn_left_up = function(this)
 			-- Reset speed on short clicks
