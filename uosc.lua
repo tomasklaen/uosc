@@ -63,6 +63,7 @@ speed_size_fullscreen=68
 speed_persistency=
 speed_opacity=1
 speed_step=0.1
+speed_step_is_factor=no
 speed_font_scale=1
 
 # controls all menus, such as context menu, subtitle loader/selector, etc
@@ -254,6 +255,7 @@ local options = {
 	speed_persistency = '',
 	speed_opacity = 1,
 	speed_step = 0.1,
+	speed_step_is_factor = false,
 	speed_font_scale = 1,
 
 	menu_item_height = 36,
@@ -1943,7 +1945,7 @@ function render_speed(this)
 	-- Notches
 	local speed_at_center = state.speed
 	if this.dragging then
-		speed_at_center = this.dragging.start_speed + ((-this.dragging.distance / this.step_distance) * options.speed_step)
+		speed_at_center = this.dragging.start_speed + this.dragging.speed_distance
 		speed_at_center = math.min(math.max(speed_at_center, 0.01), 100)
 	end
 	local nearest_notch_speed = round(speed_at_center / this.notch_every) * this.notch_every
@@ -2591,13 +2593,27 @@ if itable_find({'center', 'bottom-bar'}, options.menu_button) then
 	}))
 end
 if options.speed then
+	local function speed_step(speed, up)
+		if options.speed_step_is_factor then
+			if up then
+				return speed * options.speed_step
+			else
+				return speed * 1/options.speed_step
+			end
+		else
+			if up then
+				return speed + options.speed_step
+			else
+				return speed - options.speed_step
+			end
+		end
+	end
 	elements:add('speed', Element.new({
 		dragging = nil,
 		width = 0,
 		height = 0,
 		notches = 10,
 		notch_every = 0.1,
-		step_distance = nil,
 		font_size = nil,
 		get_effective_proximity = function(this)
 			if elements.timeline.proximity_raw == 0 then return 0 end
@@ -2610,7 +2626,6 @@ if options.speed then
 			this.height = state.fullormaxed and options.speed_size_fullscreen or options.speed_size
 			this.width = round(this.height * 3.6)
 			this.notch_spacing = this.width / this.notches
-			this.step_distance = this.notch_spacing * (options.speed_step / this.notch_every)
 			this.ax = (display.width - this.width) / 2
 			this.by = display.height - elements.window_border.size - elements.timeline.size_max - elements.timeline.top_border
 			this.ay = this.by - this.height
@@ -2631,6 +2646,7 @@ if options.speed then
 				start_time = mp.get_time(),
 				start_x = cursor.x,
 				distance = 0,
+				speed_distance = 0,
 				start_speed = state.speed
 			}
 		end,
@@ -2638,9 +2654,30 @@ if options.speed then
 			if not this.dragging then return end
 
 			this.dragging.distance = cursor.x - this.dragging.start_x
-			local steps_dragged = round(-this.dragging.distance / this.step_distance)
-			local new_speed = this.dragging.start_speed + (steps_dragged * options.speed_step)
-			mp.set_property_native('speed', new_speed)
+			this.dragging.speed_distance = (-this.dragging.distance / this.notch_spacing * this.notch_every)
+
+			local speed_current = state.speed
+			local speed_drag_current = this.dragging.start_speed + this.dragging.speed_distance
+			speed_drag_current = math.min(math.max(speed_drag_current, 0.01), 100)
+			local drag_dir_up = speed_drag_current > speed_current
+
+			local speed_step_next = speed_current
+			local speed_drag_diff = math.abs(speed_drag_current - speed_current)
+			while math.abs(speed_step_next - speed_current) < speed_drag_diff do
+				speed_step_next = speed_step(speed_step_next, drag_dir_up)
+			end
+			local speed_step_prev = speed_step(speed_step_next, not drag_dir_up)
+
+			local speed_new = speed_step_prev
+			local speed_next_diff = math.abs(speed_drag_current - speed_step_next)
+			local speed_prev_diff = math.abs(speed_drag_current - speed_step_prev)
+			if speed_next_diff < speed_prev_diff then
+				speed_new = speed_step_next
+			end
+
+			if speed_new ~= speed_current then
+				mp.set_property_native('speed', speed_new)
+			end
 		end,
 		on_mbtn_left_up = function(this)
 			-- Reset speed on short clicks
@@ -2660,10 +2697,10 @@ if options.speed then
 			request_render()
 		end,
 		on_wheel_up = function(this)
-			mp.set_property_native('speed', state.speed - options.speed_step)
+			mp.set_property_native('speed', speed_step(state.speed, false))
 		end,
 		on_wheel_down = function(this)
-			mp.set_property_native('speed', state.speed + options.speed_step)
+			mp.set_property_native('speed', speed_step(state.speed, true))
 		end,
 		render = render_speed,
 	}))
