@@ -32,11 +32,11 @@ Most notable features:
 #### Latest version (recommended)
 
 -   [`uosc.lua`](https://github.com/darsain/uosc/releases/latest/download/uosc.lua) - script file
--   [`uosc.conf`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.lua) - configuration file with default values (optional)
+-   [`uosc.conf`](https://github.com/darsain/uosc/releases/latest/download/uosc.conf) - configuration file with default values (optional)
 
 #### Development (unstable, might be broken)
 
--   [`uosc.lua`](https://github.com/darsain/uosc/releases/latest/download/uosc.conf)
+-   [`uosc.lua`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.lua)
 -   [`uosc.conf`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.conf)
 
 ## Installation
