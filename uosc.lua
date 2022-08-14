@@ -348,6 +348,9 @@ local state = {
 	volume_max = nil,
 	mute = nil,
 	is_audio = nil, -- true if file is audio only (mp3, etc)
+	is_image = nil,
+	has_audio = nil,
+	has_video = nil,
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		if not options.autohide then return end
 		handle_mouse_leave()
@@ -1814,7 +1817,7 @@ function render_volume(this)
 	local slider = elements.volume_slider
 	local opacity = this:get_effective_proximity()
 
-	if this.width == 0 or opacity == 0 then return end
+	if this.width == 0 or opacity == 0 or not state.has_audio then return end
 
 	local ass = assdraw.ass_new()
 
@@ -3143,11 +3146,20 @@ mp.observe_property('track-list', 'native', function(name, value)
 	-- checks if the file is audio only (mp3, etc)
 	local has_audio = false
 	local has_video = false
+	local is_image = false
 	for _, track in ipairs(value) do
 		if track.type == 'audio' then has_audio = true end
-		if track.type == 'video' and not track.albumart then has_video = true end
+		if track.type == 'video' then
+			is_image = track.image
+			if not is_image and not track.albumart then
+				has_video = true
+			end
+		end
 	end
 	state.is_audio = not has_video and has_audio
+	state.is_image = is_image
+	state.has_audio = has_audio
+	state.has_video = has_video
 end)
 mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('border', 'bool', create_state_setter('border'))
