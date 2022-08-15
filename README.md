@@ -27,189 +27,42 @@ Most notable features:
 
 [Changelog](./CHANGELOG.md).
 
+## Download
+
+#### Latest version (recommended)
+
+-   [`uosc.lua`](https://github.com/darsain/uosc/releases/latest/download/uosc.lua) - script file
+-   [`uosc.conf`](https://github.com/darsain/uosc/releases/latest/download/uosc.conf) - configuration file with default values (optional)
+
+#### Development (unstable, might be broken)
+
+-   [`uosc.lua`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.lua)
+-   [`uosc.conf`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.conf)
+
 ## Installation
 
-**uosc** is a replacement for the built in osc, so that has to be disabled first.
+1. **uosc** is a replacement for the built in osc, so that has to be disabled first.
 
-_List of all the possible places the configuration files & folders below can be located at is documented here: https://mpv.io/manual/master/#files_
+    In your `mpv.conf` (_List of all the possible places where configuration files can be located in is documented here: https://mpv.io/manual/master/#files_):
 
-In your `mpv.conf`:
+    ```config
+    # required so that the 2 UIs don't fight each other
+    osc=no
+    # uosc provides its own seeking/volume indicators, so you also don't need this
+    osd-bar=no
+    # uosc will draw its own window controls if you disable window border
+    border=no
+    ```
 
-```config
-# required so that the 2 UIs don't fight each other
-osc=no
-# uosc provides its own seeking/volume indicators, so you also don't need this
-osd-bar=no
-# uosc will draw its own window controls if you disable window border
-border=no
-```
+2. Save `uosc.lua` into `scripts/` folder.
 
-Download and save [`uosc.lua`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.lua) into `scripts/` folder.
-
-To configure **uosc**, create a `script-opts/uosc.conf` file, or download [`uosc.conf`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.conf) from this repository, and save into `script-opts/` folder.
+3. To configure **uosc** to your likings, create a `script-opts/uosc.conf` file, or download `uosc.conf` with all default values from one of the links above, and save into `script-opts/` folder.
 
 ## Options
 
-All available options with their default values:
+All of the available **uosc** options with their default values are in the provided `uosc.conf`. Follow one of the download links to the version of this file that matches your `uosc.lua`, or just peak the [latest development version](https://github.com/darsain/uosc/blob/master/uosc.conf) for a quick reference, but this might have options that are different or not available in stable release.
 
-````conf
-# timeline size when fully retracted, 0 will hide it completely
-timeline_size_min=2
-# timeline size when fully expanded, in pixels, 0 to disable
-timeline_size_max=40
-# same as ^ but when in fullscreen
-timeline_size_min_fullscreen=0
-timeline_size_max_fullscreen=60
-# same thing as calling toggle-progress command once on startup
-timeline_start_hidden=no
-# comma separated states when timeline should always be visible. available: paused, audio
-timeline_persistency=
-# timeline opacity
-timeline_opacity=0.8
-# top border of background color to help visually separate timeline from video
-timeline_border=1
-# when scrolling above timeline, wheel will seek by this amount of seconds
-timeline_step=5
-# display seekable buffered ranges for streaming videos, syntax `color:opacity`,
-# color is an BBGGRR hex code, set to `none` to disable
-timeline_cached_ranges=345433:0.5
-# floating number font scale adjustment
-timeline_font_scale=1
-
-# timeline chapters style: none, dots, lines, lines-top, lines-bottom
-chapters=dots
-chapters_opacity=0.3
-
-# where to display volume controls: none, left, right
-volume=right
-volume_size=40
-volume_size_fullscreen=60
-volume_persistency=
-volume_opacity=0.8
-volume_border=1
-volume_step=1
-volume_font_scale=1
-
-# playback speed widget: mouse drag or wheel to change, click to reset
-speed=no
-speed_size=46
-speed_size_fullscreen=68
-speed_persistency=
-speed_opacity=1
-speed_step=0.1
-speed_font_scale=1
-
-# controls all menus, such as context menu, subtitle loader/selector, etc
-menu_item_height=36
-menu_item_height_fullscreen=50
-menu_wasd_navigation=no
-menu_hjkl_navigation=no
-menu_opacity=0.8
-menu_font_scale=1
-
-# menu button widget
-# can be: never, bottom-bar, center
-menu_button=never
-menu_button_size=26
-menu_button_size_fullscreen=30
-menu_button_persistency=
-menu_button_opacity=1
-menu_button_border=1
-
-# top bar with window controls and media title
-# can be: never, no-border, always
-top_bar=no-border
-top_bar_size=40
-top_bar_size_fullscreen=46
-top_bar_persistency=
-top_bar_controls=yes
-top_bar_title=yes
-
-# window border drawn in no-border mode
-window_border_size=1
-window_border_opacity=0.8
-
-# pause video on clicks shorter than this number of milliseconds, 0 to disable
-pause_on_click_shorter_than=0
-# flash duration in milliseconds used by `flash-{element}` commands
-flash_duration=1000
-# distances in pixels below which elements are fully faded in/out
-proximity_in=40
-proximity_out=120
-# BBGGRR - BLUE GREEN RED hex color codes
-color_foreground=ffffff
-color_foreground_text=000000
-color_background=000000
-color_background_text=ffffff
-# use bold font weight throughout the whole UI
-font_bold=no
-# show total time instead of time remaining
-total_time=no
-# hide UI when mpv autohides the cursor
-autohide=no
-# can be: none, flash, static, manual (controlled by flash-pause-indicator and decide-pause-indicator commands)
-pause_indicator=flash
-# screen dim when stuff like menu is open, 0 to disable
-curtain_opacity=0.5
-# sizes to list in stream quality menu
-stream_quality_options=4320,2160,1440,1080,720,480,360,240,144
-# load first file when calling next on a last file in a directory and vice versa
-directory_navigation_loops=no
-# file types to look for when navigating media files
-media_types=3gp,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv
-# file types to look for when loading external subtitles
-subtitle_types=aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt
-# used to approximate text width
-# if you are using some wide font and see a lot of right side clipping in menus,
-# try bumping this up
-font_height_to_letter_width_ratio=0.5
-# default open-file menu directory
-default_directory=~/
-
-# `chapter_ranges` lets you transform chapter indicators into range indicators.
-#
-# Chapter range definition syntax:
-# ```
-# start_pattern<color:opacity>end_pattern
-# ```
-#
-# Multiple start and end patterns can be defined by separating them with `|`:
-# ```
-# p1|pN<color:opacity>p1|pN
-# ```
-#
-# Multiple chapter ranges can be defined by separating them with comma:
-#
-# chapter_ranges=range1,rangeN
-#
-# One of `start_pattern`s can be a custom keyword `{bof}` that will match
-# beginning of file when it makes sense.
-#
-# One of `end_pattern`s can be a custom keyword `{eof}` that will match end of
-# file when it makes sense.
-#
-# Patterns are lua patterns (http://lua-users.org/wiki/PatternsTutorial).
-# They only need to occur in a title, not match it completely.
-# Matching is case insensitive.
-#
-# `color` is a `bbggrr` hexadecimal color code.
-# `opacity` is a float number from 0 to 1.
-#
-# Examples:
-#
-# Display anime openings and endings as ranges:
-# ```
-# chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}
-# ```
-#
-# Display skippable youtube video sponsor blocks from https://github.com/po5/mpv_sponsorblock
-# ```
-# chapter_ranges=sponsor start<3535a5:.5>sponsor end, segment start<3535a5:0.5>segment end
-# ```
-chapter_ranges=^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end, segment start<3535a5:0.5>segment end
-````
-
-**uosc** respects `osd-font` option, so to change the font you want it to use, you have to change `osd-font` in `mpv.conf`.
+To change the font, **uosc** respects the mpv `osd-font` configuration. To change it, you have to declare `osd-font` in your `mpv.conf`.
 
 ## Keybindings
 
@@ -400,6 +253,9 @@ If multiple menu items with the same command are defined, **uosc** will concaten
 
 Menu items are displayed in the order they are defined in `input.conf` file.
 
+The command `ignore` does not result in a menu item, however all the folders leading up to it will still be created.
+This allows more flexible structuring of the `input.conf` file.
+
 #### Examples
 
 Adds a menu item to load subtitles:
@@ -419,6 +275,12 @@ Define and display multiple shortcuts in single items' menu hint (items with sam
 ```
 esc  quit  #! Quit
 q    quit  #!
+```
+
+Define a folder without defining any of its contents:
+
+```
+#  ignore  #! Folder title >
 ```
 
 Suggested minimal context menu setup to start with:
