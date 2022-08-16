@@ -2739,10 +2739,10 @@ if options.speed then
 			request_render()
 		end,
 		on_wheel_up = function(this)
-			mp.set_property_native('speed', speed_step(state.speed, false))
+			mp.set_property_native('speed', speed_step(state.speed, true))
 		end,
 		on_wheel_down = function(this)
-			mp.set_property_native('speed', speed_step(state.speed, true))
+			mp.set_property_native('speed', speed_step(state.speed, false))
 		end,
 		render = render_speed,
 	}))
