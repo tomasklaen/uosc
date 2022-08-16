@@ -1056,8 +1056,12 @@ function Menu:open(items, open_item, opts)
 			local estimated_max_width = 0
 			for _, item in ipairs(this.items) do
 				local spacings_in_item = item.hint and 3 or 2
+				local has_submenu = item.items ~= nil
+				-- M as a stand in for icon
+				local hint_icon = item.hint or (has_submenu and 'M' or nil)
+				local hint_icon_size = item.hint and this.font_size_hint or this.font_size
 				local estimated_width = text_width_estimate(item.title, this.font_size)
-				                        + text_width_estimate(item.hint, this.font_size_hint)
+				                        + text_width_estimate(hint_icon, hint_icon_size)
 				                        + (this.item_content_spacing * spacings_in_item)
 				if estimated_width > estimated_max_width then
 					estimated_max_width = estimated_width
