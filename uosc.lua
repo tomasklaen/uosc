@@ -2005,30 +2005,28 @@ function render_speed(this)
 	for i = -from_to_index, from_to_index do
 		local notch_speed = nearest_notch_speed + (i * this.notch_every)
 
-		if notch_speed < 0 or notch_speed > 100 then goto continue end
+		if notch_speed >= 0 and notch_speed <= 100 then
+			local notch_x = nearest_notch_x + (i * this.notch_spacing)
+			local notch_thickness = 1
+			local notch_ay = notch_ay_small
+			if (notch_speed % (this.notch_every * 10)) < 0.00000001 then
+				notch_ay = notch_ay_big
+				notch_thickness = 1
+			elseif (notch_speed % (this.notch_every * 5)) < 0.00000001 then
+				notch_ay = notch_ay_medium
+			end
 
-		local notch_x = nearest_notch_x + (i * this.notch_spacing)
-		local notch_thickness = 1
-		local notch_ay = notch_ay_small
-		if (notch_speed % (this.notch_every * 10)) < 0.00000001 then
-			notch_ay = notch_ay_big
-			notch_thickness = 1
-		elseif (notch_speed % (this.notch_every * 5)) < 0.00000001 then
-			notch_ay = notch_ay_medium
+			ass:new_event()
+			ass:append('{\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000}')
+			ass:append(ass_opacity(math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1), opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			ass:move_to(notch_x - notch_thickness, notch_ay)
+			ass:line_to(notch_x + notch_thickness, notch_ay)
+			ass:line_to(notch_x + notch_thickness, notch_by)
+			ass:line_to(notch_x - notch_thickness, notch_by)
+			ass:draw_stop()
 		end
-
-		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000}')
-		ass:append(ass_opacity(math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1), opacity))
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:move_to(notch_x - notch_thickness, notch_ay)
-		ass:line_to(notch_x + notch_thickness, notch_ay)
-		ass:line_to(notch_x + notch_thickness, notch_by)
-		ass:line_to(notch_x - notch_thickness, notch_by)
-		ass:draw_stop()
-
-		::continue::
 	end
 
 	-- Center guide
@@ -2108,89 +2106,87 @@ function render_menu(this)
 		local item_by = item_ay + this.item_height
 		local item_clip = ''
 
-		-- Clip items overflowing scroll area
-		if item_ay <= this.ay or item_by >= this.by then
-			item_clip = scroll_area_clip
-		end
+		if item_by >= this.ay and item_ay <= this.by then
+			-- Clip items overflowing scroll area
+			if item_ay <= this.ay or item_by >= this.by then
+				item_clip = scroll_area_clip
+			end
 
-		if item_by < this.ay or item_ay > this.by then goto continue end
+			local is_active = this.active_item == index
+			local font_color, background_color, ass_shadow, ass_shadow_color
+			local icon_size = this.font_size
 
-		local is_active = this.active_item == index
-		local font_color, background_color, ass_shadow, ass_shadow_color
-		local icon_size = this.font_size
+			if is_active then
+				font_color, background_color = options.color_foreground_text, options.color_foreground
+				ass_shadow, ass_shadow_color = '\\shad0', ''
+			else
+				font_color, background_color = options.color_background_text, options.color_background
+				ass_shadow, ass_shadow_color = '\\shad1', '\\4c&H'..background_color
+			end
 
-		if is_active then
-			font_color, background_color = options.color_foreground_text, options.color_foreground
-			ass_shadow, ass_shadow_color = '\\shad0', ''
-		else
-			font_color, background_color = options.color_background_text, options.color_background
-			ass_shadow, ass_shadow_color = '\\shad1', '\\4c&H'..background_color
-		end
+			local has_submenu = item.items ~= nil
+			local hint_width = 0
+			if item.hint then
+				hint_width = text_width_estimate(item.hint, this.font_size_hint)
+			elseif has_submenu then
+				hint_width = icon_size
+			end
 
-		local has_submenu = item.items ~= nil
-		local hint_width = 0
-		if item.hint then
-			hint_width = text_width_estimate(item.hint, this.font_size_hint)
-		elseif has_submenu then
-			hint_width = icon_size
-		end
-
-		-- Background
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H'..background_color..item_clip..'}')
-		ass:append(ass_opacity(options.menu_opacity, this.opacity))
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(this.ax, item_ay, this.bx, item_by)
-		ass:draw_stop()
-
-		-- Selected highlight
-		if this.selected_item == index then
+			-- Background
 			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..item_clip..'}')
-			ass:append(ass_opacity(0.1, this.opacity))
+			ass:append('{\\blur0\\bord0\\1c&H'..background_color..item_clip..'}')
+			ass:append(ass_opacity(options.menu_opacity, this.opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
 			ass:rect_cw(this.ax, item_ay, this.bx, item_by)
 			ass:draw_stop()
-		end
 
-		-- Title
-		if item.title then
-			item.ass_save_title = item.ass_save_title or item.title:gsub("([{}])","\\%1")
-			local title_clip_x = (this.bx - hint_width - this.item_content_spacing)
-			local title_clip = '\\clip('..this.ax..','..math.max(item_ay, this.ay)..','..title_clip_x..','..math.min(item_by, this.by)..')'
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..font_color..'\\4c&H'..background_color..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..title_clip..'\\q2}')
-			ass:append(ass_opacity(options.menu_opacity, this.opacity))
-			ass:pos(this.ax + this.item_content_spacing, item_ay + (this.item_height / 2))
-			ass:an(4)
-			ass:append(item.ass_save_title)
-		end
+			-- Selected highlight
+			if this.selected_item == index then
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..item_clip..'}')
+				ass:append(ass_opacity(0.1, this.opacity))
+				ass:pos(0, 0)
+				ass:draw_start()
+				ass:rect_cw(this.ax, item_ay, this.bx, item_by)
+				ass:draw_stop()
+			end
 
-		-- Hint
-		if item.hint then
-			item.ass_save_hint = item.ass_save_hint or item.hint:gsub("([{}])","\\%1")
-			ass:new_event()
-			ass:append('{\\blur0\\bord0'..ass_shadow..'\\1c&H'..font_color..''..ass_shadow_color..'\\fn'..config.font..'\\fs'..this.font_size_hint..bold_tag..item_clip..'}')
-			ass:append(ass_opacity(options.menu_opacity * (has_submenu and 1 or 0.5), this.opacity))
-			ass:pos(this.bx - this.item_content_spacing, item_ay + (this.item_height / 2))
-			ass:an(6)
-			ass:append(item.ass_save_hint)
-		elseif has_submenu then
-			ass:new_event()
-			ass:append(icon(
-				'arrow_right',
-				this.bx - this.item_content_spacing - (icon_size / 2), -- x
-				item_ay + (this.item_height / 2), -- y
-				icon_size, -- size
-				0, 0, 1, -- shadow_x, shadow_y, shadow_size
-				is_active and 'foreground' or 'background', this.opacity, -- backdrop, opacity
-				item_clip
-			))
-		end
+			-- Title
+			if item.title then
+				item.ass_save_title = item.ass_save_title or item.title:gsub("([{}])","\\%1")
+				local title_clip_x = (this.bx - hint_width - this.item_content_spacing)
+				local title_clip = '\\clip('..this.ax..','..math.max(item_ay, this.ay)..','..title_clip_x..','..math.min(item_by, this.by)..')'
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\shad1\\1c&H'..font_color..'\\4c&H'..background_color..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..title_clip..'\\q2}')
+				ass:append(ass_opacity(options.menu_opacity, this.opacity))
+				ass:pos(this.ax + this.item_content_spacing, item_ay + (this.item_height / 2))
+				ass:an(4)
+				ass:append(item.ass_save_title)
+			end
 
-		::continue::
+			-- Hint
+			if item.hint then
+				item.ass_save_hint = item.ass_save_hint or item.hint:gsub("([{}])","\\%1")
+				ass:new_event()
+				ass:append('{\\blur0\\bord0'..ass_shadow..'\\1c&H'..font_color..''..ass_shadow_color..'\\fn'..config.font..'\\fs'..this.font_size_hint..bold_tag..item_clip..'}')
+				ass:append(ass_opacity(options.menu_opacity * (has_submenu and 1 or 0.5), this.opacity))
+				ass:pos(this.bx - this.item_content_spacing, item_ay + (this.item_height / 2))
+				ass:an(6)
+				ass:append(item.ass_save_hint)
+			elseif has_submenu then
+				ass:new_event()
+				ass:append(icon(
+					'arrow_right',
+					this.bx - this.item_content_spacing - (icon_size / 2), -- x
+					item_ay + (this.item_height / 2), -- y
+					icon_size, -- size
+					0, 0, 1, -- shadow_x, shadow_y, shadow_size
+					is_active and 'foreground' or 'background', this.opacity, -- backdrop, opacity
+					item_clip
+				))
+			end
+		end
 	end
 
 	-- Scrollbar
@@ -2776,96 +2772,94 @@ elements:add('curtain', Element.new({
 for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 	local start_patterns, color, opacity, end_patterns = string.match(definition, '([^<]+)<(%x%x%x%x%x%x):(%d?%.?%d*)>([^>]+)')
 
-	-- Invalid definition
-	if start_patterns == nil then goto continue end
+	-- Valid definition
+	if start_patterns then
+		start_patterns = start_patterns:lower()
+		end_patterns = end_patterns:lower()
+		local uses_bof = start_patterns:find('{bof}') ~= nil
+		local uses_eof = end_patterns:find('{eof}') ~= nil
+		local chapter_range = {
+			start_patterns = split(start_patterns, '|'),
+			end_patterns = split(end_patterns, '|'),
+			color = color,
+			opacity = tonumber(opacity),
+			ranges = {}
+		}
 
-	start_patterns = start_patterns:lower()
-	end_patterns = end_patterns:lower()
-	local uses_bof = start_patterns:find('{bof}') ~= nil
-	local uses_eof = end_patterns:find('{eof}') ~= nil
-	local chapter_range = {
-		start_patterns = split(start_patterns, '|'),
-		end_patterns = split(end_patterns, '|'),
-		color = color,
-		opacity = tonumber(opacity),
-		ranges = {}
-	}
-
-	-- Filter out special keywords so we don't use them when matching titles
-	if uses_bof then
-		chapter_range.start_patterns = itable_remove(chapter_range.start_patterns, '{bof}')
-	end
-	if uses_eof and chapter_range.end_patterns then
-		chapter_range.end_patterns = itable_remove(chapter_range.end_patterns, '{eof}')
-	end
-
-	chapter_range['serialize'] = function (chapters)
-		chapter_range.ranges = {}
-		local current_range = nil
-		-- bof and eof should be used only once per timeline
-		-- eof is only used when last range is missing end
-		local bof_used = false
-
-		function start_range(chapter)
-			-- If there is already a range started, should we append or overwrite?
-			-- I chose overwrite here.
-			current_range = {['start'] = chapter}
+		-- Filter out special keywords so we don't use them when matching titles
+		if uses_bof then
+			chapter_range.start_patterns = itable_remove(chapter_range.start_patterns, '{bof}')
+		end
+		if uses_eof and chapter_range.end_patterns then
+			chapter_range.end_patterns = itable_remove(chapter_range.end_patterns, '{eof}')
 		end
 
-		function end_range(chapter)
-			current_range['end'] = chapter
-			chapter_range.ranges[#chapter_range.ranges + 1] = current_range
-			-- Mark both chapter objects
-			current_range['start']._uosc_used_as_range_point = true
-			current_range['end']._uosc_used_as_range_point = true
-			-- Clear for next range
-			current_range = nil
-		end
+		chapter_range['serialize'] = function (chapters)
+			chapter_range.ranges = {}
+			local current_range = nil
+			-- bof and eof should be used only once per timeline
+			-- eof is only used when last range is missing end
+			local bof_used = false
 
-		for _, chapter in ipairs(chapters) do
-			if type(chapter.title) == 'string' then
-				local lowercase_title = chapter.title:lower()
-				local is_end = false
-				local is_start = false
+			function start_range(chapter)
+				-- If there is already a range started, should we append or overwrite?
+				-- I chose overwrite here.
+				current_range = {['start'] = chapter}
+			end
 
-				-- Is ending check and handling
-				if chapter_range.end_patterns then
-					for _, end_pattern in ipairs(chapter_range.end_patterns) do
-						is_end = is_end or lowercase_title:find(end_pattern) ~= nil
+			function end_range(chapter)
+				current_range['end'] = chapter
+				chapter_range.ranges[#chapter_range.ranges + 1] = current_range
+				-- Mark both chapter objects
+				current_range['start']._uosc_used_as_range_point = true
+				current_range['end']._uosc_used_as_range_point = true
+				-- Clear for next range
+				current_range = nil
+			end
+
+			for _, chapter in ipairs(chapters) do
+				if type(chapter.title) == 'string' then
+					local lowercase_title = chapter.title:lower()
+					local is_end = false
+					local is_start = false
+
+					-- Is ending check and handling
+					if chapter_range.end_patterns then
+						for _, end_pattern in ipairs(chapter_range.end_patterns) do
+							is_end = is_end or lowercase_title:find(end_pattern) ~= nil
+						end
+
+						if is_end then
+							if current_range == nil and uses_bof and not bof_used then
+								bof_used = true
+								start_range({time = 0})
+							end
+							if current_range ~= nil then
+								end_range(chapter)
+							else
+								is_end = false
+							end
+						end
 					end
 
-					if is_end then
-						if current_range == nil and uses_bof and not bof_used then
-							bof_used = true
-							start_range({time = 0})
-						end
-						if current_range ~= nil then
-							end_range(chapter)
-						else
-							is_end = false
-						end
+					-- Is start check and handling
+					for _, start_pattern in ipairs(chapter_range.start_patterns) do
+						is_start = is_start or lowercase_title:find(start_pattern) ~= nil
 					end
-				end
 
-				-- Is start check and handling
-				for _, start_pattern in ipairs(chapter_range.start_patterns) do
-					is_start = is_start or lowercase_title:find(start_pattern) ~= nil
+					if is_start then start_range(chapter) end
 				end
+			end
 
-				if is_start then start_range(chapter) end
+			-- If there is an unfinished range and range type accepts eof, use it
+			if current_range ~= nil and uses_eof then
+				end_range({time = state.duration or infinity})
 			end
 		end
 
-		-- If there is an unfinished range and range type accepts eof, use it
-		if current_range ~= nil and uses_eof then
-			end_range({time = state.duration or infinity})
-		end
+		state.chapter_ranges = state.chapter_ranges or {}
+		state.chapter_ranges[#state.chapter_ranges + 1] = chapter_range
 	end
-
-	state.chapter_ranges = state.chapter_ranges or {}
-	state.chapter_ranges[#state.chapter_ranges + 1] = chapter_range
-
-	::continue::
 end
 
 function parse_chapters()
