@@ -1080,6 +1080,9 @@ function Menu:open(items, open_item, opts)
 			this.bx = round(this.ax + this.width)
 			this.by = round(this.ay + this.height)
 
+			-- Update offsets for new sizes
+			this:set_offset_x(this.offset_x)
+
 			if this.parent_menu then
 				this.parent_menu:on_display_change()
 			end
