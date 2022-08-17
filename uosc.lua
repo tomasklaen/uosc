@@ -52,9 +52,12 @@ local options = {
 
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
+	menu_min_width = 260,
+	menu_min_width_fullscreen = 360,
 	menu_wasd_navigation = false,
 	menu_hjkl_navigation = false,
 	menu_opacity = 0.8,
+	menu_parent_opacity = 0.4,
 	menu_font_scale = 1,
 
 	menu_button = 'never',
@@ -102,8 +105,6 @@ local config = {
 	-- native rendering frequency could not be detected
 	render_delay = 1/60,
 	font = mp.get_property('options/osd-font'),
-	menu_parent_opacity = 0.4,
-	menu_min_width = 260
 }
 local bold_tag = options.font_bold and '\\b1' or ''
 local display = {
@@ -823,7 +824,7 @@ function Menu:open(items, open_item, opts)
 			tween_element(menu.transition.target, 0, 1, function(_, pos)
 				this:set_offset_x(round(start_offset * (1 - pos)))
 				this.opacity = pos
-				this:set_parent_opacity(1 - ((1 - config.menu_parent_opacity) * pos))
+				this:set_parent_opacity(1 - ((1 - options.menu_parent_opacity) * pos))
 			end, function()
 				menu.transition = nil
 				update_proximities()
@@ -843,8 +844,12 @@ function Menu:open(items, open_item, opts)
 			local estimated_max_width = 0
 			for _, item in ipairs(this.items) do
 				local spacings_in_item = item.hint and 3 or 2
+				local has_submenu = item.items ~= nil
+				-- M as a stand in for icon
+				local hint_icon = item.hint or (has_submenu and 'M' or nil)
+				local hint_icon_size = item.hint and this.font_size_hint or this.font_size
 				local estimated_width = text_width_estimate(item.title, this.font_size)
-				                        + text_width_estimate(item.hint, this.font_size_hint)
+				                        + text_width_estimate(hint_icon, hint_icon_size)
 				                        + (this.item_content_spacing * spacings_in_item)
 				if estimated_width > estimated_max_width then
 					estimated_max_width = estimated_width
@@ -861,7 +866,8 @@ function Menu:open(items, open_item, opts)
 			-- Coordinates and sizes are of the scrollable area to make
 			-- consuming values in rendering easier. Title drawn above this, so
 			-- we need to account for that in max_height and ay position.
-			this.width = round(math.min(math.max(estimated_max_width, config.menu_min_width), display.width * 0.9))
+			local min_width = state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width
+			this.width = round(math.min(math.max(estimated_max_width, min_width), display.width * 0.9))
 			local title_height = this.title and this.scroll_step or 0
 			local max_height = round(display.height * 0.9) - title_height
 			this.height = math.min(round(this.scroll_step * #this.items) - this.item_spacing, max_height)
@@ -914,13 +920,13 @@ function Menu:open(items, open_item, opts)
 		fadeout = function(this, callback)
 			this:tween(1, 0, function(this, pos)
 				this.opacity = pos
-				this:set_parent_opacity(pos * config.menu_parent_opacity)
+				this:set_parent_opacity(pos * options.menu_parent_opacity)
 			end, callback)
 		end,
 		set_parent_opacity = function(this, opacity)
 			if this.parent_menu then
 				this.parent_menu.opacity = opacity
-				this.parent_menu:set_parent_opacity(opacity * config.menu_parent_opacity)
+				this.parent_menu:set_parent_opacity(opacity * options.menu_parent_opacity)
 			end
 		end,
 		get_item_index_below_cursor = function(this)
@@ -1013,7 +1019,7 @@ function Menu:open(items, open_item, opts)
 			tween_element(target, 0, 1, function(_, pos)
 				this:set_offset_x(round(to_offset * pos))
 				this.opacity = 1 - pos
-				this:set_parent_opacity(config.menu_parent_opacity + ((1 - config.menu_parent_opacity) * pos))
+				this:set_parent_opacity(options.menu_parent_opacity + ((1 - options.menu_parent_opacity) * pos))
 			end, function()
 				menu.transition = nil
 				elements:add('menu', target)
