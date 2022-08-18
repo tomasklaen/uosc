@@ -3369,6 +3369,9 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 	if path and is_protocol(path) then
 		path='$HOME'
 	end
+	if not serialize_path(path) then
+		return
+	end
 	open_file_navigation_menu(
 		serialize_path(path).dirname,
 		function(path) mp.commandv('sub-add', path) end,
