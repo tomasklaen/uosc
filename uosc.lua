@@ -48,6 +48,7 @@ local options = {
 	speed = false,
 	speed_size = 46,
 	speed_size_fullscreen = 60,
+	speed_bar_offset=0,
 	speed_persistency = '',
 	speed_opacity = 1,
 	speed_step = 0.1,
@@ -2634,7 +2635,8 @@ if options.speed then
 			this.notch_spacing = this.width / this.notches
 			this.ax = (display.width - this.width) / 2
 			this.by = display.height - elements.window_border.size - elements.timeline.size_max - elements.timeline.top_border
-			this.ay = this.by - this.height
+			this.ay = this.by - options.speed_bar_offset / 100 * display.height - this.height
+			this.by = this.ay + this.height
 			this.bx = this.ax + this.width
 			this.font_size = round(this.height * 0.48 * options.speed_font_scale)
 		end,
