@@ -92,6 +92,7 @@ local options = {
 	color_background_text = 'ffffff',
 	total_time = false,
 	font_bold = false,
+	text_border_size = 1,
 	autohide = false,
 	pause_indicator = 'flash',
 	curtain_opacity = 0.5,
@@ -1676,13 +1677,13 @@ function render_timeline(this)
 		local margin_time = text_width_estimate(time_formatted, this.font_size) / 2
 		local margin_title = chapter_title_width * this.font_size * options.font_height_to_letter_width_ratio / 2
 		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'\\b1')
+		ass:append('{\\blur0\\bord'..options.text_border_size..'\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..'\\b1')
 		ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1)))
 		ass:pos(math.min(math.max(cursor.x, margin_title), display.width - margin_title), fay - this.font_size * 1.5)
 		ass:an(2)
 		ass:append(chapter_title)
 		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag)
+		ass:append('{\\blur0\\bord'..options.text_border_size..'\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag)
 		ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1)))
 		ass:pos(math.min(math.max(cursor.x, margin_time), display.width - margin_time), fay)
 		ass:an(2)
@@ -1787,7 +1788,7 @@ function render_top_bar(this)
 		local clip_coordinates = this.ax..','..this.ay..','..(this.title_bx - this.spacing)..','..this.by
 
 		ass:new_event()
-		ass:append('{\\q2\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..clip_coordinates..')')
+		ass:append('{\\q2\\blur0\\bord'..options.text_border_size..'\\shad0\\1c&HFFFFFF\\3c&H000000\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..clip_coordinates..')')
 		ass:append(ass_opacity(1, opacity))
 		ass:pos(this.ax + this.spacing, this.ay + (this.size / 2))
 		ass:an(4)
@@ -1971,7 +1972,7 @@ function render_speed(this)
 			end
 
 			ass:new_event()
-			ass:append('{\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000}')
+			ass:append('{\\blur0\\bord'..options.text_border_size..'\\shad0\\1c&HFFFFFF\\3c&H000000}')
 			ass:append(ass_opacity(math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1), opacity))
 			ass:pos(0, 0)
 			ass:draw_start()
@@ -1985,7 +1986,7 @@ function render_speed(this)
 
 	-- Center guide
 	ass:new_event()
-	ass:append('{\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000}')
+	ass:append('{\\blur0\\bord'..options.text_border_size..'\\shad0\\1c&HFFFFFF\\3c&H000000}')
 	ass:append(ass_opacity(options.speed_opacity, opacity))
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -1997,7 +1998,7 @@ function render_speed(this)
 	-- Speed value
 	local speed_text = (round(state.speed * 100) / 100)..'x'
 	ass:new_event()
-	ass:append('{\\blur0\\bord1\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'}')
+	ass:append('{\\blur0\\bord'..options.text_border_size..'\\shad0\\1c&H'..options.color_background_text..'\\3c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'}')
 	ass:append(ass_opacity(options.speed_opacity, opacity))
 	ass:pos(half_x, ay)
 	ass:an(8)
