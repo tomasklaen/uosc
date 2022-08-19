@@ -3378,7 +3378,7 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 		path = os.getenv("HOME")
 	end
 	open_file_navigation_menu(
-		serialize_path(path).dirname,
+		path,
 		function(path) mp.commandv('sub-add', path) end,
 		{
 			type = 'load-subtitles',
