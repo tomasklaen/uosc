@@ -3366,11 +3366,16 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 	if menu:is_open('load-subtitles') then menu:close() return end
 
 	local path = mp.get_property_native('path')
-	if path and is_protocol(path) then
-		path='$HOME'
+	if path then
+		if is_protocol(path) then
+			path = false
+		else
+			local serialized_path = serialize_path(path)
+			path = serialized_path ~= nil and serialized_path.dirname or false
+		end
 	end
-	if not serialize_path(path) then
-		return
+	if not path then
+		path = os.getenv("HOME")
 	end
 	open_file_navigation_menu(
 		serialize_path(path).dirname,
