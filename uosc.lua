@@ -556,8 +556,8 @@ end
 
 function get_adjacent_file(file_path, direction, allowed_types)
 	local current_file = serialize_path(file_path)
+	if not current_file then return end
 	local files = get_files_in_directory(current_file.dirname, allowed_types)
-
 	if not files then return end
 
 	for index, file in ipairs(files) do
@@ -733,8 +733,7 @@ function Elements:trigger(name, ...)
 end
 
 function Elements:has(name) return self[name] ~= nil end
-function Elements:ipairs() return ipairs(Elements.itable) end
-function Elements:pairs(elements) return pairs(self) end
+function Elements:ipairs() return ipairs(self.itable) end
 
 -- MENU
 --[[
@@ -2188,7 +2187,7 @@ function render()
 	-- Actual rendering
 	local ass = assdraw.ass_new()
 
-	for _, element in elements.ipairs() do
+	for _, element in elements:ipairs() do
 		local result = element:maybe('render')
 		if result then
 			ass:new_event()
@@ -3127,8 +3126,14 @@ end
 -- **allowed_types** - table with file extensions to display
 -- **active_path** - full path of a file to preselect
 -- Rest of the options are passed to `menu:open()`
-function open_file_navigation_menu(directory, handle_select, menu_options)
-	directory = serialize_path(directory)
+function open_file_navigation_menu(_directory, handle_select, menu_options)
+	directory = serialize_path(_directory)
+
+	if not directory then
+		msg.error('Couldn\'t serialize path "'.._directory..'.')
+		return
+	end
+
 	local directories, error = utils.readdir(directory.path, 'dirs')
 	local files, error = get_files_in_directory(directory.path, menu_options.allowed_types)
 	local is_root = not directory.dirname
@@ -3148,22 +3153,27 @@ function open_file_navigation_menu(directory, handle_select, menu_options)
 
 	for _, dir in ipairs(directories) do
 		local serialized = serialize_path(utils.join_path(directory.path, dir))
-		items[#items + 1] = {title = serialized.basename, value = serialized.path, hint = '/'}
+		if serialized then
+			items[#items + 1] = {title = serialized.basename, value = serialized.path, hint = '/'}
+		end
 	end
 
 	menu_options.active_item = nil
 
 	for _, file in ipairs(files) do
 		local serialized = serialize_path(utils.join_path(directory.path, file))
-		local item_index = #items + 1
 
-		items[item_index] = {
-			title = serialized.basename,
-			value = serialized.path,
-		}
+		if serialized then
+			local item_index = #items + 1
 
-		if menu_options.active_path == serialized.path then
-			menu_options.active_item = item_index
+			items[item_index] = {
+				title = serialized.basename,
+				value = serialized.path,
+			}
+
+			if menu_options.active_path == serialized.path then
+				menu_options.active_item = item_index
+			end
 		end
 	end
 
@@ -3402,13 +3412,13 @@ mp.add_key_binding(nil, 'decide-pause-indicator', function()
 	elements.pause_indicator:decide()
 end)
 function menu_key_binding()
-  if menu:is_open('menu') then
-    menu:close()
-  elseif state.context_menu_items then
-    menu:open(state.context_menu_items, function(command)
-      mp.command(command)
-    end, {type = 'menu'})
-  end
+	if menu:is_open('menu') then
+		menu:close()
+	elseif state.context_menu_items then
+		menu:open(state.context_menu_items, function(command)
+			mp.command(command)
+		end, {type = 'menu'})
+	end
 end
 mp.add_key_binding(nil, 'menu', menu_key_binding)
 mp.add_key_binding(nil, 'load-subtitles', function()
@@ -3571,13 +3581,22 @@ mp.add_key_binding(nil, 'open-file', function()
 	local active_file
 
 	if path == nil or is_protocol(path) then
-		local path = serialize_path(mp.command_native({'expand-path', options.default_directory}))
-		directory = path.path
-		active_file = nil
+		local serialized = serialize_path(mp.command_native({'expand-path', options.default_directory}))
+		if serialized then
+			directory = serialized.path
+			active_file = nil
+		end
 	else
-		local path = serialize_path(path)
-		directory = path.dirname
-		active_file = path.path
+		local serialized = serialize_path(path)
+		if serialized then
+			directory = serialized.dirname
+			active_file = serialized.path
+		end
+	end
+
+	if not directory then
+		msg.error('Couldn\'t serialize path "'..path..'".')
+		return
 	end
 
 	-- Update selected file in directory navigation menu
@@ -3673,16 +3692,22 @@ mp.add_key_binding(nil, 'delete-file-quit', function()
 	mp.command('quit')
 end)
 mp.add_key_binding(nil, 'open-config-directory', function()
-	local config = serialize_path(mp.command_native({'expand-path', '~~/mpv.conf'}))
-	local args
+	local config_path = mp.command_native({'expand-path', '~~/mpv.conf'})
+	local config = serialize_path(config_path)
 
-	if state.os == 'windows' then
-		args = {'explorer', '/select,', config.path}
-	elseif state.os == 'macos' then
-		args = {'open', '-R', config.path}
-	elseif state.os == 'linux' then
-		args = {'xdg-open', config.dirname}
+	if config then
+		local args
+
+		if state.os == 'windows' then
+			args = {'explorer', '/select,', config.path}
+		elseif state.os == 'macos' then
+			args = {'open', '-R', config.path}
+		elseif state.os == 'linux' then
+			args = {'xdg-open', config.dirname}
+		end
+
+		utils.subprocess_detached({args = args, cancellable = false})
+	else
+		msg.error('Couldn\'t serialize config path "'..config_path..'".')
 	end
-
-	utils.subprocess_detached({args = args, cancellable = false})
 end)
