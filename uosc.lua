@@ -34,6 +34,7 @@ local options = {
 	timeline_font_scale = 1,
 	timeline_chapters = 'dots',
 	timeline_chapters_opacity = 0.2,
+	timeline_chapters_width = 1,
 	timeline_elements = 'ranges,chapters,progress,cache,time',
 
 	volume = 'right',
@@ -1524,6 +1525,7 @@ function render_timeline(this)
 				-- for 1px chapter size, use the whole size of the bar including padding
 				chapter_size = size <= 1 and foreground_size or chapter_size
 				local chapter_half_size = chapter_size / 2
+				local last_chapter = nil
 				local draw_chapter = function (time)
 					local chapter_x = bax + this.width * (time / state.duration)
 					local color = chapter_x > fbx and options.color_foreground or options.color_background
@@ -1539,16 +1541,18 @@ function render_timeline(this)
 						ass:move_to(chapter_x - chapter_half_size, chapter_y)
 						ass:bezier_curve(
 							chapter_x - chapter_half_size, chapter_y - bezier_stretch,
-							chapter_x + chapter_half_size, chapter_y - bezier_stretch,
-							chapter_x + chapter_half_size, chapter_y
+							chapter_x + chapter_half_size + options.timeline_chapters_width - 1, chapter_y - bezier_stretch,
+							chapter_x + chapter_half_size + options.timeline_chapters_width - 1, chapter_y
 						)
 						ass:bezier_curve(
-							chapter_x + chapter_half_size, chapter_y + bezier_stretch,
+							chapter_x + chapter_half_size + options.timeline_chapters_width - 1, chapter_y + bezier_stretch,
 							chapter_x - chapter_half_size, chapter_y + bezier_stretch,
 							chapter_x - chapter_half_size, chapter_y
 						)
 					else
-						ass:rect_cw(chapter_x, chapter_y - chapter_half_size, chapter_x + 1, chapter_y + chapter_half_size)
+						if last_chapter == nil then last_chapter = chapter_x end
+						ass:rect_cw(math.max(last_chapter, chapter_x), chapter_y - chapter_half_size, chapter_x + options.timeline_chapters_width, chapter_y + chapter_half_size)
+						last_chapter = chapter_x + options.timeline_chapters_width
 					end
 
 					ass:draw_stop()
