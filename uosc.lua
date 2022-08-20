@@ -34,6 +34,7 @@ local options = {
 	timeline_font_scale = 1,
 	timeline_chapters = 'dots',
 	timeline_chapters_opacity = 0.2,
+	timeline_elements = 'ranges,chapters,progress,cache,time',
 
 	volume = 'right',
 	volume_size = 40,
@@ -1404,16 +1405,6 @@ end
 
 -- ELEMENT RENDERERS
 
-function render_foreground_bar(ass, fax, fay, fbx, fby)
-	ass:new_event()
-	ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
-	ass:append(ass_opacity(options.timeline_opacity))
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:rect_cw(fax, fay, fbx, fby)
-	ass:draw_stop()
-end
-
 function render_timeline(this)
 	if this.size_max == 0 or state.duration == nil or state.duration == 0 or state.position == nil then return end
 
@@ -1471,186 +1462,208 @@ function render_timeline(this)
 	ass:rect_cw(bax, bay, bbx, bby)
 	ass:draw_stop()
 
-	-- Foreground bar - renders below custom ranges
-	if not is_line then
-		render_foreground_bar(ass, fax, fay, fbx, fby)
+	-- Progress
+	local function render_progress()
+		ass:new_event()
+		ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+		ass:append(ass_opacity(options.timeline_opacity))
+		ass:pos(0, 0)
+		ass:draw_start()
+		ass:rect_cw(fax, fay, fbx, fby)
+		ass:draw_stop()
 	end
 
 	-- Custom ranges
-	if state.chapter_ranges ~= nil then
-		for i, chapter_range in ipairs(state.chapter_ranges) do
-			for i, range in ipairs(chapter_range.ranges) do
-				local rax = bax + this.width * (range['start'].time / state.duration)
-				local rbx = bax + this.width * (range['end'].time / state.duration)
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\1c&H'..chapter_range.color..'}')
-				ass:append(ass_opacity(chapter_range.opacity))
-				ass:pos(0, 0)
-				ass:draw_start()
-				-- for 1px chapter size, use the whole size of the bar including padding
-				if size <= 1 then
-					ass:rect_cw(rax, bay, rbx, bby)
-				else
-					ass:rect_cw(rax, fay, rbx, fby)
+	local function render_ranges()
+		if state.chapter_ranges ~= nil then
+			for i, chapter_range in ipairs(state.chapter_ranges) do
+				for i, range in ipairs(chapter_range.ranges) do
+					local rax = bax + this.width * (range['start'].time / state.duration)
+					local rbx = bax + this.width * (range['end'].time / state.duration)
+					ass:new_event()
+					ass:append('{\\blur0\\bord0\\1c&H'..chapter_range.color..'}')
+					ass:append(ass_opacity(chapter_range.opacity))
+					ass:pos(0, 0)
+					ass:draw_start()
+					-- for 1px chapter size, use the whole size of the bar including padding
+					if size <= 1 then
+						ass:rect_cw(rax, bay, rbx, bby)
+					else
+						ass:rect_cw(rax, fay, rbx, fby)
+					end
+					ass:draw_stop()
 				end
-				ass:draw_stop()
 			end
 		end
 	end
 
 	-- Chapters
-	if (
-		options.timeline_chapters ~= 'none'
-		and (
+	local function render_chapters()
+		if (
 			state.chapters ~= nil and #state.chapters > 0
 			or state.ab_loop_a and state.ab_loop_a > 0
 			or state.ab_loop_b and state.ab_loop_b > 0
-		)
-	) then
-		local dots = false
-		local chapter_size, chapter_y
-		if options.timeline_chapters == 'dots' then
-			dots = true
-			chapter_size = math.min(6, (foreground_size / 2) + 1)
-			chapter_y = fay + chapter_size / 2
-		elseif options.timeline_chapters == 'lines' then
-			chapter_size = size
-			chapter_y = fay + (chapter_size / 2)
-		elseif options.timeline_chapters == 'lines-top' then
-			chapter_size = math.min(this.size_max / 3.5, size)
-			chapter_y = fay + (chapter_size / 2)
-		elseif options.timeline_chapters == 'lines-bottom' then
-			chapter_size = math.min(this.size_max / 3.5, size)
-			chapter_y = fay + size - (chapter_size / 2)
-		end
-
-		if chapter_size ~= nil then
-			-- for 1px chapter size, use the whole size of the bar including padding
-			chapter_size = size <= 1 and foreground_size or chapter_size
-			local chapter_half_size = chapter_size / 2
-			local draw_chapter = function (time)
-				local chapter_x = bax + this.width * (time / state.duration)
-				local color = chapter_x > fbx and options.color_foreground or options.color_background
-
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\1c&H'..color..'}')
-				ass:append(ass_opacity(options.timeline_chapters_opacity))
-				ass:pos(0, 0)
-				ass:draw_start()
-
-				if dots then
-					local bezier_stretch = chapter_size * 0.67
-					ass:move_to(chapter_x - chapter_half_size, chapter_y)
-					ass:bezier_curve(
-						chapter_x - chapter_half_size, chapter_y - bezier_stretch,
-						chapter_x + chapter_half_size, chapter_y - bezier_stretch,
-						chapter_x + chapter_half_size, chapter_y
-					)
-					ass:bezier_curve(
-						chapter_x + chapter_half_size, chapter_y + bezier_stretch,
-						chapter_x - chapter_half_size, chapter_y + bezier_stretch,
-						chapter_x - chapter_half_size, chapter_y
-					)
-				else
-					ass:rect_cw(chapter_x, chapter_y - chapter_half_size, chapter_x + 1, chapter_y + chapter_half_size)
-				end
-
-				ass:draw_stop()
+		) then
+			local dots = false
+			local chapter_size, chapter_y
+			if options.timeline_chapters == 'dots' then
+				dots = true
+				chapter_size = math.min(6, (foreground_size / 2) + 1)
+				chapter_y = fay + chapter_size / 2
+			elseif options.timeline_chapters == 'lines' then
+				chapter_size = size
+				chapter_y = fay + (chapter_size / 2)
+			elseif options.timeline_chapters == 'lines-top' then
+				chapter_size = math.min(this.size_max / 3.5, size)
+				chapter_y = fay + (chapter_size / 2)
+			elseif options.timeline_chapters == 'lines-bottom' then
+				chapter_size = math.min(this.size_max / 3.5, size)
+				chapter_y = fay + size - (chapter_size / 2)
 			end
 
-			if state.chapters ~= nil then
-				for i, chapter in ipairs(state.chapters) do
-					if not chapter._uosc_used_as_range_point then
-						draw_chapter(chapter.time)
+			if chapter_size ~= nil then
+				-- for 1px chapter size, use the whole size of the bar including padding
+				chapter_size = size <= 1 and foreground_size or chapter_size
+				local chapter_half_size = chapter_size / 2
+				local draw_chapter = function (time)
+					local chapter_x = bax + this.width * (time / state.duration)
+					local color = chapter_x > fbx and options.color_foreground or options.color_background
+
+					ass:new_event()
+					ass:append('{\\blur0\\bord0\\1c&H'..color..'}')
+					ass:append(ass_opacity(options.timeline_chapters_opacity))
+					ass:pos(0, 0)
+					ass:draw_start()
+
+					if dots then
+						local bezier_stretch = chapter_size * 0.67
+						ass:move_to(chapter_x - chapter_half_size, chapter_y)
+						ass:bezier_curve(
+							chapter_x - chapter_half_size, chapter_y - bezier_stretch,
+							chapter_x + chapter_half_size, chapter_y - bezier_stretch,
+							chapter_x + chapter_half_size, chapter_y
+						)
+						ass:bezier_curve(
+							chapter_x + chapter_half_size, chapter_y + bezier_stretch,
+							chapter_x - chapter_half_size, chapter_y + bezier_stretch,
+							chapter_x - chapter_half_size, chapter_y
+						)
+					else
+						ass:rect_cw(chapter_x, chapter_y - chapter_half_size, chapter_x + 1, chapter_y + chapter_half_size)
+					end
+
+					ass:draw_stop()
+				end
+
+				if state.chapters ~= nil then
+					for i, chapter in ipairs(state.chapters) do
+						if not chapter._uosc_used_as_range_point then
+							draw_chapter(chapter.time)
+						end
 					end
 				end
-			end
 
-			if state.ab_loop_a and state.ab_loop_a > 0 then
-				draw_chapter(state.ab_loop_a)
-			end
+				if state.ab_loop_a and state.ab_loop_a > 0 then
+					draw_chapter(state.ab_loop_a)
+				end
 
-			if state.ab_loop_b and state.ab_loop_b > 0 then
-				draw_chapter(state.ab_loop_b)
+				if state.ab_loop_b and state.ab_loop_b > 0 then
+					draw_chapter(state.ab_loop_b)
+				end
 			end
 		end
 	end
 
 	-- Seekable ranges
-	if options.timeline_cached_ranges and state.cached_ranges then
-		local range_height = math.max(math.min(this.size_max / 8, foreground_size / 3), 1)
-		local range_ay = fby - range_height
-		for _, range in ipairs(state.cached_ranges) do
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H'..options.timeline_cached_ranges.color..'}')
-			ass:append(ass_opacity(options.timeline_cached_ranges.opacity))
-			ass:pos(0, 0)
-			ass:draw_start()
-			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
-			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
-			ass:rect_cw(
-				bax + this.width * (range_start / state.duration), range_ay,
-				bax + this.width * (range_end / state.duration), range_ay + range_height
-			)
-			ass:draw_stop()
+	local function render_cache()
+		if options.timeline_cached_ranges and state.cached_ranges then
+			local range_height = math.max(math.min(this.size_max / 8, foreground_size / 3), 1)
+			local range_ay = fby - range_height
+			for _, range in ipairs(state.cached_ranges) do
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..options.timeline_cached_ranges.color..'}')
+				ass:append(ass_opacity(options.timeline_cached_ranges.opacity))
+				ass:pos(0, 0)
+				ass:draw_start()
+				local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
+				local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
+				ass:rect_cw(
+					bax + this.width * (range_start / state.duration), range_ay,
+					bax + this.width * (range_end / state.duration), range_ay + range_height
+				)
+				ass:draw_stop()
+			end
 		end
 	end
 
-	-- Foreground line - renders above most other indicators
-	if is_line then
-		render_foreground_bar(ass, fax, fay, fbx, fby)
-	end
+	-- Time values
+	local function render_time()
+		if text_opacity > 0 then
+			-- Elapsed time
+			if state.elapsed_seconds then
+				local elapsed_x = bax + spacing
+				local elapsed_y = fay + (size / 2)
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..foreground_coordinates..')')
+				ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
+				ass:pos(elapsed_x, elapsed_y)
+				ass:an(4)
+				ass:append(state.elapsed_time)
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
+				ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
+				ass:pos(elapsed_x, elapsed_y)
+				ass:an(4)
+				ass:append(state.elapsed_time)
+			end
 
-	if text_opacity > 0 then
-		-- Elapsed time
-		if state.elapsed_seconds then
-			local elapsed_x = bax + spacing
-			local elapsed_y = fay + (size / 2)
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..foreground_coordinates..')')
-			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
-			ass:pos(elapsed_x, elapsed_y)
-			ass:an(4)
-			ass:append(state.elapsed_time)
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
-			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
-			ass:pos(elapsed_x, elapsed_y)
-			ass:an(4)
-			ass:append(state.elapsed_time)
-		end
-
-		-- End time
-		local end_time
-		if options.total_time then
-			end_time = this.total_time
-		else
-			end_time = state.remaining_time and '-'..state.remaining_time
-		end
-		if end_time then
-			local end_x = bbx - spacing
-			local end_y = fay + (size / 2)
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..foreground_coordinates..')')
-			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
-			ass:pos(end_x, end_y)
-			ass:an(6)
-			ass:append(end_time)
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
-			ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
-			ass:pos(end_x, end_y)
-			ass:an(6)
-			ass:append(end_time)
+			-- End time
+			local end_time
+			if options.total_time then
+				end_time = this.total_time
+			else
+				end_time = state.remaining_time and '-'..state.remaining_time
+			end
+			if end_time then
+				local end_x = bbx - spacing
+				local end_y = fay + (size / 2)
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\shad0\\1c&H'..options.color_foreground_text..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\clip('..foreground_coordinates..')')
+				ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
+				ass:pos(end_x, end_y)
+				ass:an(6)
+				ass:append(end_time)
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
+				ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
+				ass:pos(end_x, end_y)
+				ass:an(6)
+				ass:append(end_time)
+			end
 		end
 	end
 
+	-- Render requested elements
+	local element_renderers = {
+		ranges = render_ranges,
+		chapters = render_chapters,
+		progress = render_progress,
+		cache = render_cache,
+		time = render_time,
+	}
+	local rendered_chapters = false
+
+	for _, name in ipairs(options.timeline_elements) do
+		if name == 'chapters' then rendered_chapters = true end
+		if element_renderers[name] ~= nil then element_renderers[name]() end
+	end
+
+	-- Hovered time and chapter
 	if (this.proximity_raw == 0 or this.pressed) and not (elements.speed and elements.speed.dragging) then
-		-- Hovered time and chapter
 		local hovered_seconds = state.duration * (cursor.x / display.width)
 		local chapter_title = ''
 		local chapter_title_width = 0
-		if (state.chapters and options.timeline_chapters ~= 'none') then
+		if (rendered_chapters and state.chapters) then
 			for i = #state.chapters, 1, -1 do
 				local chapter = state.chapters[i]
 				if hovered_seconds >= chapter.time then
@@ -3177,10 +3190,11 @@ end
 -- VALUE SERIALIZATION/NORMALIZATION
 
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
-options.timeline_chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.timeline_chapters) and options.timeline_chapters or 'none'
+options.timeline_chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.timeline_chapters) and options.timeline_chapters or 'dots'
 options.media_types = split(options.media_types, ' *, *')
 options.subtitle_types = split(options.subtitle_types, ' *, *')
 options.stream_quality_options = split(options.stream_quality_options, ' *, *')
+options.timeline_elements = split(options.timeline_elements, ' *, *')
 options.timeline_cached_ranges = (function()
 	if options.timeline_cached_ranges == '' or options.timeline_cached_ranges == 'no' then return nil end
 	local parts = split(options.timeline_cached_ranges, ':')
