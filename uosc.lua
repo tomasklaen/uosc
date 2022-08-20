@@ -17,20 +17,24 @@ local infinity = 1e309
 
 -- OPTIONS/CONFIG/STATE
 local options = {
+	timeline_style = 'line',
+	timeline_line_width = 3,
+	timeline_line_width_fullscreen = 4,
+	timeline_line_width_minimized_scale = 4,
 	timeline_size_min = 2,
 	timeline_size_max = 40,
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
 	timeline_start_hidden = false,
 	timeline_persistency = '',
-	timeline_opacity = 0.8,
+	timeline_opacity = 0.9,
 	timeline_border = 1,
 	timeline_step = 5,
-	timeline_cached_ranges = '345433:0.5',
+	timeline_cached_ranges = '345433:0.8',
 	timeline_font_scale = 1,
 
 	chapters = 'dots',
-	chapters_opacity = 0.3,
+	chapters_opacity = 0.2,
 
 	volume = 'right',
 	volume_size = 40,
@@ -1401,6 +1405,16 @@ end
 
 -- ELEMENT RENDERERS
 
+function render_foreground_bar(ass, fax, fay, fbx, fby)
+	ass:new_event()
+	ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
+	ass:append(ass_opacity(options.timeline_opacity))
+	ass:pos(0, 0)
+	ass:draw_start()
+	ass:rect_cw(fax, fay, fbx, fby)
+	ass:draw_stop()
+end
+
 function render_timeline(this)
 	if this.size_max == 0 or state.duration == nil or state.duration == 0 or state.position == nil then return end
 
@@ -1418,57 +1432,49 @@ function render_timeline(this)
 
 	local spacing = math.max(math.floor((this.size_max - this.font_size) / 2.5), 4)
 	local progress = state.position / state.duration
+	local is_line = options.timeline_style == 'line'
 
 	-- Background bar coordinates
 	local bax = this.ax
-	local bay = this.by - size
+	local bay = this.by - size - this.top_border
 	local bbx = this.bx
 	local bby = this.by
 
 	-- Foreground bar coordinates
-	local fax = bax
+	local fax = 0
 	local fay = bay + this.top_border
-	local fbx = fax + this.width * progress
+	local fbx = 0
 	local fby = bby
+
+	if is_line then
+		local minimized_fraction = 1 - (size - size_min) / (this.size_max - size_min)
+		local width_normal = this:get_effective_line_width()
+		local normal_minimized_delta = width_normal - width_normal * options.timeline_line_width_minimized_scale
+		local line_width = width_normal - (normal_minimized_delta * minimized_fraction)
+		local current_time_x = round((bbx - bax - line_width) * progress)
+		fax = current_time_x
+		fbx = fax + line_width
+	else
+		fax = bax
+		fay = bay + this.top_border
+		fbx = round(bax + this.width * progress)
+	end
+
 	local foreground_size = bby - bay
 	local foreground_coordinates = fax..','..fay..','..fbx..','..fby -- for clipping
 
 	-- Background
 	ass:new_event()
+	ass:pos(0, 0)
 	ass:append('{\\blur0\\bord0\\1c&H'..options.color_background..'\\iclip('..foreground_coordinates..')}')
 	ass:append(ass_opacity(math.max(options.timeline_opacity - 0.1, 0)))
-	ass:pos(0, 0)
 	ass:draw_start()
 	ass:rect_cw(bax, bay, bbx, bby)
 	ass:draw_stop()
 
-	-- Foreground
-	ass:new_event()
-	ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..'}')
-	ass:append(ass_opacity(options.timeline_opacity))
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:rect_cw(fax, fay, fbx, fby)
-	ass:draw_stop()
-
-	-- Seekable ranges
-	if options.timeline_cached_ranges and state.cached_ranges then
-		local range_height = math.max(foreground_size / 8, size_min)
-		local range_ay = fby - range_height
-		for _, range in ipairs(state.cached_ranges) do
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H'..options.timeline_cached_ranges.color..'}')
-			ass:append(ass_opacity(options.timeline_cached_ranges.opacity))
-			ass:pos(0, 0)
-			ass:draw_start()
-			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
-			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
-			ass:rect_cw(
-				bax + this.width * (range_start / state.duration), range_ay,
-				bax + this.width * (range_end / state.duration), range_ay + range_height
-			)
-			ass:draw_stop()
-		end
+	-- Foreground bar - renders below custom ranges
+	if not is_line then
+		render_foreground_bar(ass, fax, fay, fbx, fby)
 	end
 
 	-- Custom ranges
@@ -1502,13 +1508,12 @@ function render_timeline(this)
 			or state.ab_loop_b and state.ab_loop_b > 0
 		)
 	) then
-		local half_size = size / 2
 		local dots = false
 		local chapter_size, chapter_y
 		if options.chapters == 'dots' then
 			dots = true
-			chapter_size = math.min(6, (foreground_size / 2) + 2)
-			chapter_y = math.min(fay + chapter_size, fay + half_size)
+			chapter_size = math.min(6, (foreground_size / 2) + 1)
+			chapter_y = fay + chapter_size / 2
 		elseif options.chapters == 'lines' then
 			chapter_size = size
 			chapter_y = fay + (chapter_size / 2)
@@ -1570,6 +1575,31 @@ function render_timeline(this)
 				draw_chapter(state.ab_loop_b)
 			end
 		end
+	end
+
+	-- Seekable ranges
+	if options.timeline_cached_ranges and state.cached_ranges then
+		local range_height = math.max(math.min(this.size_max / 8, foreground_size / 3), 1)
+		local range_ay = fby - range_height
+		for _, range in ipairs(state.cached_ranges) do
+			ass:new_event()
+			ass:append('{\\blur0\\bord0\\1c&H'..options.timeline_cached_ranges.color..'}')
+			ass:append(ass_opacity(options.timeline_cached_ranges.opacity))
+			ass:pos(0, 0)
+			ass:draw_start()
+			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
+			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
+			ass:rect_cw(
+				bax + this.width * (range_start / state.duration), range_ay,
+				bax + this.width * (range_end / state.duration), range_ay + range_height
+			)
+			ass:draw_stop()
+		end
+	end
+
+	-- Foreground line - renders above most other indicators
+	if is_line then
+		render_foreground_bar(ass, fax, fay, fbx, fby)
 	end
 
 	if text_opacity > 0 then
@@ -2305,6 +2335,9 @@ elements:add('timeline', Element.new({
 		local size_min = this:get_effective_size_min()
 		return size_min + math.ceil((this.size_max - size_min) * this:get_effective_proximity())
 	end,
+	get_effective_line_width = function(this)
+		return state.fullormaxed and options.timeline_line_width_fullscreen or options.timeline_line_width
+	end,
 	update_dimensions = function(this)
 		if state.fullormaxed then
 			this.size_min = options.timeline_size_min_fullscreen
@@ -2327,7 +2360,10 @@ elements:add('timeline', Element.new({
 		this.total_time = value and mp.format_time(value) or nil
 	end,
 	set_from_cursor = function(this)
-		mp.commandv('seek', (((cursor.x - this.ax) / this.width) * 100), 'absolute-percent+exact')
+		-- padding serves the purpose of matching cursor to timeline_style=line exactly
+		local padding = (options.timeline_style == 'line' and this:get_effective_line_width() or 0) / 2
+		local progress = math.max(0, math.min((cursor.x - this.ax - padding) / (this.width - padding * 2), 1))
+		mp.commandv('seek', (progress * 100), 'absolute-percent+exact')
 	end,
 	on_mbtn_left_down = function(this)
 		this.pressed = true
