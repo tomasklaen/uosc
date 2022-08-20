@@ -1662,15 +1662,26 @@ function render_timeline(this)
 		local hovered_seconds = state.duration * (cursor.x / display.width)
 		local chapter_title = ''
 		local chapter_title_width = 0
+		local chapter_title_0 = ''
+		local chapter_title_width_0 = 0
+		local chapter_time_0 = 1
 		if (rendered_chapters and state.chapters) then
 			for i = #state.chapters, 1, -1 do
 				local chapter = state.chapters[i]
+				if chapter.time < chapter_time_0 then
+					chapter_title_0 = chapter.title_wrapped
+					chapter_title_width_0 = chapter.title_wrapped_width
+				end
 				if hovered_seconds >= chapter.time then
 					chapter_title = chapter.title_wrapped
 					chapter_title_width = chapter.title_wrapped_width
 					break
 				end
 			end
+		end
+		if chapter_title_width == 0 then
+			chapter_title = chapter_title_0
+			chapter_title_width = chapter_title_width_0
 		end
 		local time_formatted = mp.format_time(hovered_seconds)
 		local margin_time = text_width_estimate(time_formatted, this.font_size) / 2
