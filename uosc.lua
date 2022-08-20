@@ -3221,6 +3221,8 @@ for _, name in ipairs({'timeline', 'volume', 'top_bar', 'speed'}) do
 	for _, state in ipairs(split(options[option_name], ' *, *')) do
 		flags[state] = true
 	end
+
+	---@diagnostic disable-next-line: assign-type-mismatch
 	options[option_name] = flags
 end
 
