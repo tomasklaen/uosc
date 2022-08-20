@@ -2588,7 +2588,12 @@ if itable_find({'center', 'bottom-bar'}, options.menu_button) then
 		on_display_change = function(this) this:update_dimensions() end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_mbtn_left_down = function(this)
-			if this.proximity_raw == 0 then menu_key_binding() end
+			if this.proximity_raw == 0 then
+				-- We delay menu opening to next tick, otherwise it gets added at
+				-- the end of the elements list, and the mbtn_left_down event
+				-- dispatcher inside which we are now will tell it to close itself.
+				mp.add_timeout(0.01, menu_key_binding)
+			end
 		end,
 		render = render_menu_button,
 	}))
