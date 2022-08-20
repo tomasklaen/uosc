@@ -32,9 +32,8 @@ local options = {
 	timeline_step = 5,
 	timeline_cached_ranges = '345433:0.8',
 	timeline_font_scale = 1,
-
-	chapters = 'dots',
-	chapters_opacity = 0.2,
+	timeline_chapters = 'dots',
+	timeline_chapters_opacity = 0.2,
 
 	volume = 'right',
 	volume_size = 40,
@@ -1501,7 +1500,7 @@ function render_timeline(this)
 
 	-- Chapters
 	if (
-		options.chapters ~= 'none'
+		options.timeline_chapters ~= 'none'
 		and (
 			state.chapters ~= nil and #state.chapters > 0
 			or state.ab_loop_a and state.ab_loop_a > 0
@@ -1510,17 +1509,17 @@ function render_timeline(this)
 	) then
 		local dots = false
 		local chapter_size, chapter_y
-		if options.chapters == 'dots' then
+		if options.timeline_chapters == 'dots' then
 			dots = true
 			chapter_size = math.min(6, (foreground_size / 2) + 1)
 			chapter_y = fay + chapter_size / 2
-		elseif options.chapters == 'lines' then
+		elseif options.timeline_chapters == 'lines' then
 			chapter_size = size
 			chapter_y = fay + (chapter_size / 2)
-		elseif options.chapters == 'lines-top' then
+		elseif options.timeline_chapters == 'lines-top' then
 			chapter_size = math.min(this.size_max / 3.5, size)
 			chapter_y = fay + (chapter_size / 2)
-		elseif options.chapters == 'lines-bottom' then
+		elseif options.timeline_chapters == 'lines-bottom' then
 			chapter_size = math.min(this.size_max / 3.5, size)
 			chapter_y = fay + size - (chapter_size / 2)
 		end
@@ -1535,7 +1534,7 @@ function render_timeline(this)
 
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\1c&H'..color..'}')
-				ass:append(ass_opacity(options.chapters_opacity))
+				ass:append(ass_opacity(options.timeline_chapters_opacity))
 				ass:pos(0, 0)
 				ass:draw_start()
 
@@ -1651,7 +1650,7 @@ function render_timeline(this)
 		local hovered_seconds = state.duration * (cursor.x / display.width)
 		local chapter_title = ''
 		local chapter_title_width = 0
-		if (state.chapters and options.chapters ~= 'none') then
+		if (state.chapters and options.timeline_chapters ~= 'none') then
 			for i = #state.chapters, 1, -1 do
 				local chapter = state.chapters[i]
 				if hovered_seconds >= chapter.time then
@@ -3178,7 +3177,7 @@ end
 -- VALUE SERIALIZATION/NORMALIZATION
 
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
-options.chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.chapters) and options.chapters or 'none'
+options.timeline_chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.timeline_chapters) and options.timeline_chapters or 'none'
 options.media_types = split(options.media_types, ' *, *')
 options.subtitle_types = split(options.subtitle_types, ' *, *')
 options.stream_quality_options = split(options.stream_quality_options, ' *, *')
