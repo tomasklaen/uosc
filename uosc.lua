@@ -1791,6 +1791,9 @@ function render_top_bar(this)
 		ass:append(ass_opacity(1, opacity))
 		ass:pos(this.ax + this.spacing, this.ay + (this.size / 2))
 		ass:an(4)
+		if state.playlist_count > 1 then
+			ass:append(string.format('%d/%d - ', state.playlist_pos, state.playlist_count))
+		end
 		ass:append(state.media_title)
 	end
 
@@ -3253,6 +3256,8 @@ mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
 mp.observe_property('duration', 'number', create_state_setter('duration'))
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
+mp.observe_property('playlist-pos-1', 'number', create_state_setter('playlist_pos'))
+mp.observe_property('playlist-count', 'number', create_state_setter('playlist_count'))
 mp.observe_property('fullscreen', 'bool', function(_, value)
 	state.fullscreen = value
 	state.fullormaxed = state.fullscreen or state.maximized
