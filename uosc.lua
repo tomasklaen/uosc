@@ -34,7 +34,6 @@ local options = {
 	timeline_font_scale = 1,
 	timeline_chapters = 'dots',
 	timeline_chapters_opacity = 0.2,
-	timeline_elements = 'ranges,chapters,progress,cache,time',
 
 	volume = 'right',
 	volume_size = 40,
@@ -1499,76 +1498,79 @@ function render_timeline(this)
 	-- Chapters
 	local function render_chapters()
 		if (
-			state.chapters ~= nil and #state.chapters > 0
-			or state.ab_loop_a and state.ab_loop_a > 0
-			or state.ab_loop_b and state.ab_loop_b > 0
-		) then
-			local dots = false
-			local chapter_size, chapter_y
-			if options.timeline_chapters == 'dots' then
-				dots = true
-				chapter_size = math.min(6, (foreground_size / 2) + 1)
-				chapter_y = fay + chapter_size / 2
-			elseif options.timeline_chapters == 'lines' then
-				chapter_size = size
-				chapter_y = fay + (chapter_size / 2)
-			elseif options.timeline_chapters == 'lines-top' then
-				chapter_size = math.min(this.size_max / 3.5, size)
-				chapter_y = fay + (chapter_size / 2)
-			elseif options.timeline_chapters == 'lines-bottom' then
-				chapter_size = math.min(this.size_max / 3.5, size)
-				chapter_y = fay + size - (chapter_size / 2)
+			options.timeline_chapters == 'never'
+			or (
+				(state.chapters == nil or #state.chapters == 0)
+				and state.ab_loop_a == nil
+				and state.ab_loop_b == nil
+			)
+		) then return end
+
+		local dots = false
+		local chapter_size, chapter_y
+		if options.timeline_chapters == 'dots' then
+			dots = true
+			chapter_size = math.min(6, (foreground_size / 2) + 1)
+			chapter_y = fay + chapter_size / 2
+		elseif options.timeline_chapters == 'lines' then
+			chapter_size = size
+			chapter_y = fay + (chapter_size / 2)
+		elseif options.timeline_chapters == 'lines-top' then
+			chapter_size = math.min(this.size_max / 3.5, size)
+			chapter_y = fay + (chapter_size / 2)
+		elseif options.timeline_chapters == 'lines-bottom' then
+			chapter_size = math.min(this.size_max / 3.5, size)
+			chapter_y = fay + size - (chapter_size / 2)
+		end
+
+		if chapter_size ~= nil then
+			-- for 1px chapter size, use the whole size of the bar including padding
+			chapter_size = size <= 1 and foreground_size or chapter_size
+			local chapter_half_size = chapter_size / 2
+			local draw_chapter = function (time)
+				local chapter_x = bax + this.width * (time / state.duration)
+				local color = chapter_x > fbx and options.color_foreground or options.color_background
+
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..color..'}')
+				ass:append(ass_opacity(options.timeline_chapters_opacity))
+				ass:pos(0, 0)
+				ass:draw_start()
+
+				if dots then
+					local bezier_stretch = chapter_size * 0.67
+					ass:move_to(chapter_x - chapter_half_size, chapter_y)
+					ass:bezier_curve(
+						chapter_x - chapter_half_size, chapter_y - bezier_stretch,
+						chapter_x + chapter_half_size, chapter_y - bezier_stretch,
+						chapter_x + chapter_half_size, chapter_y
+					)
+					ass:bezier_curve(
+						chapter_x + chapter_half_size, chapter_y + bezier_stretch,
+						chapter_x - chapter_half_size, chapter_y + bezier_stretch,
+						chapter_x - chapter_half_size, chapter_y
+					)
+				else
+					ass:rect_cw(chapter_x, chapter_y - chapter_half_size, chapter_x + 1, chapter_y + chapter_half_size)
+				end
+
+				ass:draw_stop()
 			end
 
-			if chapter_size ~= nil then
-				-- for 1px chapter size, use the whole size of the bar including padding
-				chapter_size = size <= 1 and foreground_size or chapter_size
-				local chapter_half_size = chapter_size / 2
-				local draw_chapter = function (time)
-					local chapter_x = bax + this.width * (time / state.duration)
-					local color = chapter_x > fbx and options.color_foreground or options.color_background
-
-					ass:new_event()
-					ass:append('{\\blur0\\bord0\\1c&H'..color..'}')
-					ass:append(ass_opacity(options.timeline_chapters_opacity))
-					ass:pos(0, 0)
-					ass:draw_start()
-
-					if dots then
-						local bezier_stretch = chapter_size * 0.67
-						ass:move_to(chapter_x - chapter_half_size, chapter_y)
-						ass:bezier_curve(
-							chapter_x - chapter_half_size, chapter_y - bezier_stretch,
-							chapter_x + chapter_half_size, chapter_y - bezier_stretch,
-							chapter_x + chapter_half_size, chapter_y
-						)
-						ass:bezier_curve(
-							chapter_x + chapter_half_size, chapter_y + bezier_stretch,
-							chapter_x - chapter_half_size, chapter_y + bezier_stretch,
-							chapter_x - chapter_half_size, chapter_y
-						)
-					else
-						ass:rect_cw(chapter_x, chapter_y - chapter_half_size, chapter_x + 1, chapter_y + chapter_half_size)
-					end
-
-					ass:draw_stop()
-				end
-
-				if state.chapters ~= nil then
-					for i, chapter in ipairs(state.chapters) do
-						if not chapter._uosc_used_as_range_point then
-							draw_chapter(chapter.time)
-						end
+			if state.chapters ~= nil then
+				for i, chapter in ipairs(state.chapters) do
+					if not chapter._uosc_used_as_range_point then
+						draw_chapter(chapter.time)
 					end
 				end
+			end
 
-				if state.ab_loop_a and state.ab_loop_a > 0 then
-					draw_chapter(state.ab_loop_a)
-				end
+			if state.ab_loop_a and state.ab_loop_a > 0 then
+				draw_chapter(state.ab_loop_a)
+			end
 
-				if state.ab_loop_b and state.ab_loop_b > 0 then
-					draw_chapter(state.ab_loop_b)
-				end
+			if state.ab_loop_b and state.ab_loop_b > 0 then
+				draw_chapter(state.ab_loop_b)
 			end
 		end
 	end
@@ -1642,19 +1644,19 @@ function render_timeline(this)
 		end
 	end
 
-	-- Render requested elements
-	local element_renderers = {
-		ranges = render_ranges,
-		chapters = render_chapters,
-		progress = render_progress,
-		cache = render_cache,
-		time = render_time,
-	}
-	local rendered_chapters = false
-
-	for _, name in ipairs(options.timeline_elements) do
-		if name == 'chapters' then rendered_chapters = true end
-		if element_renderers[name] ~= nil then element_renderers[name]() end
+	-- Render elements in the optimal order
+	if is_line and size > size_min then
+		render_ranges()
+		render_chapters()
+		render_progress()
+		render_cache()
+		render_time()
+	else
+		render_progress()
+		render_ranges()
+		render_chapters()
+		render_cache()
+		render_time()
 	end
 
 	-- Hovered time and chapter
@@ -1662,7 +1664,7 @@ function render_timeline(this)
 		local hovered_seconds = state.duration * (cursor.x / display.width)
 		local chapter_title = ''
 		local chapter_title_width = 0
-		if (rendered_chapters and state.chapters) then
+		if (options.timeline_chapters ~= 'never' and state.chapters) then
 			for i = #state.chapters, 1, -1 do
 				local chapter = state.chapters[i]
 				if hovered_seconds >= chapter.time then
@@ -3208,11 +3210,10 @@ end
 -- VALUE SERIALIZATION/NORMALIZATION
 
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
-options.timeline_chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.timeline_chapters) and options.timeline_chapters or 'dots'
+options.timeline_chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.timeline_chapters) and options.timeline_chapters or 'never'
 options.media_types = split(options.media_types, ' *, *')
 options.subtitle_types = split(options.subtitle_types, ' *, *')
 options.stream_quality_options = split(options.stream_quality_options, ' *, *')
-options.timeline_elements = split(options.timeline_elements, ' *, *')
 options.timeline_cached_ranges = (function()
 	if options.timeline_cached_ranges == '' or options.timeline_cached_ranges == 'no' then return nil end
 	local parts = split(options.timeline_cached_ranges, ':')
