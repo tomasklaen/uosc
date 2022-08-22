@@ -34,6 +34,7 @@ local options = {
 	timeline_font_scale = 1,
 	timeline_chapters = 'dots',
 	timeline_chapters_opacity = 0.2,
+	timeline_chapters_width = 6,
 
 	volume = 'right',
 	volume_size = 40,
@@ -1507,27 +1508,30 @@ function render_timeline(this)
 		) then return end
 
 		local dots = false
-		local chapter_size, chapter_y
+		-- Defaults are for `lines`
+		local chapter_width = options.timeline_chapters_width
+		local chapter_height, chapter_y
 		if options.timeline_chapters == 'dots' then
 			dots = true
-			chapter_size = math.min(6, (foreground_size / 2) + 1)
-			chapter_y = fay + chapter_size / 2
+			chapter_height = math.min(chapter_width, (foreground_size / 2) + 1)
+			chapter_y = fay + chapter_height / 2
 		elseif options.timeline_chapters == 'lines' then
-			chapter_size = size
-			chapter_y = fay + (chapter_size / 2)
+			chapter_height = size
+			chapter_y = fay + (chapter_height / 2)
 		elseif options.timeline_chapters == 'lines-top' then
-			chapter_size = math.min(this.size_max / 3.5, size)
-			chapter_y = fay + (chapter_size / 2)
+			chapter_height = math.min(this.size_max / 3, size)
+			chapter_y = fay + (chapter_height / 2)
 		elseif options.timeline_chapters == 'lines-bottom' then
-			chapter_size = math.min(this.size_max / 3.5, size)
-			chapter_y = fay + size - (chapter_size / 2)
+			chapter_height = math.min(this.size_max / 3, size)
+			chapter_y = fay + size - (chapter_height / 2)
 		end
 
-		if chapter_size ~= nil then
+		if chapter_height ~= nil then
 			-- for 1px chapter size, use the whole size of the bar including padding
-			chapter_size = size <= 1 and foreground_size or chapter_size
-			local chapter_half_size = chapter_size / 2
-			local draw_chapter = function (time)
+			chapter_height = size <= 1 and foreground_size or chapter_height
+			local chapter_half_width = chapter_width / 2
+			local chapter_half_height = chapter_height / 2
+			local function draw_chapter(time)
 				local chapter_x = bax + this.width * (time / state.duration)
 				local color = chapter_x > fbx and options.color_foreground or options.color_background
 
@@ -1538,20 +1542,25 @@ function render_timeline(this)
 				ass:draw_start()
 
 				if dots then
-					local bezier_stretch = chapter_size * 0.67
-					ass:move_to(chapter_x - chapter_half_size, chapter_y)
+					local bezier_stretch = chapter_height * 0.67
+					ass:move_to(chapter_x - chapter_half_height, chapter_y)
 					ass:bezier_curve(
-						chapter_x - chapter_half_size, chapter_y - bezier_stretch,
-						chapter_x + chapter_half_size, chapter_y - bezier_stretch,
-						chapter_x + chapter_half_size, chapter_y
+						chapter_x - chapter_half_height, chapter_y - bezier_stretch,
+						chapter_x + chapter_half_height, chapter_y - bezier_stretch,
+						chapter_x + chapter_half_height, chapter_y
 					)
 					ass:bezier_curve(
-						chapter_x + chapter_half_size, chapter_y + bezier_stretch,
-						chapter_x - chapter_half_size, chapter_y + bezier_stretch,
-						chapter_x - chapter_half_size, chapter_y
+						chapter_x + chapter_half_height, chapter_y + bezier_stretch,
+						chapter_x - chapter_half_height, chapter_y + bezier_stretch,
+						chapter_x - chapter_half_height, chapter_y
 					)
 				else
-					ass:rect_cw(chapter_x, chapter_y - chapter_half_size, chapter_x + 1, chapter_y + chapter_half_size)
+					ass:rect_cw(
+						chapter_x - chapter_half_width,
+						chapter_y - chapter_half_height,
+						chapter_x + chapter_half_width,
+						chapter_y + chapter_half_height
+					)
 				end
 
 				ass:draw_stop()
