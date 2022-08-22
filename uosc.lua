@@ -18,9 +18,9 @@ local infinity = 1e309
 -- OPTIONS/CONFIG/STATE
 local options = {
 	timeline_style = 'line',
-	timeline_line_width = 3,
-	timeline_line_width_fullscreen = 4,
-	timeline_line_width_minimized_scale = 4,
+	timeline_line_width = 2,
+	timeline_line_width_fullscreen = 3,
+	timeline_line_width_minimized_scale = 10,
 	timeline_size_min = 2,
 	timeline_size_max = 40,
 	timeline_size_min_fullscreen = 0,
@@ -30,7 +30,7 @@ local options = {
 	timeline_opacity = 0.9,
 	timeline_border = 1,
 	timeline_step = 5,
-	timeline_cached_ranges = '345433:0.8',
+	timeline_cached_ranges = '4e845c:0.5',
 	timeline_font_scale = 1,
 	timeline_chapters = 'dots',
 	timeline_chapters_opacity = 0.2,
@@ -1644,7 +1644,10 @@ function render_timeline(this)
 		end
 	end
 
-	-- Render elements in the optimal order
+	-- Render elements in the optimal order:
+	-- When line is minimized, it turns into a bar (timeline_line_width_minimized_scale),
+	-- so it should be below ranges and chapters.
+	-- But un-minimized it's a thin line that should be above everything.
 	if is_line and size > size_min then
 		render_ranges()
 		render_chapters()
