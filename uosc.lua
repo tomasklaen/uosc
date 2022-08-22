@@ -1,5 +1,5 @@
 --[[
-uosc 2.17.0 - 2022-Apr-30 | https://github.com/darsain/uosc
+uosc 2.17.0 - 2022-Apr-30 | https://github.com/tomasklaen/uosc
 Minimalist cursor proximity based UI for MPV player.
 ]]
 

@@ -1,5 +1,5 @@
 <div align="center">
-	<a href="https://darsain.github.io/uosc/preview.webm"><img src="https://darsain.github.io/uosc/preview.png"></a>
+	<a href="https://tomasklaen.github.io/uosc/preview.webm"><img src="https://tomasklaen.github.io/uosc/preview.png"></a>
 	<h1>uosc</h1>
 	<p>
 		Minimalist cursor proximity based UI for <a href="https://mpv.io">MPV player</a>.
@@ -31,13 +31,13 @@ Most notable features:
 
 #### Latest version (recommended)
 
--   [`uosc.lua`](https://github.com/darsain/uosc/releases/latest/download/uosc.lua) - script file
--   [`uosc.conf`](https://github.com/darsain/uosc/releases/latest/download/uosc.conf) - configuration file with default values (optional)
+-   [`uosc.lua`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.lua) - script file
+-   [`uosc.conf`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf) - configuration file with default values (optional)
 
 #### Development (unstable, might be broken)
 
--   [`uosc.lua`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.lua)
--   [`uosc.conf`](https://raw.githubusercontent.com/darsain/uosc/master/uosc.conf)
+-   [`uosc.lua`](https://raw.githubusercontent.com/tomasklaen/uosc/master/uosc.lua)
+-   [`uosc.conf`](https://raw.githubusercontent.com/tomasklaen/uosc/master/uosc.conf)
 
 ## Installation
 
@@ -60,7 +60,7 @@ Most notable features:
 
 ## Options
 
-All of the available **uosc** options with their default values are in the provided `uosc.conf`. Follow one of the download links to the version of this file that matches your `uosc.lua`, or just peak the [latest development version](https://github.com/darsain/uosc/blob/master/uosc.conf) for a quick reference, but this might have options that are different or not available in stable release.
+All of the available **uosc** options with their default values are in the provided `uosc.conf`. Follow one of the download links to the version of this file that matches your `uosc.lua`, or just peak the [latest development version](https://github.com/tomasklaen/uosc/blob/master/uosc.conf) for a quick reference, but this might have options that are different or not available in stable release.
 
 To change the font, **uosc** respects the mpv `osd-font` configuration. To change it, you have to declare `osd-font` in your `mpv.conf`.
 
