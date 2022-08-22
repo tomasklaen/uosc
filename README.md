@@ -1,5 +1,5 @@
 <div align="center">
-	<a href="https://tomasklaen.github.io/uosc/preview.webm"><img src="https://tomasklaen.github.io/uosc/preview.png"></a>
+	<a href="https://user-images.githubusercontent.com/47283320/185891110-f5f8a478-3970-4a14-bbf5-b444d571e4be.webm"><img src="https://user-images.githubusercontent.com/47283320/185892154-3b0f118a-491a-4175-807e-3de05d85ec9c.png" alt="Preview screenshot"></a>
 	<h1>uosc</h1>
 	<p>
 		Minimalist cursor proximity based UI for <a href="https://mpv.io">MPV player</a>.
