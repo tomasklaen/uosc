@@ -1548,7 +1548,7 @@ function render_timeline(this)
 			local chapter_half_height = chapter_height / 2
 			local function draw_chapter(time)
 				local chapter_x = bax + this.width * (time / state.duration)
-				local color = chapter_x > fbx and options.color_foreground or options.color_background
+				local color = (fax < chapter_x and chapter_x < fbx) and options.color_background or options.color_foreground
 
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\1c&H'..color..'}')
