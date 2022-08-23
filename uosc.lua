@@ -813,8 +813,8 @@ function Menu:open(items, open_item, opts)
 		item_content_spacing = nil,
 		font_size = nil,
 		font_size_hint = nil,
-		scroll_step = nil,
-		scroll_height = nil,
+		scroll_step = nil, -- item height + item spacing
+		scroll_height = nil, -- items + spacings - container height
 		scroll_y = 0,
 		opacity = 0,
 		relative_parent_opacity = 0.4,
@@ -954,16 +954,10 @@ function Menu:open(items, open_item, opts)
 			end
 		end,
 		get_item_index_below_cursor = function(this)
-			return math.ceil((cursor.y - this.ay + this.scroll_y) / this.scroll_step)
+			return this:get_index_at_offset(cursor.y - this.ay + this.scroll_y)
 		end,
-		get_first_visible_index = function(this)
-			return round(this.scroll_y / this.scroll_step) + 1
-		end,
-		get_last_visible_index = function(this)
-			return round((this.scroll_y + this.height) / this.scroll_step)
-		end,
-		get_centermost_visible_index = function(this)
-			return round((this.scroll_y + (this.height / 2)) / this.scroll_step)
+		get_index_at_offset = function(this, offset)
+			return math.max(0, math.min(round((offset + (this.height / 2)) / this.scroll_step), #this.items))
 		end,
 		scroll_to = function(this, pos)
 			this.scroll_y = math.max(math.min(pos, this.scroll_height), 0)
@@ -1006,15 +1000,11 @@ function Menu:open(items, open_item, opts)
 			this:delete_index(itable_find(this.items, function(_, item) return item.value == value end))
 		end,
 		prev = function(this)
-			local default_anchor = this.scroll_height > this.scroll_step and this:get_centermost_visible_index() or this:get_last_visible_index()
-			local current_index = this.selected_index or default_anchor + 1
-			this.selected_index = math.max(current_index - 1, 1)
+			this.selected_index = math.max(this.selected_index and this.selected_index - 1 or #this.items, 1)
 			this:scroll_to_item(this.selected_index)
 		end,
 		next = function(this)
-			local default_anchor = this.scroll_height > this.scroll_step and this:get_centermost_visible_index() or this:get_first_visible_index()
-			local current_index = this.selected_index or default_anchor - 1
-			this.selected_index = math.min(current_index + 1, #this.items)
+			this.selected_index = math.min(this.selected_index and this.selected_index + 1 or 1, #this.items)
 			this:scroll_to_item(this.selected_index)
 		end,
 		back = function(this)
@@ -1121,20 +1111,24 @@ function Menu:open(items, open_item, opts)
 			request_render()
 		end,
 		on_pgup = function(this)
-			this.selected_index = nil
-			this:scroll_to(this.scroll_y - this.height)
+			local items_per_page = round((this.height / this.scroll_step) * 0.4)
+			local paged_index = (this.selected_index and this.selected_index or #this.items) - items_per_page
+			this.selected_index = math.min(math.max(1, paged_index), #this.items)
+			if this.selected_index > 0 then this:scroll_to_item(this.selected_index) end
 		end,
 		on_pgdwn = function(this)
-			this.selected_index = nil
-			this:scroll_to(this.scroll_y + this.height)
+			local items_per_page = round((this.height / this.scroll_step) * 0.4)
+			local paged_index = (this.selected_index and this.selected_index or 1) + items_per_page
+			this.selected_index = math.min(math.max(1, paged_index), #this.items)
+			if this.selected_index > 0 then this:scroll_to_item(this.selected_index) end
 		end,
 		on_home = function(this)
-			this.selected_index = nil
-			this:scroll_to(0)
+			this.selected_index = math.min(1, #this.items)
+			if this.selected_index > 0 then this:scroll_to_item(this.selected_index) end
 		end,
 		on_end = function(this)
-			this.selected_index = nil
-			this:scroll_to(this.scroll_height)
+			this.selected_index = #this.items
+			if this.selected_index > 0 then this:scroll_to_item(this.selected_index) end
 		end,
 		render = render_menu,
 	}))
