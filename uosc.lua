@@ -1450,6 +1450,11 @@ function render_timeline(this)
 	local fbx = 0
 	local fby = bby
 
+	-- Controls the padding of time on the timeline due to line width.
+	-- It's a distance of the center of the line when from the side when at the
+	-- start or end of the timeline. Effectively half of the line width.
+	local time_padding = 0
+
 	if is_line then
 		local minimized_fraction = 1 - (size - size_min) / (this.size_max - size_min)
 		local width_normal = this:get_effective_line_width()
@@ -1458,12 +1463,15 @@ function render_timeline(this)
 		local current_time_x = round((bbx - bax - line_width) * progress)
 		fax = current_time_x
 		fbx = fax + line_width
+		if line_width > 2 then time_padding = round(line_width / 2) end
 	else
 		fax = bax
 		fay = bay + this.top_border
 		fbx = round(bax + this.width * progress)
 	end
 
+	local time_x = bax + time_padding
+	local time_width = this.width - time_padding * 2
 	local foreground_size = bby - bay
 	local foreground_coordinates = fax..','..fay..','..fbx..','..fby -- for clipping
 
@@ -1492,8 +1500,8 @@ function render_timeline(this)
 		if state.chapter_ranges ~= nil then
 			for i, chapter_range in ipairs(state.chapter_ranges) do
 				for i, range in ipairs(chapter_range.ranges) do
-					local rax = bax + this.width * (range['start'].time / state.duration)
-					local rbx = bax + this.width * (range['end'].time / state.duration)
+					local rax = time_x + time_width * (range['start'].time / state.duration)
+					local rbx = time_x + time_width * (range['end'].time / state.duration)
 					ass:new_event()
 					ass:append('{\\blur0\\bord0\\1c&H'..chapter_range.color..'}')
 					ass:append(ass_opacity(chapter_range.opacity))
@@ -1547,7 +1555,7 @@ function render_timeline(this)
 			local chapter_half_width = chapter_width / 2
 			local chapter_half_height = chapter_height / 2
 			local function draw_chapter(time)
-				local chapter_x = bax + this.width * (time / state.duration)
+				local chapter_x = time_x + time_width * (time / state.duration)
 				local color = (fax < chapter_x and chapter_x < fbx) and options.color_background or options.color_foreground
 
 				ass:new_event()
@@ -1604,6 +1612,7 @@ function render_timeline(this)
 		if options.timeline_cached_ranges and state.cached_ranges then
 			local range_height = math.max(math.min(this.size_max / 8, foreground_size / 3), 1)
 			local range_ay = fby - range_height
+
 			for _, range in ipairs(state.cached_ranges) do
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\1c&H'..options.timeline_cached_ranges.color..'}')
@@ -1613,9 +1622,26 @@ function render_timeline(this)
 				local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
 				local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
 				ass:rect_cw(
-					bax + this.width * (range_start / state.duration), range_ay,
-					bax + this.width * (range_end / state.duration), range_ay + range_height
+					time_x + time_width * (range_start / state.duration), range_ay,
+					time_x + time_width * (range_end / state.duration), range_ay + range_height
 				)
+				ass:draw_stop()
+			end
+
+			-- Visualize padded time area limits
+			if time_padding > 0 then
+				local notch_ay = math.max(range_ay - 2, fay)
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..options.timeline_cached_ranges.color..'}')
+				ass:pos(0, 0)
+				ass:draw_start()
+				ass:rect_cw(time_x, notch_ay, time_x + 1, bby)
+				ass:draw_stop()
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\1c&H'..options.timeline_cached_ranges.color..'}')
+				ass:pos(0, 0)
+				ass:draw_start()
+				ass:rect_cw(time_x + time_width - 1, notch_ay, time_x + time_width, bby)
 				ass:draw_stop()
 			end
 		end
