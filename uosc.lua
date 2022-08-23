@@ -3169,9 +3169,9 @@ function open_file_navigation_menu(_directory, handle_select, menu_options)
 	table.sort(directories, word_order_comparator)
 
 	-- Pre-populate items with parent directory selector if not at root
-	local items = is_root and {} or {
-		{title = '..', hint = 'parent dir', value = directory.dirname}
-	}
+	local items = is_root and
+		(state.os == 'windows' and {{title = '..', hint = 'Drives', value = '$drives'}} or {}) or
+		{{title = '..', hint = 'parent dir', value = directory.dirname}}
 
 	for _, dir in ipairs(directories) do
 		local serialized = serialize_path(utils.join_path(directory.path, dir))
@@ -3203,6 +3203,10 @@ function open_file_navigation_menu(_directory, handle_select, menu_options)
 	menu_options.title = directory.basename..'/'
 
 	menu:open(items, function(path)
+		if path == "$drives" then
+			open_drives_menu(handle_select, menu_options)
+			return
+		end
 		local meta, error = utils.file_info(path)
 
 		if not meta then
@@ -3217,6 +3221,32 @@ function open_file_navigation_menu(_directory, handle_select, menu_options)
 			menu:close()
 		end
 	end, menu_options)
+end
+
+function open_drives_menu(handle_select, menu_options)
+	menu_options.active_item = nil
+	menu_options.selected_item = nil
+	menu_options.title = 'Drives'
+	local items = (function()
+		local process = mp.command_native({
+			name = 'subprocess',
+			capture_stdout = true,
+			args = {'wmic', 'logicaldisk', 'get', 'name', '/value'},
+		})
+		local items = {}
+		if process.status == 0 then
+			for _, value in ipairs(split(process.stdout, '\n')) do
+				local drive = string.match(value, "Name=([A-Z]:)")
+				if drive then
+					items[#items + 1] = {title = drive, hint = 'Drive', value = drive}
+				end
+			end
+		else
+			msg.error(process.stderr)
+		end
+		return items
+	end)()
+	menu:open(items, function(path) open_file_navigation_menu(path, handle_select, menu_options) end, menu_options)
 end
 
 -- VALUE SERIALIZATION/NORMALIZATION
