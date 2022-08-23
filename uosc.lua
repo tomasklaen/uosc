@@ -2621,7 +2621,7 @@ if itable_find({'center', 'bottom-bar'}, options.menu_button) then
 			if this.forced_proximity then return this.forced_proximity end
 			if options.menu_button == 'bottom-bar' then
 				local timeline_proximity = elements.timeline.forced_proximity or elements.timeline.proximity
-				return this.forced_proximity or math[cursor.hidden and 'min' or 'max'](this.proximity, timeline_proximity)
+				return this.forced_proximity or math.max(this.proximity, timeline_proximity)
 			end
 			return this.proximity
 		end,
@@ -2682,7 +2682,7 @@ if options.speed then
 			if is_element_persistent('speed') then return 1 end
 			if this.forced_proximity then return this.forced_proximity end
 			local timeline_proximity = elements.timeline.forced_proximity or elements.timeline.proximity
-			return this.forced_proximity or math[cursor.hidden and 'min' or 'max'](this.proximity, timeline_proximity)
+			return this.forced_proximity or math.max(this.proximity, timeline_proximity)
 		end,
 		update_dimensions = function(this)
 			this.height = state.fullormaxed and options.speed_size_fullscreen or options.speed_size
