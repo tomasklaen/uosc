@@ -3200,13 +3200,19 @@ function open_file_navigation_menu(_directory, handle_select, menu_options)
 	end
 
 	menu_options.selected_item = menu_options.active_item or ((is_root == false and #files > 1) and 2 or 1)
-	menu_options.title = directory.basename..'/'
+
+	if menu_options.title == nil then
+		menu_options.title = directory.basename..'/'
+	end
 
 	menu:open(items, function(path)
 		if path == "$drives" then
-			open_drives_menu(handle_select, menu_options)
+			open_drives_menu(function(drive)
+				open_file_navigation_menu(drive, handle_select, menu_options)
+			end, menu_options)
 			return
 		end
+
 		local meta, error = utils.file_info(path)
 
 		if not meta then
@@ -3224,29 +3230,25 @@ function open_file_navigation_menu(_directory, handle_select, menu_options)
 end
 
 function open_drives_menu(handle_select, menu_options)
-	menu_options.active_item = nil
-	menu_options.selected_item = nil
-	menu_options.title = 'Drives'
-	local items = (function()
-		local process = mp.command_native({
-			name = 'subprocess',
-			capture_stdout = true,
-			args = {'wmic', 'logicaldisk', 'get', 'name', '/value'},
-		})
-		local items = {}
-		if process.status == 0 then
-			for _, value in ipairs(split(process.stdout, '\n')) do
-				local drive = string.match(value, "Name=([A-Z]:)")
-				if drive then
-					items[#items + 1] = {title = drive, hint = 'Drive', value = drive}
-				end
+	local process = mp.command_native({
+		name = 'subprocess',
+		capture_stdout = true,
+		args = {'wmic', 'logicaldisk', 'get', 'name', '/value'},
+	})
+	local items = {}
+
+	if process.status == 0 then
+		for _, value in ipairs(split(process.stdout, '\n')) do
+			local drive = string.match(value, "Name=([A-Z]:)")
+			if drive then
+				items[#items + 1] = {title = drive, hint = 'Drive', value = drive}
 			end
-		else
-			msg.error(process.stderr)
 		end
-		return items
-	end)()
-	menu:open(items, function(path) open_file_navigation_menu(path, handle_select, menu_options) end, menu_options)
+	else
+		msg.error(process.stderr)
+	end
+
+	menu:open(items, handle_select, menu_options)
 end
 
 -- VALUE SERIALIZATION/NORMALIZATION
@@ -3496,6 +3498,7 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 		function(path) mp.commandv('sub-add', path) end,
 		{
 			type = 'load-subtitles',
+			title = 'Load subtitles',
 			allowed_types = options.subtitle_types
 		}
 	)
@@ -3668,6 +3671,7 @@ mp.add_key_binding(nil, 'open-file', function()
 		function(path) mp.commandv('loadfile', path) end,
 		{
 			type = 'open-file',
+			title = 'Open file',
 			allowed_types = options.media_types,
 			active_path = active_file,
 			on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
