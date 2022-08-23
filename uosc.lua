@@ -496,8 +496,19 @@ function normalize_path(path)
 		path = utils.join_path(state.cwd, path)
 	end
 
+	-- Remove trailing slashes
+	if #path > 1 then
+		path = path:gsub('[\\/]+$', '')
+		path = #path == 0 and '/' or path
+	end
+
 	-- Use proper slashes
 	if state.os == 'windows' then
+		-- Drive letters on windows need trailing backslash
+		if path:sub(#path) == ':' then
+			path = path..'\\'
+		end
+
 		return path:gsub('/', '\\')
 	else
 		return path:gsub('\\', '/')
@@ -517,14 +528,18 @@ end
 -- Serializes path into its semantic parts
 function serialize_path(path)
 	if not path or is_protocol(path) then return end
-	path = normalize_path(path)
-	local parts = split(path, '[\\/]+')
-	if parts[#parts] == '' then table.remove(parts, #parts) end -- remove trailing separator
-	local basename = parts and parts[#parts] or path
+
+	local normal_path = normalize_path(path)
+	-- normalize_path() already strips slashes, but leaves trailing backslash
+	-- for windows drive letters, but we don't need it here.
+	local working_path = normal_path:sub(#normal_path) == '\\' and normal_path:sub(1, #normal_path - 1) or normal_path
+	local parts = split(working_path, '[\\/]+')
+	local basename = parts and parts[#parts] or working_path
 	local dirname = #parts > 1 and table.concat(itable_slice(parts, 1, #parts - 1), state.os == 'windows' and '\\' or '/') or nil
 	local dot_split = split(basename, '%.')
+
 	return {
-		path = path:sub(-1) == ':' and state.os == 'windows' and path..'\\' or path,
+		path = normal_path,
 		is_root = dirname == nil,
 		dirname = dirname,
 		basename = basename,
@@ -766,6 +781,12 @@ function Menu:is_open(menu_type)
 	return elements.menu ~= nil and (not menu_type or elements.menu.type == menu_type)
 end
 
+---@alias MenuItem {title?: string, hint?: string, value: any}
+---@alias MenuOptions {title?: string, active_index?: number, selected_index?: number, on_open?: fun(), on_close?: fun(), parent_menu?: any}
+
+---@param items MenuItem[]
+---@param open_item fun(value: any)
+---@param opts? MenuOptions
 function Menu:open(items, open_item, opts)
 	opts = opts or {}
 
@@ -798,8 +819,8 @@ function Menu:open(items, open_item, opts)
 		opacity = 0,
 		relative_parent_opacity = 0.4,
 		items = items,
-		active_item = nil,
-		selected_item = nil,
+		active_index = nil,
+		selected_index = nil,
 		open_item = open_item,
 		parent_menu = nil,
 		init = function(this)
@@ -809,8 +830,8 @@ function Menu:open(items, open_item, opts)
 			-- Apply options
 			for key, value in pairs(opts) do this[key] = value end
 
-			if not this.selected_item then
-				this.selected_item = this.active_item
+			if not this.selected_index then
+				this.selected_index = this.active_index
 			end
 
 			-- Set initial dimensions
@@ -818,7 +839,7 @@ function Menu:open(items, open_item, opts)
 			this:on_display_change()
 
 			-- Scroll to selected item
-			this:scroll_to_item(this.selected_item)
+			this:scroll_to_item(this.selected_index)
 
 			-- Transition in animation
 			menu.transition = {to = 'child', target = this}
@@ -904,8 +925,8 @@ function Menu:open(items, open_item, opts)
 			this:on_display_change()
 
 			-- Reset indexes and scroll
-			this:select_index(this.selected_item)
-			this:activate_index(this.active_item)
+			this:select_index(this.selected_index)
+			this:activate_index(this.active_index)
 			this:scroll_to(this.scroll_y)
 			request_render()
 		end,
@@ -954,17 +975,17 @@ function Menu:open(items, open_item, opts)
 			end
 		end,
 		select_index = function(this, index)
-			this.selected_item = (index and index >= 1 and index <= #this.items) and index or nil
+			this.selected_index = (index and index >= 1 and index <= #this.items) and index or nil
 			request_render()
 		end,
 		select_value = function(this, value)
 			this:select_index(itable_find(this.items, function(_, item) return item.value == value end))
 		end,
 		activate_index = function(this, index)
-			this.active_item = (index and index >= 1 and index <= #this.items) and index or nil
-			if not this.selected_item then
-				this.selected_item = this.active_item
-				this:scroll_to_item(this.selected_item)
+			this.active_index = (index and index >= 1 and index <= #this.items) and index or nil
+			if not this.selected_index then
+				this.selected_index = this.active_index
+				this:scroll_to_item(this.selected_index)
 			end
 			request_render()
 		end,
@@ -978,7 +999,7 @@ function Menu:open(items, open_item, opts)
 				this:update_dimensions()
 				this:on_display_change()
 				if previous_active_value then this:activate_value(previous_active_value) end
-				this:scroll_to_item(this.selected_item)
+				this:scroll_to_item(this.selected_index)
 			end
 		end,
 		delete_value = function(this, value)
@@ -986,15 +1007,15 @@ function Menu:open(items, open_item, opts)
 		end,
 		prev = function(this)
 			local default_anchor = this.scroll_height > this.scroll_step and this:get_centermost_visible_index() or this:get_last_visible_index()
-			local current_index = this.selected_item or default_anchor + 1
-			this.selected_item = math.max(current_index - 1, 1)
-			this:scroll_to_item(this.selected_item)
+			local current_index = this.selected_index or default_anchor + 1
+			this.selected_index = math.max(current_index - 1, 1)
+			this:scroll_to_item(this.selected_index)
 		end,
 		next = function(this)
 			local default_anchor = this.scroll_height > this.scroll_step and this:get_centermost_visible_index() or this:get_first_visible_index()
-			local current_index = this.selected_item or default_anchor - 1
-			this.selected_item = math.min(current_index + 1, #this.items)
-			this:scroll_to_item(this.selected_item)
+			local current_index = this.selected_index or default_anchor - 1
+			this.selected_index = math.min(current_index + 1, #this.items)
+			this:scroll_to_item(this.selected_index)
 		end,
 		back = function(this)
 			if menu.transition then
@@ -1041,8 +1062,8 @@ function Menu:open(items, open_item, opts)
 				return
 			end
 
-			if this.selected_item then
-				local item = this.items[this.selected_item]
+			if this.selected_index then
+				local item = this.items[this.selected_index]
 				-- Is submenu
 				if item.items then
 					local opts = table_copy(opts)
@@ -1059,7 +1080,7 @@ function Menu:open(items, open_item, opts)
 		on_prop_fullormaxed = function(this) this:update_dimensions() end,
 		on_global_mbtn_left_down = function(this)
 			if this.proximity_raw == 0 then
-				this.selected_item = this:get_item_index_below_cursor()
+				this.selected_index = this:get_item_index_below_cursor()
 				this:open_selected_item()
 			else
 				-- check if this is clicking on any parent menus
@@ -1079,40 +1100,40 @@ function Menu:open(items, open_item, opts)
 		end,
 		on_global_mouse_move = function(this)
 			if this.proximity_raw == 0 then
-				this.selected_item = this:get_item_index_below_cursor()
+				this.selected_index = this:get_item_index_below_cursor()
 			else
-				if this.selected_item then this.selected_item = nil end
+				if this.selected_index then this.selected_index = nil end
 			end
 			request_render()
 		end,
 		on_wheel_up = function(this)
-			this.selected_item = nil
+			this.selected_index = nil
 			this:scroll_to(this.scroll_y - this.scroll_step)
 			-- Selects item below cursor
 			this:on_global_mouse_move()
 			request_render()
 		end,
 		on_wheel_down = function(this)
-			this.selected_item = nil
+			this.selected_index = nil
 			this:scroll_to(this.scroll_y + this.scroll_step)
 			-- Selects item below cursor
 			this:on_global_mouse_move()
 			request_render()
 		end,
 		on_pgup = function(this)
-			this.selected_item = nil
+			this.selected_index = nil
 			this:scroll_to(this.scroll_y - this.height)
 		end,
 		on_pgdwn = function(this)
-			this.selected_item = nil
+			this.selected_index = nil
 			this:scroll_to(this.scroll_y + this.height)
 		end,
 		on_home = function(this)
-			this.selected_item = nil
+			this.selected_index = nil
 			this:scroll_to(0)
 		end,
 		on_end = function(this)
-			this.selected_item = nil
+			this.selected_index = nil
 			this:scroll_to(this.scroll_height)
 		end,
 		render = render_menu,
@@ -2083,7 +2104,7 @@ function render_menu(this)
 				item_clip = scroll_area_clip
 			end
 
-			local is_active = this.active_item == index
+			local is_active = this.active_index == index
 			local font_color, background_color, ass_shadow, ass_shadow_color
 			local icon_size = this.font_size
 
@@ -2113,7 +2134,7 @@ function render_menu(this)
 			ass:draw_stop()
 
 			-- Selected highlight
-			if this.selected_item == index then
+			if this.selected_index == index then
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\1c&H'..options.color_foreground..item_clip..'}')
 				ass:append(ass_opacity(0.1, this.opacity))
@@ -3046,10 +3067,10 @@ function create_self_updating_menu_opener(params)
 		-- Update active index and playlist content on playlist changes
 		local function handle_list_prop_change(name, value)
 			if menu:is_open(params.type) then
-				local items, active_item = params.list_change_handler(name, value)
+				local items, active_index = params.list_change_handler(name, value)
 				elements.menu:update({
 					items = items,
-					active_item = active_item
+					active_index = active_index
 				})
 			end
 		end
@@ -3060,7 +3081,7 @@ function create_self_updating_menu_opener(params)
 			end
 		end
 
-		-- Items and active_item are set in the handle_prop_change callback, since adding
+		-- Items and active_index are set in the handle_prop_change callback, since adding
 		-- a property observer triggers its handler immediately, we just let that initialize the items.
 		menu:open({}, params.selection_handler, {
 			type = params.type,
@@ -3082,11 +3103,11 @@ end
 function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop)
 	local function tracklist_change_handler(_, tracklist)
 		local items = {}
-		local active_item = nil
+		local active_index = nil
 
 		for _, track in ipairs(tracklist) do
 			if track.type == track_type then
-				if track.selected then active_item = track.id end
+				if track.selected then active_index = track.id end
 
 				local hint_vals = {
 					track.lang and track.lang:upper() or nil,
@@ -3120,10 +3141,10 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		-- If I'm mistaken and there is an active need for this, feel free to
 		-- open an issue.
 		if track_type == 'sub' then
-			active_item = active_item and active_item + 1 or 1
+			active_index = active_index and active_index + 1 or 1
 			table.insert(items, 1, {hint = 'disabled', value = nil})
 		end
-		return items, active_item
+		return items, active_index
 	end
 
 	local function selection_handler(id)
@@ -3144,24 +3165,27 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	})
 end
 
--- `menu_options`:
--- **allowed_types** - table with file extensions to display
--- **active_path** - full path of a file to preselect
--- Rest of the options are passed to `menu:open()`
-function open_file_navigation_menu(_directory, handle_select, menu_options)
-	directory = serialize_path(_directory)
+---@alias NavigationMenuOptions {type: string, title?: string, allowed_types?: string[], active_path?: string, selected_path?: string}
+
+-- Opens a file navigation menu with items inside `directory_path`.
+---@param directory_path string
+---@param handle_select fun(path: string): nil
+---@param menu_options NavigationMenuOptions
+function open_file_navigation_menu(directory_path, handle_select, menu_options)
+	directory = serialize_path(directory_path)
+	menu_options = menu_options or {}
 
 	if not directory then
-		msg.error('Couldn\'t serialize path "'.._directory..'.')
+		msg.error('Couldn\'t serialize path "'..directory_path..'.')
 		return
 	end
 
-	local directories, error = utils.readdir(directory.path, 'dirs')
-	local files, error = get_files_in_directory(directory.path, menu_options.allowed_types)
+	local directories, dirs_error = utils.readdir(directory.path, 'dirs')
+	local files, files_error = get_files_in_directory(directory.path, menu_options.allowed_types)
 	local is_root = not directory.dirname
 
 	if not files or not directories then
-		msg.error('Retrieving files from '..directory..' failed: '..(error or ''))
+		msg.error('Retrieving files from '..directory..' failed: '..(dirs_error or files_error or ''))
 		return
 	end
 
@@ -3169,67 +3193,92 @@ function open_file_navigation_menu(_directory, handle_select, menu_options)
 	table.sort(directories, word_order_comparator)
 
 	-- Pre-populate items with parent directory selector if not at root
-	local items = is_root and
-		(state.os == 'windows' and {{title = '..', hint = 'Drives', value = '$drives'}} or {}) or
-		{{title = '..', hint = 'parent dir', value = directory.dirname}}
+	-- Each item value is a serialized path table it points to.
+	local items = {}
+
+	if is_root then
+		if state.os == 'windows' then
+			items[#items + 1] = {title = '..', hint = 'Drives', value = {is_drives = true, is_to_parent = true}}
+		end
+	else
+		local serialized = serialize_path(directory.dirname)
+		serialized.is_directory = true;
+		items[#items + 1] = {title = '..', hint = 'parent dir', value = serialized, is_to_parent = true}
+	end
+
+	-- Index where actual items start
+	local items_start_index = #items + 1
 
 	for _, dir in ipairs(directories) do
 		local serialized = serialize_path(utils.join_path(directory.path, dir))
 		if serialized then
-			items[#items + 1] = {title = serialized.basename, value = serialized.path, hint = '/'}
+			serialized.is_directory = true
+			items[#items + 1] = {title = serialized.basename, value = serialized, hint = '/'}
 		end
 	end
 
-	menu_options.active_item = nil
-
 	for _, file in ipairs(files) do
 		local serialized = serialize_path(utils.join_path(directory.path, file))
-
 		if serialized then
-			local item_index = #items + 1
+			serialized.is_file = true
+			items[#items + 1] = {title = serialized.basename, value = serialized}
+		end
+	end
 
-			items[item_index] = {
-				title = serialized.basename,
-				value = serialized.path,
-			}
+	menu_options.active_index = nil
 
-			if menu_options.active_path == serialized.path then
-				menu_options.active_item = item_index
+	for index, item in ipairs(items) do
+		if not item.value.is_to_parent then
+			if menu_options.active_path == item.value.path then
+				menu_options.active_index = index
+			end
+
+			if menu_options.selected_path == item.value.path then
+				menu_options.selected_index = index
 			end
 		end
 	end
 
-	menu_options.selected_item = menu_options.active_item or ((is_root == false and #files > 1) and 2 or 1)
+	if menu_options.selected_index == nil then
+		menu_options.selected_index = menu_options.active_index or math.min(items_start_index, #items)
+	end
 
+	local inherit_title = false
 	if menu_options.title == nil then
 		menu_options.title = directory.basename..'/'
+	else
+		inherit_title = true
 	end
 
 	menu:open(items, function(path)
-		if path == "$drives" then
+		local inheritable_options = {
+			type = menu_options.type,
+			title = inherit_title and menu_options.title or nil,
+			active_path = menu_options.active_path,
+			selected_path = directory.path
+		}
+
+		if path.is_drives then
 			open_drives_menu(function(drive)
-				open_file_navigation_menu(drive, handle_select, menu_options)
-			end, menu_options)
+				open_file_navigation_menu(drive, handle_select, inheritable_options)
+			end, {type = inheritable_options.type, title = inheritable_options.title, selected_path = directory.path})
 			return
 		end
 
-		local meta, error = utils.file_info(path)
-
-		if not meta then
-			msg.error('Retrieving file info for '..path..' failed: '..(error or ''))
-			return
-		end
-
-		if meta.is_dir then
-			open_file_navigation_menu(path, handle_select, menu_options)
+		if path.is_directory then
+			open_file_navigation_menu(path.path, handle_select, inheritable_options)
 		else
-			handle_select(path)
+			handle_select(path.path)
 			menu:close()
 		end
 	end, menu_options)
 end
 
+-- Opens a file navigation menu with Windows drives as items.
+---@param handle_select fun(path: string): nil
+---@param menu_options? NavigationMenuOptions
 function open_drives_menu(handle_select, menu_options)
+	menu_options = menu_options or {}
 	local process = mp.command_native({
 		name = 'subprocess',
 		capture_stdout = true,
@@ -3241,11 +3290,19 @@ function open_drives_menu(handle_select, menu_options)
 		for _, value in ipairs(split(process.stdout, '\n')) do
 			local drive = string.match(value, "Name=([A-Z]:)")
 			if drive then
-				items[#items + 1] = {title = drive, hint = 'Drive', value = drive}
+				local drive_path = normalize_path(drive)
+				items[#items + 1] = {title = drive, hint = 'Drive', value = drive_path}
+				if menu_options.selected_path == drive_path then
+					menu_options.selected_index = #items
+				end
 			end
 		end
 	else
 		msg.error(process.stderr)
+	end
+
+	if not menu_options.title then
+		menu_options.title = 'Drives'
 	end
 
 	menu:open(items, handle_select, menu_options)
@@ -3481,7 +3538,7 @@ mp.add_key_binding(nil, 'menu', menu_key_binding)
 mp.add_key_binding(nil, 'load-subtitles', function()
 	if menu:is_open('load-subtitles') then menu:close() return end
 
-	local path = mp.get_property_native('path')
+	local path = mp.get_property_native('path') --[[@as string|nil|false]]
 	if path then
 		if is_protocol(path) then
 			path = false
@@ -3491,7 +3548,7 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 		end
 	end
 	if not path then
-		path = os.getenv("HOME")
+		path = os.getenv("HOME") --[[@as string]]
 	end
 	open_file_navigation_menu(
 		path,
@@ -3499,7 +3556,7 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 		{
 			type = 'load-subtitles',
 			title = 'Load subtitles',
-			allowed_types = options.subtitle_types
+			allowed_types = options.subtitle_types --[[@as table]]
 		}
 	)
 end)
@@ -3588,7 +3645,7 @@ mp.add_key_binding(nil, 'stream-quality', function()
 	if menu:is_open('stream-quality') then menu:close() return end
 
 	local ytdl_format = mp.get_property_native('ytdl-format')
-	local active_item = nil
+	local active_index = nil
 	local formats = {}
 
 	for index, height in ipairs(options.stream_quality_options) do
@@ -3597,7 +3654,7 @@ mp.add_key_binding(nil, 'stream-quality', function()
 			title = height..'p',
 			value = format
 		}
-		if format == ytdl_format then active_item = index end
+		if format == ytdl_format then active_index = index end
 	end
 
 	menu:open(formats, function(format)
@@ -3628,7 +3685,7 @@ mp.add_key_binding(nil, 'stream-quality', function()
 	end, {
 		type = 'stream-quality',
 		title = 'Stream quality',
-		active_item = active_item,
+		active_index = active_index,
 	})
 end)
 mp.add_key_binding(nil, 'open-file', function()
@@ -3671,8 +3728,7 @@ mp.add_key_binding(nil, 'open-file', function()
 		function(path) mp.commandv('loadfile', path) end,
 		{
 			type = 'open-file',
-			title = 'Open file',
-			allowed_types = options.media_types,
+			allowed_types = options.media_types --[[@as table]],
 			active_path = active_file,
 			on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
 			on_close = function() mp.unregister_event(handle_file_loaded) end,
