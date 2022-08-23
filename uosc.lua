@@ -3078,6 +3078,16 @@ end
 
 -- MENUS
 
+function toggle_menu_with_items(items, menu_options)
+	menu_options = menu_options or {}
+	menu_options.type = 'menu'
+	if menu:is_open('menu') then
+		menu:close()
+	elseif items then
+		menu:open(items, function(command) mp.command(command) end, menu_options)
+	end
+end
+
 function create_self_updating_menu_opener(params)
 	return function()
 		if menu:is_open(params.type) then menu:close() return end
@@ -3544,15 +3554,35 @@ mp.add_key_binding(nil, 'decide-pause-indicator', function()
 	elements.pause_indicator:decide()
 end)
 function menu_key_binding()
-	if menu:is_open('menu') then
-		menu:close()
-	elseif state.context_menu_items then
-		menu:open(state.context_menu_items, function(command)
-			mp.command(command)
-		end, {type = 'menu'})
-	end
+	toggle_menu_with_items(state.context_menu_items)
 end
 mp.add_key_binding(nil, 'menu', menu_key_binding)
+mp.register_script_message('show-submenu', function(name)
+	local path = split(name, " *>+ *")
+	local items = state.context_menu_items
+	local last_menu_title = nil
+
+	if not items or #items < 1 then
+		msg.error('Can\'t find submenu, context menu is empty.')
+		return
+	end
+
+	while #path > 0 do
+		local menu_title = path[1]
+		last_menu_title = menu_title
+		path = itable_slice(path, 2)
+		local _, submenu_item = itable_find(items, function(_, item) return item.title == menu_title end)
+
+		if not submenu_item then
+			msg.error('Can\'t find submenu: '..menu_title)
+			return
+		end
+
+		items = submenu_item.items or {}
+	end
+
+	if items then toggle_menu_with_items(items, {title = last_menu_title, selected_index = 1}) end
+end)
 mp.add_key_binding(nil, 'load-subtitles', function()
 	if menu:is_open('load-subtitles') then menu:close() return end
 

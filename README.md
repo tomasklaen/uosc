@@ -231,6 +231,12 @@ mbtn_right  script-binding uosc/menu
 menu        script-binding uosc/menu
 ```
 
+To display a submenu, send a `show-submenu` message to **uosc** with first parameter specifying menu ID. Example:
+
+```
+m    script-message-to uosc show-submenu "Foo > Bar"
+```
+
 **\*menu** button is the key between **win** and **right_ctrl** buttons that none uses (might not be on your keyboard).\*
 
 ### Adding items to menu
