@@ -954,10 +954,8 @@ function Menu:open(items, open_item, opts)
 			end
 		end,
 		get_item_index_below_cursor = function(this)
-			return this:get_index_at_offset(cursor.y - this.ay + this.scroll_y)
-		end,
-		get_index_at_offset = function(this, offset)
-			return math.max(0, math.min(round((offset + (this.height / 2)) / this.scroll_step), #this.items))
+			if #items < 1 then return nil end
+			return math.max(1, math.min(math.ceil((cursor.y - this.ay + this.scroll_y) / this.scroll_step), #this.items))
 		end,
 		scroll_to = function(this, pos)
 			this.scroll_y = math.max(math.min(pos, this.scroll_height), 0)
