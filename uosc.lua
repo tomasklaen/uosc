@@ -91,6 +91,7 @@ local options = {
 	color_background = '000000',
 	color_background_text = 'ffffff',
 	total_time = false,
+	time_precision = 0,
 	font_bold = false,
 	autohide = false,
 	pause_indicator = 'flash',
@@ -130,8 +131,10 @@ local state = {
 	end)(),
 	cwd = mp.get_property('working-directory'),
 	media_title = '',
-	duration = nil,
-	position = nil,
+	time = nil, -- current media playback time
+	duration = nil, -- current media duration
+	time_human = nil, -- current playback time in human format
+	duration_or_remaining_time_human = nil, -- depends on options.total_time
 	pause = mp.get_property_native('pause'),
 	chapters = nil,
 	chapter_ranges = nil,
@@ -466,6 +469,17 @@ function ass_escape(str)
     str = str:gsub('\\N ', '\\N\\h')
     str = str:gsub('^ ', '\\h')
     return str
+end
+
+---@param seconds number
+---@return string
+function format_time(seconds)
+	local human = mp.format_time(seconds)
+	if options.time_precision > 0 then
+		local formatted = string.format('%.'..options.time_precision..'f', math.abs(seconds) % 1)
+		human = human..'.'..string.sub(formatted, 3)
+	end
+	return human
 end
 
 function opacity_to_alpha(opacity)
@@ -1415,10 +1429,25 @@ function update_proximities()
 	for _, element in ipairs(mouse_enter_elements) do element:trigger('mouse_enter') end
 end
 
+function update_human_times()
+	if state.time then
+		state.time_human = format_time(state.time)
+		if state.duration then
+			state.duration_or_remaining_time_human = format_time(
+				options.total_time and state.duration or state.time - state.duration
+			)
+		else
+			state.duration_or_remaining_time_human = nil
+		end
+	else
+		state.time_human = nil
+	end
+end
+
 -- ELEMENT RENDERERS
 
 function render_timeline(this)
-	if this.size_max == 0 or state.duration == nil or state.duration == 0 or state.position == nil then return end
+	if this.size_max == 0 or state.duration == nil or state.duration == 0 or state.time == nil then return end
 
 	local size_min = this:get_effective_size_min()
 	local size = this:get_effective_size()
@@ -1433,7 +1462,7 @@ function render_timeline(this)
 	local text_opacity = math.max(math.min(size - hide_text_below, hide_text_ramp), 0) / hide_text_ramp
 
 	local spacing = math.max(math.floor((this.size_max - this.font_size) / 2.5), 4)
-	local progress = state.position / state.duration
+	local progress = state.time / state.duration
 	local is_line = options.timeline_style == 'line'
 
 	-- Background bar coordinates
@@ -1649,7 +1678,7 @@ function render_timeline(this)
 	local function render_time()
 		if text_opacity > 0 then
 			-- Elapsed time
-			if state.elapsed_seconds then
+			if state.time_human then
 				local elapsed_x = bax + spacing
 				local elapsed_y = fay + (size / 2)
 				ass:new_event()
@@ -1657,23 +1686,17 @@ function render_timeline(this)
 				ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 				ass:pos(elapsed_x, elapsed_y)
 				ass:an(4)
-				ass:append(state.elapsed_time)
+				ass:append(state.time_human)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
 				ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 				ass:pos(elapsed_x, elapsed_y)
 				ass:an(4)
-				ass:append(state.elapsed_time)
+				ass:append(state.time_human)
 			end
 
 			-- End time
-			local end_time
-			if options.total_time then
-				end_time = this.total_time
-			else
-				end_time = state.remaining_time and '-'..state.remaining_time
-			end
-			if end_time then
+			if state.duration_or_remaining_time_human then
 				local end_x = bbx - spacing
 				local end_y = fay + (size / 2)
 				ass:new_event()
@@ -1681,13 +1704,13 @@ function render_timeline(this)
 				ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 				ass:pos(end_x, end_y)
 				ass:an(6)
-				ass:append(end_time)
+				ass:append(state.duration_or_remaining_time_human)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\shad1\\1c&H'..options.color_background_text..'\\4c&H'..options.color_background..'\\fn'..config.font..'\\fs'..this.font_size..bold_tag..'\\iclip('..foreground_coordinates..')')
 				ass:append(ass_opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity))
 				ass:pos(end_x, end_y)
 				ass:an(6)
-				ass:append(end_time)
+				ass:append(state.duration_or_remaining_time_human)
 			end
 		end
 	end
@@ -1725,7 +1748,7 @@ function render_timeline(this)
 				end
 			end
 		end
-		local time_formatted = mp.format_time(hovered_seconds)
+		local time_formatted = format_time(hovered_seconds)
 		local margin_time = text_width_estimate(time_formatted, this.font_size) / 2
 		local margin_title = chapter_title_width * this.font_size * options.font_height_to_letter_width_ratio / 2
 		ass:new_event()
@@ -2387,7 +2410,6 @@ elements:add('timeline', Element.new({
 	size_max = 0, size_min = 0, -- set in `on_display_change` handler based on `state.fullormaxed`
 	size_min_override = options.timeline_start_hidden and 0 or nil, -- used for toggle-progress command
 	font_size = 0, -- calculated in on_display_change
-	total_time = nil, -- set in op_prop_duration listener
 	top_border = options.timeline_border,
 	get_effective_proximity = function(this)
 		if this.pressed or is_element_persistent('timeline') then return 1 end
@@ -2423,9 +2445,6 @@ elements:add('timeline', Element.new({
 	on_prop_border = function(this) this:update_dimensions() end,
 	on_prop_fullormaxed = function(this) this:update_dimensions() end,
 	on_display_change = function(this) this:update_dimensions() end,
-	on_prop_duration = function(this, value)
-		this.total_time = value and mp.format_time(value) or nil
-	end,
 	set_from_cursor = function(this)
 		-- padding serves the purpose of matching cursor to timeline_style=line exactly
 		local padding = (options.timeline_style == 'line' and this:get_effective_line_width() or 0) / 2
@@ -3361,6 +3380,16 @@ end
 
 -- HOOKS
 mp.register_event('file-loaded', parse_chapters)
+mp.observe_property('playback-time', 'number', function(name, val)
+	state.time = val
+	update_human_times()
+	request_render()
+end)
+mp.observe_property('duration', 'number', function(name, val)
+	state.duration = val
+	update_human_times()
+	request_render()
+end)
 mp.observe_property('track-list', 'native', function(name, value)
 	-- checks if the file is audio only (mp3, etc)
 	local has_audio = false
@@ -3384,7 +3413,6 @@ mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
-mp.observe_property('duration', 'number', create_state_setter('duration'))
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('playlist-pos-1', 'number', create_state_setter('playlist_pos'))
 mp.observe_property('playlist-count', 'number', create_state_setter('playlist_count'))
@@ -3408,21 +3436,6 @@ mp.observe_property('pause', 'bool', create_state_setter('pause'))
 mp.observe_property('volume', 'number', create_state_setter('volume'))
 mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
 mp.observe_property('mute', 'bool', create_state_setter('mute'))
-mp.observe_property('playback-time', 'number', function(name, val)
-	-- Ignore the initial call with nil value
-	if val == nil then return end
-
-	state.position = val
-	state.elapsed_seconds = val
-	state.elapsed_time = state.elapsed_seconds and mp.format_time(state.elapsed_seconds) or nil
-
-	request_render()
-end)
-mp.observe_property('playtime-remaining', 'number', function(name, val)
-	state.remaining_seconds = mp.get_property_native('playtime-remaining')
-	state.remaining_time = state.remaining_seconds and mp.format_time(state.remaining_seconds) or nil
-	request_render()
-end)
 mp.observe_property('osd-dimensions', 'native', function(name, val)
 	update_display_dimensions()
 	request_render()
