@@ -3199,6 +3199,10 @@ end
 function toggle_menu_with_items(items, menu_options)
 	menu_options = menu_options or {}
 	menu_options.type = 'menu'
+
+	-- preselect 1st item
+	if not menu_options.selected_index then menu_options.selected_index = 1 end
+
 	if menu:is_open('menu') then
 		menu:close()
 	elseif items then
