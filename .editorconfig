@@ -1,0 +1,78 @@
+[*.lua]
+# see https://github.com/CppCXY/EmmyLuaCodeStyle
+
+# [basic]
+
+indent_style = space
+tab_width = 4
+# none/single/double
+quote_style = single
+continuation_indent_size = 4
+max_line_length = 120
+# crlf/lf/cr/auto
+end_of_line = lf
+detect_end_of_line = false
+insert_final_newline = true
+
+# [function]
+
+# true/false/only_after_more_indention_statement/only_not_exist_cross_row_expression
+align_call_args = false
+align_function_define_params = true
+remove_expression_list_finish_comma = true
+# keep/remove/remove_table_only/remove_string_only/unambiguous_remove_string_only
+call_arg_parentheses = keep
+
+# [table]
+
+# none/comma/semicolon
+table_separator_style = comma
+# keep/never/always/smart
+trailing_table_separator = smart
+# align equal signs in tables
+continuous_assign_table_field_align_to_equal_sign = false
+# if true "local t = { 1, 2, 3 }"
+keep_one_space_between_table_and_bracket = false
+
+# [statement]
+
+align_chained_expression_statement = false
+max_continuous_line_distance = 1
+# align equal signs in value assignments
+continuous_assign_statement_align_to_equal_sign = false
+if_condition_align_with_each_other = false
+local_assign_continuation_align_to_first_expression = false
+statement_inline_comment_space = 1
+
+# [indentation]
+
+# labels (e.g.::continue::) will not be intended
+label_no_indent = false
+# no indentation for do statement
+do_statement_no_indent = false
+# no indentation for conditions of an if statement when on new line
+if_condition_no_continuation_indent = false
+if_branch_comments_after_block_no_indent = false
+
+# [space]
+
+# if true, t[#t+1] will not space wrapper '+'
+table_append_expression_no_space = false
+long_chain_expression_allow_one_space_after_colon = false
+remove_empty_header_and_footer_lines_in_function = true
+space_before_function_open_parenthesis = false
+space_before_open_square_bracket = false
+# format like this "local t <const> = 1"
+keep_one_space_between_namedef_and_attribute = false
+
+# [row_layout]
+# Each can be: minLine:${n}, keepLine, keepLine:${n}, maxLine:${n}
+
+keep_line_after_if_statement = keepLine
+keep_line_after_do_statement = keepLine
+keep_line_after_while_statement = keepLine
+keep_line_after_repeat_statement = keepLine
+keep_line_after_for_statement = keepLine
+keep_line_after_local_or_assign_statement = keepLine
+keep_line_after_function_define_statement = keepLine
+keep_line_after_expression_statement = keepLine
