@@ -616,7 +616,8 @@ function get_adjacent_file(file_path, direction, allowed_types)
 end
 
 -- Can't use `os.remove()` as it fails on paths with unicode characters.
--- Returns `result, error`, result is table of `status:number(<0=error), stdout, stderr, error_string, killed_by_us:boolean`
+-- Returns `result, error`, result is table of:
+-- `status:number(<0=error), stdout, stderr, error_string, killed_by_us:boolean`
 function delete_file(file_path)
 	local args = state.os == 'windows' and {'cmd', '/C', 'del', file_path} or {'rm', file_path}
 	return mp.command_native({

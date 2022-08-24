@@ -3,7 +3,7 @@
 
 # [basic]
 
-indent_style = space
+indent_style = tab
 tab_width = 4
 # none/single/double
 quote_style = single
@@ -28,7 +28,7 @@ call_arg_parentheses = keep
 # none/comma/semicolon
 table_separator_style = comma
 # keep/never/always/smart
-trailing_table_separator = smart
+trailing_table_separator = always
 # align equal signs in tables
 continuous_assign_table_field_align_to_equal_sign = false
 # if true "local t = { 1, 2, 3 }"
@@ -76,3 +76,8 @@ keep_line_after_for_statement = keepLine
 keep_line_after_local_or_assign_statement = keepLine
 keep_line_after_function_define_statement = keepLine
 keep_line_after_expression_statement = keepLine
+
+# [diagnostic]
+# creates a lot of warnings I can't do anything about so disable it is
+
+enable_check_codestyle = false
