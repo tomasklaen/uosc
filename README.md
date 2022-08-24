@@ -220,9 +220,27 @@ Show current file in your operating systems' file explorer.
 
 Open directory with `mpv.conf` in file explorer.
 
+## Message handlers
+
+**uosc** listens on some messages that can be sent with `script-message-to uosc` command. Example:
+
+```
+R    script-message-to uosc show-submenu "Utils > Aspect ratio"
+```
+
+#### `show-submenu <menu_id>`
+
+Opens one of the submenus defined in `input.conf` (read on how to build those below).
+
+Parameters
+
+##### `<menu_id>`
+
+ID (title) of the submenu, including `>` subsections as defined in `input.conf`. It has to be match the title exactly.
+
 ## Menu
 
-**uosc** provides a way to build, display, and use your own menu. By default the menu is empty and won't show up.
+**uosc** provides a way to build, display, and use your own menu. By default it displays a pre-configured menu with common actions.
 
 To display the menu, add **uosc**'s `menu` command to a key of your choice. Example to bind it to **right click** and **menu** buttons:
 
@@ -234,7 +252,7 @@ menu        script-binding uosc/menu
 To display a submenu, send a `show-submenu` message to **uosc** with first parameter specifying menu ID. Example:
 
 ```
-m    script-message-to uosc show-submenu "Foo > Bar"
+R    script-message-to uosc show-submenu "Utils > Aspect ratio"
 ```
 
 **\*menu** button is the key between **win** and **right_ctrl** buttons that none uses (might not be on your keyboard).\*
@@ -289,26 +307,33 @@ Define a folder without defining any of its contents:
 #  ignore  #! Folder title >
 ```
 
-Suggested minimal context menu setup to start with:
+Example context menu:
+
+This is the default pre-configured menu if none is defined in your `input.conf`, but with added shortcuts.
 
 ```
 menu        script-binding uosc/menu
 mbtn_right  script-binding uosc/menu
 o           script-binding uosc/open-file          #! Open file
-alt+s       script-binding uosc/load-subtitles     #! Load subtitles
-S           script-binding uosc/subtitles          #! Select subtitles
-A           script-binding uosc/audio              #! Select audio
+P           script-binding uosc/playlist           #! Playlist
+C           script-binding uosc/chapters           #! Chapters
+S           script-binding uosc/subtitles          #! Subtitle tracks
+A           script-binding uosc/audio              #! Audio tracks
+q           script-binding uosc/stream-quality     #! Stream quality
+>           script-binding uosc/next               #! Navigation > Next
+<           script-binding uosc/prev               #! Navigation > Prev
+alt+>       script-binding uosc/delete-file-next   #! Navigation > Delete file & Next
+alt+<       script-binding uosc/delete-file-prev   #! Navigation > Delete file & Prev
+alt+esc     script-binding uosc/delete-file-quit   #! Navigation > Delete file & Quit
+alt+s       script-binding uosc/load-subtitles     #! Utils > Load subtitles
+#           set video-aspect-override "-1"         #! Utils > Aspect ratio > Default
+#           set video-aspect-override "16:9"       #! Utils > Aspect ratio > 16:9
+#           set video-aspect-override "4:3"        #! Utils > Aspect ratio > 4:3
+#           set video-aspect-override "2.35:1"     #! Utils > Aspect ratio > 2.35:1
 ctrl+s      async screenshot                       #! Utils > Screenshot
-P           script-binding uosc/playlist           #! Utils > Playlist
-C           script-binding uosc/chapters           #! Utils > Chapters
+O           script-binding uosc/show-in-directory  #! Utils > Show in directory
 #           script-binding uosc/open-config-directory #! Utils > Open config directory
-#           set video-aspect-override "-1"         #! Aspect ratio > Default
-#           set video-aspect-override "16:9"       #! Aspect ratio > 16:9
-#           set video-aspect-override "4:3"        #! Aspect ratio > 4:3
-#           set video-aspect-override "2.35:1"     #! Aspect ratio > 2.35:1
-O           script-binding uosc/show-in-directory  #! Show in directory
 esc         quit #! Quit
-q           quit #!
 ```
 
 To see all the commands you can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).
