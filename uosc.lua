@@ -3404,6 +3404,7 @@ function open_file_navigation_menu(directory_path, handle_select, menu_options)
 		local inheritable_options = {
 			type = menu_options.type,
 			title = inherit_title and menu_options.title or nil,
+			allowed_types = menu_options.allowed_types,
 			active_path = menu_options.active_path,
 			selected_path = directory.path
 		}
