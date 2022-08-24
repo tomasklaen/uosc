@@ -3353,7 +3353,8 @@ function open_file_navigation_menu(directory_path, handle_select, menu_options)
 	else
 		local serialized = serialize_path(directory.dirname)
 		serialized.is_directory = true;
-		items[#items + 1] = {title = '..', hint = 'parent dir', value = serialized, is_to_parent = true}
+		serialized.is_to_parent = true;
+		items[#items + 1] = {title = '..', hint = 'parent dir', value = serialized}
 	end
 
 	-- Index where actual items start
@@ -3406,17 +3407,21 @@ function open_file_navigation_menu(directory_path, handle_select, menu_options)
 			title = inherit_title and menu_options.title or nil,
 			allowed_types = menu_options.allowed_types,
 			active_path = menu_options.active_path,
-			selected_path = directory.path
 		}
 
 		if path.is_drives then
-			open_drives_menu(function(drive)
-				open_file_navigation_menu(drive, handle_select, inheritable_options)
+			open_drives_menu(function(drive_path)
+				open_file_navigation_menu(drive_path, handle_select, inheritable_options)
 			end, {type = inheritable_options.type, title = inheritable_options.title, selected_path = directory.path})
 			return
 		end
 
 		if path.is_directory then
+			--  Preselect directory we are coming from
+			if path.is_to_parent then
+				inheritable_options.selected_path = directory.path
+			end
+
 			open_file_navigation_menu(path.path, handle_select, inheritable_options)
 		else
 			handle_select(path.path)
