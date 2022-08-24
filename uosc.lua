@@ -992,7 +992,7 @@ function Menu:open(items, open_item, opts)
 			end
 		end,
 		get_item_index_below_cursor = function(this)
-			if #items < 1 then return nil end
+			if #this.items < 1 then return nil end
 			return math.max(1, math.min(math.ceil((cursor.y - this.ay + this.scroll_y) / this.scroll_step), #this.items))
 		end,
 		scroll_to = function(this, pos)
