@@ -1,7 +1,4 @@
---[[
-uosc 3.1.1 - 2022-Aug-24 | https://github.com/tomasklaen/uosc
-Minimalist cursor proximity based UI for MPV player.
-]]
+--[[ uosc 3.1.1 - 2022-Aug-24 | https://github.com/tomasklaen/uosc ]]
 
 if mp.get_property('osc') == 'yes' then
 	mp.msg.info('Disabled because original osc is enabled!')
