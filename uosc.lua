@@ -1,4 +1,4 @@
---[[ uosc 3.1.1 - 2022-Aug-24 | https://github.com/tomasklaen/uosc ]]
+--[[ uosc 3.1.2 - 2022-Aug-25 | https://github.com/tomasklaen/uosc ]]
 
 function lock_osc(name, value)
 	if value == true then
