@@ -3434,6 +3434,7 @@ function open_drives_menu(handle_select, menu_options)
 	local process = mp.command_native({
 		name = 'subprocess',
 		capture_stdout = true,
+		playback_only = false,
 		args = {'wmic', 'logicaldisk', 'get', 'name', '/value'},
 	})
 	local items = {}
