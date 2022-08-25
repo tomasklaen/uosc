@@ -3723,7 +3723,7 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 		end
 	end
 	if not path then
-		path = os.getenv('HOME') --[[@as string]]
+		path = mp.command_native({'expand-path', options.default_directory})
 	end
 	open_file_navigation_menu(
 		path,
