@@ -28,7 +28,7 @@ call_arg_parentheses = keep
 # none/comma/semicolon
 table_separator_style = comma
 # keep/never/always/smart
-trailing_table_separator = always
+trailing_table_separator = smart
 # align equal signs in tables
 continuous_assign_table_field_align_to_equal_sign = false
 # if true "local t = { 1, 2, 3 }"

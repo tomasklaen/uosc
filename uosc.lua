@@ -2,10 +2,10 @@
 
 function lock_osc(name, value)
 	if value == true then
-		mp.set_property("osc", "no")
+		mp.set_property('osc', 'no')
 	end
 end
-mp.observe_property("osc", "bool", lock_osc)
+mp.observe_property('osc', 'bool', lock_osc)
 
 local assdraw = require('mp.assdraw')
 local opt = require('mp.options')
@@ -157,7 +157,7 @@ local state = {
 	mouse_bindings_enabled = false,
 	cached_ranges = nil,
 	render_delay = config.render_delay,
-	first_real_mouse_move_received = false
+	first_real_mouse_move_received = false,
 }
 local forced_key_bindings -- defined at the bottom next to events
 
@@ -629,7 +629,7 @@ function delete_file(file_path)
 		args = args,
 		playback_only = false,
 		capture_stdout = true,
-		capture_stderr = true
+		capture_stderr = true,
 	})
 end
 
@@ -2378,7 +2378,7 @@ elements:add('window_border', Element.new({
 			ass:draw_stop()
 			return ass
 		end
-	end
+	end,
 }))
 elements:add('pause_indicator', Element.new({
 	base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8,
@@ -2470,7 +2470,7 @@ elements:add('pause_indicator', Element.new({
 		end
 
 		return ass
-	end
+	end,
 }))
 elements:add('timeline', Element.new({
 	pressed = false,
@@ -2586,7 +2586,7 @@ if options.top_bar_controls then
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
-		on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end
+		on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end,
 	}))
 	elements:add('window_controls_maximize', Element.new({
 		update_dimensions = function(this)
@@ -2597,7 +2597,7 @@ if options.top_bar_controls then
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
-		on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end
+		on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end,
 	}))
 	elements:add('window_controls_close', Element.new({
 		update_dimensions = function(this)
@@ -2608,7 +2608,7 @@ if options.top_bar_controls then
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
-		on_mbtn_left_down = function() mp.commandv('quit') end
+		on_mbtn_left_down = function() mp.commandv('quit') end,
 	}))
 end
 if itable_find({'left', 'right'}, options.volume) then
@@ -2649,7 +2649,7 @@ if itable_find({'left', 'right'}, options.volume) then
 			this.bx = elements.volume.bx
 			this.by = elements.volume.by
 		end,
-		on_mbtn_left_down = function(this) mp.commandv('cycle', 'mute') end
+		on_mbtn_left_down = function(this) mp.commandv('cycle', 'mute') end,
 	}))
 	elements:add('volume_slider', Element.new({
 		pressed = false,
@@ -2797,7 +2797,7 @@ if options.speed then
 				start_x = cursor.x,
 				distance = 0,
 				speed_distance = 0,
-				start_speed = state.speed
+				start_speed = state.speed,
 			}
 		end,
 		on_global_mouse_move = function(this)
@@ -2872,7 +2872,7 @@ elements:add('curtain', Element.new({
 			ass:draw_stop()
 			return ass
 		end
-	end
+	end,
 }))
 
 -- CHAPTERS SERIALIZATION
@@ -2895,7 +2895,7 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 			end_patterns = split(end_patterns, '|'),
 			color = color,
 			opacity = tonumber(opacity),
-			ranges = {}
+			ranges = {},
 		}
 
 		-- Filter out special keywords so we don't use them when matching titles
@@ -3041,7 +3041,7 @@ state.context_menu_items = (function()
 						local item = {
 							title = title_part,
 							hint = not is_dummy and key or nil,
-							value = command
+							value = command,
 						}
 						target_menu.items_by_command[command] = item
 						target_menu.items[#target_menu.items + 1] = item
@@ -3068,7 +3068,7 @@ state.context_menu_items = (function()
 				{title = 'Delete file & Next', value = 'script-binding uosc/delete-file-next'},
 				{title = 'Delete file & Prev', value = 'script-binding uosc/delete-file-prev'},
 				{title = 'Delete file & Quit', value = 'script-binding uosc/delete-file-quit'},
-			}},
+			},},
 			{title = 'Utils', items = {
 				{title = 'Load subtitles', value = 'script-binding uosc/load-subtitles'},
 				{title = 'Aspect ratio', items = {
@@ -3076,11 +3076,11 @@ state.context_menu_items = (function()
 					{title = '16:9', value = 'set video-aspect-override "16:9"'},
 					{title = '4:3', value = 'set video-aspect-override "4:3"'},
 					{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
-				}},
+				},},
 				{title = 'Screenshot', value = 'async screenshot'},
 				{title = 'Show in directory', value = 'script-binding uosc/show-in-directory'},
 				{title = 'Open config folder', value = 'script-binding uosc/open-config-directory'},
-			}},
+			},},
 			{title = 'Quit', value = 'quit'},
 		}
 	end
@@ -3289,7 +3289,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				items[#items + 1] = {
 					title = (track.title and track.title or 'Track ' .. track.id),
 					hint = table.concat(hint_vals_filtered, ', '),
-					value = track.id
+					value = track.id,
 				}
 			end
 		end
@@ -3320,7 +3320,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		type = track_type,
 		list_prop = 'track-list',
 		list_serializer = serialize_tracklist,
-		on_select = selection_handler
+		on_select = selection_handler,
 	})
 end
 
@@ -3601,7 +3601,7 @@ if options.pause_on_click_shorter_than > 0 then
 		else
 			last_down_event = mp.get_time()
 		end
-	end
+	end,
 	}
 end
 mp.set_key_bindings(base_keybinds, 'mouse_movement', 'force')
@@ -3729,13 +3729,14 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 	if not path then
 		path = get_default_directory()
 	end
+	local subtitle_types = options.subtitle_types --[[@as table]]
 	open_file_navigation_menu(
 		path,
 		function(path) mp.commandv('sub-add', path) end,
 		{
 			type = 'load-subtitles',
 			title = 'Load subtitles',
-			allowed_types = options.subtitle_types --[[@as table]]
+			allowed_types = subtitle_types,
 		}
 	)
 end)
@@ -3754,14 +3755,14 @@ mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
 			items[index] = {
 				title = item_title or (is_url and item.filename or serialize_path(item.filename).basename),
 				hint = tostring(index),
-				value = index
+				value = index,
 			}
 		end
 		return items
 	end,
 	active_prop = 'playlist-pos-1',
 	active_index_serializer = function(_, playlist_pos) return playlist_pos end,
-	on_select = function(index) mp.commandv('set', 'playlist-pos-1', tostring(index)) end
+	on_select = function(index) mp.commandv('set', 'playlist-pos-1', tostring(index)) end,
 }))
 mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 	title = 'Chapters',
@@ -3775,7 +3776,7 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 			items[#items + 1] = {
 				title = chapter.title or '',
 				hint = mp.format_time(chapter.time),
-				value = chapter.time
+				value = chapter.time,
 			}
 		end
 		return items
@@ -3791,7 +3792,7 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 			if position >= items[index].value then return index end
 		end
 	end,
-	on_select = function(time) mp.commandv('seek', tostring(time), 'absolute') end
+	on_select = function(time) mp.commandv('seek', tostring(time), 'absolute') end,
 }))
 mp.add_key_binding(nil, 'show-in-directory', function()
 	local path = mp.get_property_native('path')
@@ -3825,7 +3826,7 @@ mp.add_key_binding(nil, 'stream-quality', function()
 		local format = 'bestvideo[height<=?' .. height .. ']+bestaudio/best[height<=?' .. height .. ']'
 		formats[#formats + 1] = {
 			title = height .. 'p',
-			value = format
+			value = format,
 		}
 		if format == ytdl_format then active_index = index end
 	end
