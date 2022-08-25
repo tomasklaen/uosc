@@ -1,9 +1,11 @@
 --[[ uosc 3.1.1 - 2022-Aug-24 | https://github.com/tomasklaen/uosc ]]
 
-if mp.get_property('osc') == 'yes' then
-	mp.msg.info('Disabled because original osc is enabled!')
-	return
+function lock_osc(name, value)
+	if value == true then
+		mp.set_property("osc", "no")
+	end
 end
+mp.observe_property("osc", "bool", lock_osc)
 
 local assdraw = require('mp.assdraw')
 local opt = require('mp.options')
