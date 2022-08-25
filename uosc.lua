@@ -157,6 +157,7 @@ local state = {
 	mouse_bindings_enabled = false,
 	cached_ranges = nil,
 	render_delay = config.render_delay,
+	first_real_mouse_move_received = false
 }
 local forced_key_bindings -- defined at the bottom next to events
 
@@ -3093,11 +3094,17 @@ end
 
 function update_cursor_position()
 	cursor.x, cursor.y = mp.get_mouse_pos()
+
 	-- mpv reports initial mouse position on linux as (0, 0), which always
-	-- displays the top bar, so we just swap this one coordinate to infinity
-	if cursor.x == 0 and cursor.y == 0 then
-		cursor.x = infinity
-		cursor.y = infinity
+	-- displays the top bar, so we hardcode cursor position as infinity until
+	-- we receive a first real mouse move event with coordinates other than 0,0.
+	if not state.first_real_mouse_move_received then
+		if cursor.x > 0 and cursor.y > 0 then
+			state.first_real_mouse_move_received = true
+		else
+			cursor.x = infinity
+			cursor.y = infinity
+		end
 	end
 
 	local dpi_scale = mp.get_property_native('display-hidpi-scale', 1.0)
