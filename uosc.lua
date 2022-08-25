@@ -543,6 +543,10 @@ function get_extension(path)
 	return parts and #parts > 1 and parts[#parts] or nil
 end
 
+function get_default_directory()
+	return mp.command_native({'expand-path', options.default_directory})
+end
+
 -- Serializes path into its semantic parts
 function serialize_path(path)
 	if not path or is_protocol(path) then return end
@@ -3723,7 +3727,7 @@ mp.add_key_binding(nil, 'load-subtitles', function()
 		end
 	end
 	if not path then
-		path = mp.command_native({'expand-path', options.default_directory})
+		path = get_default_directory()
 	end
 	open_file_navigation_menu(
 		path,
@@ -3865,7 +3869,7 @@ mp.add_key_binding(nil, 'open-file', function()
 	local active_file
 
 	if path == nil or is_protocol(path) then
-		local serialized = serialize_path(mp.command_native({'expand-path', options.default_directory}))
+		local serialized = serialize_path(get_default_directory())
 		if serialized then
 			directory = serialized.path
 			active_file = nil
