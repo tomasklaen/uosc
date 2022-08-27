@@ -1542,14 +1542,14 @@ function render_timeline(this)
 		local width_normal = this:get_effective_line_width()
 		local normal_minimized_delta = width_normal - width_normal * options.timeline_line_width_minimized_scale
 		local line_width = width_normal - (normal_minimized_delta * minimized_fraction)
-		local current_time_x = round((bbx - bax - line_width) * progress)
+		local current_time_x = (bbx - bax - line_width) * progress
 		fax = current_time_x
 		fbx = fax + line_width
 		if line_width > 2 then time_padding = round(line_width / 2) end
 	else
 		fax = bax
 		fay = bay + this.top_border
-		fbx = round(bax + this.width * progress)
+		fbx = bax + this.width * progress
 	end
 
 	local time_x = bax + time_padding
