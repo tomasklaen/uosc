@@ -461,7 +461,7 @@ end
 -- Escape a string for verbatim display on the OSD
 function ass_escape(str)
 	-- There is no escape for '\' in ASS (I think?) but '\' is used verbatim if
-	-- it isn't followed by a recognised character, so add a zero-width
+	-- it isn't followed by a recognized character, so add a zero-width
 	-- non-breaking space
 	str = str:gsub('\\', '\\\239\187\191')
 	str = str:gsub('{', '\\{')
@@ -2368,17 +2368,14 @@ end
 -- STATIC ELEMENTS
 
 elements:add('window_border', Element.new({
-	enabled = true,
-	size = nil, -- set in init
-	init = function(this)
-		this:update_size();
+	enabled = false,
+	size = nil, -- set in decide_enabled
+	decide_enabled = function(this)
+		this.enabled = options.window_border_size > 0 and not state.fullormaxed and not state.border
+		this.size = this.enabled and options.window_border_size or 0
 	end,
-	update_size = function(this)
-		this.size = options.window_border_size > 0 and not state.fullormaxed and not state.border and
-			options.window_border_size or 0
-	end,
-	on_prop_border = function(this) this:update_size() end,
-	on_prop_fullormaxed = function(this) this:update_size() end,
+	on_prop_border = function(this) this:decide_enabled() end,
+	on_prop_fullormaxed = function(this) this:decide_enabled() end,
 	render = function(this)
 		if this.size > 0 then
 			local ass = assdraw.ass_new()
@@ -2562,7 +2559,7 @@ elements:add('top_bar', Element.new({
 	end,
 	decide_enabled = function(this)
 		if options.top_bar == 'no-border' then
-			this.enabled = not state.border or state.fullormaxed
+			this.enabled = not state.border or state.fullscreen
 		elseif options.top_bar == 'always' then
 			this.enabled = true
 		else
