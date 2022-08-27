@@ -857,6 +857,7 @@ function Menu:open(items, open_item, opts)
 		enabled = true,
 		type = nil, -- menu type such as `menu`, `chapters`, ...
 		title = nil,
+		estimated_max_width = nil,
 		width = nil,
 		height = nil,
 		offset_x = 0, -- used to animated from/to left when submenu
@@ -887,7 +888,7 @@ function Menu:open(items, open_item, opts)
 			end
 
 			-- Set initial dimensions
-			this:update_dimensions()
+			this:update_content_dimensions()
 			this:on_display_change()
 
 			-- Scroll to selected item
@@ -909,7 +910,7 @@ function Menu:open(items, open_item, opts)
 		destroy = function(this)
 			request_render()
 		end,
-		update_dimensions = function(this)
+		update_content_dimensions = function(this)
 			this.item_height = state.fullormaxed and options.menu_item_height_fullscreen or options.menu_item_height
 			this.font_size = round(this.item_height * 0.48 * options.menu_font_scale)
 			this.font_size_hint = this.font_size - 1
@@ -939,24 +940,26 @@ function Menu:open(items, open_item, opts)
 				estimated_max_width = estimated_menu_title_width
 			end
 
+			this.estimated_max_width = estimated_max_width
+
+			if this.parent_menu then
+				this.parent_menu:update_content_dimensions()
+			end
+		end,
+		update_dimensions = function(this)
 			-- Coordinates and sizes are of the scrollable area to make
 			-- consuming values in rendering easier. Title drawn above this, so
 			-- we need to account for that in max_height and ay position.
 			local min_width = state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width
-			this.width = round(math.min(math.max(estimated_max_width, min_width), display.width * 0.9))
+			this.width = round(math.min(math.max(this.estimated_max_width, min_width), display.width * 0.9))
 			local title_height = this.title and this.scroll_step or 0
 			local max_height = round(display.height * 0.9) - title_height
 			this.height = math.min(round(this.scroll_step * #this.items) - this.item_spacing, max_height)
 			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
-
-			-- Update offsets for new sizes
-			this:set_offset_x(this.offset_x)
-
-			if this.parent_menu then
-				this.parent_menu:update_dimensions()
-			end
 		end,
 		on_display_change = function(this)
+			this:update_dimensions()
+
 			local title_height = this.title and this.scroll_step or 0
 			this.ax = round((display.width - this.width) / 2) + this.offset_x
 			this.ay = round((display.height - this.height) / 2 + (title_height / 2))
@@ -966,6 +969,14 @@ function Menu:open(items, open_item, opts)
 			if this.parent_menu then
 				this.parent_menu:on_display_change()
 			end
+
+			-- Update offsets for new sizes
+			-- needs to be called after the widths of the parents has been updated
+			this:set_offset_x(this.offset_x)
+		end,
+		on_prop_fullormaxed = function(this)
+			this:update_content_dimensions()
+			this:on_display_change()
 		end,
 		update = function(this, props)
 			if props then
@@ -973,7 +984,7 @@ function Menu:open(items, open_item, opts)
 			end
 
 			-- Trigger changes and re-render
-			this:update_dimensions()
+			this:update_content_dimensions()
 			this:on_display_change()
 
 			-- Reset indexes and scroll
@@ -1040,7 +1051,7 @@ function Menu:open(items, open_item, opts)
 			if (index and index >= 1 and index <= #this.items) then
 				local previous_active_value = this.active_index and this.items[this.active_index].value or nil
 				table.remove(this.items, index)
-				this:update_dimensions()
+				this:update_content_dimensions()
 				this:on_display_change()
 				if previous_active_value then this:activate_value(previous_active_value) end
 				this:scroll_to_item(this.selected_index)
@@ -1117,7 +1128,6 @@ function Menu:open(items, open_item, opts)
 		end,
 		open_selected_item_soft = function(this) this:open_selected_item(true) end,
 		close = function(this) menu:close() end,
-		on_prop_fullormaxed = function(this) this:update_dimensions() end,
 		on_global_mbtn_left_down = function(this)
 			if this.proximity_raw == 0 then
 				this.selected_index = this:get_item_index_below_cursor()
