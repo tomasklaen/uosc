@@ -1661,9 +1661,9 @@ function render_timeline(this)
 					)
 				else
 					ass:rect_cw(
-						chapter_x - chapter_half_width,
+						round(chapter_x - chapter_half_width),
 						chapter_y - chapter_half_height,
-						chapter_x + chapter_half_width,
+						round(chapter_x + chapter_half_width),
 						chapter_y + chapter_half_height
 					)
 				end
