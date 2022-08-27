@@ -761,6 +761,15 @@ local Elements = {itable = {}}
 Elements.__index = Elements
 local elements = setmetatable({}, Elements)
 
+-- Element object props used by proximity, events, renderer, or other parts ot the system:
+-- `enabled`: `boolean` - determines element's visibility and interactivity (mouse, keyboard). element still receives
+--                        `on_prop_{name}` and other environment events.
+-- `ax,ay,bx,by`: `number` - element's coordinates used to determine proximity, element is responsible for setting these
+-- `proximity`: `number` - element's proximity to the cursor. set by system before mouse_move is fired.
+--                         fraction between `0` = away, `1` = touching/above.
+-- `proximity_raw`: `number` - element's raw proximity to the cursor in pixels. set by system before mouse_move event.
+-- `on_{event_name}`: `function` (optional) - binds a listener to `{event_name}` when defined. Example events:
+--                                            `on_mbt_left_down`, `on_prop_has_audio`
 function Elements:add(name, element)
 	local insert_index = #Elements.itable + 1
 
@@ -845,6 +854,7 @@ function Menu:open(items, open_item, opts)
 	end
 
 	elements:add('menu', Element.new({
+		enabled = true,
 		type = nil, -- menu type such as `menu`, `chapters`, ...
 		title = nil,
 		width = nil,
@@ -1418,39 +1428,41 @@ function update_proximities()
 
 	-- Calculates proximities and opacities for defined elements
 	for _, element in elements:ipairs() do
-		local previous_proximity_raw = element.proximity_raw
+		if element.enabled then
+			local previous_proximity_raw = element.proximity_raw
 
-		-- If menu is open, all other elements have to be disabled
-		if menu_only then
-			if element.name == 'menu' then
-				capture_mbtn_left = true
-				capture_wheel = true
-				update_element_cursor_proximity(element)
+			-- If menu is open, all other elements have to be disabled
+			if menu_only then
+				if element.name == 'menu' then
+					capture_mbtn_left = true
+					capture_wheel = true
+					update_element_cursor_proximity(element)
+				else
+					element.proximity_raw = infinity
+					element.proximity = 0
+				end
 			else
-				element.proximity_raw = infinity
-				element.proximity = 0
+				update_element_cursor_proximity(element)
 			end
-		else
-			update_element_cursor_proximity(element)
-		end
 
-		-- Element has global forced key listeners
-		if element.on_global_mbtn_left_down then capture_mbtn_left = true end
-		if element.on_global_wheel_up or element.on_global_wheel_down then capture_wheel = true end
+			-- Element has global forced key listeners
+			if element.on_global_mbtn_left_down then capture_mbtn_left = true end
+			if element.on_global_wheel_up or element.on_global_wheel_down then capture_wheel = true end
 
-		if element.proximity_raw == 0 then
-			-- Element has local forced key listeners
-			if element.on_mbtn_left_down then capture_mbtn_left = true end
-			if element.on_wheel_up or element.on_wheel_up then capture_wheel = true end
+			if element.proximity_raw == 0 then
+				-- Element has local forced key listeners
+				if element.on_mbtn_left_down then capture_mbtn_left = true end
+				if element.on_wheel_up or element.on_wheel_up then capture_wheel = true end
 
-			-- Mouse entered element area
-			if previous_proximity_raw ~= 0 then
-				mouse_enter_elements[#mouse_enter_elements + 1] = element
-			end
-		else
-			-- Mouse left element area
-			if previous_proximity_raw == 0 then
-				mouse_leave_elements[#mouse_leave_elements + 1] = element
+				-- Mouse entered element area
+				if previous_proximity_raw ~= 0 then
+					mouse_enter_elements[#mouse_enter_elements + 1] = element
+				end
+			else
+				-- Mouse left element area
+				if previous_proximity_raw == 0 then
+					mouse_leave_elements[#mouse_leave_elements + 1] = element
+				end
 			end
 		end
 	end
@@ -2332,10 +2344,12 @@ function render()
 	local ass = assdraw.ass_new()
 
 	for _, element in elements:ipairs() do
-		local result = element:maybe('render')
-		if result then
-			ass:new_event()
-			ass:merge(result)
+		if element.enabled then
+			local result = element:maybe('render')
+			if result then
+				ass:new_event()
+				ass:merge(result)
+			end
 		end
 	end
 
@@ -2354,6 +2368,7 @@ end
 -- STATIC ELEMENTS
 
 elements:add('window_border', Element.new({
+	enabled = true,
 	size = nil, -- set in init
 	init = function(this)
 		this:update_size();
@@ -2381,6 +2396,7 @@ elements:add('window_border', Element.new({
 	end,
 }))
 elements:add('pause_indicator', Element.new({
+	enabled = true,
 	base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8,
 	paused = state.pause,
 	type = options.pause_indicator,
@@ -2473,6 +2489,7 @@ elements:add('pause_indicator', Element.new({
 	end,
 }))
 elements:add('timeline', Element.new({
+	enabled = true,
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_change` handler based on `state.fullormaxed`
 	size_min_override = options.timeline_start_hidden and 0 or nil, -- used for toggle-progress command
@@ -2552,6 +2569,16 @@ elements:add('top_bar', Element.new({
 			this.enabled = false
 		end
 		this.enabled = this.enabled and (options.top_bar_controls or options.top_bar_title)
+
+		-- Propagate enabled flag to child elements
+		local children = {
+			elements.window_controls_minimize,
+			elements.window_controls_maximize,
+			elements.window_controls_close,
+		}
+		for _, element in ipairs(children) do
+			element.enabled = this.enabled
+		end
 	end,
 	update_dimensions = function(this)
 		this.size = state.fullormaxed and options.top_bar_size_fullscreen or options.top_bar_size
@@ -2586,7 +2613,9 @@ if options.top_bar_controls then
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
-		on_mbtn_left_down = function() mp.commandv('cycle', 'window-minimized') end,
+		on_mbtn_left_down = function(this)
+			if this.enabled then mp.commandv('cycle', 'window-minimized') end
+		end,
 	}))
 	elements:add('window_controls_maximize', Element.new({
 		update_dimensions = function(this)
@@ -2597,7 +2626,9 @@ if options.top_bar_controls then
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
-		on_mbtn_left_down = function() mp.commandv('cycle', 'window-maximized') end,
+		on_mbtn_left_down = function(this)
+			if this.enabled then mp.commandv('cycle', 'window-maximized') end
+		end,
 	}))
 	elements:add('window_controls_close', Element.new({
 		update_dimensions = function(this)
@@ -2608,11 +2639,14 @@ if options.top_bar_controls then
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
-		on_mbtn_left_down = function() mp.commandv('quit') end,
+		on_mbtn_left_down = function(this)
+			if this.enabled then mp.commandv('quit') end
+		end,
 	}))
 end
 if itable_find({'left', 'right'}, options.volume) then
 	elements:add('volume', Element.new({
+		enabled = true,
 		width = nil, -- set in `on_display_change` handler based on `state.fullormaxed`
 		height = nil, -- set in `on_display_change` handler based on `state.fullormaxed`
 		margin = nil, -- set in `on_display_change` handler based on `state.fullormaxed`
@@ -2635,10 +2669,12 @@ if itable_find({'left', 'right'}, options.volume) then
 			this.by = round(this.ay + this.height)
 		end,
 		on_display_change = function(this) this:update_dimensions() end,
+		on_prop_has_audio = function(this, has_audio) this.enabled = has_audio end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		render = render_volume,
 	}))
 	elements:add('volume_mute', Element.new({
+		enabled = false,
 		width = 0,
 		height = 0,
 		on_display_change = function(this)
@@ -2649,9 +2685,11 @@ if itable_find({'left', 'right'}, options.volume) then
 			this.bx = elements.volume.bx
 			this.by = elements.volume.by
 		end,
+		on_prop_has_audio = function(this, has_audio) this.enabled = has_audio end,
 		on_mbtn_left_down = function(this) mp.commandv('cycle', 'mute') end,
 	}))
 	elements:add('volume_slider', Element.new({
+		enabled = false,
 		pressed = false,
 		width = 0,
 		height = 0,
@@ -2678,6 +2716,7 @@ if itable_find({'left', 'right'}, options.volume) then
 			new_volume = round(new_volume / options.volume_step) * options.volume_step
 			if state.volume ~= new_volume then mp.commandv('set', 'volume', math.min(new_volume, state.volume_max)) end
 		end,
+		on_prop_has_audio = function(this, has_audio) this.enabled = has_audio end,
 		on_mbtn_left_down = function(this)
 			this.pressed = true
 			this:set_from_cursor()
@@ -2699,6 +2738,7 @@ if itable_find({'left', 'right'}, options.volume) then
 end
 if itable_find({'center', 'bottom-bar'}, options.menu_button) then
 	elements:add('menu_button', Element.new({
+		enabled = true,
 		width = 0, height = 0,
 		get_effective_proximity = function(this)
 			if menu:is_open() then return 0 end
@@ -2759,6 +2799,7 @@ if options.speed then
 	end
 
 	elements:add('speed', Element.new({
+		enabled = true,
 		dragging = nil,
 		width = 0,
 		height = 0,
@@ -2788,6 +2829,7 @@ if options.speed then
 			new_volume = round(new_volume / options.volume_step) * options.volume_step
 			if state.volume ~= new_volume then mp.commandv('set', 'volume', new_volume) end
 		end,
+		on_prop_time = function(this, time) this.enabled = time ~= nil end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
 		on_mbtn_left_down = function(this)
@@ -2853,6 +2895,7 @@ if options.speed then
 	}))
 end
 elements:add('curtain', Element.new({
+	enabled = true,
 	opacity = 0,
 	fadeout = function(this)
 		this:tween_property('opacity', this.opacity, 0);
@@ -3500,13 +3543,15 @@ end
 
 -- HOOKS
 mp.register_event('file-loaded', parse_chapters)
-mp.observe_property('playback-time', 'number', function(name, val)
-	state.time = val
+mp.observe_property('playback-time', 'number', function(name, value)
+	state.time = value
+	elements:trigger('prop_time', value)
 	update_human_times()
 	request_render()
 end)
-mp.observe_property('duration', 'number', function(name, val)
-	state.duration = val
+mp.observe_property('duration', 'number', function(name, value)
+	state.duration = value
+	elements:trigger('prop_duration', value)
 	update_human_times()
 	request_render()
 end)
@@ -3528,6 +3573,10 @@ mp.observe_property('track-list', 'native', function(name, value)
 	state.is_image = is_image
 	state.has_audio = has_audio
 	state.has_video = has_video
+	elements:trigger('prop_is_audio', state.is_audio)
+	elements:trigger('prop_is_image', is_image)
+	elements:trigger('prop_has_audio', has_audio)
+	elements:trigger('prop_has_video', has_video)
 end)
 mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('border', 'bool', create_state_setter('border'))
