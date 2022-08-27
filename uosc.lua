@@ -158,6 +158,8 @@ local state = {
 	cached_ranges = nil,
 	render_delay = config.render_delay,
 	first_real_mouse_move_received = false,
+	playlist_count = 0,
+	playlist_pos = 0,
 }
 local forced_key_bindings -- defined at the bottom next to events
 
