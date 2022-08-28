@@ -1560,13 +1560,12 @@ function render_timeline(this)
 		if line_width > 2 then time_padding = round(line_width / 2) end
 	else
 		fax = bax
-		fay = bay + this.top_border
 		fbx = bax + this.width * progress
 	end
 
 	local time_x = bax + time_padding
 	local time_width = this.width - time_padding * 2
-	local foreground_size = bby - bay
+	local foreground_size = fby - fay
 	local foreground_coordinates = fax .. ',' .. fay .. ',' .. fbx .. ',' .. fby -- for clipping
 
 	-- Background
