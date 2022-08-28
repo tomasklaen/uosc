@@ -2616,7 +2616,11 @@ elements:add('top_bar', Element.new({
 		this:decide_enabled()
 		this:update_dimensions()
 	end,
-	on_prop_fullormaxed = function(this)
+	on_prop_fullscreen = function(this)
+		this:decide_enabled()
+		this:update_dimensions()
+	end,
+	on_prop_maximized = function(this)
 		this:decide_enabled()
 		this:update_dimensions()
 	end,
