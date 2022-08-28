@@ -3144,6 +3144,7 @@ state.context_menu_items = (function()
 					{title = '4:3', value = 'set video-aspect-override "4:3"'},
 					{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
 				},},
+				{title = 'Audio devices', value = 'script-binding uosc/audio-device'},
 				{title = 'Screenshot', value = 'async screenshot'},
 				{title = 'Show in directory', value = 'script-binding uosc/show-in-directory'},
 				{title = 'Open config folder', value = 'script-binding uosc/open-config-directory'},
@@ -4051,6 +4052,23 @@ mp.add_key_binding(nil, 'delete-file-quit', function()
 	if path and not is_protocol(path) then delete_file(normalize_path(path)) end
 	mp.command('quit')
 end)
+mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
+	title = 'Audio devices',
+	type = 'audio-device-list',
+	list_prop = 'audio-device-list',
+	list_serializer = function(_, audio_device_list)
+		local items = {}
+		for index, item in ipairs(audio_device_list) do
+			items[index] = {
+				title = item.description,
+				hint = item.name,
+				value = item.name,
+			}
+		end
+		return items
+	end,
+	on_select = function(index) mp.commandv('set', 'audio-device', tostring(index)) end,
+}))
 mp.add_key_binding(nil, 'open-config-directory', function()
 	local config_path = mp.command_native({'expand-path', '~~/mpv.conf'})
 	local config = serialize_path(config_path)
