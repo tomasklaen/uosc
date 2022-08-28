@@ -133,7 +133,9 @@ local state = {
 	cwd = mp.get_property('working-directory'),
 	media_title = '',
 	time = nil, -- current media playback time
+	speed = 1,
 	duration = nil, -- current media duration
+	effective_duration = nil, -- real time duration affected by speed
 	time_human = nil, -- current playback time in human format
 	duration_or_remaining_time_human = nil, -- depends on options.total_time
 	pause = mp.get_property_native('pause'),
@@ -1497,14 +1499,23 @@ function update_proximities()
 	for _, element in ipairs(mouse_enter_elements) do element:trigger('mouse_enter') end
 end
 
+function update_fullormaxed()
+	state.fullormaxed = state.fullscreen or state.maximized
+	update_display_dimensions()
+	elements:trigger('prop_fullormaxed', state.fullormaxed)
+end
+
 function update_human_times()
 	if state.time then
 		state.time_human = format_time(state.time)
 		if state.duration then
+			local speed = state.speed or 1
+			state.effective_duration = state.duration / speed
 			state.duration_or_remaining_time_human = format_time(
-				options.total_time and state.duration or state.time - state.duration
+				options.total_time and state.effective_duration or state.time - state.effective_duration
 			)
 		else
+			state.effective_duration = nil
 			state.duration_or_remaining_time_human = nil
 		end
 	else
@@ -3140,10 +3151,11 @@ end)()
 
 -- EVENT HANDLERS
 
-function create_state_setter(name)
+function create_state_setter(name, callback)
 	return function(_, value)
 		state[name] = value
 		elements:trigger('prop_' .. name, value)
+		if callback then callback() end
 		request_render()
 	end
 end
@@ -3552,18 +3564,9 @@ end
 
 -- HOOKS
 mp.register_event('file-loaded', parse_chapters)
-mp.observe_property('playback-time', 'number', function(name, value)
-	state.time = value
-	elements:trigger('prop_time', value)
-	update_human_times()
-	request_render()
-end)
-mp.observe_property('duration', 'number', function(name, value)
-	state.duration = value
-	elements:trigger('prop_duration', value)
-	update_human_times()
-	request_render()
-end)
+mp.observe_property('playback-time', 'number', create_state_setter('time', update_human_times))
+mp.observe_property('duration', 'number', create_state_setter('duration', update_human_times))
+mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
 mp.observe_property('track-list', 'native', function(name, value)
 	-- checks if the file is audio only (mp3, etc)
 	local has_audio = false
@@ -3594,22 +3597,9 @@ mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('playlist-pos-1', 'number', create_state_setter('playlist_pos'))
 mp.observe_property('playlist-count', 'number', create_state_setter('playlist_count'))
-mp.observe_property('fullscreen', 'bool', function(_, value)
-	state.fullscreen = value
-	state.fullormaxed = state.fullscreen or state.maximized
-	update_display_dimensions()
-	elements:trigger('prop_fullscreen', value)
-	elements:trigger('prop_fullormaxed', state.fullormaxed)
-end)
-mp.observe_property('window-maximized', 'bool', function(_, value)
-	state.maximized = value
-	state.fullormaxed = state.fullscreen or state.maximized
-	update_display_dimensions()
-	elements:trigger('prop_maximized', value)
-	elements:trigger('prop_fullormaxed', state.fullormaxed)
-end)
+mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen', update_fullormaxed))
+mp.observe_property('window-maximized', 'bool', create_state_setter('maximized', update_fullormaxed))
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
-mp.observe_property('speed', 'number', create_state_setter('speed'))
 mp.observe_property('pause', 'bool', create_state_setter('pause'))
 mp.observe_property('volume', 'number', create_state_setter('volume'))
 mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
