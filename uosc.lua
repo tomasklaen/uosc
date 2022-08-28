@@ -909,9 +909,6 @@ function Menu:open(items, open_item, opts)
 				update_proximities()
 			end)
 		end,
-		destroy = function(this)
-			request_render()
-		end,
 		update_content_dimensions = function(this)
 			this.item_height = state.fullormaxed and options.menu_item_height_fullscreen or options.menu_item_height
 			this.font_size = round(this.item_height * 0.48 * options.menu_font_scale)
@@ -1257,13 +1254,17 @@ function Menu:close(immediate, callback)
 
 	if elements:has('menu') and not menu.is_closing then
 		local function close()
-			elements.menu:maybe('on_close')
-			elements.menu:destroy()
+			local current_menu = elements.menu
+			while current_menu do
+				current_menu:maybe('on_close')
+				current_menu = current_menu.parent_menu
+			end
 			elements:remove('menu')
 			menu.is_closing = false
 			update_proximities()
 			menu:disable_key_bindings()
 			call_me_maybe(callback)
+			request_render()
 		end
 
 		menu.is_closing = true
