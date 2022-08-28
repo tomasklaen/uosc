@@ -220,24 +220,6 @@ Show current file in your operating systems' file explorer.
 
 Open directory with `mpv.conf` in file explorer.
 
-## Message handlers
-
-**uosc** listens on some messages that can be sent with `script-message-to uosc` command. Example:
-
-```
-R    script-message-to uosc show-submenu "Utils > Aspect ratio"
-```
-
-#### `show-submenu <menu_id>`
-
-Opens one of the submenus defined in `input.conf` (read on how to build those below).
-
-Parameters
-
-##### `<menu_id>`
-
-ID (title) of the submenu, including `>` subsections as defined in `input.conf`. It has to be match the title exactly.
-
 ## Menu
 
 **uosc** provides a way to build, display, and use your own menu. By default it displays a pre-configured menu with common actions.
@@ -337,6 +319,61 @@ esc         quit #! Quit
 ```
 
 To see all the commands you can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).
+
+## Message handlers
+
+**uosc** listens on some messages that can be sent with `script-message-to uosc` command. Example:
+
+```
+R    script-message-to uosc show-submenu "Utils > Aspect ratio"
+```
+
+### `show-submenu <menu_id>`
+
+Opens one of the submenus defined in `input.conf` (read on how to build those below).
+
+Parameters
+
+##### `<menu_id>`
+
+ID (title) of the submenu, including `>` subsections as defined in `input.conf`. It has to be match the title exactly.
+
+### `show-menu <menu_json>`
+
+A message other scripts can send to display a uosc menu serialized as JSON.
+
+Menu data structure:
+
+```
+Menu {
+    title: string | nil;
+    items: Item[];
+}
+
+Item = Command | Menu;
+
+Command {
+    title: string | nil;
+    hint: string | nil;
+    value: string | string[];
+}
+```
+
+When command value is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(unpack(value))`.
+
+Example:
+
+```lua
+local utils = require('mp.utils')
+local menu = {
+    title = 'Custom menu',
+    items = {
+        {title = 'Foo', hint = 'bar', value = 'quit'},
+    }
+}
+local json = utils.format_json(menu)
+mp.commandv('script-message-to', 'uosc', 'show-menu', json)
+```
 
 ## Tips
 
