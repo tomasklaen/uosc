@@ -2211,7 +2211,7 @@ function render_menu(this)
 			'\\4c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size ..
 			'\\q2\\clip(' .. this.ax .. ',' .. this.ay - this.item_height .. ',' .. this.bx .. ',' .. this.ay .. ')}')
 		ass:append(ass_opacity(options.menu_opacity, this.opacity))
-		ass:pos(display.width / 2, this.ay - (this.item_height * 0.5))
+		ass:pos(this.ax + this.width / 2, this.ay - (this.item_height * 0.5))
 		ass:an(5)
 		ass:append(this.title)
 	end
