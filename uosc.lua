@@ -1,4 +1,5 @@
 --[[ uosc 3.1.2 - 2022-Aug-25 | https://github.com/tomasklaen/uosc ]]
+local uosc_version = '3.1.2'
 
 function lock_osc(name, value)
 	if value == true then
@@ -122,6 +123,7 @@ local cursor = {
 	y = 0,
 }
 local state = {
+	version = uosc_version,
 	os = (function()
 		if os.getenv('windir') ~= nil then return 'windows' end
 		local homedir = os.getenv('HOME')
@@ -3708,6 +3710,9 @@ end)()
 
 -- MESSAGE HANDLERS
 
+mp.register_script_message('get-version', function(script)
+	mp.commandv('script-message-to', script, 'uosc-version', state.version)
+end)
 mp.register_script_message('show-menu', function(json)
 	local menu = utils.parse_json(json)
 
