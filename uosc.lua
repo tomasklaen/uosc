@@ -1119,7 +1119,11 @@ function Menu:open(items, open_item, opts)
 				local item = this.items[this.selected_index]
 				-- Is submenu
 				if item.items then
-					menu:open(item.items, this.open_item, {type = this.type, parent_menu = this})
+					menu:open(item.items, this.open_item, {
+						type = this.type,
+						parent_menu = this,
+						selected_index = #item.items > 0 and 1 or nil,
+					})
 				else
 					if soft ~= true then menu:close(true) end
 					this.open_item(item.value)
