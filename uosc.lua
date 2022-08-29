@@ -838,7 +838,7 @@ function Menu:is_open(menu_type)
 end
 
 ---@alias MenuItem {title?: string, hint?: string, value: any}
----@alias MenuOptions {title?: string, active_index?: number, selected_index?: number, on_open?: fun(), on_close?: fun(), parent_menu?: any}
+---@alias MenuOptions {type?: string; title?: string, active_index?: number, selected_index?: number, on_open?: fun(), on_close?: fun(), parent_menu?: any}
 
 ---@param items MenuItem[]
 ---@param open_item fun(value: any)
@@ -3706,15 +3706,30 @@ end)
 mp.register_script_message('show-menu', function(json)
 	local menu = utils.parse_json(json)
 
+	if type(menu) ~= 'table' or type(menu.items) ~= 'table' then
+		msg.error('show-menu: received json didn\'t produce a table with menu configuration')
+		return
+	end
+
 	function run_command(value)
 		if type(value) == 'string' then
 			mp.command(value)
 		else
-			mp.command(table.unpack(value))
+			mp.commandv(table.unpack(value))
 		end
 	end
 
-	Menu:open(menu.items, run_command, {title = menu.title})
+	if menu.type ~= nil and menu:is_open(menu.type) then
+		menu:close()
+		return
+	end
+
+	Menu:open(menu.items, run_command, {
+		type = menu.type,
+		title = menu.title,
+		selected_index = menu.selected_index or menu.active_index or (#menu.items > 0 and 1 or nil),
+		active_index = menu.active_index,
+	})
 end)
 mp.register_script_message('show-submenu', function(name)
 	local path = split(name, ' *>+ *')

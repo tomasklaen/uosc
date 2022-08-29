@@ -360,11 +360,19 @@ Menu data structure:
 
 ```
 Menu {
+    type: string | nil;
+    title: string | nil;
+    selected_index: number | nil;
+    active_index: number | nil;
+    items: Item[];
+}
+
+Submenu {
     title: string | nil;
     items: Item[];
 }
 
-Item = Command | Menu;
+Item = Command | Submenu;
 
 Command {
     title: string | nil;
@@ -373,16 +381,26 @@ Command {
 }
 ```
 
-When command value is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(unpack(value))`.
+When command value is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(table.unpack(value))`.
+
+Menu `type` controls what happens when opening a menu when some other menu is already open. When the new menu type is different, it'll replace the currently opened menu. When it's the same, the currently open menu will simply be closed. This is used to implement toggling (open->close) of menus with the same key.
+
+`active_index` displays the item at that index as active. For example, in subtitles menu, the currently displayed subtitles are considered _active_.
+
+`selected_index` marks item at that index as selected - the starting position for all keyboard based navigation in the menu. It defaults to `active_index` if any, or `1` otherwise, which means in most cases you can just ignore this prop.
 
 Example:
 
 ```lua
 local utils = require('mp.utils')
 local menu = {
+    type = 'menu_type',
     title = 'Custom menu',
+    active_index = 1,
+    selected_index = 1,
     items = {
-        {title = 'Foo', hint = 'bar', value = 'quit'},
+        {title = 'Foo', hint = 'foo', value = 'quit'},
+        {title = 'Bar', hint = 'bar', value = 'quit'},
     }
 }
 local json = utils.format_json(menu)
