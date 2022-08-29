@@ -1712,7 +1712,7 @@ function render_timeline(this)
 	-- Seekable ranges
 	local function render_cache()
 		if options.timeline_cached_ranges and state.cached_ranges then
-			local range_height = math.max(math.min(this.size_max / 8, foreground_size / 3), 1)
+			local range_height = math.max(math.floor(math.min(this.size_max / 8, foreground_size / 2)), 1)
 			local range_ay = fby - range_height
 
 			for _, range in ipairs(state.cached_ranges) do
