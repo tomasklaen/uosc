@@ -135,7 +135,6 @@ local state = {
 	time = nil, -- current media playback time
 	speed = 1,
 	duration = nil, -- current media duration
-	effective_duration = nil, -- real time duration affected by speed
 	time_human = nil, -- current playback time in human format
 	duration_or_remaining_time_human = nil, -- depends on options.total_time
 	pause = mp.get_property_native('pause'),
@@ -1510,12 +1509,10 @@ function update_human_times()
 		state.time_human = format_time(state.time)
 		if state.duration then
 			local speed = state.speed or 1
-			state.effective_duration = state.duration / speed
 			state.duration_or_remaining_time_human = format_time(
-				options.total_time and state.effective_duration or state.time - state.effective_duration
+				options.total_time and (state.duration / speed) or ((state.time - state.duration) / speed)
 			)
 		else
-			state.effective_duration = nil
 			state.duration_or_remaining_time_human = nil
 		end
 	else
