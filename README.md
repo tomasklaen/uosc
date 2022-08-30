@@ -216,6 +216,10 @@ Delete currently playing file and quit mpv.
 
 Show current file in your operating systems' file explorer.
 
+#### `audio-device`
+
+Switch audio output device.
+
 #### `open-config-directory`
 
 Open directory with `mpv.conf` in file explorer.
@@ -312,6 +316,7 @@ alt+s       script-binding uosc/load-subtitles     #! Utils > Load subtitles
 #           set video-aspect-override "16:9"       #! Utils > Aspect ratio > 16:9
 #           set video-aspect-override "4:3"        #! Utils > Aspect ratio > 4:3
 #           set video-aspect-override "2.35:1"     #! Utils > Aspect ratio > 2.35:1
+#           script-binding uosc/audio-device       #! Utils > Audio devices
 ctrl+s      async screenshot                       #! Utils > Screenshot
 O           script-binding uosc/show-in-directory  #! Utils > Show in directory
 #           script-binding uosc/open-config-directory #! Utils > Open config directory

@@ -3145,6 +3145,7 @@ state.context_menu_items = (function()
 					{title = '4:3', value = 'set video-aspect-override "4:3"'},
 					{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
 				},},
+				{title = 'Audio devices', value = 'script-binding uosc/audio-device'},
 				{title = 'Screenshot', value = 'async screenshot'},
 				{title = 'Show in directory', value = 'script-binding uosc/show-in-directory'},
 				{title = 'Open config folder', value = 'script-binding uosc/open-config-directory'},
@@ -4067,6 +4068,31 @@ mp.add_key_binding(nil, 'delete-file-quit', function()
 	if path and not is_protocol(path) then delete_file(normalize_path(path)) end
 	mp.command('quit')
 end)
+mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
+	title = 'Audio devices',
+	type = 'audio-device-list',
+	list_prop = 'audio-device-list',
+	list_serializer = function(_, audio_device_list)
+		local current_device = mp.get_property('audio-device') or 'auto'
+		local ao = mp.get_property('current-ao') or ''
+		local items = {}
+		local active_index = nil
+		for _, device in ipairs(audio_device_list) do
+			if device.name == 'auto' or string.match(device.name, '^' .. ao) then
+				local hint = string.match(device.name, ao .. '/(.+)')
+				if not hint then hint = device.name end
+				items[#items + 1] = {
+					title = device.description,
+					hint = hint,
+					value = device.name,
+				}
+				if device.name == current_device then active_index = #items end
+			end
+		end
+		return items, active_index
+	end,
+	on_select = function(name) mp.commandv('set', 'audio-device', name) end,
+}))
 mp.add_key_binding(nil, 'open-config-directory', function()
 	local config_path = mp.command_native({'expand-path', '~~/mpv.conf'})
 	local config = serialize_path(config_path)
