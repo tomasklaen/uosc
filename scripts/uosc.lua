@@ -658,6 +658,31 @@ function is_element_persistent(name)
 	return (options[option_name].audio and state.is_audio) or (options[option_name].paused and state.pause)
 end
 
+-- ASSDRAW EXTENSIONS
+
+local ass_mt = getmetatable(assdraw.ass_new())
+
+-- ICON
+---@param ass table
+---@param x number
+---@param y number
+---@param size number
+---@param char string
+---@param opts? {inverted?: boolean; border?: number; opacity?: number; clip?: string}
+function ass_mt.icon(ass, x, y, size, char, opts)
+	opts = opts or {}
+	local border_size = opts.border or round(size / 24)
+	local clip = opts.clip or ''
+	local colors = opts.inverted
+		and '\\1c&H' .. options.color_background .. '\\3c&H' .. options.color_foreground
+		or '\\1c&H' .. options.color_foreground .. '\\3c&H' .. options.color_background
+	local tags = '\\fnMaterial-Design-Iconic-Font\\an(5)\\blur0\\shad0\\bord' .. border_size ..
+		colors .. '\\fs' .. size .. '\\pos(' .. x .. ',' .. y .. ')' .. clip
+	if opts.opacity then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity)) end
+	ass:new_event()
+	ass.text = ass.text .. '{' .. tags .. '}' .. char
+end
+
 -- Element
 --[[
 Signature:
@@ -1283,129 +1308,6 @@ function Menu:close(immediate, callback)
 	end
 end
 
--- ICONS
---[[
-ASS \shadN shadows are drawn also below the element, which when there is an
-opacity in play, blends icon colors into ugly greys. The mess below is an
-attempt to fix it by rendering shadows for icons with clipping.
-
-Add icons by adding functions to render them to `icons` table.
-
-Signature: function(pos_x, pos_y, size) => string
-
-Function has to return ass path coordinates to draw the icon centered at pox_x
-and pos_y of passed size.
-]]
-local icons = {}
-function icon(name, icon_x, icon_y, icon_size, shad_x, shad_y, shad_size, backdrop, opacity, clip)
-	local ass = assdraw.ass_new()
-	local icon_path = icons[name](icon_x, icon_y, icon_size)
-	local icon_color = options['color_' .. backdrop .. '_text']
-	local shad_color = options['color_' .. backdrop]
-	local use_border = (shad_x + shad_y) == 0
-	local icon_border = use_border and shad_size or 0
-
-	-- clip can't clip out shadows, a very annoying limitation I can't work
-	-- around without going back to ugly default ass shadows, but atm I actually
-	-- don't need clipping of icons with shadows, so I'm choosing to ignore this
-	if not clip then
-		clip = ''
-	end
-
-	if not use_border then
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. shad_color .. '\\iclip(' .. ass.scale .. ', ' .. icon_path .. ')}')
-		ass:append(ass_opacity(opacity))
-		ass:pos(shad_x + shad_size, shad_y + shad_size)
-		ass:draw_start()
-		ass:append(icon_path)
-		ass:draw_stop()
-	end
-
-	ass:new_event()
-	ass:append('{\\blur0\\bord' .. icon_border .. '\\shad0\\1c&H' .. icon_color .. '\\3c&H' .. shad_color .. clip .. '}')
-	ass:append(ass_opacity(opacity))
-	ass:pos(0, 0)
-	ass:draw_start()
-	ass:append(icon_path)
-	ass:draw_stop()
-
-	return ass.text
-end
-
-function icons._volume(muted, pos_x, pos_y, size)
-	local ass = assdraw.ass_new()
-	local scale = size / 200
-	local function x(number) return pos_x + (number * scale) end
-	local function y(number) return pos_y + (number * scale) end
-	ass:move_to(x(-85), y(-35))
-	ass:line_to(x(-50), y(-35))
-	ass:line_to(x(-5), y(-75))
-	ass:line_to(x(-5), y(75))
-	ass:line_to(x(-50), y(35))
-	ass:line_to(x(-85), y(35))
-	if muted then
-		ass:move_to(x(76), y(-35))
-		ass:line_to(x(50), y(-9))
-		ass:line_to(x(24), y(-35))
-		ass:line_to(x(15), y(-26))
-		ass:line_to(x(41), y(0))
-		ass:line_to(x(15), y(26))
-		ass:line_to(x(24), y(35))
-		ass:line_to(x(50), y(9))
-		ass:line_to(x(76), y(35))
-		ass:line_to(x(85), y(26))
-		ass:line_to(x(59), y(0))
-		ass:line_to(x(85), y(-26))
-	else
-		ass:move_to(x(20), y(-30))
-		ass:line_to(x(20), y(30))
-		ass:line_to(x(35), y(30))
-		ass:line_to(x(35), y(-30))
-
-		ass:move_to(x(55), y(-60))
-		ass:line_to(x(55), y(60))
-		ass:line_to(x(70), y(60))
-		ass:line_to(x(70), y(-60))
-	end
-	return ass.text
-end
-
-function icons.volume(pos_x, pos_y, size) return icons._volume(false, pos_x, pos_y, size) end
-
-function icons.volume_muted(pos_x, pos_y, size) return icons._volume(true, pos_x, pos_y, size) end
-
-function icons.menu_button(pos_x, pos_y, size)
-	local ass = assdraw.ass_new()
-	local scale = size / 100
-	local function x(number) return pos_x + (number * scale) end
-	local function y(number) return pos_y + (number * scale) end
-	local line_height = 14
-	local line_spacing = 18
-	for i = -1, 1 do
-		local offs = i * (line_height + line_spacing)
-		ass:move_to(x(-50), y(offs - line_height / 2))
-		ass:line_to(x(50), y(offs - line_height / 2))
-		ass:line_to(x(50), y(offs + line_height / 2))
-		ass:line_to(x(-50), y(offs + line_height / 2))
-	end
-	return ass.text
-end
-
-function icons.arrow_right(pos_x, pos_y, size)
-	local ass = assdraw.ass_new()
-	local scale = size / 200
-	local function x(number) return pos_x + (number * scale) end
-	local function y(number) return pos_y + (number * scale) end
-	ass:move_to(x(-22), y(-80))
-	ass:line_to(x(-45), y(-57))
-	ass:line_to(x(12), y(0))
-	ass:line_to(x(-45), y(57))
-	ass:line_to(x(-22), y(80))
-	ass:line_to(x(58), y(0))
-	return ass.text
-end
-
 -- STATE UPDATES
 
 function update_display_dimensions()
@@ -1887,16 +1789,10 @@ function render_top_bar(this)
 			ass:rect_cw(close.ax, close.ay, close.bx, close.by)
 			ass:draw_stop()
 		end
-		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}')
-		ass:append(ass_opacity(this.button_opacity, opacity))
-		ass:pos(close.ax + (this.button_width / 2), close.ay + (this.size / 2))
-		ass:draw_start()
-		ass:move_to(-this.icon_size, this.icon_size)
-		ass:line_to(this.icon_size, -this.icon_size)
-		ass:move_to(-this.icon_size, -this.icon_size)
-		ass:line_to(this.icon_size, this.icon_size)
-		ass:draw_stop()
+		ass:icon(
+			close.ax + (this.button_width / 2), close.ay + (this.size / 2), this.icon_size, '\239\132\182',
+			{opacity = this.button_opacity * opacity, border = 1}
+		)
 
 		-- Maximize button
 		local maximize = elements.window_controls_maximize
@@ -1910,20 +1806,10 @@ function render_top_bar(this)
 			ass:rect_cw(maximize.ax, maximize.ay, maximize.bx, maximize.by)
 			ass:draw_stop()
 		end
-		ass:new_event()
-		ass:append('{\\blur0\\bord2\\shad0\\1c\\3c&H000000}')
-		ass:append(ass_opacity({[3] = this.button_opacity}, opacity))
-		ass:pos(maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2))
-		ass:draw_start()
-		ass:rect_cw(-this.icon_size + 1, -this.icon_size + 1, this.icon_size + 1, this.icon_size + 1)
-		ass:draw_stop()
-		ass:new_event()
-		ass:append('{\\blur0\\bord2\\shad0\\1c\\3c&HFFFFFF}')
-		ass:append(ass_opacity({[3] = this.button_opacity}, opacity))
-		ass:pos(maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2))
-		ass:draw_start()
-		ass:rect_cw(-this.icon_size, -this.icon_size, this.icon_size, this.icon_size)
-		ass:draw_stop()
+		ass:icon(
+			maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2), this.icon_size, '\239\135\170',
+			{opacity = this.button_opacity * opacity, border = 1}
+		)
 
 		-- Minimize button
 		local minimize = elements.window_controls_minimize
@@ -1937,15 +1823,10 @@ function render_top_bar(this)
 			ass:rect_cw(minimize.ax, minimize.ay, minimize.bx, minimize.by)
 			ass:draw_stop()
 		end
-		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad1\\3c&HFFFFFF\\4c&H000000}')
-		ass:append(ass_opacity(this.button_opacity, opacity))
-		ass:append('{\\1a&HFF&}')
-		ass:pos(minimize.ax + (this.button_width / 2), minimize.ay + (this.size / 2))
-		ass:draw_start()
-		ass:move_to(-this.icon_size, 0)
-		ass:line_to(this.icon_size, 0)
-		ass:draw_stop()
+		ass:icon(
+			minimize.ax + (this.button_width / 2), minimize.ay + (this.size / 2), this.icon_size, '\239\135\171',
+			{opacity = this.button_opacity * opacity, border = 1}
+		)
 	end
 
 	-- Window title
@@ -2086,14 +1967,11 @@ function render_volume(this)
 
 	-- Mute button
 	local mute = elements.volume_mute
-	local icon_name = state.mute and 'volume_muted' or 'volume'
-	ass:new_event()
-	ass:append(icon(
-		icon_name,
-		mute.ax + (mute.width / 2), mute.ay + (mute.height / 2), mute.width * 0.7, -- x, y, size
-		0, 0, options.volume_border, -- shadow_x, shadow_y, shadow_size
-		'background', options.volume_opacity * opacity-- backdrop, opacity
-	))
+	local icon_name = state.mute and '\239\142\187' or '\239\142\188'
+	ass:icon(
+		mute.ax + (mute.width / 2), mute.ay + (mute.height / 2), mute.width * 0.7, icon_name,
+		{border = options.volume_border, opacity = options.volume_opacity * opacity}
+	)
 	return ass
 end
 
@@ -2192,13 +2070,10 @@ function render_menu_button(this)
 	local ass = assdraw.ass_new()
 	-- Menu button
 	local burger = elements.menu_button
-	ass:new_event()
-	ass:append(icon(
-		'menu_button',
-		burger.ax + (burger.width / 2), burger.ay + (burger.height / 2), burger.width, -- x, y, size
-		0, 0, options.menu_button_border, -- shadow_x, shadow_y, shadow_size
-		'background', options.menu_button_opacity * opacity-- backdrop, opacity
-	))
+	ass:icon(
+		burger.ax + (burger.width / 2), burger.ay + (burger.height / 2), burger.width, '\239\134\151',
+		{border = options.menu_button_border, opacity = options.menu_button_opacity * opacity}
+	)
 	return ass
 end
 
@@ -2311,16 +2186,11 @@ function render_menu(this)
 				ass:an(6)
 				ass:append(item.ass_save_hint)
 			elseif has_submenu then
-				ass:new_event()
-				ass:append(icon(
-					'arrow_right',
-					this.bx - this.item_content_spacing - (icon_size / 2), -- x
-					item_ay + (this.item_height / 2), -- y
-					icon_size, -- size
-					0, 0, 1, -- shadow_x, shadow_y, shadow_size
-					is_active and 'foreground' or 'background', this.opacity, -- backdrop, opacity
-					item_clip
-				))
+				ass:icon(
+					this.bx - this.item_content_spacing - (icon_size / 2), item_ay + (this.item_height / 2), icon_size * 1.5,
+					'\239\139\187',
+					{border = 0, inverted = is_active, opacity = this.opacity, clip = item_clip}
+				)
 			end
 		end
 	end
@@ -2476,36 +2346,20 @@ elements:add('pause_indicator', Element.new({
 		end
 
 		-- Icon
-		local size = round((math.min(display.width, display.height) * (is_static and 0.20 or 0.15)) / 2)
+		local size = round(math.min(display.width, display.height) * (is_static and 0.20 or 0.15))
 
 		size = size + size * (1 - this.opacity)
 
 		if this.paused then
-			ass:new_event()
-			ass:append('{\\blur0\\bord1\\1c&H' .. options.color_foreground .. '\\3c&H' .. options.color_background .. '}')
-			ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
-			ass:pos(display.width / 2, display.height / 2)
-			ass:draw_start()
-			ass:rect_cw(-size, -size, -size / 3, size)
-			ass:draw_stop()
-
-			ass:new_event()
-			ass:append('{\\blur0\\bord1\\1c&H' .. options.color_foreground .. '\\3c&H' .. options.color_background .. '}')
-			ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
-			ass:pos(display.width / 2, display.height / 2)
-			ass:draw_start()
-			ass:rect_cw(size / 3, -size, size, size)
-			ass:draw_stop()
+			ass:icon(
+				display.width / 2, display.height / 2, size, '\239\142\167',
+				{border = 1, opacity = this.base_icon_opacity * this.opacity}
+			)
 		else
-			ass:new_event()
-			ass:append('{\\blur0\\bord1\\1c&H' .. options.color_foreground .. '\\3c&H' .. options.color_background .. '}')
-			ass:append(ass_opacity(this.base_icon_opacity, this.opacity))
-			ass:pos(display.width / 2, display.height / 2)
-			ass:draw_start()
-			ass:move_to(-size * 0.6, -size)
-			ass:line_to(size, 0)
-			ass:line_to(-size * 0.6, size)
-			ass:draw_stop()
+			ass:icon(
+				display.width / 2, display.height / 2, size * 1.2, '\239\142\170',
+				{border = 1, opacity = this.base_icon_opacity * this.opacity}
+			)
 		end
 
 		return ass
@@ -2605,7 +2459,7 @@ elements:add('top_bar', Element.new({
 	end,
 	update_dimensions = function(this)
 		this.size = state.fullormaxed and options.top_bar_size_fullscreen or options.top_bar_size
-		this.icon_size = round(this.size / 8)
+		this.icon_size = round(this.size * 0.5)
 		this.spacing = math.ceil(this.size * 0.25)
 		this.font_size = math.floor(this.size - (this.spacing * 2))
 		this.button_width = round(this.size * 1.15)
