@@ -4057,17 +4057,25 @@ mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
 	type = 'audio-device-list',
 	list_prop = 'audio-device-list',
 	list_serializer = function(_, audio_device_list)
+		local current_device = mp.get_property('audio-device') or 'auto'
+		local ao = mp.get_property('current-ao') or ''
 		local items = {}
-		for index, item in ipairs(audio_device_list) do
-			items[index] = {
-				title = item.description,
-				hint = item.name,
-				value = item.name,
-			}
+		local active_index = nil
+		for _, device in ipairs(audio_device_list) do
+			if device.name == 'auto' or string.match(device.name, '^' .. ao) then
+				local hint = string.match(device.name, ao .. '/(.+)')
+				if not hint then hint = device.name end
+				items[#items + 1] = {
+					title = device.description,
+					hint = hint,
+					value = device.name,
+				}
+				if device.name == current_device then active_index = #items end
+			end
 		end
-		return items
+		return items, active_index
 	end,
-	on_select = function(index) mp.commandv('set', 'audio-device', tostring(index)) end,
+	on_select = function(name) mp.commandv('set', 'audio-device', name) end,
 }))
 mp.add_key_binding(nil, 'open-config-directory', function()
 	local config_path = mp.command_native({'expand-path', '~~/mpv.conf'})
