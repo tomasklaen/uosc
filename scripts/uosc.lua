@@ -669,20 +669,20 @@ end
 ---@param x number
 ---@param y number
 ---@param size number
----@param char string
+---@param name string
 ---@param opts? {inverted?: boolean; border?: number; opacity?: number; clip?: string}
-function ass_mt:icon(x, y, size, char, opts)
+function ass_mt:icon(x, y, size, name, opts)
 	opts = opts or {}
 	local border_size = opts.border or round(size / 24)
 	local clip = opts.clip or ''
 	local colors = opts.inverted
 		and '\\1c&H' .. options.color_background .. '\\3c&H' .. options.color_foreground
 		or '\\1c&H' .. options.color_foreground .. '\\3c&H' .. options.color_background
-	local tags = '\\fnMaterial-Design-Iconic-Font\\an(5)\\blur0\\shad0\\bord' .. border_size ..
+	local tags = '\\fnMaterialIconsSharp-Regular\\an(5)\\blur0\\shad0\\bord' .. border_size ..
 		colors .. '\\fs' .. size .. '\\pos(' .. x .. ',' .. y .. ')' .. clip
 	if opts.opacity then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity)) end
 	self:new_event()
-	self.text = self.text .. '{' .. tags .. '}' .. char
+	self.text = self.text .. '{' .. tags .. '}' .. name
 end
 
 -- Element
@@ -1794,7 +1794,7 @@ function render_top_bar(this)
 			ass:draw_stop()
 		end
 		ass:icon(
-			close.ax + (this.button_width / 2), close.ay + (this.size / 2), this.icon_size, '\239\132\182',
+			close.ax + (this.button_width / 2), close.ay + (this.size / 2), this.icon_size, 'close',
 			{opacity = this.button_opacity * opacity, border = 1}
 		)
 
@@ -1811,8 +1811,8 @@ function render_top_bar(this)
 			ass:draw_stop()
 		end
 		ass:icon(
-			maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2), this.icon_size, '\239\135\170',
-			{opacity = this.button_opacity * opacity, border = 1}
+			maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2), this.icon_size,
+			'check_box_outline_blank', {opacity = this.button_opacity * opacity, border = 1}
 		)
 
 		-- Minimize button
@@ -1828,7 +1828,7 @@ function render_top_bar(this)
 			ass:draw_stop()
 		end
 		ass:icon(
-			minimize.ax + (this.button_width / 2), minimize.ay + (this.size / 2), this.icon_size, '\239\135\171',
+			minimize.ax + (this.button_width / 2), minimize.ay + (this.size / 2), this.icon_size, 'minimize',
 			{opacity = this.button_opacity * opacity, border = 1}
 		)
 	end
@@ -1971,7 +1971,7 @@ function render_volume(this)
 
 	-- Mute button
 	local mute = elements.volume_mute
-	local icon_name = state.mute and '\239\142\187' or '\239\142\188'
+	local icon_name = state.mute and 'volume_off' or 'volume_up'
 	ass:icon(
 		mute.ax + (mute.width / 2), mute.ay + (mute.height / 2), mute.width * 0.7, icon_name,
 		{border = options.volume_border, opacity = options.volume_opacity * opacity}
@@ -2075,7 +2075,7 @@ function render_menu_button(this)
 	-- Menu button
 	local burger = elements.menu_button
 	ass:icon(
-		burger.ax + (burger.width / 2), burger.ay + (burger.height / 2), burger.width, '\239\134\151',
+		burger.ax + (burger.width / 2), burger.ay + (burger.height / 2), burger.width, 'menu',
 		{border = options.menu_button_border, opacity = options.menu_button_opacity * opacity}
 	)
 	return ass
@@ -2191,8 +2191,9 @@ function render_menu(this)
 				ass:append(item.ass_save_hint)
 			elseif has_submenu then
 				ass:icon(
-					this.bx - this.item_content_spacing - (icon_size / 2), item_ay + (this.item_height / 2), icon_size * 1.5,
-					'\239\139\187',
+					this.bx - this.item_content_spacing - (icon_size / 2),
+					item_ay + (this.item_height / 2), icon_size * 1.5,
+					'chevron_right',
 					{border = 0, inverted = is_active, opacity = this.opacity, clip = item_clip}
 				)
 			end
@@ -2356,12 +2357,12 @@ elements:add('pause_indicator', Element.new({
 
 		if this.paused then
 			ass:icon(
-				display.width / 2, display.height / 2, size, '\239\142\167',
+				display.width / 2, display.height / 2, size, 'pause',
 				{border = 1, opacity = this.base_icon_opacity * this.opacity}
 			)
 		else
 			ass:icon(
-				display.width / 2, display.height / 2, size * 1.2, '\239\142\170',
+				display.width / 2, display.height / 2, size * 1.2, 'play_arrow',
 				{border = 1, opacity = this.base_icon_opacity * this.opacity}
 			)
 		end
