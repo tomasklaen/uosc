@@ -1474,7 +1474,7 @@ function render_timeline(this)
 			or 0
 		local line_width = width_normal - (max_min_width_delta * minimized_fraction)
 		local current_time_x = (bbx - bax - line_width) * progress
-		fax = current_time_x
+		fax = current_time_x + bax
 		fbx = fax + line_width
 		if line_width > 2 then time_padding = round(line_width / 2) end
 	else
