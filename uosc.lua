@@ -1558,15 +1558,17 @@ function render_timeline(this)
 	local fby = bby
 
 	-- Controls the padding of time on the timeline due to line width.
-	-- It's a distance of the center of the line when from the side when at the
+	-- It's a distance from the center of the line to its edge when at the
 	-- start or end of the timeline. Effectively half of the line width.
 	local time_padding = 0
 
 	if is_line then
 		local minimized_fraction = 1 - (size - size_min) / (this.size_max - size_min)
 		local width_normal = this:get_effective_line_width()
-		local normal_minimized_delta = width_normal - width_normal * options.timeline_line_width_minimized_scale
-		local line_width = width_normal - (normal_minimized_delta * minimized_fraction)
+		local max_min_width_delta = size_min > 0
+			and width_normal - width_normal * options.timeline_line_width_minimized_scale
+			or 0
+		local line_width = width_normal - (max_min_width_delta * minimized_fraction)
 		local current_time_x = (bbx - bax - line_width) * progress
 		fax = current_time_x
 		fbx = fax + line_width
