@@ -1485,16 +1485,17 @@ function render_timeline(this)
 	local time_x = bax + time_padding
 	local time_width = this.width - time_padding * 2
 	local foreground_size = fby - fay
-	local foreground_coordinates_full = math.ceil(fax) .. ',' .. fay .. ',' .. math.floor(fbx) .. ',' .. fby -- for clipping
-	local foreground_coordinates_rounded = round(fax) .. ',' .. fay .. ',' .. round(fbx) .. ',' .. fby       -- for clipping
+	local foreground_coordinates = round(fax) .. ',' .. fay .. ',' .. round(fbx) .. ',' .. fby -- for clipping
 
 	-- Background
 	ass:new_event()
 	ass:pos(0, 0)
-	ass:append('{\\blur0\\bord0\\1c&H' .. options.color_background .. '\\iclip(' .. foreground_coordinates_full .. ')}')
+	ass:append('{\\blur0\\bord0\\1c&H' .. options.color_background .. '}')
 	ass:opacity(math.max(options.timeline_opacity - 0.1, 0))
 	ass:draw_start()
-	ass:rect_cw(bax, bay, bbx, bby)
+	ass:rect_cw(bax, bay, fax, bby) --left of progress
+	ass:rect_cw(fbx, bay, bbx, bby) --right of progress
+	ass:rect_cw(fax, bay, fbx, fay) --above progress
 	ass:draw_stop()
 
 	-- Progress
@@ -1669,7 +1670,7 @@ function render_timeline(this)
 				local elapsed_y = fay + (size / 2)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. options.color_foreground_text .. '\\fn' .. config.font ..
-					'\\fs' .. this.font_size .. bold_tag .. '\\clip(' .. foreground_coordinates_rounded .. ')')
+					'\\fs' .. this.font_size .. bold_tag .. '\\clip(' .. foreground_coordinates .. ')')
 				ass:opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity)
 				ass:pos(elapsed_x, elapsed_y)
 				ass:an(4)
@@ -1677,7 +1678,7 @@ function render_timeline(this)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\shad1\\1c&H' .. options.color_background_text ..
 					'\\4c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size ..
-					bold_tag .. '\\iclip(' .. foreground_coordinates_rounded .. ')')
+					bold_tag .. '\\iclip(' .. foreground_coordinates .. ')')
 				ass:opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity)
 				ass:pos(elapsed_x, elapsed_y)
 				ass:an(4)
@@ -1690,7 +1691,7 @@ function render_timeline(this)
 				local end_y = fay + (size / 2)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. options.color_foreground_text .. '\\fn' .. config.font ..
-					'\\fs' .. this.font_size .. bold_tag .. '\\clip(' .. foreground_coordinates_rounded .. ')')
+					'\\fs' .. this.font_size .. bold_tag .. '\\clip(' .. foreground_coordinates .. ')')
 				ass:opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity)
 				ass:pos(end_x, end_y)
 				ass:an(6)
@@ -1698,7 +1699,7 @@ function render_timeline(this)
 				ass:new_event()
 				ass:append('{\\blur0\\bord0\\shad1\\1c&H' .. options.color_background_text ..
 					'\\4c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size ..
-					bold_tag .. '\\iclip(' .. foreground_coordinates_rounded .. ')')
+					bold_tag .. '\\iclip(' .. foreground_coordinates .. ')')
 				ass:opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity)
 				ass:pos(end_x, end_y)
 				ass:an(6)
