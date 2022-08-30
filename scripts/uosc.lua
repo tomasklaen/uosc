@@ -1760,9 +1760,11 @@ function render_timeline(this)
 		ass:append(time_formatted)
 
 		-- Cursor line
+		-- 0.5 to switch when the pixel is half filled in
+		local color = ((fax - 0.5) < cursor.x and cursor.x < (fbx + 0.5)) and
+			options.color_background or options.color_foreground
 		ass:new_event()
-		ass:append('{\\blur0\\bord0\\xshad-1\\yshad0\\1c&H' .. options.color_foreground ..
-			'\\4c&H' .. options.color_background .. '}')
+		ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. color .. '}')
 		ass:opacity(0.2)
 		ass:pos(0, 0)
 		ass:draw_start()
