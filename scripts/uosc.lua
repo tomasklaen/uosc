@@ -647,17 +647,15 @@ end
 
 local ass_mt = getmetatable(assdraw.ass_new())
 
-
 -- Opacity
----@param ass table
 ---@param opacity number|number[] Opacity of all elements, or an array of [primary, secondary, border, shadow] opacities.
 ---@param fraction? number Optionally adjust the above opacity by this fraction.
-function ass_mt.opacity(ass, opacity, fraction)
+function ass_mt:opacity(opacity, fraction)
 	fraction = fraction ~= nil and fraction or 1
 	if type(opacity) == 'number' then
-		ass.text = ass.text .. string.format('{\\alpha&H%X&}', opacity_to_alpha(opacity * fraction))
+		self.text = self.text .. string.format('{\\alpha&H%X&}', opacity_to_alpha(opacity * fraction))
 	else
-		ass.text = ass.text .. string.format(
+		self.text = self.text .. string.format(
 			'{\\1a&H%X&\\2a&H%X&\\3a&H%X&\\4a&H%X&}',
 			opacity_to_alpha((opacity[1] or 0) * fraction),
 			opacity_to_alpha((opacity[2] or 0) * fraction),
@@ -668,13 +666,12 @@ function ass_mt.opacity(ass, opacity, fraction)
 end
 
 -- Icon
----@param ass table
 ---@param x number
 ---@param y number
 ---@param size number
 ---@param char string
 ---@param opts? {inverted?: boolean; border?: number; opacity?: number; clip?: string}
-function ass_mt.icon(ass, x, y, size, char, opts)
+function ass_mt:icon(x, y, size, char, opts)
 	opts = opts or {}
 	local border_size = opts.border or round(size / 24)
 	local clip = opts.clip or ''
@@ -684,8 +681,8 @@ function ass_mt.icon(ass, x, y, size, char, opts)
 	local tags = '\\fnMaterial-Design-Iconic-Font\\an(5)\\blur0\\shad0\\bord' .. border_size ..
 		colors .. '\\fs' .. size .. '\\pos(' .. x .. ',' .. y .. ')' .. clip
 	if opts.opacity then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity)) end
-	ass:new_event()
-	ass.text = ass.text .. '{' .. tags .. '}' .. char
+	self:new_event()
+	self.text = self.text .. '{' .. tags .. '}' .. char
 end
 
 -- Element
