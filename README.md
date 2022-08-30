@@ -36,8 +36,8 @@ Most notable features:
 
 #### Development (unstable, might be broken)
 
--   [`uosc.lua`](https://raw.githubusercontent.com/tomasklaen/uosc/master/uosc.lua)
--   [`uosc.conf`](https://raw.githubusercontent.com/tomasklaen/uosc/master/uosc.conf)
+-   [`uosc.lua`](https://raw.githubusercontent.com/tomasklaen/uosc/master/scripts/uosc.lua)
+-   [`uosc.conf`](https://raw.githubusercontent.com/tomasklaen/uosc/master/script-opts/uosc.conf)
 
 ## Installation
 
