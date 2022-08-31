@@ -3577,9 +3577,9 @@ mp.register_script_message('get-version', function(script)
 	mp.commandv('script-message-to', script, 'uosc-version', state.version)
 end)
 mp.register_script_message('show-menu', function(json)
-	local menu = utils.parse_json(json)
+	local menu_config = utils.parse_json(json)
 
-	if type(menu) ~= 'table' or type(menu.items) ~= 'table' then
+	if type(menu_config) ~= 'table' or type(menu_config.items) ~= 'table' then
 		msg.error('show-menu: received json didn\'t produce a table with menu configuration')
 		return
 	end
@@ -3592,16 +3592,16 @@ mp.register_script_message('show-menu', function(json)
 		end
 	end
 
-	if menu.type ~= nil and menu:is_open(menu.type) then
+	if menu_config.type ~= nil and menu:is_open(menu_config.type) then
 		menu:close()
 		return
 	end
 
-	Menu:open(menu.items, run_command, {
-		type = menu.type,
-		title = menu.title,
-		selected_index = menu.selected_index or menu.active_index or (#menu.items > 0 and 1 or nil),
-		active_index = menu.active_index,
+	Menu:open(menu_config.items, run_command, {
+		type = menu_config.type,
+		title = menu_config.title,
+		selected_index = menu_config.selected_index or menu_config.active_index or (#menu_config.items > 0 and 1 or nil),
+		active_index = menu_config.active_index,
 	})
 end)
 mp.register_script_message('show-submenu', function(name)
