@@ -2091,7 +2091,7 @@ function render_menu(this)
 		ass:txt(this.ax + this.width / 2, this.ay - (this.item_height * 0.5), 5, this.title, {
 			size = this.font_size, bold = true, color = options.color_background_text,
 			shadow = 1, shadow_color = options.color_background, wrap = 2, opacity = opacity,
-			clip = '\\clip(' .. this.ax .. ',' .. this.ay - this.item_height .. ',' .. this.bx .. ',' .. this.ay .. ')}',
+			clip = '\\clip(' .. this.ax .. ',' .. this.ay - this.item_height .. ',' .. this.bx .. ',' .. this.ay .. ')',
 		})
 	end
 
