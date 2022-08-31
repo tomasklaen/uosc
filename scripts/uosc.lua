@@ -1850,6 +1850,7 @@ function render_top_bar(this)
 		ass:txt(this.ax + this.spacing, this.ay + (this.size / 2), 4, text, {
 			size = this.font_size, wrap = 2, color = 'FFFFFF', border_color = '000000',
 			clip = '\\clip(' .. clip_coordinates .. ')',
+			border = 1,
 		})
 	end
 
