@@ -1728,7 +1728,7 @@ function render_timeline(this)
 
 	-- Hovered time and chapter
 	if (this.proximity_raw == 0 or this.pressed) and not (elements.speed and elements.speed.dragging) then
-		local hovered_seconds = state.duration * (cursor.x / display.width)
+		local hovered_seconds = this:get_time_at_x(cursor.x)
 		local chapter_title = ''
 		local chapter_title_width = 0
 		if (options.timeline_chapters ~= 'never' and state.chapters) then
@@ -2411,11 +2411,14 @@ elements:add('timeline', Element.new({
 	on_prop_border = function(this) this:update_dimensions() end,
 	on_prop_fullormaxed = function(this) this:update_dimensions() end,
 	on_display_change = function(this) this:update_dimensions() end,
-	set_from_cursor = function(this)
+	get_time_at_x = function(this, x)
 		-- padding serves the purpose of matching cursor to timeline_style=line exactly
 		local padding = (options.timeline_style == 'line' and this:get_effective_line_width() or 0) / 2
-		local progress = math.max(0, math.min((cursor.x - this.ax - padding) / (this.width - padding * 2), 1))
-		mp.commandv('seek', (progress * 100), 'absolute-percent+exact')
+		local progress = math.max(0, math.min((x - this.ax - padding) / (this.width - padding * 2), 1))
+		return state.duration * progress
+	end,
+	set_from_cursor = function(this)
+		mp.commandv('seek', this:get_time_at_x(cursor.x), 'absolute+exact')
 	end,
 	on_mbtn_left_down = function(this)
 		this.pressed = true
