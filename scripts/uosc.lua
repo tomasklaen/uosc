@@ -1728,7 +1728,8 @@ function render_timeline(this)
 
 	-- Hovered time and chapter
 	if (this.proximity_raw == 0 or this.pressed) and not (elements.speed and elements.speed.dragging) then
-		local hovered_seconds = this:get_time_at_x(cursor.x)
+		-- add 0.5 to be in the middle of the pixel
+		local hovered_seconds = this:get_time_at_x(cursor.x + 0.5)
 		local chapter_title = ''
 		local chapter_title_width = 0
 		if (options.timeline_chapters ~= 'never' and state.chapters) then
@@ -2418,7 +2419,8 @@ elements:add('timeline', Element.new({
 		return state.duration * progress
 	end,
 	set_from_cursor = function(this)
-		mp.commandv('seek', this:get_time_at_x(cursor.x), 'absolute+exact')
+		-- add 0.5 to be in the middle of the pixel
+		mp.commandv('seek', this:get_time_at_x(cursor.x + 0.5), 'absolute+exact')
 	end,
 	on_mbtn_left_down = function(this)
 		this.pressed = true
