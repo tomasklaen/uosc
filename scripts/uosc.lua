@@ -3588,7 +3588,7 @@ mp.register_script_message('show-menu', function(json)
 		if type(value) == 'string' then
 			mp.command(value)
 		else
-			mp.commandv(table.unpack(value))
+			mp.commandv((unpack or table.unpack)(value))
 		end
 	end
 
