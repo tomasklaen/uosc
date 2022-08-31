@@ -1418,7 +1418,7 @@ function update_human_times()
 		if state.duration then
 			local speed = state.speed or 1
 			state.duration_or_remaining_time_human = format_time(
-				options.total_time and (state.duration / speed) or ((state.time - state.duration) / speed)
+				options.total_time and state.duration or ((state.time - state.duration) / speed)
 			)
 		else
 			state.duration_or_remaining_time_human = nil
