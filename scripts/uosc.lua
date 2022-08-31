@@ -1860,7 +1860,7 @@ function render_volume(this)
 	local slider = elements.volume_slider
 	local opacity = this:get_effective_proximity()
 
-	if this.width == 0 or opacity == 0 or not state.has_audio then return end
+	if this.width == 0 or opacity == 0 then return end
 
 	local ass = assdraw.ass_new()
 
