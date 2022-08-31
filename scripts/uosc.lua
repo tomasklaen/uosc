@@ -111,7 +111,6 @@ local config = {
 	render_delay = 1 / 60,
 	font = mp.get_property('options/osd-font'),
 }
-local bold_tag = options.font_bold and '\\b1' or ''
 local display = {
 	width = 1280,
 	height = 720,
@@ -670,19 +669,104 @@ end
 ---@param y number
 ---@param size number
 ---@param name string
----@param opts? {inverted?: boolean; border?: number; opacity?: number; clip?: string}
+---@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; clip?: string}
 function ass_mt:icon(x, y, size, name, opts)
 	opts = opts or {}
-	local border_size = opts.border or round(size / 24)
-	local clip = opts.clip or ''
-	local colors = opts.inverted
-		and '\\1c&H' .. options.color_background .. '\\3c&H' .. options.color_foreground
-		or '\\1c&H' .. options.color_foreground .. '\\3c&H' .. options.color_background
-	local tags = '\\fnMaterialIconsSharp-Regular\\an(5)\\blur0\\shad0\\bord' .. border_size ..
-		colors .. '\\fs' .. size .. '\\pos(' .. x .. ',' .. y .. ')' .. clip
-	if opts.opacity then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity)) end
+	opts.size = size
+	opts.font = 'MaterialIconsSharp-Regular'
+	self:txt(x, y, 5, name, opts)
+end
+
+-- String
+-- Named `txt` because `ass.text` is a value.
+---@param x number
+---@param y number
+---@param alignment number
+---@param value string|number
+---@param opts {size: number; font?: string; color?: string; bold?: boolean; border?: number; border_color?: string; shadow?: number; shadow_color?: string; wrap?: number; opacity?: number; clip?: string}
+function ass_mt:txt(x, y, alignment, value, opts)
+	local border_size = opts.border or 0
+	local shadow_size = opts.shadow or 0
+	local tags = '\\pos(' .. x .. ',' .. y .. ')\\an' .. alignment .. '\\blur0'
+	-- font
+	tags = tags .. '\\fn' .. (opts.font or config.font)
+	-- font size
+	tags = tags .. '\\fs' .. opts.size
+	-- bold
+	if opts.bold then tags = tags .. '\\b1' end
+	-- wrap
+	if opts.wrap then tags = tags .. '\\q' .. opts.wrap end
+	-- border
+	tags = tags .. '\\bord' .. border_size
+	-- shadow
+	tags = tags .. '\\shad' .. shadow_size
+	-- colors
+	tags = tags .. '\\1c&H' .. (opts.color or options.color_foreground)
+	if border_size > 0 then
+		tags = tags .. '\\3c&H' .. (opts.border_color or options.color_background)
+	end
+	if shadow_size > 0 then
+		tags = tags .. '\\4c&H' .. (opts.shadow_color or options.color_background)
+	end
+	-- opacity
+	if opts.opacity then
+		tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity))
+	end
+	-- clip
+	if opts.clip then
+		tags = tags .. opts.clip
+	end
+	-- render
 	self:new_event()
-	self.text = self.text .. '{' .. tags .. '}' .. name
+	self.text = self.text .. '{' .. tags .. '}' .. value
+end
+
+-- Rectangle
+---@param ax number
+---@param ay number
+---@param bx number
+---@param by number
+---@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; clip?: string, radius?: number}
+function ass_mt:rect(ax, ay, bx, by, opts)
+	opts = opts or {}
+	local border_size = opts.border or 0
+	local tags = '\\pos(0,0)\\blur0'
+	-- border
+	tags = tags .. '\\bord' .. border_size
+	-- colors
+	tags = tags .. '\\1c&H' .. (opts.color or options.color_foreground)
+	if border_size > 0 then
+		tags = tags .. '\\3c&H' .. (opts.border_color or options.color_background)
+	end
+	-- opacity
+	if opts.opacity then
+		tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity))
+	end
+	-- clip
+	if opts.clip then
+		tags = tags .. opts.clip
+	end
+	-- draw
+	self:new_event()
+	self.text = self.text .. '{' .. tags .. '}'
+	self:draw_start()
+	if opts.radius then
+		self:round_rect_cw(ax, ay, bx, by, opts.radius)
+	else
+		self:rect_cw(ax, ay, bx, by)
+	end
+	self:draw_stop()
+end
+
+-- Circle
+---@param x number
+---@param y number
+---@param radius number
+---@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; clip?: string}
+function ass_mt:circle(x, y, radius, opts)
+	opts = opts or {}
+	opts.radius = radius
+	self:rect(x - radius, y - radius, x + radius, y + radius, opts)
 end
 
 -- Element
@@ -954,8 +1038,9 @@ function Menu:open(items, open_item, opts)
 				-- M as a stand in for icon
 				local hint_icon = item.hint or (has_submenu and 'M' or nil)
 				local hint_icon_size = item.hint and this.font_size_hint or this.font_size
-				local estimated_width = text_width_estimate(item.title, this.font_size)
-					+ text_width_estimate(hint_icon, hint_icon_size)
+				item.title_width = text_width_estimate(item.title, this.font_size)
+				item.hint_width = text_width_estimate(hint_icon, hint_icon_size)
+				local estimated_width = item.title_width + item.hint_width
 					+ (this.item_content_spacing * spacings_in_item)
 				if estimated_width > estimated_max_width then
 					estimated_max_width = estimated_width
@@ -1500,13 +1585,7 @@ function render_timeline(this)
 
 	-- Progress
 	local function render_progress()
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H' .. options.color_foreground .. '}')
-		ass:opacity(options.timeline_opacity)
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(fax, fay, fbx, fby)
-		ass:draw_stop()
+		ass:rect(fax, fay, fbx, fby, {opacity = options.timeline_opacity})
 	end
 
 	-- Custom ranges
@@ -1516,18 +1595,10 @@ function render_timeline(this)
 				for i, range in ipairs(chapter_range.ranges) do
 					local rax = time_x + time_width * (range['start'].time / state.duration)
 					local rbx = time_x + time_width * (range['end'].time / state.duration)
-					ass:new_event()
-					ass:append('{\\blur0\\bord0\\1c&H' .. chapter_range.color .. '}')
-					ass:opacity(chapter_range.opacity)
-					ass:pos(0, 0)
-					ass:draw_start()
 					-- for 1px chapter size, use the whole size of the bar including padding
-					if size <= 1 then
-						ass:rect_cw(rax, bay, rbx, bby)
-					else
-						ass:rect_cw(rax, fay, rbx, fby)
-					end
-					ass:draw_stop()
+					local ray = size <= 1 and bay or fay
+					local rby = size <= 1 and bby or fby
+					ass:rect(rax, ray, rbx, rby, {color = chapter_range.color, opacity = options.timeline_opacity})
 				end
 			end
 		end
@@ -1571,36 +1642,17 @@ function render_timeline(this)
 			local function draw_chapter(time)
 				local chapter_x = time_x + time_width * (time / state.duration)
 				local color = (fax < chapter_x and chapter_x < fbx) and options.color_background or options.color_foreground
-
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\1c&H' .. color .. '}')
-				ass:opacity(options.timeline_chapters_opacity)
-				ass:pos(0, 0)
-				ass:draw_start()
+				local opts = {color = color, opacity = options.timeline_chapters_opacity}
 
 				if dots then
-					local bezier_stretch = chapter_height * 0.67
-					ass:move_to(chapter_x - chapter_half_height, chapter_y)
-					ass:bezier_curve(
-						chapter_x - chapter_half_height, chapter_y - bezier_stretch,
-						chapter_x + chapter_half_height, chapter_y - bezier_stretch,
-						chapter_x + chapter_half_height, chapter_y
-					)
-					ass:bezier_curve(
-						chapter_x + chapter_half_height, chapter_y + bezier_stretch,
-						chapter_x - chapter_half_height, chapter_y + bezier_stretch,
-						chapter_x - chapter_half_height, chapter_y
-					)
+					ass:circle(chapter_x, chapter_y, chapter_half_height, opts)
 				else
-					ass:rect_cw(
-						round(chapter_x - chapter_half_width),
-						chapter_y - chapter_half_height,
-						round(chapter_x + chapter_half_width),
-						chapter_y + chapter_half_height
+					ass:rect(
+						round(chapter_x - chapter_half_width), chapter_y - chapter_half_height,
+						round(chapter_x + chapter_half_width), chapter_y + chapter_half_height,
+						opts
 					)
 				end
-
-				ass:draw_stop()
 			end
 
 			if state.chapters ~= nil then
@@ -1628,35 +1680,21 @@ function render_timeline(this)
 			local range_ay = fby - range_height
 
 			for _, range in ipairs(state.cached_ranges) do
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\1c&H' .. options.timeline_cached_ranges.color .. '}')
-				ass:opacity(options.timeline_cached_ranges.opacity)
-				ass:pos(0, 0)
-				ass:draw_start()
 				local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
 				local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
-				ass:rect_cw(
+				ass:rect(
 					time_x + time_width * (range_start / state.duration), range_ay,
-					time_x + time_width * (range_end / state.duration), range_ay + range_height
+					time_x + time_width * (range_end / state.duration), range_ay + range_height,
+					{color = options.timeline_cached_ranges.color, opacity = options.timeline_cached_ranges.opacity}
 				)
-				ass:draw_stop()
 			end
 
 			-- Visualize padded time area limits
 			if time_padding > 0 then
 				local notch_ay = math.max(range_ay - 2, fay)
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\1c&H' .. options.timeline_cached_ranges.color .. '}')
-				ass:pos(0, 0)
-				ass:draw_start()
-				ass:rect_cw(time_x, notch_ay, time_x + 1, bby)
-				ass:draw_stop()
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\1c&H' .. options.timeline_cached_ranges.color .. '}')
-				ass:pos(0, 0)
-				ass:draw_start()
-				ass:rect_cw(time_x + time_width - 1, notch_ay, time_x + time_width, bby)
-				ass:draw_stop()
+				local opts = {color = options.timeline_cached_ranges.color, opacity = options.timeline_opacity}
+				ass:rect(time_x, notch_ay, time_x + 1, bby, opts)
+				ass:rect(time_x + time_width - 1, notch_ay, time_x + time_width, bby, opts)
 			end
 		end
 	end
@@ -1664,46 +1702,30 @@ function render_timeline(this)
 	-- Time values
 	local function render_time()
 		if text_opacity > 0 then
+			local opts = {size = this.font_size, opacity = math.min(options.timeline_opacity + 0.1, 1) * text_opacity}
+
 			-- Elapsed time
 			if state.time_human then
 				local elapsed_x = bax + spacing
 				local elapsed_y = fay + (size / 2)
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. options.color_foreground_text .. '\\fn' .. config.font ..
-					'\\fs' .. this.font_size .. bold_tag .. '\\clip(' .. foreground_coordinates .. ')')
-				ass:opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity)
-				ass:pos(elapsed_x, elapsed_y)
-				ass:an(4)
-				ass:append(state.time_human)
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\shad1\\1c&H' .. options.color_background_text ..
-					'\\4c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size ..
-					bold_tag .. '\\iclip(' .. foreground_coordinates .. ')')
-				ass:opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity)
-				ass:pos(elapsed_x, elapsed_y)
-				ass:an(4)
-				ass:append(state.time_human)
+				opts.color = options.color_foreground_text
+				opts.clip = '\\clip(' .. foreground_coordinates .. ')'
+				ass:txt(elapsed_x, elapsed_y, 4, state.time_human, opts)
+				opts.color = options.color_background_text
+				opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
+				ass:txt(elapsed_x, elapsed_y, 4, state.time_human, opts)
 			end
 
 			-- End time
 			if state.duration_or_remaining_time_human then
 				local end_x = bbx - spacing
 				local end_y = fay + (size / 2)
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. options.color_foreground_text .. '\\fn' .. config.font ..
-					'\\fs' .. this.font_size .. bold_tag .. '\\clip(' .. foreground_coordinates .. ')')
-				ass:opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity)
-				ass:pos(end_x, end_y)
-				ass:an(6)
-				ass:append(state.duration_or_remaining_time_human)
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\shad1\\1c&H' .. options.color_background_text ..
-					'\\4c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size ..
-					bold_tag .. '\\iclip(' .. foreground_coordinates .. ')')
-				ass:opacity(math.min(options.timeline_opacity + 0.1, 1), text_opacity)
-				ass:pos(end_x, end_y)
-				ass:an(6)
-				ass:append(state.duration_or_remaining_time_human)
+				opts.color = options.color_foreground_text
+				opts.clip = '\\clip(' .. foreground_coordinates .. ')'
+				ass:txt(end_x, end_y, 6, state.duration_or_remaining_time_human, opts)
+				opts.color = options.color_background_text
+				opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
+				ass:txt(end_x, end_y, 6, state.duration_or_remaining_time_human, opts)
 			end
 		end
 	end
@@ -1732,6 +1754,7 @@ function render_timeline(this)
 		local hovered_seconds = this:get_time_at_x(cursor.x + 0.5)
 		local chapter_title = ''
 		local chapter_title_width = 0
+
 		if (options.timeline_chapters ~= 'never' and state.chapters) then
 			for i = #state.chapters, 1, -1 do
 				local chapter = state.chapters[i]
@@ -1742,35 +1765,30 @@ function render_timeline(this)
 				end
 			end
 		end
+
 		local time_formatted = format_time(hovered_seconds)
 		local margin_time = text_width_estimate(time_formatted, this.font_size) / 2
 		local margin_title = chapter_title_width * this.font_size * options.font_height_to_letter_width_ratio / 2
-		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad0\\1c&H' .. options.color_background_text ..
-			'\\3c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size .. '\\b1')
-		ass:opacity(math.min(options.timeline_opacity + 0.1, 1))
-		ass:pos(math.min(math.max(cursor.x, margin_title), display.width - margin_title), fay - this.font_size * 1.5)
-		ass:an(2)
-		ass:append(chapter_title)
-		ass:new_event()
-		ass:append('{\\blur0\\bord1\\shad0\\1c&H' .. options.color_background_text ..
-			'\\3c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size .. bold_tag)
-		ass:opacity(math.min(options.timeline_opacity + 0.1, 1))
-		ass:pos(math.min(math.max(cursor.x, margin_time), display.width - margin_time), fay)
-		ass:an(2)
-		ass:append(time_formatted)
+		local opacity = math.min(options.timeline_opacity + 0.1, 1)
+
+		-- Chapter title
+		ass:txt(math.min(math.max(cursor.x, margin_title), display.width - margin_title), fay - this.font_size * 1.3,
+			2, chapter_title, {
+			size = this.font_size, color = options.color_background_text, bold = true,
+			border = 1, border_color = options.color_background, opacity = opacity,
+		})
+		-- Timestamp
+		ass:txt(math.min(math.max(cursor.x, margin_time), display.width - margin_time), fay,
+			2, time_formatted, {
+			size = this.font_size, color = options.color_background_text,
+			border = 1, border_color = options.color_background, opacity = opacity,
+		})
 
 		-- Cursor line
 		-- 0.5 to switch when the pixel is half filled in
 		local color = ((fax - 0.5) < cursor.x and cursor.x < (fbx + 0.5)) and
 			options.color_background or options.color_foreground
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. color .. '}')
-		ass:opacity(0.2)
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(cursor.x, fay, cursor.x + 1, fby)
-		ass:draw_stop()
+		ass:rect(cursor.x, fay, cursor.x + 1, fby, {color = color, opacity = 0.2})
 	end
 
 	return ass
@@ -1788,13 +1806,7 @@ function render_top_bar(this)
 		local close = elements.window_controls_close
 		if close.proximity_raw == 0 then
 			-- Background on hover
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H2311e8}')
-			ass:opacity(this.button_opacity, opacity)
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(close.ax, close.ay, close.bx, close.by)
-			ass:draw_stop()
+			ass:rect(close.ax, close.ay, close.bx, close.by, {color = '2311e8', opacity = this.button_opacity * opacity})
 		end
 		ass:icon(
 			close.ax + (this.button_width / 2), close.ay + (this.size / 2), this.icon_size, 'close',
@@ -1805,13 +1817,9 @@ function render_top_bar(this)
 		local maximize = elements.window_controls_maximize
 		if maximize.proximity_raw == 0 then
 			-- Background on hover
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H222222}')
-			ass:opacity(this.button_opacity, opacity)
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(maximize.ax, maximize.ay, maximize.bx, maximize.by)
-			ass:draw_stop()
+			ass:rect(maximize.ax, maximize.ay, maximize.bx, maximize.by, {
+				color = '222222', opacity = this.button_opacity * opacity,
+			})
 		end
 		ass:icon(
 			maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2), this.icon_size,
@@ -1822,13 +1830,9 @@ function render_top_bar(this)
 		local minimize = elements.window_controls_minimize
 		if minimize.proximity_raw == 0 then
 			-- Background on hover
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H222222}')
-			ass:opacity(this.button_opacity, opacity)
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(minimize.ax, minimize.ay, minimize.bx, minimize.by)
-			ass:draw_stop()
+			ass:rect(minimize.ax, minimize.ay, minimize.bx, minimize.by, {
+				color = '222222', opacity = this.button_opacity * opacity,
+			})
 		end
 		ass:icon(
 			minimize.ax + (this.button_width / 2), minimize.ay + (this.size / 2), this.icon_size, 'minimize',
@@ -1839,17 +1843,14 @@ function render_top_bar(this)
 	-- Window title
 	if options.top_bar_title and state.media_title then
 		local clip_coordinates = this.ax .. ',' .. this.ay .. ',' .. (this.title_bx - this.spacing) .. ',' .. this.by
-
-		ass:new_event()
-		ass:append('{\\q2\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000\\fn' ..
-			config.font .. '\\fs' .. this.font_size .. bold_tag .. '\\clip(' .. clip_coordinates .. ')')
-		ass:opacity(1, opacity)
-		ass:pos(this.ax + this.spacing, this.ay + (this.size / 2))
-		ass:an(4)
+		local text = state.media_title
 		if state.playlist_count > 1 then
-			ass:append(string.format('%d/%d - ', state.playlist_pos, state.playlist_count))
+			text = string.format('%d/%d - ', state.playlist_pos, state.playlist_count) .. text
 		end
-		ass:append(state.media_title)
+		ass:txt(this.ax + this.spacing, this.ay + (this.size / 2), 4, text, {
+			size = this.font_size, wrap = 2, color = 'FFFFFF', border_color = '000000',
+			clip = '\\clip(' .. clip_coordinates .. ')',
+		})
 	end
 
 	return ass
@@ -1951,24 +1952,18 @@ function render_volume(this)
 		-- Current volume value
 		local volume_string = tostring(round(state.volume * 10) / 10)
 		local font_size = round(((this.width * 0.6) - (#volume_string * (this.width / 20))) * options.volume_font_scale)
+		local opacity = math.min(options.volume_opacity + 0.1, 1) * opacity
 		if fay < slider.by - slider.spacing then
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. options.color_foreground_text .. '\\fn' .. config.font ..
-				'\\fs' .. font_size .. bold_tag .. '\\clip(' .. fpath.scale .. ', ' .. fpath.text .. ')}')
-			ass:opacity(math.min(options.volume_opacity + 0.1, 1), opacity)
-			ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
-			ass:an(2)
-			ass:append(volume_string)
+			ass:txt(slider.ax + (slider.width / 2), slider.by - slider.spacing, 2, volume_string, {
+				size = font_size, color = options.color_foreground_text, opacity = opacity,
+				clip = '\\clip(' .. fpath.scale .. ', ' .. fpath.text .. ')',
+			})
 		end
 		if fay > slider.by - slider.spacing - font_size then
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\shad1\\1c&H' .. options.color_background_text ..
-				'\\4c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. font_size .. bold_tag ..
-				'\\iclip(' .. fpath.scale .. ', ' .. fpath.text .. ')}')
-			ass:opacity(math.min(options.volume_opacity + 0.1, 1), opacity)
-			ass:pos(slider.ax + (slider.width / 2), slider.by - slider.spacing)
-			ass:an(2)
-			ass:append(volume_string)
+			ass:txt(slider.ax + (slider.width / 2), slider.by - slider.spacing, 2, volume_string, {
+				size = font_size, color = options.color_background_text, opacity = opacity,
+				clip = '\\iclip(' .. fpath.scale .. ', ' .. fpath.text .. ')',
+			})
 		end
 	end
 
@@ -2030,22 +2025,16 @@ function render_speed(this)
 				notch_ay = notch_ay_medium
 			end
 
-			ass:new_event()
-			ass:append('{\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000}')
-			ass:opacity(math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1), opacity)
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:move_to(notch_x - notch_thickness, notch_ay)
-			ass:line_to(notch_x + notch_thickness, notch_ay)
-			ass:line_to(notch_x + notch_thickness, notch_by)
-			ass:line_to(notch_x - notch_thickness, notch_by)
-			ass:draw_stop()
+			ass:rect(notch_x - notch_thickness, notch_ay, notch_x + notch_thickness, notch_by, {
+				color = options.color_foreground, border = 1, border_color = options.color_background,
+				opacity = math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1) * opacity,
+			})
 		end
 	end
 
 	-- Center guide
 	ass:new_event()
-	ass:append('{\\blur0\\bord1\\shad0\\1c&HFFFFFF\\3c&H000000}')
+	ass:append('{\\blur0\\bord1\\shad0\\1c&H' .. options.color_foreground .. '\\3c&H' .. options.color_background .. '}')
 	ass:opacity(options.speed_opacity, opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -2056,13 +2045,10 @@ function render_speed(this)
 
 	-- Speed value
 	local speed_text = (round(state.speed * 100) / 100) .. 'x'
-	ass:new_event()
-	ass:append('{\\blur0\\bord1\\shad0\\1c&H' .. options.color_background_text ..
-		'\\3c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size .. bold_tag .. '}')
-	ass:opacity(options.speed_opacity, opacity)
-	ass:pos(half_x, ay)
-	ass:an(8)
-	ass:append(speed_text)
+	ass:txt(half_x, ay, 8, speed_text, {
+		size = this.font_size, color = options.color_background_text,
+		border = 1, border_color = options.color_background, opacity = opacity
+	})
 
 	return ass
 end
@@ -2091,26 +2077,22 @@ function render_menu(this)
 		ass:merge(this.parent_menu:render())
 	end
 
+	local opacity = options.menu_opacity * this.opacity
+	local spacing = this.item_content_spacing
+
 	-- Menu title
 	if this.title then
 		-- Background
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H' .. options.color_background .. '}')
-		ass:opacity(options.menu_opacity, this.opacity)
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(this.ax, this.ay - this.item_height, this.bx, this.ay - 1)
-		ass:draw_stop()
+		ass:rect(this.ax, this.ay - this.item_height, this.bx, this.ay - 1, {
+			color = options.color_background, opacity = opacity,
+		})
 
 		-- Title
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\shad1\\b1\\1c&H' .. options.color_background_text ..
-			'\\4c&H' .. options.color_background .. '\\fn' .. config.font .. '\\fs' .. this.font_size ..
-			'\\q2\\clip(' .. this.ax .. ',' .. this.ay - this.item_height .. ',' .. this.bx .. ',' .. this.ay .. ')}')
-		ass:opacity(options.menu_opacity, this.opacity)
-		ass:pos(this.ax + this.width / 2, this.ay - (this.item_height * 0.5))
-		ass:an(5)
-		ass:append(this.title)
+		ass:txt(this.ax + this.width / 2, this.ay - (this.item_height * 0.5), 5, this.title, {
+			size = this.font_size, bold = true, color = options.color_background_text,
+			shadow = 1, shadow_color = options.color_background, wrap = 2, opacity = opacity,
+			clip = '\\clip(' .. this.ax .. ',' .. this.ay - this.item_height .. ',' .. this.bx .. ',' .. this.ay .. ')}',
+		})
 	end
 
 	local scroll_area_clip = '\\clip(' .. this.ax .. ',' .. this.ay .. ',' .. this.bx .. ',' .. this.by .. ')'
@@ -2118,7 +2100,7 @@ function render_menu(this)
 	for index, item in ipairs(this.items) do
 		local item_ay = this.ay - this.scroll_y + (this.item_height * (index - 1) + this.item_spacing * (index - 1))
 		local item_by = item_ay + this.item_height
-		local item_clip = ''
+		local item_clip = nil
 
 		if item_by >= this.ay and item_ay <= this.by then
 			-- Clip items overflowing scroll area
@@ -2127,78 +2109,66 @@ function render_menu(this)
 			end
 
 			local is_active = this.active_index == index
-			local font_color, background_color, ass_shadow, ass_shadow_color
+			local font_color, background_color, shadow, shadow_color
 			local icon_size = this.font_size
+			local item_center_y = item_ay + (this.item_height / 2)
 
 			if is_active then
 				font_color, background_color = options.color_foreground_text, options.color_foreground
-				ass_shadow, ass_shadow_color = '\\shad0', ''
+				shadow, shadow_color = 0, ''
 			else
 				font_color, background_color = options.color_background_text, options.color_background
-				ass_shadow, ass_shadow_color = '\\shad1', '\\4c&H' .. background_color
+				shadow, shadow_color = 1, '\\4c&H' .. background_color
 			end
 
 			local has_submenu = item.items ~= nil
-			local hint_width = 0
+			-- controls title & hint clipping proportional to the ratio of their widths
+			local title_hint_ratio = 1
 			if item.hint then
-				hint_width = text_width_estimate(item.hint, this.font_size_hint)
+				title_hint_ratio = item.title_width / (item.title_width + item.hint_width)
 			elseif has_submenu then
-				hint_width = icon_size
+				title_hint_ratio = item.title_width / (item.title_width + icon_size)
 			end
+			local title_hint_spacing = (title_hint_ratio == 1 or title_hint_ratio == 0) and 0 or spacing / 2
 
 			-- Background
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H' .. background_color .. item_clip .. '}')
-			ass:opacity(options.menu_opacity, this.opacity)
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(this.ax, item_ay, this.bx, item_by)
-			ass:draw_stop()
+			ass:rect(this.ax, item_ay, this.bx, item_by, {color = background_color, clip = item_clip, opacity = opacity})
 
 			-- Selected highlight
 			if this.selected_index == index then
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\1c&H' .. options.color_foreground .. item_clip .. '}')
-				ass:opacity(0.1, this.opacity)
-				ass:pos(0, 0)
-				ass:draw_start()
-				ass:rect_cw(this.ax, item_ay, this.bx, item_by)
-				ass:draw_stop()
+				ass:rect(this.ax, item_ay, this.bx, item_by, {
+					color = options.color_foreground, clip = item_clip, opacity = 0.1 * this.opacity,
+				})
 			end
 
 			-- Title
+			local title_x = this.ax + spacing
+			local title_hint_cut_x = title_x + (this.width - spacing * 2) * title_hint_ratio
 			if item.title then
 				item.ass_save_title = item.ass_save_title or item.title:gsub('([{}])', '\\%1')
-				local title_clip_x = (this.bx - hint_width - this.item_content_spacing)
-				local title_clip = '\\clip(' ..
-					this.ax .. ',' .. math.max(item_ay, this.ay) .. ',' ..
-					title_clip_x .. ',' .. math.min(item_by, this.by) .. ')'
-				ass:new_event()
-				ass:append('{\\blur0\\bord0\\shad1\\1c&H' .. font_color .. '\\4c&H' .. background_color ..
-					'\\fn' .. config.font .. '\\fs' .. this.font_size .. bold_tag .. title_clip .. '\\q2}')
-				ass:opacity(options.menu_opacity, this.opacity)
-				ass:pos(this.ax + this.item_content_spacing, item_ay + (this.item_height / 2))
-				ass:an(4)
-				ass:append(item.ass_save_title)
+				local clip = '\\clip(' .. this.ax .. ',' .. math.max(item_ay, this.ay) .. ','
+					.. round(title_hint_cut_x - title_hint_spacing / 2) .. ',' .. math.min(item_by, this.by) .. ')'
+				ass:txt(title_x, item_center_y, 4, item.ass_save_title, {
+					size = this.font_size, color = font_color, shadow = 1, shadow_color = background_color, wrap = 2,
+					opacity = this.opacity, clip = clip,
+				})
 			end
 
 			-- Hint
+			local hint_x = this.bx - spacing
 			if item.hint then
 				item.ass_save_hint = item.ass_save_hint or item.hint:gsub('([{}])', '\\%1')
-				ass:new_event()
-				ass:append('{\\blur0\\bord0' .. ass_shadow .. '\\1c&H' .. font_color .. '' .. ass_shadow_color ..
-					'\\fn' .. config.font .. '\\fs' .. this.font_size_hint .. bold_tag .. item_clip .. '}')
-				ass:opacity(options.menu_opacity * (has_submenu and 1 or 0.5), this.opacity)
-				ass:pos(this.bx - this.item_content_spacing, item_ay + (this.item_height / 2))
-				ass:an(6)
-				ass:append(item.ass_save_hint)
+				local clip = '\\clip(' .. round(title_hint_cut_x + title_hint_spacing / 2) .. ',' ..
+					math.max(item_ay, this.ay) .. ',' .. this.bx .. ',' .. math.min(item_by, this.by) .. ')'
+				ass:txt(hint_x, item_center_y, 6, item.ass_save_hint, {
+					size = this.font_size_hint, color = font_color, shadow = shadow, shadow_color = shadow_color,
+					wrap = 2, opacity = (has_submenu and 1 or 0.5) * this.opacity, clip = clip,
+				})
 			elseif has_submenu then
-				ass:icon(
-					this.bx - this.item_content_spacing - (icon_size / 2),
-					item_ay + (this.item_height / 2), icon_size * 1.5,
-					'chevron_right',
-					{border = 0, inverted = is_active, opacity = this.opacity, clip = item_clip}
-				)
+				ass:icon(hint_x - (icon_size / 2), item_center_y, icon_size * 1.5, 'chevron_right', {
+					color = is_active and options.color_background or options.color_foreground,
+					border = 0, opacity = this.opacity, clip = item_clip,
+				})
 			end
 		end
 	end
@@ -2208,13 +2178,9 @@ function render_menu(this)
 		local groove_height = this.height - 2
 		local thumb_height = math.max((this.height / (this.scroll_height + this.height)) * groove_height, 40)
 		local thumb_y = this.ay + 1 + ((this.scroll_y / this.scroll_height) * (groove_height - thumb_height))
-		ass:new_event()
-		ass:append('{\\blur0\\bord0\\1c&H' .. options.color_foreground .. '}')
-		ass:opacity(options.menu_opacity, this.opacity * 0.8)
-		ass:pos(0, 0)
-		ass:draw_start()
-		ass:rect_cw(this.bx - 3, thumb_y, this.bx - 1, thumb_y + thumb_height)
-		ass:draw_stop()
+		ass:rect(this.bx - 3, thumb_y, this.bx - 1, thumb_y + thumb_height, {
+			color = options.color_foreground, opacity = options.menu_opacity * this.opacity * 0.8,
+		})
 	end
 
 	return ass
@@ -2283,15 +2249,11 @@ elements:add('window_border', Element.new({
 	render = function(this)
 		if this.size > 0 then
 			local ass = assdraw.ass_new()
-			local clip_coordinates = this.size ..
-				',' .. this.size .. ',' .. (display.width - this.size) .. ',' .. (display.height - this.size)
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H' .. options.color_background .. '\\iclip(' .. clip_coordinates .. ')}')
-			ass:opacity(options.window_border_opacity)
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(0, 0, display.width, display.height)
-			ass:draw_stop()
+			local clip = '\\iclip(' .. this.size .. ',' .. this.size .. ',' ..
+				(display.width - this.size) .. ',' .. (display.height - this.size) .. ')'
+			ass:rect(0, 0, display.width, display.height, {
+				color = options.color_background, clip = clip, opacity = options.window_border_opacity,
+			})
 			return ass
 		end
 	end,
@@ -2344,13 +2306,9 @@ elements:add('pause_indicator', Element.new({
 
 		-- Background fadeout
 		if is_static then
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H' .. options.color_background .. '}')
-			ass:opacity(0.3, this.opacity)
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(0, 0, display.width, display.height)
-			ass:draw_stop()
+			ass:rect(0, 0, display.width, display.height, {
+				color = options.color_background, opacity = this.opacity * 0.3,
+			})
 		end
 
 		-- Icon
@@ -2711,7 +2669,8 @@ if options.speed then
 			this.width = round(this.height * 3.6)
 			this.notch_spacing = this.width / this.notches
 			this.ax = (display.width - this.width) / 2
-			this.by = display.height - elements.window_border.size - elements.timeline.size_max - elements.timeline.top_border
+			this.by = display.height - elements.window_border.size - elements.timeline.size_max -
+				elements.timeline.top_border - 2
 			this.ay = this.by - this.height
 			this.bx = this.ax + this.width
 			this.font_size = round(this.height * 0.48 * options.speed_font_scale)
@@ -2799,13 +2758,9 @@ elements:add('curtain', Element.new({
 	render = function(this)
 		if this.opacity > 0 and options.curtain_opacity > 0 then
 			local ass = assdraw.ass_new()
-			ass:new_event()
-			ass:append('{\\blur0\\bord0\\1c&H' .. options.color_background .. '}')
-			ass:opacity(options.curtain_opacity, this.opacity)
-			ass:pos(0, 0)
-			ass:draw_start()
-			ass:rect_cw(0, 0, display.width, display.height)
-			ass:draw_stop()
+			ass:rect(0, 0, display.width, display.height, {
+				color = options.color_background, opacity = options.curtain_opacity * this.opacity,
+			})
 			return ass
 		end
 	end,
