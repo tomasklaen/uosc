@@ -1750,8 +1750,10 @@ function render_timeline(this)
 			for i = #state.chapters, 1, -1 do
 				local chapter = state.chapters[i]
 				if hovered_seconds >= chapter.time then
-					chapter_title = chapter.title_wrapped
-					chapter_title_width = chapter.title_wrapped_width
+					if not chapter.is_end_only then
+						chapter_title = chapter.title_wrapped
+						chapter_title_width = chapter.title_wrapped_width
+					end
 					break
 				end
 			end
@@ -2801,6 +2803,7 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 				-- If there is already a range started, should we append or overwrite?
 				-- I chose overwrite here.
 				current_range = {['start'] = chapter}
+				chapter.is_end_only = false
 			end
 
 			local function end_range(chapter)
@@ -2821,8 +2824,12 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 
 					-- Is ending check and handling
 					if chapter_range.end_patterns then
+						chapter.is_end_only = false
 						for _, end_pattern in ipairs(chapter_range.end_patterns) do
-							is_end = is_end or lowercase_title:find(end_pattern) ~= nil
+							if lowercase_title:find(end_pattern) then
+								is_end = true
+								chapter.is_end_only = chapter.is_end_only or end_pattern ~= '.*'
+							end
 						end
 
 						if is_end then
