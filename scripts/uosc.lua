@@ -376,8 +376,7 @@ function text_width_estimate(text, font_size)
 end
 
 function utf8_iter(string)
-	local byte_start = 1
-	local byte_count = 1
+	local byte_start, byte_count = 1, 1
 
 	return function()
 		if #string < byte_start then return nil end
@@ -903,7 +902,7 @@ function Elements:add(name, element)
 	request_render()
 end
 
-function Elements:remove(name, props)
+function Elements:remove(name)
 	Elements.itable = itable_remove(Elements.itable, self[name])
 	self[name] = nil
 	request_render()
@@ -1534,17 +1533,9 @@ function render_timeline(this)
 	local progress = state.time / state.duration
 	local is_line = options.timeline_style == 'line'
 
-	-- Background bar coordinates
-	local bax = this.ax
-	local bay = this.by - size - this.top_border
-	local bbx = this.bx
-	local bby = this.by
-
-	-- Foreground bar coordinates
-	local fax = 0
-	local fay = bay + this.top_border
-	local fbx = 0
-	local fby = bby
+	-- Foreground & Background bar coordinates
+	local bax, bay, bbx, bby = this.ax, this.by - size - this.top_border, this.bx, this.by
+	local fax, fay, fbx, fby = 0, bay + this.top_border, 0, bby
 
 	-- Controls the padding of time on the timeline due to line width.
 	-- It's a distance from the center of the line to its edge when at the
@@ -1823,7 +1814,7 @@ function render_top_bar(this)
 		end
 		ass:icon(
 			maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2), this.icon_size,
-			'check_box_outline_blank', {opacity = this.button_opacity * opacity, border = 1}
+			'crop_square', {opacity = this.button_opacity * opacity, border = 1}
 		)
 
 		-- Minimize button
@@ -2013,11 +2004,8 @@ function render_speed(this)
 	local ass = assdraw.ass_new()
 
 	-- Coordinates
-	local ax = this.ax
-	-- local ay = this.ay + timeline.size_max - timeline:get_effective_size()
-	local ay = this.ay
-	local bx = this.bx
-	local by = ay + this.height
+	local ax, ay = this.ax, this.ay
+	local bx, by = this.bx, ay + this.height
 	local half_width = (this.width / 2)
 	local half_x = ax + half_width
 
@@ -2072,7 +2060,7 @@ function render_speed(this)
 	local speed_text = (round(state.speed * 100) / 100) .. 'x'
 	ass:txt(half_x, ay, 8, speed_text, {
 		size = this.font_size, color = options.color_background_text,
-		border = 1, border_color = options.color_background, opacity = opacity
+		border = 1, border_color = options.color_background, opacity = opacity,
 	})
 
 	return ass
@@ -2624,16 +2612,13 @@ if itable_find({'center', 'bottom-bar'}, options.menu_button) then
 			this.height = this.width
 
 			if options.menu_button == 'bottom-bar' then
-				this.ax = 15
-				this.bx = this.ax + this.width
+				this.ax, this.bx = 15, this.ax + this.width
 				this.by = display.height - 10 - elements.window_border.size - elements.timeline.size_max -
 					elements.timeline.top_border
 				this.ay = this.by - this.height
 			else
-				this.ax = round((display.width - this.width) / 2)
-				this.ay = round((display.height - this.height) / 2)
-				this.bx = this.ax + this.width
-				this.by = this.ay + this.height
+				this.ax, this.ay = round((display.width - this.width) / 2), round((display.height - this.height) / 2)
+				this.bx, this.by = this.ax + this.width, this.ay + this.height
 			end
 		end,
 		on_display_change = function(this) this:update_dimensions() end,
@@ -3414,10 +3399,8 @@ mp.observe_property('playback-time', 'number', create_state_setter('time', updat
 mp.observe_property('duration', 'number', create_state_setter('duration', update_human_times))
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
 mp.observe_property('track-list', 'native', function(name, value)
-	-- checks if the file is audio only (mp3, etc)
-	local has_audio = false
-	local has_video = false
-	local is_image = false
+	-- checks the file dispositions
+	local has_audio, has_video, is_image = false, false, false
 	for _, track in ipairs(value) do
 		if track.type == 'audio' then has_audio = true end
 		if track.type == 'video' then
@@ -3560,6 +3543,7 @@ mp.register_script_message('show-menu', function(json)
 		if type(value) == 'string' then
 			mp.command(value)
 		else
+			---@diagnostic disable-next-line: deprecated
 			mp.commandv((unpack or table.unpack)(value))
 		end
 	end
