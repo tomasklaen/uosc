@@ -418,11 +418,10 @@ mp.commandv('script-message-to', 'uosc', 'show-menu', json)
 
 You can test the smoother operation by pausing the video and then using the UI, which will make it render closer to your display refresh rate.
 
-You can remedy this a tiny bit by enabling interpolation. Add this to your `mpv.conf` file:
+You can remedy this a tiny bit by enabling display-resample. Add this to your `mpv.conf` file:
 
 ```
-interpolation=yes
 video-sync=display-resample
 ```
 
-Though it does come at the cost of a higher CPU/GPU load.
+Though it does come at the cost of a little bit higher CPU/GPU load.
