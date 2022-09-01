@@ -2567,11 +2567,14 @@ if itable_find({'left', 'right'}, options.volume) then
 			this.draw_nudge = this.ay < this.nudge_y
 			this.spacing = round(this.width * 0.2)
 		end,
+		set_volume = function(this, volume)
+			volume = round(volume / options.volume_step) * options.volume_step
+			if state.volume == volume then return end
+			mp.commandv('set', 'volume', math.max(math.min(volume, state.volume_max), 0))
+		end,
 		set_from_cursor = function(this)
 			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
-			local new_volume = math.min(math.max(volume_fraction, 0), 1) * state.volume_max
-			new_volume = round(new_volume / options.volume_step) * options.volume_step
-			if state.volume ~= new_volume then mp.commandv('set', 'volume', math.min(new_volume, state.volume_max)) end
+			this:set_volume(volume_fraction * state.volume_max)
 		end,
 		on_mbtn_left_down = function(this)
 			this.pressed = true
@@ -2582,14 +2585,8 @@ if itable_find({'left', 'right'}, options.volume) then
 		on_global_mouse_move = function(this)
 			if this.pressed then this:set_from_cursor() end
 		end,
-		on_wheel_up = function(this)
-			local current_rounded_volume = round(state.volume / options.volume_step) * options.volume_step
-			mp.commandv('set', 'volume', math.min(current_rounded_volume + options.volume_step, state.volume_max))
-		end,
-		on_wheel_down = function(this)
-			local current_rounded_volume = round(state.volume / options.volume_step) * options.volume_step
-			mp.commandv('set', 'volume', math.min(current_rounded_volume - options.volume_step, state.volume_max))
-		end,
+		on_wheel_up = function(this) this:set_volume(state.volume + options.volume_step) end,
+		on_wheel_down = function(this) this:set_volume(state.volume - options.volume_step) end,
 	}))
 end
 if itable_find({'center', 'bottom-bar'}, options.menu_button) then
@@ -2676,12 +2673,6 @@ if options.speed then
 			this.ay = this.by - this.height
 			this.bx = this.ax + this.width
 			this.font_size = round(this.height * 0.48 * options.speed_font_scale)
-		end,
-		set_from_cursor = function(this)
-			local volume_fraction = (this.by - cursor.y - options.volume_border) / (this.height - options.volume_border)
-			local new_volume = math.min(math.max(volume_fraction, 0), 1) * state.volume_max
-			new_volume = round(new_volume / options.volume_step) * options.volume_step
-			if state.volume ~= new_volume then mp.commandv('set', 'volume', new_volume) end
 		end,
 		on_prop_time = function(this, time) this.enabled = time ~= nil end,
 		on_prop_border = function(this) this:update_dimensions() end,
