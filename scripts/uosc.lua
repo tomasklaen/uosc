@@ -1865,11 +1865,10 @@ function render_volume(this)
 	local ass = assdraw.ass_new()
 
 	if slider.height > 0 then
+		local nudge_y, nudge_size = slider.draw_nudge and slider.nudge_y or -infinity, slider.nudge_size
+
 		-- Background bar coordinates
-		local bax = slider.ax
-		local bay = slider.ay
-		local bbx = slider.bx
-		local bby = slider.by
+		local bax, bay, bbx, bby = slider.ax, slider.ay, slider.bx, slider.by
 
 		-- Foreground bar coordinates
 		local height_without_border = slider.height - (options.volume_border * 2)
@@ -1879,65 +1878,57 @@ function render_volume(this)
 		local fbx = slider.bx - options.volume_border
 		local fby = slider.by - options.volume_border
 
-		-- Path to draw a foreground bar with a 100% volume indicator, already
-		-- clipped by volume level. Can't just clip it with rectangle, as it itself
-		-- also needs to be used as a path to clip the background bar and volume
-		-- number.
-		local fpath = assdraw.ass_new()
-		fpath:move_to(fbx, fby)
-		fpath:line_to(fax, fby)
-		local nudge_bottom_y = slider.nudge_y + slider.nudge_size
-		if fay <= nudge_bottom_y and slider.draw_nudge then
-			fpath:line_to(fax, math.min(nudge_bottom_y))
-			if fay <= slider.nudge_y then
-				fpath:line_to((fax + slider.nudge_size), slider.nudge_y)
-				local nudge_top_y = slider.nudge_y - slider.nudge_size
-				if fay <= nudge_top_y then
-					fpath:line_to(fax, nudge_top_y)
-					fpath:line_to(fax, fay)
-					fpath:line_to(fbx, fay)
-					fpath:line_to(fbx, nudge_top_y)
+		-- Draws a rectangle with nudge at requested position
+		---@param ax number
+		---@param ay number
+		---@param bx number
+		---@param by number
+		function make_nudged_path(ax, ay, bx, by)
+			local fg_path = assdraw.ass_new()
+			fg_path:move_to(bx, by)
+			fg_path:line_to(ax, by)
+			local nudge_bottom_y = nudge_y + nudge_size
+			if ay <= nudge_bottom_y then
+				fg_path:line_to(ax, math.min(nudge_bottom_y))
+				if ay <= nudge_y then
+					fg_path:line_to((ax + nudge_size), nudge_y)
+					local nudge_top_y = nudge_y - nudge_size
+					if ay <= nudge_top_y then
+						fg_path:line_to(ax, nudge_top_y)
+						fg_path:line_to(ax, ay)
+						fg_path:line_to(bx, ay)
+						fg_path:line_to(bx, nudge_top_y)
+					else
+						local triangle_side = ay - nudge_top_y
+						fg_path:line_to((ax + triangle_side), ay)
+						fg_path:line_to((bx - triangle_side), ay)
+					end
+					fg_path:line_to((bx - nudge_size), nudge_y)
 				else
-					local triangle_side = fay - nudge_top_y
-					fpath:line_to((fax + triangle_side), fay)
-					fpath:line_to((fbx - triangle_side), fay)
+					local triangle_side = nudge_bottom_y - ay
+					fg_path:line_to((ax + triangle_side), ay)
+					fg_path:line_to((bx - triangle_side), ay)
 				end
-				fpath:line_to((fbx - slider.nudge_size), slider.nudge_y)
+				fg_path:line_to(bx, nudge_bottom_y)
 			else
-				local triangle_side = nudge_bottom_y - fay
-				fpath:line_to((fax + triangle_side), fay)
-				fpath:line_to((fbx - triangle_side), fay)
+				fg_path:line_to(ax, ay)
+				fg_path:line_to(bx, ay)
 			end
-			fpath:line_to(fbx, nudge_bottom_y)
-		else
-			fpath:line_to(fax, fay)
-			fpath:line_to(fbx, fay)
+			fg_path:line_to(bx, by)
+			return fg_path
 		end
-		fpath:line_to(fbx, fby)
+
+		-- FG & BG paths
+		local fg_path = make_nudged_path(fax, fay, fbx, fby)
+		local bg_path = make_nudged_path(bax, bay, bbx, bby)
 
 		-- Background
-		ass:new_event()
 		ass:append('{\\blur0\\bord0\\1c&H' .. options.color_background ..
-			'\\iclip(' .. fpath.scale .. ', ' .. fpath.text .. ')}')
+			'\\iclip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')}')
 		ass:opacity(math.max(options.volume_opacity - 0.1, 0), opacity)
 		ass:pos(0, 0)
 		ass:draw_start()
-		ass:move_to(bax, bay)
-		ass:line_to(bbx, bay)
-		local half_border = options.volume_border / 2
-		if slider.draw_nudge then
-			ass:line_to(bbx, math.max(slider.nudge_y - slider.nudge_size + half_border, bay))
-			ass:line_to(bbx - slider.nudge_size + half_border, slider.nudge_y)
-			ass:line_to(bbx, slider.nudge_y + slider.nudge_size - half_border)
-		end
-		ass:line_to(bbx, bby)
-		ass:line_to(bax, bby)
-		if slider.draw_nudge then
-			ass:line_to(bax, slider.nudge_y + slider.nudge_size - half_border)
-			ass:line_to(bax + slider.nudge_size - half_border, slider.nudge_y)
-			ass:line_to(bax, math.max(slider.nudge_y - slider.nudge_size + half_border, bay))
-		end
-		ass:line_to(bax, bay)
+		ass:append(bg_path.text)
 		ass:draw_stop()
 
 		-- Foreground
@@ -1946,7 +1937,7 @@ function render_volume(this)
 		ass:opacity(options.volume_opacity, opacity)
 		ass:pos(0, 0)
 		ass:draw_start()
-		ass:append(fpath.text)
+		ass:append(fg_path.text)
 		ass:draw_stop()
 
 		-- Current volume value
@@ -1956,14 +1947,48 @@ function render_volume(this)
 		if fay < slider.by - slider.spacing then
 			ass:txt(slider.ax + (slider.width / 2), slider.by - slider.spacing, 2, volume_string, {
 				size = font_size, color = options.color_foreground_text, opacity = opacity,
-				clip = '\\clip(' .. fpath.scale .. ', ' .. fpath.text .. ')',
+				clip = '\\clip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')',
 			})
 		end
 		if fay > slider.by - slider.spacing - font_size then
 			ass:txt(slider.ax + (slider.width / 2), slider.by - slider.spacing, 2, volume_string, {
 				size = font_size, color = options.color_background_text, opacity = opacity,
-				clip = '\\iclip(' .. fpath.scale .. ', ' .. fpath.text .. ')',
+				clip = '\\iclip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')',
 			})
+		end
+
+		-- Disabled stripes for no audio
+		if not state.has_audio then
+			-- Create 100 foreground clip path
+			local f100ax, f100ay = slider.ax + options.volume_border, slider.ay + options.volume_border
+			local f100bx, f100by = slider.bx - options.volume_border, slider.by - options.volume_border
+			local fg_100_path = make_nudged_path(f100ax, f100ay, f100bx, f100by)
+
+			-- Render stripes
+			local stripe_height = 12
+			local skew_height = stripe_height
+			local colors = {'000000', 'ffffff'}
+
+			for c, color in ipairs(colors) do
+				local stripe_y = slider.ay + stripe_height * (c - 1)
+
+				ass:new_event()
+				ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. color ..
+					'\\clip(' .. fg_100_path.scale .. ',' .. fg_100_path.text .. ')}')
+				ass:opacity(0.15 * opacity)
+				ass:pos(0, 0)
+				ass:draw_start()
+
+				while stripe_y - skew_height < slider.by do
+					ass:move_to(slider.ax, stripe_y)
+					ass:line_to(slider.bx, stripe_y - skew_height)
+					ass:line_to(slider.bx, stripe_y - skew_height + stripe_height)
+					ass:line_to(slider.ax, stripe_y + stripe_height)
+					stripe_y = stripe_y + stripe_height * #colors
+				end
+
+				ass:draw_stop()
+			end
 		end
 	end
 
@@ -2520,27 +2545,23 @@ if itable_find({'left', 'right'}, options.volume) then
 			this.by = round(this.ay + this.height)
 		end,
 		on_display_change = function(this) this:update_dimensions() end,
-		on_prop_has_audio = function(this, has_audio) this.enabled = has_audio end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		render = render_volume,
 	}))
 	elements:add('volume_mute', Element.new({
-		enabled = false,
+		enabled = true,
 		width = 0,
 		height = 0,
 		on_display_change = function(this)
 			this.width = elements.volume.width
 			this.height = this.width
-			this.ax = elements.volume.ax
-			this.ay = elements.volume.by - this.height
-			this.bx = elements.volume.bx
-			this.by = elements.volume.by
+			this.ax, this.ay = elements.volume.ax, elements.volume.by - this.height
+			this.bx, this.by = elements.volume.bx, elements.volume.by
 		end,
-		on_prop_has_audio = function(this, has_audio) this.enabled = has_audio end,
 		on_mbtn_left_down = function(this) mp.commandv('cycle', 'mute') end,
 	}))
 	elements:add('volume_slider', Element.new({
-		enabled = false,
+		enabled = true,
 		pressed = false,
 		width = 0,
 		height = 0,
@@ -2550,12 +2571,9 @@ if itable_find({'left', 'right'}, options.volume) then
 		spacing = nil,
 		on_display_change = function(this)
 			if state.volume_max == nil or state.volume_max == 0 then return end
-			this.ax = elements.volume.ax
-			this.ay = elements.volume.ay
-			this.bx = elements.volume.bx
-			this.by = elements.volume_mute.ay
-			this.width = this.bx - this.ax
-			this.height = this.by - this.ay
+			this.ax, this.ay = elements.volume.ax, elements.volume.ay
+			this.bx, this.by = elements.volume.bx, elements.volume_mute.ay
+			this.width, this.height = this.bx - this.ax, this.by - this.ay
 			this.nudge_y = this.by - round(this.height * (100 / state.volume_max))
 			this.nudge_size = round(elements.volume.width * 0.18)
 			this.draw_nudge = this.ay < this.nudge_y
@@ -2567,7 +2585,6 @@ if itable_find({'left', 'right'}, options.volume) then
 			new_volume = round(new_volume / options.volume_step) * options.volume_step
 			if state.volume ~= new_volume then mp.commandv('set', 'volume', math.min(new_volume, state.volume_max)) end
 		end,
-		on_prop_has_audio = function(this, has_audio) this.enabled = has_audio end,
 		on_mbtn_left_down = function(this)
 			this.pressed = true
 			this:set_from_cursor()
