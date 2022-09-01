@@ -1841,7 +1841,7 @@ function render_top_bar(this)
 			text = string.format('%d/%d - ', state.playlist_pos, state.playlist_count) .. text
 		end
 		ass:txt(this.ax + this.spacing, this.ay + (this.size / 2), 4, text, {
-			size = this.font_size, wrap = 2, color = 'FFFFFF', border = 1, border_color = '000000',
+			size = this.font_size, wrap = 2, color = 'FFFFFF', border = 1, border_color = '000000', opacity = opacity,
 			clip = '\\clip(' .. clip_coordinates .. ')',
 		})
 	end
