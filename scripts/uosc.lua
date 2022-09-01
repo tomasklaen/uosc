@@ -2803,7 +2803,6 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 				-- If there is already a range started, should we append or overwrite?
 				-- I chose overwrite here.
 				current_range = {['start'] = chapter}
-				chapter.is_end_only = false
 			end
 
 			local function end_range(chapter)
@@ -2819,38 +2818,33 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 			for _, chapter in ipairs(chapters) do
 				if type(chapter.title) == 'string' then
 					local lowercase_title = chapter.title:lower()
-					local is_end = false
-					local is_start = false
 
 					-- Is ending check and handling
 					if chapter_range.end_patterns then
 						chapter.is_end_only = false
 						for _, end_pattern in ipairs(chapter_range.end_patterns) do
 							if lowercase_title:find(end_pattern) then
-								is_end = true
-								chapter.is_end_only = chapter.is_end_only or end_pattern ~= '.*'
-							end
-						end
-
-						if is_end then
-							if current_range == nil and uses_bof and not bof_used then
-								bof_used = true
-								start_range({time = 0})
-							end
-							if current_range ~= nil then
-								end_range(chapter)
-							else
-								is_end = false
+								if current_range == nil and uses_bof and not bof_used then
+									bof_used = true
+									start_range({time = 0})
+								end
+								if current_range ~= nil then
+									end_range(chapter)
+								end
+								chapter.is_end_only = end_pattern ~= '.*'
+								break
 							end
 						end
 					end
 
 					-- Is start check and handling
 					for _, start_pattern in ipairs(chapter_range.start_patterns) do
-						is_start = is_start or lowercase_title:find(start_pattern) ~= nil
+						if lowercase_title:find(start_pattern) then
+							start_range(chapter)
+							chapter.is_end_only = false
+							break
+						end
 					end
-
-					if is_start then start_range(chapter) end
 				end
 			end
 
