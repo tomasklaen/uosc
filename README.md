@@ -58,6 +58,18 @@ Most notable features:
 
 3. To configure **uosc** to your likings, create a `script-opts/uosc.conf` file, or download `uosc.conf` with all default values from one of the links above, and save into `script-opts/` folder.
 
+4. **OPTIONAL**: If the UI feels sluggish/slow while playing video, you can remedy this a lot by placing this in your `mpv.conf`:
+
+    ```config
+    video-sync=display-resample
+    ```
+
+    Though this does come at the cost of a little bit higher CPU/GPU load.
+
+    #### What is going on?
+
+    **uosc** places performance as one of its top priorities, so how can the UI feel slow? Well, it really isn't, **uosc** is **fast**, it just doesn't feel like it because when video is playing, the UI rendering frequency is chained to its frame rate, so unless you are the type of person that can't see above 24fps, it _will_ feel slow, unless you tell mpv to resample the video framerate to match your display. This is mpv limitation, and not much we can do about it on our side.
+
 ## Options
 
 All of the available **uosc** options with their default values are in the provided `uosc.conf`. Follow one of the download links to the version of this file that matches your `uosc.lua`, or just peak the [latest development version](https://github.com/tomasklaen/uosc/blob/master/uosc.conf) for a quick reference, but this might have options that are different or not available in stable release.
@@ -411,17 +423,3 @@ local menu = {
 local json = utils.format_json(menu)
 mp.commandv('script-message-to', 'uosc', 'show-menu', json)
 ```
-
-## Tips
-
-**uosc** places performance as one of the top priorities, so why does the UI feels a bit sluggish/slow/laggy (e.g. seeking indicator lags a bit behind cursor)? Well, it really isn't, **uosc** is **fast**, it just doesn't feel like it because when video is playing, the UI rendering frequency is chained to its frame rate, so unless you are the type of person that can't see above 24fps, it _does_ feel sluggish. This is an mpv limitation and I can't do anything about it :(
-
-You can test the smoother operation by pausing the video and then using the UI, which will make it render closer to your display refresh rate.
-
-You can remedy this a tiny bit by enabling display-resample. Add this to your `mpv.conf` file:
-
-```
-video-sync=display-resample
-```
-
-Though it does come at the cost of a little bit higher CPU/GPU load.
