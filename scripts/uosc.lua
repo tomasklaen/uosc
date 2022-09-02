@@ -162,6 +162,8 @@ local state = {
 	first_real_mouse_move_received = false,
 	playlist_count = 0,
 	playlist_pos = 0,
+	margin_top = 0,
+	margin_bottom = 0,
 }
 local forced_key_bindings -- defined at the bottom next to events
 
@@ -1512,6 +1514,27 @@ function update_human_times()
 	end
 end
 
+function update_margins()
+	-- margins are normalized to window size
+	local top, bottom = 0, 0
+
+	local timeline_size = elements.timeline:get_effective_size() or 0
+	bottom = (timeline_size / display.height)
+
+	local top_bar = elements.top_bar
+	if top_bar.enabled and top_bar:get_effective_proximity() ~= 0 then
+		top = (top_bar.size or 0) / display.height
+	end
+
+	if top == state.margin_top and bottom == state.margin_bottom then return end
+
+	state.margin_top = top
+	state.margin_bottom = bottom
+
+	utils.shared_script_property_set("osc-margins",
+		string.format("%f,%f,%f,%f", 0, 0, top, bottom))
+end
+
 -- ELEMENT RENDERERS
 
 function render_timeline(this)
@@ -2248,6 +2271,8 @@ function render()
 	osd.data = ass.text
 	osd.z = 2000
 	osd:update()
+
+	update_margins()
 end
 
 -- STATIC ELEMENTS
