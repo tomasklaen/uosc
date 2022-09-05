@@ -1649,37 +1649,31 @@ function render_timeline(this)
 	ass:draw_stop()
 
 	-- Progress
-	local function render_progress()
-		ass:rect(fax, fay, fbx, fby, {opacity = options.timeline_opacity})
-	end
+	ass:rect(fax, fay, fbx, fby, {opacity = options.timeline_opacity})
 
 	-- Custom ranges
-	local function render_ranges()
-		if state.chapter_ranges ~= nil then
-			for i, chapter_range in ipairs(state.chapter_ranges) do
-				for i, range in ipairs(chapter_range.ranges) do
-					local rax = time_x + time_width * (range['start'].time / state.duration)
-					local rbx = time_x + time_width * (range['end'].time / state.duration)
-					-- for 1px chapter size, use the whole size of the bar including padding
-					local ray = size <= 1 and bay or fay
-					local rby = size <= 1 and bby or fby
-					ass:rect(rax, ray, rbx, rby, {color = chapter_range.color, opacity = chapter_range.opacity})
-				end
+	if state.chapter_ranges ~= nil then
+		for i, chapter_range in ipairs(state.chapter_ranges) do
+			for i, range in ipairs(chapter_range.ranges) do
+				local rax = time_x + time_width * (range['start'].time / state.duration)
+				local rbx = time_x + time_width * (range['end'].time / state.duration)
+				-- for 1px chapter size, use the whole size of the bar including padding
+				local ray = size <= 1 and bay or fay
+				local rby = size <= 1 and bby or fby
+				ass:rect(rax, ray, rbx, rby, {color = chapter_range.color, opacity = chapter_range.opacity})
 			end
 		end
 	end
 
 	-- Chapters
-	local function render_chapters()
-		if (
-			options.timeline_chapters == 'never'
-				or (
-				(state.chapters == nil or #state.chapters == 0)
-					and state.ab_loop_a == nil
-					and state.ab_loop_b == nil
-				)
-			) then return end
-
+	if (
+		options.timeline_chapters ~= 'never'
+			and (
+				state.chapters ~= nil and #state.chapters > 0
+				or state.ab_loop_a
+				or state.ab_loop_b
+			)
+		) then
 		local dots = false
 		-- Defaults are for `lines`
 		local chapter_width = options.timeline_chapters_width
@@ -1759,78 +1753,56 @@ function render_timeline(this)
 	end
 
 	-- Seekable ranges
-	local function render_cache()
-		if options.timeline_cached_ranges and state.cached_ranges then
-			local range_height = math.max(math.floor(math.min(this.size_max / 8, foreground_size / 2)), 1)
-			local range_ay = fby - range_height
+	if options.timeline_cached_ranges and state.cached_ranges then
+		local range_height = math.max(math.floor(math.min(this.size_max / 8, foreground_size / 2)), 1)
+		local range_ay = fby - range_height
 
-			for _, range in ipairs(state.cached_ranges) do
-				local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
-				local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
-				ass:rect(
-					time_x + time_width * (range_start / state.duration), range_ay,
-					time_x + time_width * (range_end / state.duration), range_ay + range_height,
-					{color = options.timeline_cached_ranges.color, opacity = options.timeline_cached_ranges.opacity}
-				)
-			end
+		for _, range in ipairs(state.cached_ranges) do
+			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
+			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
+			ass:rect(
+				time_x + time_width * (range_start / state.duration), range_ay,
+				time_x + time_width * (range_end / state.duration), range_ay + range_height,
+				{color = options.timeline_cached_ranges.color, opacity = options.timeline_cached_ranges.opacity}
+			)
+		end
 
-			-- Visualize padded time area limits
-			if time_padding > 0 then
-				local notch_ay = math.max(range_ay - 2, fay)
-				local opts = {color = options.timeline_cached_ranges.color, opacity = options.timeline_opacity}
-				ass:rect(time_x, notch_ay, time_x + 1, bby, opts)
-				ass:rect(time_x + time_width - 1, notch_ay, time_x + time_width, bby, opts)
-			end
+		-- Visualize padded time area limits
+		if time_padding > 0 then
+			local notch_ay = math.max(range_ay - 2, fay)
+			local opts = {color = options.timeline_cached_ranges.color, opacity = options.timeline_opacity}
+			ass:rect(time_x, notch_ay, time_x + 1, bby, opts)
+			ass:rect(time_x + time_width - 1, notch_ay, time_x + time_width, bby, opts)
 		end
 	end
 
 	-- Time values
-	local function render_time()
-		if text_opacity > 0 then
-			local opts = {size = this.font_size, opacity = math.min(options.timeline_opacity + 0.1, 1) * text_opacity}
+	if text_opacity > 0 then
+		local opts = {size = this.font_size, opacity = math.min(options.timeline_opacity + 0.1, 1) * text_opacity}
 
-			-- Elapsed time
-			if state.time_human then
-				local elapsed_x = bax + spacing
-				local elapsed_y = fay + (size / 2)
-				opts.color = options.color_foreground_text
-				opts.clip = '\\clip(' .. foreground_coordinates .. ')'
-				ass:txt(elapsed_x, elapsed_y, 4, state.time_human, opts)
-				opts.color = options.color_background_text
-				opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
-				ass:txt(elapsed_x, elapsed_y, 4, state.time_human, opts)
-			end
-
-			-- End time
-			if state.duration_or_remaining_time_human then
-				local end_x = bbx - spacing
-				local end_y = fay + (size / 2)
-				opts.color = options.color_foreground_text
-				opts.clip = '\\clip(' .. foreground_coordinates .. ')'
-				ass:txt(end_x, end_y, 6, state.duration_or_remaining_time_human, opts)
-				opts.color = options.color_background_text
-				opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
-				ass:txt(end_x, end_y, 6, state.duration_or_remaining_time_human, opts)
-			end
+		-- Elapsed time
+		if state.time_human then
+			local elapsed_x = bax + spacing
+			local elapsed_y = fay + (size / 2)
+			opts.color = options.color_foreground_text
+			opts.clip = '\\clip(' .. foreground_coordinates .. ')'
+			ass:txt(elapsed_x, elapsed_y, 4, state.time_human, opts)
+			opts.color = options.color_background_text
+			opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
+			ass:txt(elapsed_x, elapsed_y, 4, state.time_human, opts)
 		end
-	end
 
-	-- Render elements in the optimal order:
-	-- When line is minimized, it turns into a bar (timeline_line_width_minimized_scale),
-	-- so it should be below ranges and chapters.
-	-- But un-minimized it's a thin line that should be above everything.
-	if is_line and size > size_min then
-		render_ranges()
-		render_chapters()
-		render_progress()
-		render_cache()
-		render_time()
-	else
-		render_progress()
-		render_ranges()
-		render_chapters()
-		render_cache()
-		render_time()
+		-- End time
+		if state.duration_or_remaining_time_human then
+			local end_x = bbx - spacing
+			local end_y = fay + (size / 2)
+			opts.color = options.color_foreground_text
+			opts.clip = '\\clip(' .. foreground_coordinates .. ')'
+			ass:txt(end_x, end_y, 6, state.duration_or_remaining_time_human, opts)
+			opts.color = options.color_background_text
+			opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
+			ass:txt(end_x, end_y, 6, state.duration_or_remaining_time_human, opts)
+		end
 	end
 
 	-- Hovered time and chapter
