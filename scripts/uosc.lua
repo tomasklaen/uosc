@@ -36,6 +36,12 @@ local options = {
 	timeline_chapters_opacity = 0.2,
 	timeline_chapters_width = 6,
 
+	controls = 'menu,gap,subtitles,<has_audio,!audio>audio,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
+	controls_size = 32,
+	controls_size_fullscreen = 40,
+	controls_margin = 8,
+	controls_spacing = 2,
+
 	volume = 'right',
 	volume_size = 40,
 	volume_size_fullscreen = 60,
@@ -63,13 +69,6 @@ local options = {
 	menu_opacity = 0.8,
 	menu_parent_opacity = 0.4,
 	menu_font_scale = 1,
-
-	menu_button = 'never',
-	menu_button_size = 26,
-	menu_button_size_fullscreen = 30,
-	menu_button_opacity = 1,
-	menu_button_persistency = '',
-	menu_button_border = 1,
 
 	top_bar = 'no-border',
 	top_bar_size = 40,
@@ -130,6 +129,7 @@ local state = {
 		return 'linux'
 	end)(),
 	cwd = mp.get_property('working-directory'),
+	path = nil, -- current file path or URL
 	media_title = '',
 	time = nil, -- current media playback time
 	speed = 1,
@@ -148,10 +148,11 @@ local state = {
 	volume = nil,
 	volume_max = nil,
 	mute = nil,
+	is_video = nil,
 	is_audio = nil, -- true if file is audio only (mp3, etc)
 	is_image = nil,
+	is_stream = nil,
 	has_audio = nil,
-	has_video = nil,
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		if not options.autohide then return end
 		handle_mouse_leave()
@@ -195,48 +196,53 @@ function split(str, pattern)
 	return list
 end
 
-function itable_find(haystack, needle)
-	local is_needle = type(needle) == 'function' and needle or function(index, value)
-		return value == needle
-	end
-	for index, value in ipairs(haystack) do
-		if is_needle(index, value) then return index, value end
+---@param itable table
+---@param value any
+---@return integer|nil
+function itable_index_of(itable, value)
+	for index, item in ipairs(itable) do
+		if item == value then return index end
 	end
 end
 
-function itable_filter(haystack, needle)
-	local is_needle = type(needle) == 'function' and needle or function(index, value)
-		return value == needle
+---@param itable table
+---@param compare fun(value: any, index: number)
+---@return number|nil index
+---@return any|nil value
+function itable_find(itable, compare)
+	for index, value in ipairs(itable) do
+		if compare(value, index) then return index, value end
 	end
+end
+
+---@param itable table
+---@param decider fun(value: any, index: number)
+function itable_filter(itable, decider)
 	local filtered = {}
-	for index, value in ipairs(haystack) do
-		if is_needle(index, value) then filtered[#filtered + 1] = value end
+	for index, value in ipairs(itable) do
+		if decider(value, index) then filtered[#filtered + 1] = value end
 	end
 	return filtered
 end
 
-function itable_remove(haystack, needle)
-	local should_remove = type(needle) == 'function' and needle or function(value)
-		return value == needle
-	end
-	local new_table = {}
-	for _, value in ipairs(haystack) do
-		if not should_remove(value) then
-			new_table[#new_table + 1] = value
-		end
-	end
-	return new_table
+---@param itable table
+---@param value any
+function itable_remove(itable, value)
+	return itable_filter(itable, function(item) return item ~= value end)
 end
 
-function itable_slice(haystack, start_pos, end_pos)
+---@param itable table
+---@param start_pos? integer
+---@param end_pos? integer
+function itable_slice(itable, start_pos, end_pos)
 	start_pos = start_pos and start_pos or 1
-	end_pos = end_pos and end_pos or #haystack
+	end_pos = end_pos and end_pos or #itable
 
-	if end_pos < 0 then end_pos = #haystack + end_pos + 1 end
-	if start_pos < 0 then start_pos = #haystack + start_pos + 1 end
+	if end_pos < 0 then end_pos = #itable + end_pos + 1 end
+	if start_pos < 0 then start_pos = #itable + start_pos + 1 end
 
 	local new_table = {}
-	for index, value in ipairs(haystack) do
+	for index, value in ipairs(itable) do
 		if index >= start_pos and index <= end_pos then
 			new_table[#new_table + 1] = value
 		end
@@ -525,7 +531,7 @@ end
 
 -- Check if path is a protocol, such as `http://...`
 function is_protocol(path)
-	return path:match('^%a[%a%d-_]+://')
+	return type(path) == 'string' and path:match('^%a[%a%d-_]+://')
 end
 
 function get_extension(path)
@@ -572,9 +578,9 @@ function get_files_in_directory(directory, allowed_types)
 
 	-- Filter only requested file types
 	if allowed_types then
-		files = itable_filter(files, function(_, file)
+		files = itable_filter(files, function(file)
 			local extension = get_extension(file)
-			return extension and itable_find(allowed_types, extension:lower())
+			return extension and itable_index_of(allowed_types, extension:lower())
 		end)
 	end
 
@@ -638,11 +644,6 @@ function get_normalized_chapters()
 	return chapters
 end
 
-function is_element_persistent(name)
-	local option_name = name .. '_persistency';
-	return (options[option_name].audio and state.is_audio) or (options[option_name].paused and state.pause)
-end
-
 -- ASSDRAW EXTENSIONS
 
 local ass_mt = getmetatable(assdraw.ass_new())
@@ -670,25 +671,25 @@ end
 ---@param y number
 ---@param size number
 ---@param name string
----@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; clip?: string}
+---@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; clip?: string; align?: number}
 function ass_mt:icon(x, y, size, name, opts)
 	opts = opts or {}
 	opts.size = size
 	opts.font = 'MaterialIconsSharp-Regular'
-	self:txt(x, y, 5, name, opts)
+	self:txt(x, y, opts.align or 5, name, opts)
 end
 
 -- String
 -- Named `txt` because `ass.text` is a value.
 ---@param x number
 ---@param y number
----@param alignment number
+---@param align number
 ---@param value string|number
 ---@param opts {size: number; font?: string; color?: string; bold?: boolean; border?: number; border_color?: string; shadow?: number; shadow_color?: string; wrap?: number; opacity?: number; clip?: string}
-function ass_mt:txt(x, y, alignment, value, opts)
+function ass_mt:txt(x, y, align, value, opts)
 	local border_size = opts.border or 0
 	local shadow_size = opts.shadow or 0
-	local tags = '\\pos(' .. x .. ',' .. y .. ')\\an' .. alignment .. '\\blur0'
+	local tags = '\\pos(' .. x .. ',' .. y .. ')\\an' .. align .. '\\blur0'
 	-- font
 	tags = tags .. '\\fn' .. (opts.font or config.font)
 	-- font size
@@ -770,6 +771,43 @@ function ass_mt:circle(x, y, radius, opts)
 	self:rect(x - radius, y - radius, x + radius, y + radius, opts)
 end
 
+-- ELEMENTS
+
+local Elements = {itable = {}}
+
+function Elements:add(element)
+	if not element.id then
+		msg.error('attempt to add element without "id" property')
+		return
+	end
+
+	if self:has(element.id) then Elements:remove(element.id) end
+
+	self.itable[#self.itable + 1] = element
+	self[element.id] = element
+	request_render()
+end
+
+function Elements:remove(idOrElement)
+	if not idOrElement then return end
+	local id = type(idOrElement) == 'table' and idOrElement.id or idOrElement
+	local element = Elements[id]
+	if element then
+		element:destroy()
+		self.itable = itable_remove(self.itable, self[id])
+		self[id] = nil
+		request_render()
+	end
+end
+
+function Elements:trigger(name, ...)
+	for _, element in self:ipairs() do element:trigger(name, ...) end
+end
+
+function Elements:has(id) return self[id] ~= nil end
+
+function Elements:ipairs() return ipairs(self.itable) end
+
 -- Element
 --[[
 Signature:
@@ -800,15 +838,30 @@ local Element = {
 }
 Element.__index = Element
 
-function Element.new(props)
+-- Element object props used by proximity, events, renderer, or other parts ot the system:
+-- `id`: `string` REQUIRED - every element has to have a unique ID
+-- `enabled`: `boolean` - determines element's visibility and interactivity (mouse, keyboard). element still receives
+--                        `on_prop_{name}` and other environment events
+-- `ignores_menu` - don't hide when menu is open
+-- `ax,ay,bx,by`: `number` - element's coordinates used to determine proximity, element is responsible for setting these
+-- `proximity`: `number` - element's proximity to the cursor. set by system before mouse_move is fired
+--                         fraction between `0` = away, `1` = touching/above
+-- `proximity_raw`: `number` - element's raw proximity to the cursor in pixels. set by system before mouse_move event
+-- `anchor_id` - id of an element from which this one should inherit proximity via max(this.proximity, anchor.proximity)
+-- `on_{event_name}`: `function` (optional) - binds a listener to `{event_name}` when defined. Example events:
+--                                            `on_mbt_left_down`, `on_prop_has_audio`
+---@param id string
+---@param props {enabled: boolean}
+function Element.new(id, props)
+	props.id = id
 	local element = setmetatable(props, Element)
 	element._eventListeners = {}
 
 	-- Flash timer
 	element._flash_out_timer = mp.add_timeout(options.flash_duration / 1000, function()
 		local getTo = function() return element.proximity end
-		element:tween_property('forced_proximity', 1, getTo, function()
-			element.forced_proximity = nil
+		element:tween_property('forced_visibility', 1, getTo, function()
+			element.forced_visibility = nil
 		end)
 	end)
 	element._flash_out_timer:kill()
@@ -821,6 +874,32 @@ end
 function Element:init() end
 
 function Element:destroy() end
+
+-- Decide effective proximity based on various external factors
+function Element:get_visibility()
+	-- Hide when menu is open, unless this is a menu
+	---@diagnostic disable-next-line: undefined-global
+	if not self.ignores_menu and menu and menu:is_open() then return 0 end
+
+	-- Persistency
+	local persist = options[self.id .. '_persistency'];
+	if persist and (
+		(persist.audio and state.is_audio)
+			or (persist.paused and state.pause)
+			or (persist.video and state.is_video)
+			or (persist.image and state.is_image)
+		) then return 1 end
+
+	-- Forced proximity
+	if self.forced_visibility then return self.forced_visibility end
+
+	-- Anchor inheritance
+	-- If anchor returns -1, it means all attached elements should force hide.
+	local anchor = self.anchor_id and Elements[self.anchor_id]
+	local anchor_visibility = anchor and anchor:get_visibility() or 0
+
+	return self.forced_visibility or (anchor_visibility == -1 and 0 or math.max(self.proximity, anchor_visibility))
+end
 
 -- Call method if it exists
 function Element:maybe(name, ...)
@@ -839,7 +918,7 @@ function Element:is_tweening() tween_element_is_tweening(self) end
 -- Event listeners
 function Element:on(name, handler)
 	if self._eventListeners[name] == nil then self._eventListeners[name] = {} end
-	local preexistingIndex = itable_find(self._eventListeners[name], handler)
+	local preexistingIndex = itable_index_of(self._eventListeners[name], handler)
 	if preexistingIndex then
 		return
 	else
@@ -849,7 +928,7 @@ end
 
 function Element:off(name, handler)
 	if self._eventListeners[name] == nil then return end
-	local index = itable_find(self._eventListeners, handler)
+	local index = itable_index_of(self._eventListeners, handler)
 	if index then table.remove(self._eventListeners, index) end
 end
 
@@ -862,61 +941,15 @@ end
 
 -- Briefly flashes the element for `options.flash_duration` milliseconds.
 -- Useful to visualize changes of volume and timeline when changed via hotkeys.
--- Implemented by briefly adding animated `forced_proximity` property to the element.
+-- Implemented by briefly adding animated `forced_visibility` property to the element.
 function Element:flash()
 	if options.flash_duration > 0 and (self.proximity < 1 or self._flash_out_timer:is_enabled()) then
 		self:tween_stop()
-		self.forced_proximity = 1
+		self.forced_visibility = 1
 		self._flash_out_timer:kill()
 		self._flash_out_timer:resume()
 	end
 end
-
--- ELEMENTS
-
-local Elements = {itable = {}}
-Elements.__index = Elements
-local elements = setmetatable({}, Elements)
-
--- Element object props used by proximity, events, renderer, or other parts ot the system:
--- `enabled`: `boolean` - determines element's visibility and interactivity (mouse, keyboard). element still receives
---                        `on_prop_{name}` and other environment events.
--- `ax,ay,bx,by`: `number` - element's coordinates used to determine proximity, element is responsible for setting these
--- `proximity`: `number` - element's proximity to the cursor. set by system before mouse_move is fired.
---                         fraction between `0` = away, `1` = touching/above.
--- `proximity_raw`: `number` - element's raw proximity to the cursor in pixels. set by system before mouse_move event.
--- `on_{event_name}`: `function` (optional) - binds a listener to `{event_name}` when defined. Example events:
---                                            `on_mbt_left_down`, `on_prop_has_audio`
-function Elements:add(name, element)
-	local insert_index = #Elements.itable + 1
-
-	-- Replace if element already exists
-	if self:has(name) then
-		insert_index = itable_find(Elements.itable, function(_, element)
-			return element.name == name
-		end)
-	end
-
-	element.name = name
-	Elements.itable[insert_index] = element
-	self[name] = element
-
-	request_render()
-end
-
-function Elements:remove(name)
-	Elements.itable = itable_remove(Elements.itable, self[name])
-	self[name] = nil
-	request_render()
-end
-
-function Elements:trigger(name, ...)
-	for _, element in self:ipairs() do element:trigger(name, ...) end
-end
-
-function Elements:has(name) return self[name] ~= nil end
-
-function Elements:ipairs() return ipairs(self.itable) end
 
 -- MENU
 --[[
@@ -946,7 +979,7 @@ Menu.__index = Menu
 local menu = setmetatable({key_bindings = {}, is_closing = false}, Menu)
 
 function Menu:is_open(menu_type)
-	return elements.menu ~= nil and (not menu_type or elements.menu.type == menu_type)
+	return Elements.menu ~= nil and (not menu_type or Elements.menu.type == menu_type)
 end
 
 ---@alias MenuItem {title?: string, hint?: string, value: any}
@@ -967,11 +1000,12 @@ function Menu:open(items, open_item, opts)
 		end
 	else
 		menu:enable_key_bindings()
-		elements.curtain:fadein()
+		Elements.curtain:fadein()
 	end
 
-	elements:add('menu', Element.new({
+	Elements:add(Element.new('menu', {
 		enabled = true,
+		ignores_menu = true,
 		type = nil, -- menu type such as `menu`, `chapters`, ...
 		title = nil,
 		estimated_max_width = nil,
@@ -1189,7 +1223,7 @@ function Menu:open(items, open_item, opts)
 				local transition_target_type = menu.transition.target
 				tween_element_stop(transition_target)
 				if transition_target_type == 'parent' then
-					elements:add('menu', transition_target)
+					Elements:add(transition_target)
 				end
 				menu.transition = nil
 				if transition_target then transition_target:back() end
@@ -1212,7 +1246,7 @@ function Menu:open(items, open_item, opts)
 				this:set_parent_opacity(options.menu_parent_opacity + ((1 - options.menu_parent_opacity) * pos))
 			end, function()
 				menu.transition = nil
-				elements:add('menu', target)
+				Elements:add(target)
 				update_proximities()
 			end)
 		end,
@@ -1310,7 +1344,7 @@ function Menu:open(items, open_item, opts)
 		render = render_menu,
 	}))
 
-	elements.menu:maybe('on_open')
+	Elements.menu:maybe('on_open')
 end
 
 function Menu:add_key_binding(key, name, fn, flags)
@@ -1363,21 +1397,21 @@ end
 
 function Menu:create_action(name)
 	return function(...)
-		if elements.menu then elements.menu:maybe(name, ...) end
+		if Elements.menu then Elements.menu:maybe(name, ...) end
 	end
 end
 
 function Menu:close(immediate, callback)
 	if type(immediate) ~= 'boolean' then callback = immediate end
 
-	if elements:has('menu') and not menu.is_closing then
+	if Elements:has('menu') and not menu.is_closing then
 		local function close()
-			local current_menu = elements.menu
+			local current_menu = Elements.menu
 			while current_menu do
 				current_menu:maybe('on_close')
 				current_menu = current_menu.parent_menu
 			end
-			elements:remove('menu')
+			Elements:remove('menu')
 			menu.is_closing = false
 			update_proximities()
 			menu:disable_key_bindings()
@@ -1386,12 +1420,12 @@ function Menu:close(immediate, callback)
 		end
 
 		menu.is_closing = true
-		elements.curtain:fadeout()
+		Elements.curtain:fadeout()
 
 		if immediate then
 			close()
 		else
-			elements.menu:fadeout(close)
+			Elements.menu:fadeout(close)
 		end
 	end
 end
@@ -1408,7 +1442,7 @@ function update_display_dimensions()
 	display.aspect = aspect
 
 	-- Tell elements about this
-	elements:trigger('display_change')
+	Elements:trigger('display_change')
 
 	-- Some elements probably changed their rectangles as a reaction to `display_change`
 	update_proximities()
@@ -1422,8 +1456,7 @@ function update_element_cursor_proximity(element)
 	else
 		local range = options.proximity_out - options.proximity_in
 		element.proximity_raw = get_point_to_rectangle_proximity(cursor, element)
-		element.proximity = menu:is_open() and 0 or
-			1 - (math.min(math.max(element.proximity_raw - options.proximity_in, 0), range) / range)
+		element.proximity = 1 - (math.min(math.max(element.proximity_raw - options.proximity_in, 0), range) / range)
 	end
 end
 
@@ -1435,13 +1468,13 @@ function update_proximities()
 	local mouse_enter_elements = {}
 
 	-- Calculates proximities and opacities for defined elements
-	for _, element in elements:ipairs() do
+	for _, element in Elements:ipairs() do
 		if element.enabled then
 			local previous_proximity_raw = element.proximity_raw
 
 			-- If menu is open, all other elements have to be disabled
 			if menu_only then
-				if element.name == 'menu' then
+				if element.ignores_menu then
 					capture_mbtn_left = true
 					capture_wheel = true
 					update_element_cursor_proximity(element)
@@ -1495,7 +1528,7 @@ end
 function update_fullormaxed()
 	state.fullormaxed = state.fullscreen or state.maximized
 	update_display_dimensions()
-	elements:trigger('prop_fullormaxed', state.fullormaxed)
+	Elements:trigger('prop_fullormaxed', state.fullormaxed)
 end
 
 function update_human_times()
@@ -1517,12 +1550,12 @@ end
 function update_margins()
 	-- margins are normalized to window size
 	local top, bottom = 0, 0
+	local timeline, top_bar, controls = Elements.timeline, Elements.top_bar, Elements.controls
 
-	local timeline_size = elements.timeline:get_effective_size() or 0
-	bottom = (timeline_size / display.height)
+	local bottom_y = controls and controls.enabled and controls.ay or timeline.ay
+	bottom = (display.height - bottom_y) / display.height
 
-	local top_bar = elements.top_bar
-	if top_bar.enabled and top_bar:get_effective_proximity() ~= 0 then
+	if top_bar.enabled and top_bar:get_visibility() ~= 0 then
 		top = (top_bar.size or 0) / display.height
 	end
 
@@ -1531,14 +1564,13 @@ function update_margins()
 	state.margin_top = top
 	state.margin_bottom = bottom
 
-	utils.shared_script_property_set("osc-margins",
-		string.format("%f,%f,%f,%f", 0, 0, top, bottom))
+	utils.shared_script_property_set('osc-margins', string.format('%f,%f,%f,%f', 0, 0, top, bottom))
 end
 
 -- ELEMENT RENDERERS
 
 function render_timeline(this)
-	if this.size_max == 0 or state.duration == nil or state.duration == 0 or state.time == nil then return end
+	if this.size_max == 0 then return end
 
 	local size_min = this:get_effective_size_min()
 	local size = this:get_effective_size()
@@ -1763,7 +1795,7 @@ function render_timeline(this)
 	end
 
 	-- Hovered time and chapter
-	if (this.proximity_raw == 0 or this.pressed) and not (elements.speed and elements.speed.dragging) then
+	if (this.proximity_raw == 0 or this.pressed) and not (Elements.speed and Elements.speed.dragging) then
 		-- add 0.5 to be in the middle of the pixel
 		local hovered_seconds = this:get_time_at_x(cursor.x + 0.5)
 		local chapter_title = ''
@@ -1811,48 +1843,48 @@ function render_timeline(this)
 end
 
 function render_top_bar(this)
-	local opacity = this:get_effective_proximity()
+	local visibility = this:get_visibility()
 
-	if not this.enabled or opacity == 0 then return end
+	if not this.enabled or visibility == 0 then return end
 
 	local ass = assdraw.ass_new()
 
 	if options.top_bar_controls then
 		-- Close button
-		local close = elements.window_controls_close
+		local close = Elements.window_controls_close
 		if close.proximity_raw == 0 then
 			-- Background on hover
-			ass:rect(close.ax, close.ay, close.bx, close.by, {color = '2311e8', opacity = this.button_opacity * opacity})
+			ass:rect(close.ax, close.ay, close.bx, close.by, {color = '2311e8', opacity = this.button_opacity * visibility})
 		end
 		ass:icon(
 			close.ax + (this.button_width / 2), close.ay + (this.size / 2), this.icon_size, 'close',
-			{opacity = this.button_opacity * opacity, border = 1}
+			{opacity = this.button_opacity * visibility, border = 1}
 		)
 
 		-- Maximize button
-		local maximize = elements.window_controls_maximize
+		local maximize = Elements.window_controls_maximize
 		if maximize.proximity_raw == 0 then
 			-- Background on hover
 			ass:rect(maximize.ax, maximize.ay, maximize.bx, maximize.by, {
-				color = '222222', opacity = this.button_opacity * opacity,
+				color = '222222', opacity = this.button_opacity * visibility,
 			})
 		end
 		ass:icon(
 			maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2), this.icon_size,
-			'crop_square', {opacity = this.button_opacity * opacity, border = 1}
+			'crop_square', {opacity = this.button_opacity * visibility, border = 1}
 		)
 
 		-- Minimize button
-		local minimize = elements.window_controls_minimize
+		local minimize = Elements.window_controls_minimize
 		if minimize.proximity_raw == 0 then
 			-- Background on hover
 			ass:rect(minimize.ax, minimize.ay, minimize.bx, minimize.by, {
-				color = '222222', opacity = this.button_opacity * opacity,
+				color = '222222', opacity = this.button_opacity * visibility,
 			})
 		end
 		ass:icon(
 			minimize.ax + (this.button_width / 2), minimize.ay + (this.size / 2), this.icon_size, 'minimize',
-			{opacity = this.button_opacity * opacity, border = 1}
+			{opacity = this.button_opacity * visibility, border = 1}
 		)
 	end
 
@@ -1864,7 +1896,7 @@ function render_top_bar(this)
 			text = string.format('%d/%d - ', state.playlist_pos, state.playlist_count) .. text
 		end
 		ass:txt(this.ax + this.spacing, this.ay + (this.size / 2), 4, text, {
-			size = this.font_size, wrap = 2, color = 'FFFFFF', border = 1, border_color = '000000', opacity = opacity,
+			size = this.font_size, wrap = 2, color = 'FFFFFF', border = 1, border_color = '000000', opacity = visibility,
 			clip = '\\clip(' .. clip_coordinates .. ')',
 		})
 	end
@@ -1873,10 +1905,10 @@ function render_top_bar(this)
 end
 
 function render_volume(this)
-	local slider = elements.volume_slider
-	local opacity = this:get_effective_proximity()
+	local slider = Elements.volume_slider
+	local visibility = this:get_visibility()
 
-	if this.width == 0 or opacity == 0 then return end
+	if this.width == 0 or visibility == 0 then return end
 
 	local ass = assdraw.ass_new()
 
@@ -1939,9 +1971,10 @@ function render_volume(this)
 		local bg_path = make_nudged_path(bax, bay, bbx, bby)
 
 		-- Background
+		ass:new_event()
 		ass:append('{\\blur0\\bord0\\1c&H' .. options.color_background ..
 			'\\iclip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')}')
-		ass:opacity(math.max(options.volume_opacity - 0.1, 0), opacity)
+		ass:opacity(math.max(options.volume_opacity - 0.1, 0), visibility)
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:append(bg_path.text)
@@ -1950,7 +1983,7 @@ function render_volume(this)
 		-- Foreground
 		ass:new_event()
 		ass:append('{\\blur0\\bord0\\1c&H' .. options.color_foreground .. '}')
-		ass:opacity(options.volume_opacity, opacity)
+		ass:opacity(options.volume_opacity, visibility)
 		ass:pos(0, 0)
 		ass:draw_start()
 		ass:append(fg_path.text)
@@ -1959,7 +1992,7 @@ function render_volume(this)
 		-- Current volume value
 		local volume_string = tostring(round(state.volume * 10) / 10)
 		local font_size = round(((this.width * 0.6) - (#volume_string * (this.width / 20))) * options.volume_font_scale)
-		local opacity = math.min(options.volume_opacity + 0.1, 1) * opacity
+		local opacity = math.min(options.volume_opacity + 0.1, 1) * visibility
 		if fay < slider.by - slider.spacing then
 			ass:txt(slider.ax + (slider.width / 2), slider.by - slider.spacing, 2, volume_string, {
 				size = font_size, color = options.color_foreground_text, opacity = opacity,
@@ -2009,24 +2042,27 @@ function render_volume(this)
 	end
 
 	-- Mute button
-	local mute = elements.volume_mute
+	local mute = Elements.volume_mute
 	local icon_name = state.mute and 'volume_off' or 'volume_up'
 	ass:icon(
-		mute.ax + (mute.width / 2), mute.ay + (mute.height / 2), mute.width * 0.7, icon_name,
-		{border = options.volume_border, opacity = options.volume_opacity * opacity}
+		mute.ax + (mute.width / 2), mute.by, mute.width * 0.7, icon_name,
+		{border = options.volume_border, opacity = options.volume_opacity * visibility, align = 2}
 	)
 	return ass
 end
 
 function render_speed(this)
-	if not this.dragging and (elements.curtain.opacity > 0) then return end
+	if not this.dragging and (Elements.curtain.opacity > 0) then return end
 
-	local proximity = this:get_effective_proximity()
-	local opacity = this.dragging and 1 or proximity
+	local visibility = this:get_visibility()
+	local opacity = this.dragging and 1 or visibility
 
 	if opacity == 0 then return end
 
 	local ass = assdraw.ass_new()
+	ass:rect(this.ax, this.ay, this.bx, this.by, {
+		color = options.color_background, radius = 2, opacity = opacity * 0.3,
+	})
 
 	-- Coordinates
 	local ax, ay = this.ax, this.ay
@@ -2058,7 +2094,7 @@ function render_speed(this)
 			local notch_ay = notch_ay_small
 			if (notch_speed % (this.notch_every * 10)) < 0.00000001 then
 				notch_ay = notch_ay_big
-				notch_thickness = 1
+				notch_thickness = 1.5
 			elseif (notch_speed % (this.notch_every * 5)) < 0.00000001 then
 				notch_ay = notch_ay_medium
 			end
@@ -2088,23 +2124,6 @@ function render_speed(this)
 		border = 1, border_color = options.color_background, opacity = opacity,
 	})
 
-	return ass
-end
-
-function render_menu_button(this)
-	local opacity = this:get_effective_proximity()
-
-	if this.width == 0 or opacity == 0 then return end
-
-	if this.proximity_raw > 0 then opacity = opacity / 2 end
-
-	local ass = assdraw.ass_new()
-	-- Menu button
-	local burger = elements.menu_button
-	ass:icon(
-		burger.ax + (burger.width / 2), burger.ay + (burger.height / 2), burger.width, 'menu',
-		{border = options.menu_button_border, opacity = options.menu_button_opacity * opacity}
-	)
 	return ass
 end
 
@@ -2251,7 +2270,7 @@ function render()
 	-- Actual rendering
 	local ass = assdraw.ass_new()
 
-	for _, element in elements:ipairs() do
+	for _, element in Elements:ipairs() do
 		if element.enabled then
 			local result = element:maybe('render')
 			if result then
@@ -2275,11 +2294,195 @@ function render()
 	update_margins()
 end
 
+-- Element creators
+
+-- Speed
+---@param props {anchor_id: string}
+function create_speed_slider(props)
+	return Element.new('speed', {
+		enabled = true,
+		anchor_id = props.anchor_id,
+		dragging = nil,
+		width = 0,
+		height = 0,
+		notches = 10,
+		notch_every = 0.1,
+		font_size = nil,
+		get_visibility = function(this)
+			-- We force inherit, because I want to see speed value when peeking timeline
+			local this_visibility = Element.get_visibility(this)
+			return Elements.timeline.proximity_raw ~= 0
+				and math.max(Elements.timeline.proximity, this_visibility) or this_visibility
+		end,
+		set_coordinates = function(this, ax, ay, bx, by)
+			this.ax, this.ay, this.bx, this.by = ax, ay, bx, by
+			this.height, this.width = this.by - this.ay, this.bx - this.ax
+			this.notch_spacing = this.width / (this.notches + 1)
+			this.font_size = round(this.height * 0.48 * options.speed_font_scale)
+		end,
+		speed_step = function(this, speed, up)
+			if options.speed_step_is_factor then
+				if up then
+					return speed * options.speed_step
+				else
+					return speed * 1 / options.speed_step
+				end
+			else
+				if up then
+					return speed + options.speed_step
+				else
+					return speed - options.speed_step
+				end
+			end
+		end,
+		on_mbtn_left_down = function(this)
+			this:tween_stop() -- Stop and cleanup possible ongoing animations
+			this.dragging = {
+				start_time = mp.get_time(),
+				start_x = cursor.x,
+				distance = 0,
+				speed_distance = 0,
+				start_speed = state.speed,
+			}
+		end,
+		on_global_mouse_move = function(this)
+			if not this.dragging then return end
+
+			this.dragging.distance = cursor.x - this.dragging.start_x
+			this.dragging.speed_distance = (-this.dragging.distance / this.notch_spacing * this.notch_every)
+
+			local speed_current = state.speed
+			local speed_drag_current = this.dragging.start_speed + this.dragging.speed_distance
+			speed_drag_current = math.min(math.max(speed_drag_current, 0.01), 100)
+			local drag_dir_up = speed_drag_current > speed_current
+
+			local speed_step_next = speed_current
+			local speed_drag_diff = math.abs(speed_drag_current - speed_current)
+			while math.abs(speed_step_next - speed_current) < speed_drag_diff do
+				speed_step_next = this:speed_step(speed_step_next, drag_dir_up)
+			end
+			local speed_step_prev = this:speed_step(speed_step_next, not drag_dir_up)
+
+			local speed_new = speed_step_prev
+			local speed_next_diff = math.abs(speed_drag_current - speed_step_next)
+			local speed_prev_diff = math.abs(speed_drag_current - speed_step_prev)
+			if speed_next_diff < speed_prev_diff then
+				speed_new = speed_step_next
+			end
+
+			if speed_new ~= speed_current then
+				mp.set_property_native('speed', speed_new)
+			end
+		end,
+		on_mbtn_left_up = function(this)
+			-- Reset speed on short clicks
+			if this.dragging and math.abs(this.dragging.distance) < 6 and mp.get_time() - this.dragging.start_time < 0.15 then
+				mp.set_property_native('speed', 1)
+			end
+		end,
+		on_global_mbtn_left_up = function(this)
+			this.dragging = nil
+			request_render()
+		end,
+		on_global_mouse_leave = function(this)
+			this.dragging = nil
+			request_render()
+		end,
+		on_wheel_up = function(this)
+			mp.set_property_native('speed', this:speed_step(state.speed, true))
+		end,
+		on_wheel_down = function(this)
+			mp.set_property_native('speed', this:speed_step(state.speed, false))
+		end,
+		render = render_speed,
+	})
+end
+
+-- Button
+---@param id string
+---@param props {icon: string; on_click: function; anchor_id?: string; active?: boolean; foreground?: string; background?: string}
+function create_button(id, props)
+	return Element.new(id, {
+		enabled = true,
+		anchor_id = props.anchor_id,
+		icon = props.icon,
+		active = props.active,
+		foreground = props.foreground or options.color_foreground,
+		background = props.background or options.color_background,
+		set_coordinates = function(this, ax, ay, bx, by)
+			this.ax, this.ay, this.bx, this.by = ax, ay, bx, by
+			this.font_size = round((this.by - this.ay) * 0.7)
+		end,
+		on_mbtn_left_down = function(this)
+			-- We delay the callback to next tick, otherwise we are risking race
+			-- conditions as we are in the middle of event dispatching.
+			-- For example, handler might add a menu to the end of the element stack, and that
+			-- than picks up this click even we are in right now, and instantly closes itself.
+			mp.add_timeout(0.01, props.on_click)
+		end,
+		render = function(this)
+			local visibility = this:get_visibility()
+			if visibility == 0 then return end
+
+			local ass = assdraw.ass_new()
+			local is_hover = this.proximity_raw == 0
+			local is_hover_or_active = is_hover or this.active
+			local foreground = this.active and this.background or this.foreground
+			local background = this.active and this.foreground or this.background
+
+			-- Background on hover
+			if is_hover_or_active then
+				ass:rect(this.ax, this.ay, this.bx, this.by, {
+					color = this.active and background or foreground, opacity = visibility * (this.active and 0.8 or 0.2), radius = 2,
+				})
+			end
+
+			-- Icon
+			local x, y = round(this.ax + (this.bx - this.ax) / 2), round(this.ay + (this.by - this.ay) / 2)
+			ass:icon(x, y, this.font_size, this.icon, {
+				color = foreground, border = this.active and 0 or 1, border_color = background, opacity = visibility,
+			})
+
+			return ass
+		end,
+	})
+end
+
+-- Cycle prop button
+---@alias CycleState {value: any; icon: string; active?: boolean}
+---@param id string
+---@param props {prop: string; states: CycleState[]; anchor_id?: string;}
+function create_cycle_button(id, props)
+	local prop = props.prop
+	local states = props.states
+	local current_state_index = 1
+	local button = create_button(id, {
+		anchor_id = props.anchor_id, icon = states[1].icon, active = states[1].active,
+		on_click = function()
+			local new_state = states[current_state_index + 1] or states[1]
+			mp.set_property(prop, new_state.value)
+		end,
+	})
+
+	local function handle_change(name, value)
+		local index = itable_find(states, function(state) return state.value == value end)
+		current_state_index = index or 1
+		button.icon = states[current_state_index].icon
+		button.active = states[current_state_index].active
+		request_render()
+	end
+
+	mp.observe_property(prop, 'string', handle_change)
+	function button:destroy() mp.unobserve_property(handle_change) end
+
+	return button
+end
+
 -- STATIC ELEMENTS
 
-elements:add('window_border', Element.new({
+Elements:add(Element.new('window_border', {
 	enabled = false,
-	size = nil, -- set in decide_enabled
+	size = 0, -- set in decide_enabled
 	decide_enabled = function(this)
 		this.enabled = options.window_border_size > 0 and not state.fullormaxed and not state.border
 		this.size = this.enabled and options.window_border_size or 0
@@ -2298,8 +2501,9 @@ elements:add('window_border', Element.new({
 		end
 	end,
 }))
-elements:add('pause_indicator', Element.new({
+Elements:add(Element.new('pause_indicator', {
 	enabled = true,
+	ignores_menu = true,
 	base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8,
 	paused = state.pause,
 	type = options.pause_indicator,
@@ -2371,25 +2575,27 @@ elements:add('pause_indicator', Element.new({
 		return ass
 	end,
 }))
-elements:add('timeline', Element.new({
+Elements:add(Element.new('timeline', {
 	enabled = true,
 	pressed = false,
 	size_max = 0, size_min = 0, -- set in `on_display_change` handler based on `state.fullormaxed`
 	size_min_override = options.timeline_start_hidden and 0 or nil, -- used for toggle-progress command
 	font_size = 0, -- calculated in on_display_change
 	top_border = options.timeline_border,
-	get_effective_proximity = function(this)
-		if this.pressed or is_element_persistent('timeline') then return 1 end
-		if this.forced_proximity then return this.forced_proximity end
-		return (elements.volume_slider and elements.volume_slider.pressed) and 0 or this.proximity
+	get_visibility = function(this)
+		return Elements.controls
+			and math.max(Elements.controls.proximity, Element.get_visibility(this)) or Element.get_visibility(this)
+	end,
+	decide_enabled = function(this)
+		this.enabled = state.duration and state.duration > 0 and state.time
 	end,
 	get_effective_size_min = function(this)
 		return this.size_min_override or this.size_min
 	end,
 	get_effective_size = function(this)
-		if elements.speed and elements.speed.dragging then return this.size_max end
+		if Elements.speed and Elements.speed.dragging then return this.size_max end
 		local size_min = this:get_effective_size_min()
-		return size_min + math.ceil((this.size_max - size_min) * this:get_effective_proximity())
+		return size_min + math.ceil((this.size_max - size_min) * this:get_visibility())
 	end,
 	get_effective_line_width = function(this)
 		return state.fullormaxed and options.timeline_line_width_fullscreen or options.timeline_line_width
@@ -2403,12 +2609,14 @@ elements:add('timeline', Element.new({
 			this.size_max = options.timeline_size_max
 		end
 		this.font_size = math.floor(math.min((this.size_max + 60) * 0.2, this.size_max * 0.96) * options.timeline_font_scale)
-		this.ax = elements.window_border.size
-		this.ay = display.height - elements.window_border.size - this.size_max - this.top_border
-		this.bx = display.width - elements.window_border.size
-		this.by = display.height - elements.window_border.size
+		this.ax = Elements.window_border.size
+		this.ay = display.height - Elements.window_border.size - this.size_max - this.top_border
+		this.bx = display.width - Elements.window_border.size
+		this.by = display.height - Elements.window_border.size
 		this.width = this.bx - this.ax
 	end,
+	on_prop_duration = function(this) this:decide_enabled() end,
+	on_prop_time = function(this) this:decide_enabled() end,
 	on_prop_border = function(this) this:update_dimensions() end,
 	on_prop_fullormaxed = function(this) this:update_dimensions() end,
 	on_display_change = function(this) this:update_dimensions() end,
@@ -2439,14 +2647,9 @@ elements:add('timeline', Element.new({
 	end,
 	render = render_timeline,
 }))
-elements:add('top_bar', Element.new({
+Elements:add(Element.new('top_bar', {
 	button_opacity = 0.8,
 	enabled = false,
-	get_effective_proximity = function(this)
-		if is_element_persistent('top_bar') then return 1 end
-		if this.forced_proximity then return this.forced_proximity end
-		return (elements.volume_slider and elements.volume_slider.pressed) and 0 or this.proximity
-	end,
 	decide_enabled = function(this)
 		if options.top_bar == 'no-border' then
 			this.enabled = not state.border or state.fullscreen
@@ -2459,9 +2662,9 @@ elements:add('top_bar', Element.new({
 
 		-- Propagate enabled flag to child elements
 		local children = {
-			elements.window_controls_minimize,
-			elements.window_controls_maximize,
-			elements.window_controls_close,
+			Elements.window_controls_minimize,
+			Elements.window_controls_maximize,
+			Elements.window_controls_close,
 		}
 		for _, element in ipairs(children) do
 			element.enabled = this.enabled
@@ -2473,11 +2676,11 @@ elements:add('top_bar', Element.new({
 		this.spacing = math.ceil(this.size * 0.25)
 		this.font_size = math.floor(this.size - (this.spacing * 2))
 		this.button_width = round(this.size * 1.15)
-		this.ay = elements.window_border.size
-		this.bx = display.width - elements.window_border.size
-		this.by = this.size + elements.window_border.size
+		this.ay = Elements.window_border.size
+		this.bx = display.width - Elements.window_border.size
+		this.by = this.size + Elements.window_border.size
 		this.title_bx = this.bx - (options.top_bar_controls and (this.button_width * 3) or 0)
-		this.ax = options.top_bar_title and elements.window_border.size or this.title_bx
+		this.ax = options.top_bar_title and Elements.window_border.size or this.title_bx
 	end,
 	on_prop_border = function(this)
 		this:decide_enabled()
@@ -2495,12 +2698,12 @@ elements:add('top_bar', Element.new({
 	render = render_top_bar,
 }))
 if options.top_bar_controls then
-	elements:add('window_controls_minimize', Element.new({
+	Elements:add(Element.new('window_controls_minimize', {
 		update_dimensions = function(this)
-			this.ax = elements.top_bar.bx - (elements.top_bar.button_width * 3)
-			this.ay = elements.top_bar.ay
-			this.bx = this.ax + elements.top_bar.button_width
-			this.by = this.ay + elements.top_bar.size
+			this.ax = Elements.top_bar.bx - (Elements.top_bar.button_width * 3)
+			this.ay = Elements.top_bar.ay
+			this.bx = this.ax + Elements.top_bar.button_width
+			this.by = this.ay + Elements.top_bar.size
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
@@ -2508,12 +2711,12 @@ if options.top_bar_controls then
 			if this.enabled then mp.commandv('cycle', 'window-minimized') end
 		end,
 	}))
-	elements:add('window_controls_maximize', Element.new({
+	Elements:add(Element.new('window_controls_maximize', {
 		update_dimensions = function(this)
-			this.ax = elements.top_bar.bx - (elements.top_bar.button_width * 2)
-			this.ay = elements.top_bar.ay
-			this.bx = this.ax + elements.top_bar.button_width
-			this.by = this.ay + elements.top_bar.size
+			this.ax = Elements.top_bar.bx - (Elements.top_bar.button_width * 2)
+			this.ay = Elements.top_bar.ay
+			this.bx = this.ax + Elements.top_bar.button_width
+			this.by = this.ay + Elements.top_bar.size
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
@@ -2521,12 +2724,12 @@ if options.top_bar_controls then
 			if this.enabled then mp.commandv('cycle', 'window-maximized') end
 		end,
 	}))
-	elements:add('window_controls_close', Element.new({
+	Elements:add(Element.new('window_controls_close', {
 		update_dimensions = function(this)
-			this.ax = elements.top_bar.bx - elements.top_bar.button_width
-			this.ay = elements.top_bar.ay
-			this.bx = this.ax + elements.top_bar.button_width
-			this.by = this.ay + elements.top_bar.size
+			this.ax = Elements.top_bar.bx - Elements.top_bar.button_width
+			this.ay = Elements.top_bar.ay
+			this.bx = this.ax + Elements.top_bar.button_width
+			this.by = this.ay + Elements.top_bar.size
 		end,
 		on_prop_border = function(this) this:update_dimensions() end,
 		on_display_change = function(this) this:update_dimensions() end,
@@ -2535,27 +2738,283 @@ if options.top_bar_controls then
 		end,
 	}))
 end
-if itable_find({'left', 'right'}, options.volume) then
-	elements:add('volume', Element.new({
+if options.controls and options.controls ~= 'never' then
+	Elements:add(Element.new('controls', {
 		enabled = true,
-		width = nil, -- set in `on_display_change` handler based on `state.fullormaxed`
-		height = nil, -- set in `on_display_change` handler based on `state.fullormaxed`
-		margin = nil, -- set in `on_display_change` handler based on `state.fullormaxed`
-		get_effective_proximity = function(this)
-			if is_element_persistent('volume') or elements.volume_slider.pressed then return 1 end
-			if this.forced_proximity then return this.forced_proximity end
-			return elements.timeline.proximity_raw == 0 and 0 or this.proximity
+		-- Table of controls, each with these props:
+		-- element?: Element;
+		-- sizing: 'space' | 'static' | 'dynamic';
+		-- scale: number; - options.controls_size scale factor
+		-- ratio?: number; - width/height ratio of a static or dynamic element
+		-- ratio_min?: number; min ratio for 'dynamic' sized element
+		-- skip: boolean; - whether it should be skipped, determined during layout phase
+		controls = {},
+		init = function(this) this:serialize() end,
+		serialize = function(this)
+			local shorthands = {
+				menu = 'command:menu:script-binding uosc/menu',
+				subtitles = 'command:subtitles:script-binding uosc/subtitles',
+				audio = 'command:audiotrack:script-binding uosc/audio',
+				['audio-device'] = 'command:speaker:script-binding uosc/audio-device',
+				video = 'command:theaters:script-binding uosc/video',
+				playlist = 'command:list_alt:script-binding uosc/playlist',
+				chapters = 'command:bookmarks:script-binding uosc/chapters',
+				['stream-quality'] = 'command:deblur:script-binding uosc/stream-quality',
+				['open-file'] = 'command:file_open:script-binding uosc/open-file',
+				['items'] = 'command:list_alt:script-binding uosc/items',
+				prev = 'command:arrow_back_ios:script-binding uosc/prev',
+				next = 'command:arrow_forward_ios:script-binding uosc/next',
+				first = 'command:first_page:script-binding uosc/first',
+				last = 'command:last_page:script-binding uosc/last',
+				['loop-playlist'] = 'cycle:repeat:loop-playlist:no/inf!',
+				['loop-file'] = 'cycle:repeat_one:loop-file:no/inf!',
+				shuffle = 'toggle:shuffle:shuffle',
+				fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!',
+			}
+
+			-- Parse configs
+			local items = {}
+			local in_disposition = false
+			local current_item = nil
+			for c in options.controls:gmatch('.') do
+				if not current_item then current_item = {disposition = '', config = ''} end
+				if c == '<' then in_disposition = true
+				elseif c == '>' then in_disposition = false
+				elseif c == ',' and not in_disposition then
+					items[#items + 1] = current_item
+					current_item = nil
+				else
+					local prop = in_disposition and 'disposition' or 'config'
+					current_item[prop] = current_item[prop] .. c
+				end
+			end
+			items[#items + 1] = current_item
+
+			-- Filter out based on disposition
+			items = itable_filter(items, function(item)
+				if item.disposition == '' then return true end
+				local dispositions = split(item.disposition, ' *, *')
+				for _, disposition in ipairs(dispositions) do
+					local value = disposition:sub(1, 1) ~= '!'
+					local name = not value and disposition:sub(2) or disposition
+					local prop = name == 'has_audio' and name or 'is_' .. name
+					if state[prop] ~= value then return false end
+				end
+				return true
+			end)
+
+			-- Create controls
+			this.controls = {}
+			for i, item in ipairs(items) do
+				local config = shorthands[item.config] and shorthands[item.config] or item.config
+				local parts = split(config, ' *: *')
+				local kind, params = parts[1], itable_slice(parts, 2)
+
+				-- Convert toggles into cycles
+				if kind == 'toggle' then
+					kind = 'cycle'
+					params[#params + 1] = 'no/yes!'
+				end
+
+				if kind == 'space' then
+					this.controls[#this.controls + 1] = {kind = kind, sizing = 'space'}
+				elseif kind == 'gap' then
+					this.controls[#this.controls + 1] = {
+						kind = kind, sizing = 'dynamic', scale = 1, ratio = params[1] or 0.3, ratio_min = 0,
+					}
+				elseif kind == 'command' then
+					if #params ~= 2 then
+						mp.error(string.format(
+							'command button needs 2 parameters, %d received: %s',
+							#params, table.concat(params, '/')
+						))
+					else
+						local element = create_button('control_' .. i, {
+							icon = params[1],
+							anchor_id = 'controls',
+							on_click = function() mp.command(params[2]) end,
+						})
+						this.controls[#this.controls + 1] = {
+							kind = kind, element = element, sizing = 'static', scale = 1, ratio = 1,
+						}
+						Elements:add(element)
+					end
+				elseif kind == 'cycle' then
+					if #params ~= 3 then
+						mp.error(string.format(
+							'cycle button needs 3 parameters, %d received: %s',
+							#params, table.concat(params, '/')
+						))
+					else
+						local state_configs = split(params[3], ' */ *')
+						local states = {}
+
+						for _, state_config in ipairs(state_configs) do
+							local active = false
+							if state_config:sub(-1) == '!' then
+								active = true
+								state_config = state_config:sub(1, -2)
+							end
+							local state_params = split(state_config, ' *= *')
+							local value, icon = state_params[1], state_params[2] or params[1]
+							states[#states + 1] = {value = value, icon = icon, active = active}
+						end
+
+						local element = create_cycle_button('control_' .. i, {
+							prop = params[2], anchor_id = 'controls', states = states,
+						})
+						this.controls[#this.controls + 1] = {
+							kind = kind, element = element, sizing = 'static', scale = 1, ratio = 1,
+						}
+						Elements:add(element)
+					end
+				elseif kind == 'speed' then
+					if not Elements.speed then
+						local element = create_speed_slider({anchor_id = 'controls'})
+						this.controls[#this.controls + 1] = {
+							kind = kind, element = element,
+							sizing = 'dynamic', scale = params[1] or 1.3, ratio = 3.5, ratio_min = 2,
+						}
+						Elements:add(element)
+					else
+						msg.error('there can only be 1 speed slider')
+					end
+				end
+			end
+
+			this:update_dimensions()
+		end,
+		clean_controls = function(this)
+			for _, control in ipairs(this.controls) do
+				if control.element then Elements:remove(control.element) end
+			end
+			this.controls = {}
+			request_render()
+		end,
+		get_visibility = function(this)
+			return (Elements.speed and Elements.speed.dragging) and 1 or
+				Elements.timeline.proximity_raw == 0 and -1 or Element.get_visibility(this)
 		end,
 		update_dimensions = function(this)
-			this.width = state.fullormaxed and options.volume_size_fullscreen or options.volume_size
-			this.height = round(math.min(this.width * 8, (elements.timeline.ay - elements.top_bar.size) * 0.8))
-			-- Don't bother rendering this if too small
-			if this.height < (this.width * 2) then
-				this.height = 0
+			local window_border = Elements.window_border.size
+			local size = state.fullormaxed and options.controls_size_fullscreen or options.controls_size
+			local spacing = options.controls_spacing
+			local margin = options.controls_margin
+
+			-- Container
+			this.bx = display.width - window_border - margin
+			this.by = (Elements.timeline.enabled and Elements.timeline.ay or display.height - window_border) - margin
+			this.ax, this.ay = window_border + margin, this.by - size
+
+			-- Re-enable all elements
+			for c, control in ipairs(this.controls) do
+				control.hide = false
+				if control.element then control.element.enabled = true end
 			end
-			this.margin = (this.width / 2) + elements.window_border.size
+
+			-- Controls
+			local available_width = this.bx - this.ax
+			local statics_width = (#this.controls - 1) * spacing
+			local min_content_width = statics_width
+			local max_dynamics_width, dynamic_units, spaces = 0, 0, 0
+
+			-- Calculate statics_width, min_content_width, and count spaces
+			for c, control in ipairs(this.controls) do
+				if control.sizing == 'space' then
+					spaces = spaces + 1
+				elseif control.sizing == 'static' then
+					local width = size * control.scale * control.ratio
+					statics_width = statics_width + width
+					min_content_width = min_content_width + width
+				elseif control.sizing == 'dynamic' then
+					min_content_width = min_content_width + size * control.scale * control.ratio_min
+					max_dynamics_width = max_dynamics_width + size * control.scale * control.ratio
+					dynamic_units = dynamic_units + control.scale * control.ratio
+				end
+			end
+
+			-- Hide & disable elements in the middle until we fit into available width
+			if min_content_width > available_width then
+				local i = math.ceil(#this.controls / 2 + 0.1)
+				for a = 0, #this.controls - 1, 1 do
+					i = i + (a * (a % 2 == 0 and 1 or -1))
+					local control = this.controls[i]
+
+					if control.kind ~= 'gap' and control.kind ~= 'space' then
+						control.hide = true
+						if control.element then control.element.enabled = false end
+						if control.sizing == 'static' then
+							local width = size * control.scale * control.ratio
+							min_content_width = min_content_width - width - spacing
+							statics_width = statics_width - width - spacing
+						elseif control.sizing == 'dynamic' then
+							min_content_width = min_content_width - size * control.scale * control.ratio_min - spacing
+							max_dynamics_width = max_dynamics_width - size * control.scale * control.ratio
+							dynamic_units = dynamic_units - control.scale * control.ratio
+						end
+
+						if min_content_width < available_width then break end
+					end
+				end
+			end
+
+			-- Lay out the elements
+			local current_x = this.ax
+			local width_for_dynamics = available_width - statics_width
+			local space_width = (width_for_dynamics - max_dynamics_width) / spaces
+
+			for c, control in ipairs(this.controls) do
+				if not control.hide then
+					local sizing, element, scale, ratio = control.sizing, control.element, control.scale, control.ratio
+					local width, height = 0, 0
+
+					if sizing == 'space' then
+						if space_width > 0 then width = space_width end
+					elseif sizing == 'static' then
+						height = size * scale
+						width = height * ratio
+					elseif sizing == 'dynamic' then
+						height = size * scale
+						width = max_dynamics_width < width_for_dynamics
+							and height * ratio or width_for_dynamics * ((scale * ratio) / dynamic_units)
+					end
+
+					local bx = current_x + width
+					if element then element:set_coordinates(round(current_x), round(this.by - height), bx, this.by) end
+					current_x = bx + spacing
+				end
+			end
+
+			request_render()
+		end,
+		on_dispositions = function(this)
+			this:clean_controls()
+			this:serialize()
+		end,
+		on_display_change = function(this) this:update_dimensions() end,
+		on_prop_border = function(this) this:update_dimensions() end,
+		on_prop_fullormaxed = function(this) this:update_dimensions() end,
+	}))
+end
+if itable_index_of({'left', 'right'}, options.volume) then
+	Elements:add(Element.new('volume', {
+		enabled = true,
+		width = nil, -- set in `update_dimensions`
+		height = nil, -- set in `update_dimensions`
+		margin = nil, -- set in `update_dimensions`
+		update_dimensions = function(this)
+			this.width = state.fullormaxed and options.volume_size_fullscreen or options.volume_size
+			local controls, timeline, top_bar = Elements.controls, Elements.timeline, Elements.top_bar
+			local padding_top = top_bar.enabled and top_bar.size or 0
+			local padding_bottom = (timeline.enabled and timeline.size_max or 0) +
+				(controls and controls.enabled and controls.by - controls.ay or 0)
+			local available_height = display.height - padding_top - padding_bottom
+			local max_height = available_height * 0.8
+			this.height = round(math.min(this.width * 8, max_height))
+			this.enabled = this.height > this.width * 2 -- don't render if too small
+			this.margin = (this.width / 2) + Elements.window_border.size
 			this.ax = round(options.volume == 'left' and this.margin or display.width - this.margin - this.width)
-			this.ay = round((display.height - this.height) / 2)
+			this.ay = padding_top + round((available_height - this.height) / 2)
 			this.bx = round(this.ax + this.width)
 			this.by = round(this.ay + this.height)
 		end,
@@ -2563,19 +3022,19 @@ if itable_find({'left', 'right'}, options.volume) then
 		on_prop_border = function(this) this:update_dimensions() end,
 		render = render_volume,
 	}))
-	elements:add('volume_mute', Element.new({
+	Elements:add(Element.new('volume_mute', {
 		enabled = true,
 		width = 0,
 		height = 0,
 		on_display_change = function(this)
-			this.width = elements.volume.width
-			this.height = this.width
-			this.ax, this.ay = elements.volume.ax, elements.volume.by - this.height
-			this.bx, this.by = elements.volume.bx, elements.volume.by
+			this.width = Elements.volume.width
+			this.height = round(this.width * 0.8)
+			this.ax, this.ay = Elements.volume.ax, Elements.volume.by - this.height
+			this.bx, this.by = Elements.volume.bx, Elements.volume.by
 		end,
 		on_mbtn_left_down = function(this) mp.commandv('cycle', 'mute') end,
 	}))
-	elements:add('volume_slider', Element.new({
+	Elements:add(Element.new('volume_slider', {
 		enabled = true,
 		pressed = false,
 		width = 0,
@@ -2586,11 +3045,11 @@ if itable_find({'left', 'right'}, options.volume) then
 		spacing = nil,
 		on_display_change = function(this)
 			if state.volume_max == nil or state.volume_max == 0 then return end
-			this.ax, this.ay = elements.volume.ax, elements.volume.ay
-			this.bx, this.by = elements.volume.bx, elements.volume_mute.ay
+			this.ax, this.ay = Elements.volume.ax, Elements.volume.ay
+			this.bx, this.by = Elements.volume.bx, Elements.volume_mute.ay
 			this.width, this.height = this.bx - this.ax, this.by - this.ay
 			this.nudge_y = this.by - round(this.height * (100 / state.volume_max))
-			this.nudge_size = round(elements.volume.width * 0.18)
+			this.nudge_size = round(Elements.volume.width * 0.18)
 			this.draw_nudge = this.ay < this.nudge_y
 			this.spacing = round(this.width * 0.2)
 		end,
@@ -2616,158 +3075,9 @@ if itable_find({'left', 'right'}, options.volume) then
 		on_wheel_down = function(this) this:set_volume(state.volume - options.volume_step) end,
 	}))
 end
-if itable_find({'center', 'bottom-bar'}, options.menu_button) then
-	elements:add('menu_button', Element.new({
-		enabled = true,
-		width = 0, height = 0,
-		get_effective_proximity = function(this)
-			if menu:is_open() then return 0 end
-			if is_element_persistent('menu_button') then return 1 end
-			if elements.timeline.proximity_raw == 0 then return 0 end
-			if this.forced_proximity then return this.forced_proximity end
-			if options.menu_button == 'bottom-bar' then
-				local timeline_proximity = elements.timeline.forced_proximity or elements.timeline.proximity
-				return this.forced_proximity or math.max(this.proximity, timeline_proximity)
-			end
-			return this.proximity
-		end,
-		update_dimensions = function(this)
-			this.width = state.fullormaxed and options.menu_button_size_fullscreen or options.menu_button_size
-			this.height = this.width
-
-			if options.menu_button == 'bottom-bar' then
-				this.ax, this.bx = 15, this.ax + this.width
-				this.by = display.height - 10 - elements.window_border.size - elements.timeline.size_max -
-					elements.timeline.top_border
-				this.ay = this.by - this.height
-			else
-				this.ax, this.ay = round((display.width - this.width) / 2), round((display.height - this.height) / 2)
-				this.bx, this.by = this.ax + this.width, this.ay + this.height
-			end
-		end,
-		on_display_change = function(this) this:update_dimensions() end,
-		on_prop_border = function(this) this:update_dimensions() end,
-		on_mbtn_left_down = function(this)
-			if this.proximity_raw == 0 then
-				-- We delay menu opening to next tick, otherwise it gets added at
-				-- the end of the elements list, and the mbtn_left_down event
-				-- dispatcher inside which we are now will tell it to close itself.
-				mp.add_timeout(0.01, menu_key_binding)
-			end
-		end,
-		render = render_menu_button,
-	}))
-end
-if options.speed then
-	local function speed_step(speed, up)
-		if options.speed_step_is_factor then
-			if up then
-				return speed * options.speed_step
-			else
-				return speed * 1 / options.speed_step
-			end
-		else
-			if up then
-				return speed + options.speed_step
-			else
-				return speed - options.speed_step
-			end
-		end
-	end
-
-	elements:add('speed', Element.new({
-		enabled = true,
-		dragging = nil,
-		width = 0,
-		height = 0,
-		notches = 10,
-		notch_every = 0.1,
-		font_size = nil,
-		get_effective_proximity = function(this)
-			if elements.timeline.proximity_raw == 0 then return 0 end
-			if is_element_persistent('speed') then return 1 end
-			if this.forced_proximity then return this.forced_proximity end
-			local timeline_proximity = elements.timeline.forced_proximity or elements.timeline.proximity
-			return this.forced_proximity or math.max(this.proximity, timeline_proximity)
-		end,
-		update_dimensions = function(this)
-			this.height = state.fullormaxed and options.speed_size_fullscreen or options.speed_size
-			this.width = round(this.height * 3.6)
-			this.notch_spacing = this.width / this.notches
-			this.ax = (display.width - this.width) / 2
-			this.by = display.height - elements.window_border.size - elements.timeline.size_max -
-				elements.timeline.top_border - 2
-			this.ay = this.by - this.height
-			this.bx = this.ax + this.width
-			this.font_size = round(this.height * 0.48 * options.speed_font_scale)
-		end,
-		on_prop_time = function(this, time) this.enabled = time ~= nil end,
-		on_prop_border = function(this) this:update_dimensions() end,
-		on_display_change = function(this) this:update_dimensions() end,
-		on_mbtn_left_down = function(this)
-			this:tween_stop() -- Stop and cleanup possible ongoing animations
-			this.dragging = {
-				start_time = mp.get_time(),
-				start_x = cursor.x,
-				distance = 0,
-				speed_distance = 0,
-				start_speed = state.speed,
-			}
-		end,
-		on_global_mouse_move = function(this)
-			if not this.dragging then return end
-
-			this.dragging.distance = cursor.x - this.dragging.start_x
-			this.dragging.speed_distance = (-this.dragging.distance / this.notch_spacing * this.notch_every)
-
-			local speed_current = state.speed
-			local speed_drag_current = this.dragging.start_speed + this.dragging.speed_distance
-			speed_drag_current = math.min(math.max(speed_drag_current, 0.01), 100)
-			local drag_dir_up = speed_drag_current > speed_current
-
-			local speed_step_next = speed_current
-			local speed_drag_diff = math.abs(speed_drag_current - speed_current)
-			while math.abs(speed_step_next - speed_current) < speed_drag_diff do
-				speed_step_next = speed_step(speed_step_next, drag_dir_up)
-			end
-			local speed_step_prev = speed_step(speed_step_next, not drag_dir_up)
-
-			local speed_new = speed_step_prev
-			local speed_next_diff = math.abs(speed_drag_current - speed_step_next)
-			local speed_prev_diff = math.abs(speed_drag_current - speed_step_prev)
-			if speed_next_diff < speed_prev_diff then
-				speed_new = speed_step_next
-			end
-
-			if speed_new ~= speed_current then
-				mp.set_property_native('speed', speed_new)
-			end
-		end,
-		on_mbtn_left_up = function(this)
-			-- Reset speed on short clicks
-			if this.dragging and math.abs(this.dragging.distance) < 6 and mp.get_time() - this.dragging.start_time < 0.15 then
-				mp.set_property_native('speed', 1)
-			end
-		end,
-		on_global_mbtn_left_up = function(this)
-			this.dragging = nil
-			request_render()
-		end,
-		on_global_mouse_leave = function(this)
-			this.dragging = nil
-			request_render()
-		end,
-		on_wheel_up = function(this)
-			mp.set_property_native('speed', speed_step(state.speed, true))
-		end,
-		on_wheel_down = function(this)
-			mp.set_property_native('speed', speed_step(state.speed, false))
-		end,
-		render = render_speed,
-	}))
-end
-elements:add('curtain', Element.new({
+Elements:add(Element.new('curtain', {
 	enabled = true,
+	ignores_menu = true,
 	opacity = 0,
 	fadeout = function(this)
 		this:tween_property('opacity', this.opacity, 0);
@@ -3001,11 +3311,15 @@ end)()
 
 function create_state_setter(name, callback)
 	return function(_, value)
-		state[name] = value
-		elements:trigger('prop_' .. name, value)
+		set_state(name, value)
 		if callback then callback() end
 		request_render()
 	end
+end
+
+function set_state(name, value)
+	state[name] = value
+	Elements:trigger('prop_' .. name, value)
 end
 
 function update_cursor_position()
@@ -3036,24 +3350,24 @@ end
 function handle_mouse_leave()
 	-- Slowly fadeout elements that are currently visible
 	for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
-		local element = elements[element_name]
+		local element = Elements[element_name]
 		if element and element.proximity > 0 then
-			element:tween_property('forced_proximity', element:get_effective_proximity(), 0, function()
-				element.forced_proximity = nil
+			element:tween_property('forced_visibility', element:get_visibility(), 0, function()
+				element.forced_visibility = nil
 			end)
 		end
 	end
 
 	cursor.hidden = true
 	update_proximities()
-	elements:trigger('global_mouse_leave')
+	Elements:trigger('global_mouse_leave')
 end
 
 function handle_mouse_enter()
 	cursor.hidden = false
 	update_cursor_position()
 	tween_element_stop(state)
-	elements:trigger('global_mouse_enter')
+	Elements:trigger('global_mouse_enter')
 end
 
 function handle_mouse_move()
@@ -3065,7 +3379,7 @@ function handle_mouse_move()
 	end
 
 	update_cursor_position()
-	elements:trigger('global_mouse_move')
+	Elements:trigger('global_mouse_move')
 	request_render()
 
 	-- Restart timer that hides UI when mouse is autohidden
@@ -3142,13 +3456,13 @@ function create_self_updating_menu_opener(options)
 		local function handle_list_prop_change(name, value)
 			if menu:is_open(options.type) then
 				local items, active_index = options.list_serializer(name, value)
-				elements.menu:update({items = items, active_index = active_index})
+				Elements.menu:update({items = items, active_index = active_index})
 			end
 		end
 
 		local function handle_active_prop_change(name, value)
 			if menu:is_open(options.type) then
-				elements.menu:activate_index(options.active_index_serializer(name, value))
+				Elements.menu:activate_index(options.active_index_serializer(name, value))
 			end
 		end
 
@@ -3389,7 +3703,8 @@ end
 -- VALUE SERIALIZATION/NORMALIZATION
 
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
-options.timeline_chapters = itable_find({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.timeline_chapters) and
+options.timeline_chapters = itable_index_of({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.timeline_chapters)
+	and
 	options.timeline_chapters or 'never'
 options.media_types = split(options.media_types, ' *, *')
 options.subtitle_types = split(options.subtitle_types, ' *, *')
@@ -3417,24 +3732,23 @@ mp.observe_property('duration', 'number', create_state_setter('duration', update
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
 mp.observe_property('track-list', 'native', function(name, value)
 	-- checks the file dispositions
-	local has_audio, has_video, is_image = false, false, false
+	local path = mp.get_property_native('path')
+	local has_audio, is_video, is_image = false, false, false
 	for _, track in ipairs(value) do
 		if track.type == 'audio' then has_audio = true end
 		if track.type == 'video' then
 			is_image = track.image
 			if not is_image and not track.albumart then
-				has_video = true
+				is_video = true
 			end
 		end
 	end
-	state.is_audio = not has_video and has_audio
-	state.is_image = is_image
-	state.has_audio = has_audio
-	state.has_video = has_video
-	elements:trigger('prop_is_audio', state.is_audio)
-	elements:trigger('prop_is_image', is_image)
-	elements:trigger('prop_has_audio', has_audio)
-	elements:trigger('prop_has_video', has_video)
+	set_state('is_audio', not is_video and has_audio)
+	set_state('is_image', is_image)
+	set_state('has_audio', has_audio)
+	set_state('is_video', is_video)
+	set_state('is_stream', is_protocol(path))
+	Elements:trigger('dispositions')
 end)
 mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('border', 'bool', create_state_setter('border'))
@@ -3506,7 +3820,7 @@ mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 forced_key_bindings = (function()
 	local function create_mouse_event_dispatcher(name)
 		return function(...)
-			for _, element in pairs(elements) do
+			for _, element in Elements:ipairs() do
 				if element.proximity_raw == 0 then
 					element:trigger(name, ...)
 				end
@@ -3607,14 +3921,14 @@ end)
 -- KEY BINDABLE FEATURES
 
 mp.add_key_binding(nil, 'peek-timeline', function()
-	if elements.timeline.proximity > 0.5 then
-		elements.timeline:tween_property('proximity', elements.timeline.proximity, 0)
+	if Elements.timeline.proximity > 0.5 then
+		Elements.timeline:tween_property('proximity', Elements.timeline.proximity, 0)
 	else
-		elements.timeline:tween_property('proximity', elements.timeline.proximity, 1)
+		Elements.timeline:tween_property('proximity', Elements.timeline.proximity, 1)
 	end
 end)
 mp.add_key_binding(nil, 'toggle-progress', function()
-	local timeline = elements.timeline
+	local timeline = Elements.timeline
 	if timeline.size_min_override then
 		timeline:tween_property('size_min_override', timeline.size_min_override, timeline.size_min, function()
 			timeline.size_min_override = nil
@@ -3624,22 +3938,22 @@ mp.add_key_binding(nil, 'toggle-progress', function()
 	end
 end)
 mp.add_key_binding(nil, 'flash-timeline', function()
-	elements.timeline:flash()
+	Elements.timeline:flash()
 end)
 mp.add_key_binding(nil, 'flash-top-bar', function()
-	elements.top_bar:flash()
+	Elements.top_bar:flash()
 end)
 mp.add_key_binding(nil, 'flash-volume', function()
-	if elements.volume then elements.volume:flash() end
+	if Elements.volume then Elements.volume:flash() end
 end)
 mp.add_key_binding(nil, 'flash-speed', function()
-	if elements.speed then elements.speed:flash() end
+	if Elements.speed then Elements.speed:flash() end
 end)
 mp.add_key_binding(nil, 'flash-pause-indicator', function()
-	elements.pause_indicator:flash()
+	Elements.pause_indicator:flash()
 end)
 mp.add_key_binding(nil, 'decide-pause-indicator', function()
-	elements.pause_indicator:decide()
+	Elements.pause_indicator:decide()
 end)
 function menu_key_binding() toggle_menu_with_items(state.context_menu_items) end
 mp.add_key_binding(nil, 'menu', menu_key_binding)
@@ -3716,7 +4030,7 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 		-- than current playing position.
 		local position = playback_time
 		if not position then return nil end
-		local items = elements.menu.items
+		local items = Elements.menu.items
 		for index = #items, 1, -1 do
 			if position >= items[index].value then return index end
 		end
@@ -3821,8 +4135,8 @@ mp.add_key_binding(nil, 'open-file', function()
 	local function handle_file_loaded()
 		if menu:is_open('open-file') then
 			local path = normalize_path(mp.get_property_native('path'))
-			elements.menu:activate_value(path)
-			elements.menu:select_value(path)
+			Elements.menu:activate_value(path)
+			Elements.menu:select_value(path)
 		end
 	end
 
@@ -3838,15 +4152,22 @@ mp.add_key_binding(nil, 'open-file', function()
 		}
 	)
 end)
+mp.add_key_binding(nil, 'items', function()
+	if state.playlist_count > 1 then
+		mp.command('script-binding uosc/playlist')
+	else
+		mp.command('script-binding uosc/open-file')
+	end
+end)
 mp.add_key_binding(nil, 'next', function()
-	if mp.get_property_native('playlist-count') > 1 then
+	if state.playlist_count > 1 then
 		mp.command('playlist-next')
 	else
 		navigate_directory('forward')
 	end
 end)
 mp.add_key_binding(nil, 'prev', function()
-	if mp.get_property_native('playlist-count') > 1 then
+	if state.playlist_count > 1 then
 		mp.command('playlist-prev')
 	else
 		navigate_directory('backward')
@@ -3883,7 +4204,7 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 		path = normalize_path(path)
 
 		if menu:is_open('open-file') then
-			elements.menu:delete_value(path)
+			Elements.menu:delete_value(path)
 		end
 	end
 

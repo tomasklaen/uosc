@@ -182,6 +182,10 @@ Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv p
 
 Open file menu. Browsing starts in current file directory, or user directory when file not available.
 
+#### `items`
+
+Opens `playlist` menu when playlist exists, or `open-file` menu otherwise.
+
 #### `next`
 
 Open next item in playlist, or file in current directory when there is no playlist.
