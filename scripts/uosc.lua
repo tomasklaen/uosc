@@ -724,22 +724,23 @@ function ass_mt:txt(x, y, align, value, opts)
 end
 
 -- Tooltip
--- Draws text at center coordinate that shifts its position to not overflow the edges.
----@param x number
----@param y number
----@param align number
+---@param element {ax: number; ay: number; bx: number; by: number}
 ---@param value string|number
----@param opts? {size?: number; bold?: boolean; italic?: boolean; text_length_override?: number}
-function ass_mt:tooltip(x, y, align, value, opts)
+---@param opts? {size?: number; offset?: number; align?: number; bold?: boolean; italic?: boolean; text_length_override?: number}
+function ass_mt:tooltip(element, value, opts)
 	opts = opts or {}
 	opts.size = opts.size or 16
 	opts.border = 1
 	opts.border_color = options.color_background
+	local offset = opts.offset or opts.size / 2
+	local align_top = element.ay - offset > opts.size * 5
+	local x = element.ax + (element.bx - element.ax) / 2
+	local y = align_top and element.ay - offset or element.by + offset
 	local text_width = opts.text_length_override
 		and opts.text_length_override * opts.size * options.font_height_to_letter_width_ratio
 		or text_width_estimate(value, opts.size)
 	local margin = text_width / 2
-	self:txt(math.max(margin, math.min(x, display.width - margin)), y, align, value, opts)
+	self:txt(math.max(margin, math.min(x, display.width - margin)), y, align_top and 2 or 8, value, opts)
 end
 
 -- Rectangle
@@ -1851,21 +1852,23 @@ function render_timeline(this)
 			end
 		end
 
-		-- Chapter title
-		if chapter_title then
-			ass:tooltip(cursor.x, fay - this.font_size * 1.4, 2, chapter_title, {
-				size = this.font_size, bold = true, text_length_override = chapter_title_width,
-			})
-		end
-
-		-- Timestamp
-		ass:tooltip(cursor.x, fay - 2, 2, format_time(hovered_seconds), {size = this.font_size})
-
 		-- Cursor line
 		-- 0.5 to switch when the pixel is half filled in
 		local color = ((fax - 0.5) < cursor.x and cursor.x < (fbx + 0.5)) and
 			options.color_background or options.color_foreground
-		ass:rect(cursor.x, fay, cursor.x + 1, fby, {color = color, opacity = 0.2})
+		local line = {ax = cursor.x, ay = fay, bx = cursor.x + 1, by = fby}
+		ass:rect(line.ax, line.ay, line.bx, line.by, {color = color, opacity = 0.2})
+
+		-- Timestamp
+		ass:tooltip(line, format_time(hovered_seconds), {size = this.font_size, offset = 2})
+
+		-- Chapter title
+		if chapter_title then
+			ass:tooltip(line, chapter_title, {
+				offset = 2 + this.font_size * 1.4, size = this.font_size, bold = true,
+				text_length_override = chapter_title_width,
+			})
+		end
 	end
 
 	return ass
@@ -2483,12 +2486,7 @@ function create_button(id, props)
 			end
 
 			-- Tooltip on hover
-			if is_hover and this.tooltip then
-				ass:tooltip(
-					this.ax + (this.bx - this.ax) / 2, this.ay - this.font_size / 2, this.ay > 100 and 2 or 8,
-					this.tooltip
-				)
-			end
+			if is_hover and this.tooltip then ass:tooltip(this, this.tooltip) end
 
 			-- Icon
 			local x, y = round(this.ax + (this.bx - this.ax) / 2), round(this.ay + (this.by - this.ay) / 2)
