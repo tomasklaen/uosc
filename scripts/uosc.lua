@@ -26,7 +26,7 @@ local options = {
 	timeline_size_min_fullscreen = 0,
 	timeline_size_max_fullscreen = 60,
 	timeline_start_hidden = false,
-	timeline_persistency = '',
+	timeline_persistency = 'paused',
 	timeline_opacity = 0.9,
 	timeline_border = 1,
 	timeline_step = 5,
@@ -41,6 +41,7 @@ local options = {
 	controls_size_fullscreen = 40,
 	controls_margin = 8,
 	controls_spacing = 2,
+	controls_persistency = '',
 
 	volume = 'right',
 	volume_size = 40,
@@ -51,9 +52,6 @@ local options = {
 	volume_step = 1,
 	volume_font_scale = 1,
 
-	speed = false,
-	speed_size = 46,
-	speed_size_fullscreen = 60,
 	speed_persistency = '',
 	speed_opacity = 1,
 	speed_step = 0.1,
@@ -875,7 +873,7 @@ function Element:init() end
 
 function Element:destroy() end
 
--- Decide effective proximity based on various external factors
+-- Decide elements visibility based on proximity and various other factors
 function Element:get_visibility()
 	-- Hide when menu is open, unless this is a menu
 	---@diagnostic disable-next-line: undefined-global
@@ -3714,7 +3712,7 @@ options.timeline_cached_ranges = (function()
 	local parts = split(options.timeline_cached_ranges, ':')
 	return parts[1] and {color = parts[1], opacity = tonumber(parts[2])} or nil
 end)()
-for _, name in ipairs({'timeline', 'volume', 'top_bar', 'speed'}) do
+for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
 	local option_name = name .. '_persistency'
 	local flags = {}
 	for _, state in ipairs(split(options[option_name], ' *, *')) do
