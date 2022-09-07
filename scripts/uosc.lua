@@ -3491,6 +3491,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	local function serialize_tracklist(_, tracklist)
 		local items = {}
 		local active_index = nil
+		local disabled_item_index = nil
 
 		if load_command then
 			items[#items + 1] = {title = 'Load', bold = true, hint = 'open file', value = '{load}'}
@@ -3503,6 +3504,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		-- open an issue.
 		if track_type == 'sub' then
 			items[#items + 1] = {title = 'Disabled', italic = true, muted = true, hint = '—', value = nil}
+			disabled_item_index = #items
 		end
 
 		local static_items_count = #items
@@ -3535,6 +3537,9 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				if track.selected then active_index = #items end
 			end
 		end
+
+		-- Preselect disabled item if active index is missing
+		if not active_index then active_index = disabled_item_index end
 
 		-- items, active index, default selected index when active is nil
 		return items, active_index, static_items_count + 1
