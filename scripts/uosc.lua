@@ -1643,7 +1643,7 @@ function render_timeline(this)
 					-- for 1px chapter size, use the whole size of the bar including padding
 					local ray = size <= 1 and bay or fay
 					local rby = size <= 1 and bby or fby
-					ass:rect(rax, ray, rbx, rby, {color = chapter_range.color, opacity = options.timeline_opacity})
+					ass:rect(rax, ray, rbx, rby, {color = chapter_range.color, opacity = chapter_range.opacity})
 				end
 			end
 		end
