@@ -1686,17 +1686,37 @@ function render_timeline(this)
 			local chapter_half_height = chapter_height / 2
 			local function draw_chapter(time)
 				local chapter_x = time_x + time_width * (time / state.duration)
-				local color = (fax < chapter_x and chapter_x < fbx) and options.color_background or options.color_foreground
-				local opts = {color = color, opacity = options.timeline_chapters_opacity}
+				local ax, bx = chapter_x - chapter_half_width, chapter_x + chapter_half_width
+				local cx, dx = math.max(ax, fax), math.min(bx, fbx)
+				local opts = {
+					color = options.color_foreground,
+					clip = dots and '\\iclip(' .. foreground_coordinates .. ')' or nil,
+					opacity = options.timeline_chapters_opacity,
+				}
 
 				if dots then
-					ass:circle(chapter_x, chapter_y, chapter_half_height, opts)
+					-- 0.5 because clipping coordinates are rounded
+					if (ax - 0.5) < fax or (bx + 0.5) > fbx then
+						ass:circle(chapter_x, chapter_y, chapter_half_height, opts)
+					end
+					if (dx - cx) > 0 then -- intersection
+						opts.color = options.color_background
+						opts.clip = '\\clip(' .. foreground_coordinates .. ')'
+						ass:circle(chapter_x, chapter_y, chapter_half_height, opts)
+					end
 				else
-					ass:rect(
-						round(chapter_x - chapter_half_width), chapter_y - chapter_half_height,
-						round(chapter_x + chapter_half_width), chapter_y + chapter_half_height,
-						opts
-					)
+					ax, bx = round(ax), round(bx)
+					local ay, by = chapter_y - chapter_half_height, chapter_y + chapter_half_height
+					if ax < fax then --left of progress
+						ass:rect(ax, ay, math.min(bx, fax), by, opts)
+					end
+					if bx > fbx then --right of progress
+						ass:rect(math.max(ax, fbx), ay, bx, by, opts)
+					end
+					if (dx - cx) > 0 then --intersection
+						opts.color = options.color_background
+						ass:rect(cx, ay, dx, by, opts)
+					end
 				end
 			end
 
