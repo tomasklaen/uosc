@@ -95,7 +95,7 @@ local options = {
 	curtain_opacity = 0.5,
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
 	directory_navigation_loops = false,
-	media_types = '3gp,asf,avi,bmp,flac,flv,gif,h264,h265,jpeg,jpg,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
+	media_types = '3gp,asf,avi,avif,bmp,flac,flv,gif,h264,h265,jpeg,jpg,jxl,m4a,m4v,mid,midi,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rmvb,svg,tif,tiff,wav,weba,webm,webp,wma,wmv',
 	subtitle_types = 'aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt',
 	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
@@ -1138,7 +1138,7 @@ function Menu:open(items, open_item, opts)
 			this:on_display_change()
 
 			-- Reset indexes and scroll
-			this:select_index(this.selected_index)
+			this:select_index(this.selected_index or this.active_index or (this.items and #this.items > 0 and 1 or nil))
 			this:activate_index(this.active_index)
 			this:scroll_to(this.scroll_y)
 			request_render()
@@ -2140,13 +2140,13 @@ function render_menu(this)
 	if this.title then
 		-- Background
 		ass:rect(this.ax, this.ay - this.item_height, this.bx, this.ay - 1, {
-			color = options.color_background, opacity = opacity, radius = 2,
+			color = options.color_foreground, opacity = opacity, radius = 2,
 		})
 
 		-- Title
 		ass:txt(this.ax + this.width / 2, this.ay - (this.item_height * 0.5), 5, this.title, {
-			size = this.font_size, bold = true, color = options.color_background_text,
-			shadow = 1, shadow_color = options.color_background, wrap = 2, opacity = opacity,
+			size = this.font_size, bold = true, color = options.color_foreground_text,
+			shadow = 1, shadow_color = options.color_foreground, wrap = 2, opacity = opacity,
 			clip = '\\clip(' .. this.ax .. ',' .. this.ay - this.item_height .. ',' .. this.bx .. ',' .. this.ay .. ')',
 		})
 	end
@@ -2194,8 +2194,8 @@ function render_menu(this)
 
 			-- Selected highlight
 			if this.selected_index == index then
-				ass:rect(this.ax, item_ay, this.bx, item_by, {
-					color = options.color_foreground, clip = item_clip, opacity = 0.1 * this.opacity, radius = 2,
+				ass:rect(this.ax + 1, item_ay + 1, this.bx - 1, item_by - 1, {
+					color = options.color_foreground, clip = item_clip, opacity = 0.1 * this.opacity, radius = 1,
 				})
 			end
 
@@ -2208,7 +2208,8 @@ function render_menu(this)
 					.. round(title_hint_cut_x - title_hint_spacing / 2) .. ',' .. math.min(item_by, this.by) .. ')'
 				ass:txt(title_x, item_center_y, 4, item.ass_save_title, {
 					size = this.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
-					shadow = 1, shadow_color = background_color, opacity = this.opacity, clip = clip,
+					shadow = 1, shadow_color = background_color, opacity = this.opacity * (item.muted and 0.5 or 1),
+					clip = clip,
 				})
 			end
 
@@ -3456,7 +3457,7 @@ function create_self_updating_menu_opener(options)
 		-- Update active index and playlist content on playlist changes
 		local function handle_list_prop_change(name, value)
 			if menu:is_open(options.type) then
-				local items, active_index = options.list_serializer(name, value)
+				local items, active_index, default_selected_index = options.list_serializer(name, value)
 				Elements.menu:update({items = items, active_index = active_index})
 			end
 		end
@@ -3486,15 +3487,27 @@ function create_self_updating_menu_opener(options)
 	end
 end
 
-function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop)
+function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop, load_command)
 	local function serialize_tracklist(_, tracklist)
 		local items = {}
 		local active_index = nil
 
+		if load_command then
+			items[#items + 1] = {title = 'Load', bold = true, hint = 'open file', value = '{load}'}
+		end
+
+		-- Add option to disable a subtitle track. This works for all tracks,
+		-- but why would anyone want to disable audio or video? Better to not
+		-- let people mistakenly select what is unwanted 99.999% of the time.
+		-- If I'm mistaken and there is an active need for this, feel free to
+		-- open an issue.
+		if track_type == 'sub' then
+			items[#items + 1] = {title = 'Disabled', italic = true, muted = true, hint = '—', value = nil}
+		end
+
+		local static_items_count = #items
 		for _, track in ipairs(tracklist) do
 			if track.type == track_type then
-				if track.selected then active_index = track.id end
-
 				local hint_vals = {
 					track.lang and track.lang:upper() or nil,
 					track['demux-h'] and (track['demux-w'] and track['demux-w'] .. 'x' .. track['demux-h']
@@ -3518,27 +3531,25 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 					hint = table.concat(hint_vals_filtered, ', '),
 					value = track.id,
 				}
+
+				if track.selected then active_index = #items end
 			end
 		end
 
-		-- Add option to disable a subtitle track. This works for all tracks,
-		-- but why would anyone want to disable audio or video? Better to not
-		-- let people mistakenly select what is unwanted 99.999% of the time.
-		-- If I'm mistaken and there is an active need for this, feel free to
-		-- open an issue.
-		if track_type == 'sub' then
-			active_index = active_index and active_index + 1 or 1
-			table.insert(items, 1, {hint = 'disabled', value = nil})
-		end
-		return items, active_index
+		-- items, active index, default selected index when active is nil
+		return items, active_index, static_items_count + 1
 	end
 
-	local function selection_handler(id)
-		mp.commandv('set', track_prop, id and id or 'no')
+	local function selection_handler(value)
+		if value == '{load}' then
+			mp.command(load_command)
+		else
+			mp.commandv('set', track_prop, value and value or 'no')
 
-		-- If subtitle track was selected, assume user also wants to see it
-		if id and track_type == 'sub' then
-			mp.commandv('set', 'sub-visibility', 'yes')
+			-- If subtitle track was selected, assume user also wants to see it
+			if value and track_type == 'sub' then
+				mp.commandv('set', 'sub-visibility', 'yes')
+			end
 		end
 	end
 
@@ -3958,35 +3969,44 @@ mp.add_key_binding(nil, 'decide-pause-indicator', function()
 end)
 function menu_key_binding() toggle_menu_with_items(state.context_menu_items) end
 mp.add_key_binding(nil, 'menu', menu_key_binding)
-mp.add_key_binding(nil, 'load-subtitles', function()
-	if menu:is_open('load-subtitles') then menu:close() return end
+local track_loaders = {
+	{name = 'subtitles', prop = 'sub', extensions = options.subtitle_types --[[@as table]]},
+	{name = 'audio', prop = 'audio'},
+	{name = 'video', prop = 'video'},
+}
+for _, loader in ipairs(track_loaders) do
+	local menu_type = 'load-' .. loader.name
+	mp.add_key_binding(nil, menu_type, function()
+		if menu:is_open(menu_type) then menu:close() return end
 
-	local path = mp.get_property_native('path') --[[@as string|nil|false]]
-	if path then
-		if is_protocol(path) then
-			path = false
-		else
-			local serialized_path = serialize_path(path)
-			path = serialized_path ~= nil and serialized_path.dirname or false
+		local path = mp.get_property_native('path') --[[@as string|nil|false]]
+		if path then
+			if is_protocol(path) then
+				path = false
+			else
+				local serialized_path = serialize_path(path)
+				path = serialized_path ~= nil and serialized_path.dirname or false
+			end
 		end
-	end
-	if not path then
-		path = get_default_directory()
-	end
-	local subtitle_types = options.subtitle_types --[[@as table]]
-	open_file_navigation_menu(
-		path,
-		function(path) mp.commandv('sub-add', path) end,
-		{
-			type = 'load-subtitles',
-			title = 'Load subtitles',
-			allowed_types = subtitle_types,
-		}
-	)
-end)
-mp.add_key_binding(nil, 'subtitles', create_select_tracklist_type_menu_opener('Subtitles', 'sub', 'sid'))
-mp.add_key_binding(nil, 'audio', create_select_tracklist_type_menu_opener('Audio', 'audio', 'aid'))
-mp.add_key_binding(nil, 'video', create_select_tracklist_type_menu_opener('Video', 'video', 'vid'))
+		if not path then
+			path = get_default_directory()
+		end
+		open_file_navigation_menu(
+			path,
+			function(path) mp.commandv(loader.prop .. '-add', path) end,
+			{type = menu_type, title = 'Load ' .. loader.name, allowed_types = loader.extensions}
+		)
+	end)
+end
+mp.add_key_binding(nil, 'subtitles', create_select_tracklist_type_menu_opener(
+	'Subtitles', 'sub', 'sid', 'script-binding uosc/load-subtitles'
+))
+mp.add_key_binding(nil, 'audio', create_select_tracklist_type_menu_opener(
+	'Audio', 'audio', 'aid', 'script-binding uosc/load-audio'
+))
+mp.add_key_binding(nil, 'video', create_select_tracklist_type_menu_opener(
+	'Video', 'video', 'vid', 'script-binding uosc/load-video'
+))
 mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
 	title = 'Playlist',
 	type = 'playlist',

@@ -150,21 +150,15 @@ Case for `(flash/decide)-pause-indicator`: mpv handles frame stepping forward by
 
 Toggles menu. Menu is empty by default and won't show up when this is pressed. Read [Menu](#menu-1) section below to find out how to fill it up with items you want there.
 
-#### `load-subtitles`
+#### `subtitles`, `audio`, `video`
 
-Displays a file explorer with directory navigation to load external subtitles. Explorer only displays file types defined in `subtitle_types` option.
+Menus to select a track of a requested type.
 
-#### `subtitles`
+#### `load-subtitles`, `load-audio`, `load-video`
 
-Menu to select a subtitle track.
+Displays a file explorer with directory navigation to load a requested track type.
 
-#### `audio`
-
-Menu to select an audio track.
-
-#### `video`
-
-Menu to select a video track.
+For subtitles, explorer only displays file types defined in `subtitle_types` option.
 
 #### `playlist`
 
@@ -401,6 +395,7 @@ Command {
     value: string | string[];
     bold?: boolean;
     italic?: boolean;
+    muted?: boolean;
 }
 ```
 
