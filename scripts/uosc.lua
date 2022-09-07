@@ -1873,11 +1873,11 @@ function render_top_bar(this)
 		local close = Elements.window_controls_close
 		if close.proximity_raw == 0 then
 			-- Background on hover
-			ass:rect(close.ax, close.ay, close.bx, close.by, {color = '2311e8', opacity = this.button_opacity * visibility})
+			ass:rect(close.ax, close.ay, close.bx, close.by, {color = '2311e8', opacity = visibility})
 		end
 		ass:icon(
 			close.ax + (this.button_width / 2), close.ay + (this.size / 2), this.icon_size, 'close',
-			{opacity = this.button_opacity * visibility, border = 1}
+			{opacity = visibility, border = 1}
 		)
 
 		-- Maximize button
@@ -1885,12 +1885,12 @@ function render_top_bar(this)
 		if maximize.proximity_raw == 0 then
 			-- Background on hover
 			ass:rect(maximize.ax, maximize.ay, maximize.bx, maximize.by, {
-				color = '222222', opacity = this.button_opacity * visibility,
+				color = '222222', opacity = visibility,
 			})
 		end
 		ass:icon(
 			maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2), this.icon_size,
-			'crop_square', {opacity = this.button_opacity * visibility, border = 1}
+			'crop_square', {opacity = visibility, border = 1}
 		)
 
 		-- Minimize button
@@ -1898,25 +1898,36 @@ function render_top_bar(this)
 		if minimize.proximity_raw == 0 then
 			-- Background on hover
 			ass:rect(minimize.ax, minimize.ay, minimize.bx, minimize.by, {
-				color = '222222', opacity = this.button_opacity * visibility,
+				color = '222222', opacity = visibility,
 			})
 		end
 		ass:icon(
 			minimize.ax + (this.button_width / 2), minimize.ay + (this.size / 2), this.icon_size, 'minimize',
-			{opacity = this.button_opacity * visibility, border = 1}
+			{opacity = visibility, border = 1}
 		)
 	end
 
 	-- Window title
-	if options.top_bar_title and state.media_title then
-		local clip_coordinates = this.ax .. ',' .. this.ay .. ',' .. (this.title_bx - this.spacing) .. ',' .. this.by
-		local text = state.media_title
+	if options.top_bar_title and (state.media_title or state.playlist_count > 1 ) then
+		local max_bx = this.title_bx - this.spacing
+		local text = state.media_title or 'n/a'
 		if state.playlist_count > 1 then
 			text = string.format('%d/%d - ', state.playlist_pos, state.playlist_count) .. text
 		end
-		ass:txt(this.ax + this.spacing, this.ay + (this.size / 2), 4, text, {
+
+		-- Background
+		local padding = this.font_size / 2
+		local bg_margin = math.floor((this.size - this.font_size) / 4)
+		local bg_ax = this.ax + bg_margin
+		local bg_bx = math.min(max_bx, this.ax + text_width_estimate(text, this.font_size) + padding * 2)
+		ass:rect(bg_ax, this.ay + bg_margin, bg_bx, this.by - bg_margin, {
+			color = options.color_background, opacity = visibility * 0.8, radius = 2
+		})
+
+		-- Text
+		ass:txt(bg_ax + padding, this.ay + (this.size / 2), 4, text, {
 			size = this.font_size, wrap = 2, color = 'FFFFFF', border = 1, border_color = '000000', opacity = visibility,
-			clip = '\\clip(' .. clip_coordinates .. ')',
+			clip = string.format('\\clip(%d, %d, %d, %d)', this.ax, this.ay, max_bx, this.by),
 		})
 	end
 
@@ -2670,7 +2681,6 @@ Elements:add(Element.new('timeline', {
 	render = render_timeline,
 }))
 Elements:add(Element.new('top_bar', {
-	button_opacity = 0.8,
 	enabled = false,
 	decide_enabled = function(this)
 		if options.top_bar == 'no-border' then
