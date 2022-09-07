@@ -374,11 +374,11 @@ end
 
 function text_width_estimate(text, font_size)
 	if not text or text == '' then return 0 end
-	local text_width = 0
-	for _, _, width in utf8_iter(text) do
-		text_width = text_width + width
+	local text_length = 0
+	for _, _, length in utf8_iter(text) do
+		text_length = text_length + length
 	end
-	return text_width * font_size * options.font_height_to_letter_width_ratio
+	return text_length * font_size * options.font_height_to_letter_width_ratio
 end
 
 function utf8_iter(string)
@@ -405,18 +405,18 @@ function utf8_iter(string)
 	end
 end
 
-function wrap_text(text, line_width_requested)
-	local line_width = 0
+function wrap_text(text, target_line_length)
+	local line_length = 0
 	local wrap_at_chars = {' ', '　', '-', '–'}
 	local remove_when_wrap = {' ', '　'}
 	local lines = {}
 	local line_start = 1
 	local before_end = nil
-	local before_width = 0
+	local before_length = 0
 	local before_line_start = 0
-	local before_removed_width = 0
-	local max_width = 0
-	for char_start, count, char_width in utf8_iter(text) do
+	local before_removed_length = 0
+	local max_length = 0
+	for char_start, count, char_length in utf8_iter(text) do
 		local char_end = char_start + count - 1
 		local char = text.sub(text, char_start, char_end)
 		local can_wrap = false
@@ -426,7 +426,7 @@ function wrap_text(text, line_width_requested)
 				break
 			end
 		end
-		line_width = line_width + char_width
+		line_length = line_length + char_length
 		if can_wrap or (char_end == #text) then
 			local remove = false
 			for _, c in ipairs(remove_when_wrap) do
@@ -435,36 +435,36 @@ function wrap_text(text, line_width_requested)
 					break
 				end
 			end
-			local line_width_after_remove = line_width - (remove and char_width or 0)
-			if line_width_after_remove < line_width_requested then
+			local line_length_after_remove = line_length - (remove and char_length or 0)
+			if line_length_after_remove < target_line_length then
 				before_end = remove and char_start - 1 or char_end
-				before_width = line_width_after_remove
+				before_length = line_length_after_remove
 				before_line_start = char_end + 1
-				before_removed_width = remove and char_width or 0
+				before_removed_length = remove and char_length or 0
 			else
-				if (line_width_requested - before_width) <
-					(line_width_after_remove - line_width_requested) then
+				if (target_line_length - before_length) <
+					(line_length_after_remove - target_line_length) then
 					lines[#lines + 1] = text.sub(text, line_start, before_end)
 					line_start = before_line_start
-					line_width = line_width - before_width - before_removed_width
-					if before_width > max_width then max_width = before_width end
+					line_length = line_length - before_length - before_removed_length
+					if before_length > max_length then max_length = before_length end
 				else
 					lines[#lines + 1] = text.sub(text, line_start, remove and char_start - 1 or char_end)
 					line_start = char_end + 1
-					line_width = remove and line_width - char_width or line_width
-					if line_width > max_width then max_width = line_width end
-					line_width = 0
+					line_length = remove and line_length - char_length or line_length
+					if line_length > max_length then max_length = line_length end
+					line_length = 0
 				end
 				before_end = line_start
-				before_width = 0
+				before_length = 0
 			end
 		end
 	end
 	if #text >= line_start then
 		lines[#lines + 1] = string.sub(text, line_start)
-		if line_width > max_width then max_width = line_width end
+		if line_length > max_length then max_length = line_length end
 	end
-	return table.concat(lines, '\n'), max_width
+	return table.concat(lines, '\n'), max_length
 end
 
 -- Escape a string for verbatim display on the OSD
@@ -721,6 +721,25 @@ function ass_mt:txt(x, y, align, value, opts)
 	-- render
 	self:new_event()
 	self.text = self.text .. '{' .. tags .. '}' .. value
+end
+
+-- Tooltip
+-- Draws text at center coordinate that shifts its position to not overflow the edges.
+---@param x number
+---@param y number
+---@param align number
+---@param value string|number
+---@param opts? {size?: number; bold?: boolean; italic?: boolean; text_length_override?: number}
+function ass_mt:tooltip(x, y, align, value, opts)
+	opts = opts or {}
+	opts.size = opts.size or 16
+	opts.border = 1
+	opts.border_color = options.color_background
+	local text_width = opts.text_length_override
+		and opts.text_length_override * opts.size * options.font_height_to_letter_width_ratio
+		or text_width_estimate(value, opts.size)
+	local margin = text_width / 2
+	self:txt(math.max(margin, math.min(x, display.width - margin)), y, align, value, opts)
 end
 
 -- Rectangle
@@ -1817,8 +1836,7 @@ function render_timeline(this)
 	if (this.proximity_raw == 0 or this.pressed) and not (Elements.speed and Elements.speed.dragging) then
 		-- add 0.5 to be in the middle of the pixel
 		local hovered_seconds = this:get_time_at_x(cursor.x + 0.5)
-		local chapter_title = ''
-		local chapter_title_width = 0
+		local chapter_title, chapter_title_width = nil, nil
 
 		if (options.timeline_chapters ~= 'never' and state.chapters) then
 			for i = #state.chapters, 1, -1 do
@@ -1833,23 +1851,15 @@ function render_timeline(this)
 			end
 		end
 
-		local time_formatted = format_time(hovered_seconds)
-		local margin_time = text_width_estimate(time_formatted, this.font_size) / 2
-		local margin_title = chapter_title_width * this.font_size * options.font_height_to_letter_width_ratio / 2
-		local opacity = math.min(options.timeline_opacity + 0.1, 1)
-
 		-- Chapter title
-		ass:txt(math.min(math.max(cursor.x, margin_title), display.width - margin_title), fay - this.font_size * 1.3,
-			2, chapter_title, {
-			size = this.font_size, color = options.color_background_text, bold = true,
-			border = 1, border_color = options.color_background, opacity = opacity,
-		})
+		if chapter_title then
+			ass:tooltip(cursor.x, fay - this.font_size * 1.4, 2, chapter_title, {
+				size = this.font_size, bold = true, text_length_override = chapter_title_width,
+			})
+		end
+
 		-- Timestamp
-		ass:txt(math.min(math.max(cursor.x, margin_time), display.width - margin_time), fay,
-			2, time_formatted, {
-			size = this.font_size, color = options.color_background_text,
-			border = 1, border_color = options.color_background, opacity = opacity,
-		})
+		ass:tooltip(cursor.x, fay - 2, 2, format_time(hovered_seconds), {size = this.font_size})
 
 		-- Cursor line
 		-- 0.5 to switch when the pixel is half filled in
@@ -1908,7 +1918,7 @@ function render_top_bar(this)
 	end
 
 	-- Window title
-	if options.top_bar_title and (state.media_title or state.playlist_count > 1 ) then
+	if options.top_bar_title and (state.media_title or state.playlist_count > 1) then
 		local max_bx = this.title_bx - this.spacing
 		local text = state.media_title or 'n/a'
 		if state.playlist_count > 1 then
@@ -1921,7 +1931,7 @@ function render_top_bar(this)
 		local bg_ax = this.ax + bg_margin
 		local bg_bx = math.min(max_bx, this.ax + text_width_estimate(text, this.font_size) + padding * 2)
 		ass:rect(bg_ax, this.ay + bg_margin, bg_bx, this.by - bg_margin, {
-			color = options.color_background, opacity = visibility * 0.8, radius = 2
+			color = options.color_background, opacity = visibility * 0.8, radius = 2,
 		})
 
 		-- Text
@@ -2433,13 +2443,14 @@ end
 
 -- Button
 ---@param id string
----@param props {icon: string; on_click: function; anchor_id?: string; active?: boolean; foreground?: string; background?: string}
+---@param props {icon: string; on_click: function; anchor_id?: string; active?: boolean; foreground?: string; background?: string; tooltip?: string}
 function create_button(id, props)
 	return Element.new(id, {
 		enabled = true,
 		anchor_id = props.anchor_id,
 		icon = props.icon,
 		active = props.active,
+		tooltip = props.tooltip,
 		foreground = props.foreground or options.color_foreground,
 		background = props.background or options.color_background,
 		set_coordinates = function(this, ax, ay, bx, by)
@@ -2463,11 +2474,20 @@ function create_button(id, props)
 			local foreground = this.active and this.background or this.foreground
 			local background = this.active and this.foreground or this.background
 
-			-- Background on hover
+			-- Background
 			if is_hover_or_active then
 				ass:rect(this.ax, this.ay, this.bx, this.by, {
-					color = this.active and background or foreground, opacity = visibility * (this.active and 0.8 or 0.2), radius = 2,
+					color = this.active and background or foreground, radius = 2,
+					opacity = visibility * (this.active and 0.8 or 0.2),
 				})
+			end
+
+			-- Tooltip on hover
+			if is_hover and this.tooltip then
+				ass:tooltip(
+					this.ax + (this.bx - this.ax) / 2, this.ay - this.font_size / 2, this.ay > 100 and 2 or 8,
+					this.tooltip
+				)
 			end
 
 			-- Icon
@@ -2484,13 +2504,13 @@ end
 -- Cycle prop button
 ---@alias CycleState {value: any; icon: string; active?: boolean}
 ---@param id string
----@param props {prop: string; states: CycleState[]; anchor_id?: string;}
+---@param props {prop: string; states: CycleState[]; anchor_id?: string; tooltip?: string}
 function create_cycle_button(id, props)
 	local prop = props.prop
 	local states = props.states
 	local current_state_index = 1
 	local button = create_button(id, {
-		anchor_id = props.anchor_id, icon = states[1].icon, active = states[1].active,
+		anchor_id = props.anchor_id, icon = states[1].icon, active = states[1].active, tooltip = props.tooltip,
 		on_click = function()
 			local new_state = states[current_state_index + 1] or states[1]
 			mp.set_property(prop, new_state.value)
@@ -2784,24 +2804,24 @@ if options.controls and options.controls ~= 'never' then
 		init = function(this) this:serialize() end,
 		serialize = function(this)
 			local shorthands = {
-				menu = 'command:menu:script-binding uosc/menu',
-				subtitles = 'command:subtitles:script-binding uosc/subtitles',
-				audio = 'command:audiotrack:script-binding uosc/audio',
-				['audio-device'] = 'command:speaker:script-binding uosc/audio-device',
-				video = 'command:theaters:script-binding uosc/video',
-				playlist = 'command:list_alt:script-binding uosc/playlist',
-				chapters = 'command:bookmarks:script-binding uosc/chapters',
-				['stream-quality'] = 'command:deblur:script-binding uosc/stream-quality',
-				['open-file'] = 'command:file_open:script-binding uosc/open-file',
-				['items'] = 'command:list_alt:script-binding uosc/items',
-				prev = 'command:arrow_back_ios:script-binding uosc/prev',
-				next = 'command:arrow_forward_ios:script-binding uosc/next',
-				first = 'command:first_page:script-binding uosc/first',
-				last = 'command:last_page:script-binding uosc/last',
-				['loop-playlist'] = 'cycle:repeat:loop-playlist:no/inf!',
-				['loop-file'] = 'cycle:repeat_one:loop-file:no/inf!',
-				shuffle = 'toggle:shuffle:shuffle',
-				fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!',
+				menu = 'command:menu:script-binding uosc/menu?Menu',
+				subtitles = 'command:subtitles:script-binding uosc/subtitles?Subtitles',
+				audio = 'command:audiotrack:script-binding uosc/audio?Audio',
+				['audio-device'] = 'command:speaker:script-binding uosc/audio-device?Audio device',
+				video = 'command:theaters:script-binding uosc/video?Video',
+				playlist = 'command:list_alt:script-binding uosc/playlist?Playlist',
+				chapters = 'command:bookmarks:script-binding uosc/chapters?Chapters',
+				['stream-quality'] = 'command:deblur:script-binding uosc/stream-quality?Stream quality',
+				['open-file'] = 'command:file_open:script-binding uosc/open-file?Open file',
+				['items'] = 'command:list_alt:script-binding uosc/items?Playlist/Files',
+				prev = 'command:arrow_back_ios:script-binding uosc/prev?Previous',
+				next = 'command:arrow_forward_ios:script-binding uosc/next?Next',
+				first = 'command:first_page:script-binding uosc/first?First',
+				last = 'command:last_page:script-binding uosc/last?Last',
+				['loop-playlist'] = 'cycle:repeat:loop-playlist:no/inf!?Loop playlist',
+				['loop-file'] = 'cycle:repeat_one:loop-file:no/inf!?Loop file',
+				shuffle = 'toggle:shuffle:shuffle?Shuffle',
+				fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!?Fullscreen',
 			}
 
 			-- Parse configs
@@ -2839,6 +2859,9 @@ if options.controls and options.controls ~= 'never' then
 			this.controls = {}
 			for i, item in ipairs(items) do
 				local config = shorthands[item.config] and shorthands[item.config] or item.config
+				local config_tooltip = split(config, ' *%? *')
+				config = config_tooltip[1]
+				local tooltip = config_tooltip[2]
 				local parts = split(config, ' *: *')
 				local kind, params = parts[1], itable_slice(parts, 2)
 
@@ -2865,6 +2888,7 @@ if options.controls and options.controls ~= 'never' then
 							icon = params[1],
 							anchor_id = 'controls',
 							on_click = function() mp.command(params[2]) end,
+							tooltip = tooltip,
 						})
 						this.controls[#this.controls + 1] = {
 							kind = kind, element = element, sizing = 'static', scale = 1, ratio = 1,
@@ -2893,7 +2917,7 @@ if options.controls and options.controls ~= 'never' then
 						end
 
 						local element = create_cycle_button('control_' .. i, {
-							prop = params[2], anchor_id = 'controls', states = states,
+							prop = params[2], anchor_id = 'controls', states = states, tooltip = tooltip,
 						})
 						this.controls[#this.controls + 1] = {
 							kind = kind, element = element, sizing = 'static', scale = 1, ratio = 1,
