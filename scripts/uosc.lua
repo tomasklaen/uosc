@@ -683,7 +683,7 @@ end
 ---@param y number
 ---@param align number
 ---@param value string|number
----@param opts {size: number; font?: string; color?: string; bold?: boolean; border?: number; border_color?: string; shadow?: number; shadow_color?: string; wrap?: number; opacity?: number; clip?: string}
+---@param opts {size: number; font?: string; color?: string; bold?: boolean; italic?: boolean; border?: number; border_color?: string; shadow?: number; shadow_color?: string; wrap?: number; opacity?: number; clip?: string}
 function ass_mt:txt(x, y, align, value, opts)
 	local border_size = opts.border or 0
 	local shadow_size = opts.shadow or 0
@@ -694,6 +694,8 @@ function ass_mt:txt(x, y, align, value, opts)
 	tags = tags .. '\\fs' .. opts.size
 	-- bold
 	if opts.bold then tags = tags .. '\\b1' end
+	-- italic
+	if opts.italic then tags = tags .. '\\i1' end
 	-- wrap
 	if opts.wrap then tags = tags .. '\\q' .. opts.wrap end
 	-- border
@@ -1103,6 +1105,7 @@ function Menu:open(items, open_item, opts)
 			local max_height = round(display.height * 0.9) - title_height
 			this.height = math.min(round(this.scroll_step * #this.items) - this.item_spacing, max_height)
 			this.scroll_height = math.max((this.scroll_step * #this.items) - this.height - this.item_spacing, 0)
+			this:scroll_to(this.scroll_y) -- re-applies scroll limits
 		end,
 		on_display_change = function(this)
 			this:update_dimensions()
@@ -1308,15 +1311,13 @@ function Menu:open(items, open_item, opts)
 		on_wheel_up = function(this)
 			this.selected_index = nil
 			this:scroll_to(this.scroll_y - this.scroll_step)
-			-- Selects item below cursor
-			this:on_global_mouse_move()
+			this:on_global_mouse_move() -- selects item below cursor
 			request_render()
 		end,
 		on_wheel_down = function(this)
 			this.selected_index = nil
 			this:scroll_to(this.scroll_y + this.scroll_step)
-			-- Selects item below cursor
-			this:on_global_mouse_move()
+			this:on_global_mouse_move() -- selects item below cursor
 			request_render()
 		end,
 		on_pgup = function(this)
@@ -2139,7 +2140,7 @@ function render_menu(this)
 	if this.title then
 		-- Background
 		ass:rect(this.ax, this.ay - this.item_height, this.bx, this.ay - 1, {
-			color = options.color_background, opacity = opacity,
+			color = options.color_background, opacity = opacity, radius = 2,
 		})
 
 		-- Title
@@ -2187,12 +2188,14 @@ function render_menu(this)
 			local title_hint_spacing = (title_hint_ratio == 1 or title_hint_ratio == 0) and 0 or spacing / 2
 
 			-- Background
-			ass:rect(this.ax, item_ay, this.bx, item_by, {color = background_color, clip = item_clip, opacity = opacity})
+			ass:rect(this.ax, item_ay, this.bx, item_by, {
+				color = background_color, clip = item_clip, opacity = opacity, radius = 2,
+			})
 
 			-- Selected highlight
 			if this.selected_index == index then
 				ass:rect(this.ax, item_ay, this.bx, item_by, {
-					color = options.color_foreground, clip = item_clip, opacity = 0.1 * this.opacity,
+					color = options.color_foreground, clip = item_clip, opacity = 0.1 * this.opacity, radius = 2,
 				})
 			end
 
@@ -2204,8 +2207,8 @@ function render_menu(this)
 				local clip = '\\clip(' .. this.ax .. ',' .. math.max(item_ay, this.ay) .. ','
 					.. round(title_hint_cut_x - title_hint_spacing / 2) .. ',' .. math.min(item_by, this.by) .. ')'
 				ass:txt(title_x, item_center_y, 4, item.ass_save_title, {
-					size = this.font_size, color = font_color, shadow = 1, shadow_color = background_color, wrap = 2,
-					opacity = this.opacity, clip = clip,
+					size = this.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
+					shadow = 1, shadow_color = background_color, opacity = this.opacity, clip = clip,
 				})
 			end
 

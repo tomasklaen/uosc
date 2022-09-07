@@ -381,24 +381,26 @@ Menu data structure:
 
 ```
 Menu {
-    type: string | nil;
-    title: string | nil;
-    selected_index: number | nil;
-    active_index: number | nil;
+    type?: string;
+    title?: string;
+    selected_index?: number;
+    active_index?: number;
     items: Item[];
 }
 
 Submenu {
-    title: string | nil;
+    title?: string;
     items: Item[];
 }
 
 Item = Command | Submenu;
 
 Command {
-    title: string | nil;
-    hint: string | nil;
+    title?: string;
+    hint?: string;
     value: string | string[];
+    bold?: boolean;
+    italic?: boolean;
 }
 ```
 
