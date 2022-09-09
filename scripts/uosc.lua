@@ -2769,14 +2769,14 @@ function Timeline:render()
 			local function draw_chapter(time)
 				local chapter_x = time_x + time_width * (time / state.duration)
 				local ax, bx = chapter_x - chapter_half_width, chapter_x + chapter_half_width
-				local cx, dx = math.max(ax, fax), math.min(bx, fbx)
 				local opts = {
 					color = options.color_foreground,
 					clip = dots and '\\iclip(' .. foreground_coordinates .. ')' or nil,
 					opacity = options.timeline_chapters_opacity,
 				}
-
+				
 				if dots then
+					local cx, dx = math.max(ax, fax), math.min(bx, fbx)
 					-- 0.5 because clipping coordinates are rounded
 					if (ax - 0.5) < fax or (bx + 0.5) > fbx then
 						ass:circle(chapter_x, chapter_y, chapter_half_height, opts)
@@ -2788,6 +2788,7 @@ function Timeline:render()
 					end
 				else
 					ax, bx = round(ax), round(bx)
+					local cx, dx = math.max(ax, fax), math.min(bx, fbx)
 					local ay, by = chapter_y - chapter_half_height, chapter_y + chapter_half_height
 					if ax < fax then --left of progress
 						ass:rect(ax, ay, math.min(bx, fax), by, opts)
