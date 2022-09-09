@@ -2684,10 +2684,7 @@ function Timeline:render()
 	local bax, bay, bbx, bby = self.ax, self.by - size - self.top_border, self.bx, self.by
 	local fax, fay, fbx, fby = 0, bay + self.top_border, 0, bby
 
-	-- Controls the padding of time on the timeline due to line width.
-	-- It's a distance from the center of the line to its edge when at the
-	-- start or end of the timeline. Effectively half of the line width.
-	local time_padding = 0
+	local line_width = 0
 
 	if is_line then
 		local minimized_fraction = 1 - (size - size_min) / (self.size_max - size_min)
@@ -2695,18 +2692,17 @@ function Timeline:render()
 		local max_min_width_delta = size_min > 0
 			and width_normal - width_normal * options.timeline_line_width_minimized_scale
 			or 0
-		local line_width = width_normal - (max_min_width_delta * minimized_fraction)
+		line_width = width_normal - (max_min_width_delta * minimized_fraction)
 		local time_width = self.width - line_width
 		fax = bax + time_width * progress
 		fbx = fax + line_width
-		if line_width > 2 then time_padding = round(line_width / 2) end
 	else
 		fax = bax
 		fbx = bax + self.width * progress
 	end
 
-	local time_x = bax + time_padding
-	local time_width = self.width - time_padding * 2
+	local time_x = bax + line_width / 2
+	local time_width = self.width - line_width
 	local foreground_size = fby - fay
 	local foreground_coordinates = round(fax) .. ',' .. fay .. ',' .. round(fbx) .. ',' .. fby -- for clipping
 
@@ -2818,23 +2814,27 @@ function Timeline:render()
 	if config.cached_ranges and state.cached_ranges then
 		local range_height = math.max(math.floor(math.min(self.size_max / 10, foreground_size / 2)), 1)
 		local range_ay = fby - range_height
+		-- Fully include the start and end pixels of the time range
+		local left_ax = math.floor(time_x)
+		local right_bx = math.ceil(time_x + time_width)
+		local cache_width = right_bx - left_ax
 
 		for _, range in ipairs(state.cached_ranges) do
 			local range_start = math.max(type(range['start']) == 'number' and range['start'] or 0.000001, 0.000001)
 			local range_end = math.min(type(range['end']) and range['end'] or state.duration, state.duration)
 			ass:rect(
-				time_x + time_width * (range_start / state.duration), range_ay,
-				time_x + time_width * (range_end / state.duration), range_ay + range_height,
+				left_ax + cache_width * (range_start / state.duration), range_ay,
+				left_ax + cache_width * (range_end / state.duration), range_ay + range_height,
 				{color = config.cached_ranges.color, opacity = config.cached_ranges.opacity}
 			)
 		end
 
 		-- Visualize padded time area limits
-		if time_padding > 0 then
+		if (left_ax - bax) > 0 then
 			local notch_ay = math.max(range_ay - 2, fay)
 			local opts = {color = config.cached_ranges.color, opacity = options.timeline_opacity}
-			ass:rect(time_x, notch_ay, time_x + 1, bby, opts)
-			ass:rect(time_x + time_width - 1, notch_ay, time_x + time_width, bby, opts)
+			ass:rect(left_ax - 1, notch_ay, left_ax, bby, opts)
+			ass:rect(right_bx, notch_ay, right_bx + 1, bby, opts)
 		end
 	end
 
