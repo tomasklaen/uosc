@@ -54,6 +54,7 @@ local options = {
 
 	speed_persistency = '',
 	speed_opacity = 1,
+	speed_border = 1,
 	speed_step = 0.1,
 	speed_step_is_factor = false,
 	speed_font_scale = 1,
@@ -71,12 +72,16 @@ local options = {
 	top_bar = 'no-border',
 	top_bar_size = 40,
 	top_bar_size_fullscreen = 46,
+	top_bar_border = 1,
+	top_bar_font_scale = 1,
 	top_bar_persistency = '',
 	top_bar_controls = true,
 	top_bar_title = true,
 
 	window_border_size = 1,
 	window_border_opacity = 0.8,
+
+	tooltip_border = 1,
 
 	ui_scale = 1,
 	pause_on_click_shorter_than = 0,
@@ -92,6 +97,7 @@ local options = {
 	font_bold = false,
 	autohide = false,
 	pause_indicator = 'flash',
+	pause_indicator_border = 1,
 	curtain_opacity = 0.5,
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
 	directory_navigation_loops = false,
@@ -730,7 +736,7 @@ end
 function ass_mt:tooltip(element, value, opts)
 	opts = opts or {}
 	opts.size = opts.size or 16
-	opts.border = 1
+	opts.border = options.tooltip_border
 	opts.border_color = options.color_background
 	local offset = opts.offset or opts.size / 2
 	local align_top = element.ay - offset > opts.size * 5
@@ -1890,7 +1896,7 @@ function render_top_bar(this)
 		end
 		ass:icon(
 			close.ax + (this.button_width / 2), close.ay + (this.size / 2), this.icon_size, 'close',
-			{opacity = visibility, border = 1}
+			{opacity = visibility, border = options.top_bar_border}
 		)
 
 		-- Maximize button
@@ -1903,7 +1909,7 @@ function render_top_bar(this)
 		end
 		ass:icon(
 			maximize.ax + (this.button_width / 2), maximize.ay + (this.size / 2), this.icon_size,
-			'crop_square', {opacity = visibility, border = 1}
+			'crop_square', {opacity = visibility, border = options.top_bar_border}
 		)
 
 		-- Minimize button
@@ -1916,7 +1922,7 @@ function render_top_bar(this)
 		end
 		ass:icon(
 			minimize.ax + (this.button_width / 2), minimize.ay + (this.size / 2), this.icon_size, 'minimize',
-			{opacity = visibility, border = 1}
+			{opacity = visibility, border = options.top_bar_border}
 		)
 	end
 
@@ -1939,7 +1945,7 @@ function render_top_bar(this)
 
 		-- Text
 		ass:txt(bg_ax + padding, this.ay + (this.size / 2), 4, text, {
-			size = this.font_size, wrap = 2, color = 'FFFFFF', border = 1, border_color = '000000', opacity = visibility,
+			size = this.font_size * options.speed_font_scale, wrap = 2, color = 'FFFFFF', border = options.top_bar_border, border_color = '000000', opacity = visibility,
 			clip = string.format('\\clip(%d, %d, %d, %d)', this.ax, this.ay, max_bx, this.by),
 		})
 	end
@@ -2143,7 +2149,7 @@ function render_speed(this)
 			end
 
 			ass:rect(notch_x - notch_thickness, notch_ay, notch_x + notch_thickness, notch_by, {
-				color = options.color_foreground, border = 1, border_color = options.color_background,
+				color = options.color_foreground, border = options.speed_border, border_color = options.color_background,
 				opacity = math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1) * opacity,
 			})
 		end
@@ -2164,7 +2170,7 @@ function render_speed(this)
 	local speed_text = (round(state.speed * 100) / 100) .. 'x'
 	ass:txt(half_x, ay, 8, speed_text, {
 		size = this.font_size, color = options.color_background_text,
-		border = 1, border_color = options.color_background, opacity = opacity,
+		border = options.speed_border, border_color = options.color_background, opacity = opacity,
 	})
 
 	return ass
@@ -2614,12 +2620,12 @@ Elements:add(Element.new('pause_indicator', {
 		if this.paused then
 			ass:icon(
 				display.width / 2, display.height / 2, size, 'pause',
-				{border = 1, opacity = this.base_icon_opacity * this.opacity}
+				{border = options.pause_indicator_border, opacity = this.base_icon_opacity * this.opacity}
 			)
 		else
 			ass:icon(
 				display.width / 2, display.height / 2, size * 1.2, 'play_arrow',
-				{border = 1, opacity = this.base_icon_opacity * this.opacity}
+				{border = options.pause_indicator_border, opacity = this.base_icon_opacity * this.opacity}
 			)
 		end
 
@@ -2724,7 +2730,7 @@ Elements:add(Element.new('top_bar', {
 		this.size = state.fullormaxed and options.top_bar_size_fullscreen or options.top_bar_size
 		this.icon_size = round(this.size * 0.5)
 		this.spacing = math.ceil(this.size * 0.25)
-		this.font_size = math.floor(this.size - (this.spacing * 2))
+		this.font_size = math.floor((this.size - (this.spacing * 2)) * options.top_bar_font_scale)
 		this.button_width = round(this.size * 1.15)
 		this.ay = Elements.window_border.size
 		this.bx = display.width - Elements.window_border.size
