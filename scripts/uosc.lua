@@ -529,7 +529,7 @@ end
 
 -- Check if path is a protocol, such as `http://...`
 function is_protocol(path)
-	return type(path) == 'string' and path:match('^%a[%a%d-_]+://')
+	return type(path) == 'string' and path:match('^%a[%a%d-_]+://') ~= nil
 end
 
 function get_extension(path)
