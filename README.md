@@ -427,7 +427,7 @@ local menu = {
     }
 }
 local json = utils.format_json(menu)
-mp.commandv('script-message-to', 'uosc', 'show-menu', json)
+mp.commandv('script-message-to', 'uosc', 'open-menu', json)
 ```
 
 ### `update-menu <menu_json>`
