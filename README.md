@@ -367,9 +367,9 @@ Parameters
 
 ID (title) of the submenu, including `>` subsections as defined in `input.conf`. It has to be match the title exactly.
 
-### `show-menu <menu_json>`
+### `open-menu <menu_json> [submenu_id]`
 
-A message other scripts can send to display a uosc menu serialized as JSON.
+A message other scripts can send to open a uosc menu serialized as JSON. You can optionally pass a `submenu_id` to pre-open a submenu. The ID is the submenu title chain leading to the submenu concatenated with `>`, for example `Tools > Aspect ratio`.
 
 Menu data structure:
 
@@ -377,35 +377,40 @@ Menu data structure:
 Menu {
     type?: string;
     title?: string;
-    selected_index?: number;
-    active_index?: number;
     items: Item[];
-}
-
-Submenu {
-    title?: string;
-    items: Item[];
+    keep_open?: boolean;
 }
 
 Item = Command | Submenu;
 
+Submenu {
+    title?: string;
+    hint?: string;
+    items: Item[];
+    keep_open?: boolean;
+}
+
 Command {
     title?: string;
     hint?: string;
+    icon?: string;
     value: string | string[];
     bold?: boolean;
     italic?: boolean;
     muted?: boolean;
+    selected?: number;
+    active?: number;
+    keep_open?: boolean;
 }
 ```
 
 When command value is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(table.unpack(value))`.
 
-Menu `type` controls what happens when opening a menu when some other menu is already open. When the new menu type is different, it'll replace the currently opened menu. When it's the same, the currently open menu will simply be closed. This is used to implement toggling (open->close) of menus with the same key.
+Menu `type` controls what happens when opening a menu when some other menu is already open. When the new menu type is different, it'll replace the currently opened menu. When it's the same, the currently open menu will simply be closed. This is used to implement toggling of menus with the same type.
 
-`active_index` displays the item at that index as active. For example, in subtitles menu, the currently displayed subtitles are considered _active_.
+When `keep_open` is `true`, activating the item will not close the menu. This property can be defined on both menus and items, and is inherited from parent to child. Set to `false` to override the parent.
 
-`selected_index` marks item at that index as selected - the starting position for all keyboard based navigation in the menu. It defaults to `active_index` if any, or `1` otherwise, which means in most cases you can just ignore this prop.
+It's usually not necessary to define `selected` as it'll default to `active` item, or 1st item in the list.
 
 Example:
 
@@ -414,11 +419,9 @@ local utils = require('mp.utils')
 local menu = {
     type = 'menu_type',
     title = 'Custom menu',
-    active_index = 1,
-    selected_index = 1,
     items = {
         {title = 'Foo', hint = 'foo', value = 'quit'},
-        {title = 'Bar', hint = 'bar', value = 'quit'},
+        {title = 'Bar', hint = 'bar', value = 'quit', active = true},
     }
 }
 local json = utils.format_json(menu)
