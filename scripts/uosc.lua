@@ -3752,7 +3752,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 
 		if load_command then
 			items[#items + 1] = {
-				title = 'Load', bold = true, italic = true, hint = 'open file', value = '{load}', separator = true
+				title = 'Load', bold = true, italic = true, hint = 'open file', value = '{load}', separator = true,
 			}
 		end
 
@@ -4409,5 +4409,15 @@ mp.register_script_message('open-menu', function(json, submenu_id)
 	else
 		if data.type and Menu:is_open(data.type) then Menu:close()
 		else open_command_menu(data, submenu_id) end
+	end
+end)
+mp.register_script_message('update-menu', function(json)
+	local data = utils.parse_json(json)
+	if type(data) ~= 'table' or type(data.items) ~= 'table' then
+		msg.error('update-menu: received json didn\'t produce a table with menu configuration')
+	else
+		local menu = data.type and Menu:is_open(data.type)
+		if menu then menu:update(data)
+		else open_command_menu(data) end
 	end
 end)
