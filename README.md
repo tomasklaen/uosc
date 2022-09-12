@@ -439,6 +439,7 @@ The difference between this and `open-menu` is that if the same type menu is alr
 `update-menu`, along with `{menu/item}.keep_open` property and `item.command` that sends a message back can be used to create a self updating menu with some limited UI. Example:
 
 ```lua
+local utils = require('mp.utils')
 local script_name = mp.get_script_name()
 local state = {
     checkbox = 'no',
@@ -491,7 +492,7 @@ function create_menu_data()
     }
 end
 
-mp.add_forced_key_binding('v', 'foo', function()
+mp.add_forced_key_binding('t', 'test_menu', function()
     local json = utils.format_json(create_menu_data())
     mp.commandv('script-message-to', 'uosc', 'open-menu', json)
 end)
