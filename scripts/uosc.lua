@@ -2092,7 +2092,7 @@ function Menu:render()
 				content_bx = content_bx - icon_size - spacing
 			end
 
-			local title_hint_cut_x = content_ax + (content_bx - content_ax) * title_hint_ratio
+			local title_hint_cut_x = content_ax + (content_bx - content_ax - spacing) * title_hint_ratio
 
 			-- Hint
 			if item.hint then
