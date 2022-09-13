@@ -955,7 +955,7 @@ end
 function ass_mt:icon(x, y, size, name, opts)
 	opts = opts or {}
 	opts.size = size
-	opts.font = 'MaterialIconsSharp-Regular'
+	opts.font = 'MaterialIconsRound-Regular'
 	self:txt(x, y, opts.align or 5, name, opts)
 end
 
