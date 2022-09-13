@@ -1253,7 +1253,7 @@ function update_margins()
 	local bottom_y = controls and controls.enabled and controls.ay or timeline.ay
 	local top, bottom = 0, (display.height - bottom_y) / display.height
 
-	if top_bar.enabled and top_bar:get_visibility() ~= 0 then
+	if top_bar.enabled and top_bar:get_visibility() > 0 then
 		top = (top_bar.size or 0) / display.height
 	end
 
@@ -2291,7 +2291,7 @@ function Speed:render()
 	local visibility = self:get_visibility()
 	local opacity = self.dragging and 1 or visibility
 
-	if opacity == 0 then return end
+	if opacity <= 0 then return end
 
 	local ass = assdraw.ass_new()
 
@@ -2395,7 +2395,7 @@ end
 
 function Button:render()
 	local visibility = self:get_visibility()
-	if visibility == 0 then return end
+	if visibility <= 0 then return end
 
 	local ass = assdraw.ass_new()
 	local is_hover = self.proximity_raw == 0
@@ -2927,7 +2927,7 @@ function TopBarButton:on_mbtn_left_down() mp.command(self.command) end
 
 function TopBarButton:render()
 	local visibility = self:get_visibility()
-	if visibility == 0 then return end
+	if visibility <= 0 then return end
 	local ass = assdraw.ass_new()
 
 	-- Background on hover
@@ -3018,7 +3018,7 @@ function TopBar:on_display() self:update_dimensions() end
 
 function TopBar:render()
 	local visibility = self:get_visibility()
-	if visibility == 0 then return end
+	if visibility <= 0 then return end
 	local ass = assdraw.ass_new()
 
 	-- Window title
@@ -3213,7 +3213,8 @@ function Controls:clean_controls()
 end
 
 function Controls:get_visibility()
-	return (Elements.speed and Elements.speed.dragging) and 1 or Elements.timeline.proximity_raw == 0
+	local timeline_is_hovered = Elements.timeline.enabled and Elements.timeline.proximity_raw == 0
+	return (Elements.speed and Elements.speed.dragging) and 1 or timeline_is_hovered
 		and -1 or Element.get_visibility(self)
 end
 
