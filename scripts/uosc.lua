@@ -1486,15 +1486,15 @@ menu.close()
 ]]
 
 -- Menu data structure accepted by `Menu:open(menu)`.
----@alias MenuData {type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected?: boolean;}
+---@alias MenuData {type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer;}
 ---@alias MenuDataItem MenuDataValue|MenuData
----@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; selected?: boolean; keep_open?: boolean; separator?: boolean;}
+---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean;}
 ---@alias MenuOptions {on_open?: fun(), on_close?: fun()}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; active_index?: number; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; width: number; height: number; top: number; scroll_y: number; scroll_height: number; selected?: boolean; title_length: number; title_width: number; hint_length: number; hint_width: number; max_width: number; is_root?: boolean;}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_length: number; title_width: number; hint_length: number; hint_width: number; max_width: number; is_root?: boolean;}
 ---@alias MenuStackItem MenuStackValue|MenuStack
----@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; title_length: number; title_width: number; hint_length: number; hint_width: number}
+---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; title_length: number; title_width: number; hint_length: number; hint_width: number}
 
 ---@class Menu : Element
 local Menu = class(Element)
@@ -1578,7 +1578,7 @@ function Menu:init(data, callback, opts)
 	self:update(data)
 
 	for _, menu in ipairs(self.all) do
-		self:scroll_to_index(menu.selected_index or menu.active_index, menu)
+		self:scroll_to_index(menu.selected_index, menu)
 	end
 
 	self:tween_property('opacity', 0, 1)
@@ -1612,17 +1612,15 @@ function Menu:update(data)
 		menu.hint_length = text_length(menu.title)
 
 		-- Update items
-		local selected_index = nil
-		local active_index = nil
+		local first_active_index = nil
 		menu.items = {}
 
 		for i, item_data in ipairs(menu_data.items or {}) do
-			if item_data.selected then selected_index = i end
-			if item_data.active then active_index = i end
+			if item_data.active and not first_active_index then first_active_index = i end
 
 			local item = {}
 			table_assign(item, item_data, {
-				'title', 'icon', 'hint', 'bold', 'italic', 'muted', 'value', 'keep_open', 'separator',
+				'title', 'icon', 'hint', 'active', 'bold', 'italic', 'muted', 'value', 'keep_open', 'separator',
 			})
 			if item.keep_open == nil then item.keep_open = menu.keep_open end
 			item.title_length = text_length(item.title)
@@ -1638,9 +1636,8 @@ function Menu:update(data)
 		end
 
 		if menu.is_root then
-			menu.selected_index = selected_index or active_index or (#menu.items > 0 and 1 or nil)
+			menu.selected_index = menu_data.selected_index or first_active_index or (#menu.items > 0 and 1 or nil)
 		end
-		menu.active_index = active_index
 
 		-- Retain old state
 		local old_menu = self.by_id[menu.is_root and '__root__' or menu.id]
@@ -1724,8 +1721,7 @@ function Menu:reset_navigation()
 	local menu = self.current
 
 	-- Reset indexes and scroll
-	self:select_index(menu.selected_index or menu.active_index or (menu.items and #menu.items > 0 and 1 or nil))
-	self:activate_index(menu.active_index)
+	self:select_index(menu.selected_index or (menu.items and #menu.items > 0 and 1 or nil))
 	self:scroll_to(menu.scroll_y)
 
 	-- Walk up the parent menu chain and activate items that lead to current menu
@@ -1750,6 +1746,13 @@ function Menu:get_item_index_below_cursor()
 	local menu = self.current
 	if #menu.items < 1 or self.proximity_raw > 0 then return nil end
 	return math.max(1, math.min(math.ceil((cursor.y - self.ay + menu.scroll_y) / self.scroll_step), #menu.items))
+end
+
+function Menu:get_first_active_index(menu)
+	menu = menu or self.current
+	for index, item in ipairs(self.current.items) do
+		if item.active then return index end
+	end
 end
 
 ---@param pos? number
@@ -1785,20 +1788,40 @@ function Menu:select_value(value, menu)
 	self:select_index(index, 5)
 end
 
+---@param menu? MenuStack
+function Menu:deactivate_items(menu)
+	menu = menu or self.current
+	for _, item in ipairs(menu.items) do item.active = false end
+	request_render()
+end
+
 ---@param index? integer
 ---@param menu? MenuStack
 function Menu:activate_index(index, menu)
 	menu = menu or self.current
-	menu.active_index = (index and index >= 1 and index <= #menu.items) and index or nil
+	if index and index >= 1 and index <= #menu.items then menu.items[index] = true end
 	request_render()
+end
+
+---@param index? integer
+---@param menu? MenuStack
+function Menu:activate_unique_index(index, menu)
+	self:deactivate_items(menu)
+	self:activate_index(index, menu)
 end
 
 ---@param value? any
 ---@param menu? MenuStack
 function Menu:activate_value(value, menu)
 	menu = menu or self.current
-	local index = itable_find(menu.items, function(_, item) return item.value == value end)
-	self:activate_index(index, menu)
+	self:activate_index(itable_find(menu.items, function(_, item) return item.value == value end), menu)
+end
+
+---@param value? any
+---@param menu? MenuStack
+function Menu:activate_unique_value(value, menu)
+	menu = menu or self.current
+	self:activate_unique_index(itable_find(menu.items, function(_, item) return item.value == value end), menu)
 end
 
 ---@param id string
@@ -1818,10 +1841,8 @@ end
 function Menu:delete_index(index, menu)
 	menu = menu or self.current
 	if (index and index >= 1 and index <= #menu.items) then
-		local previous_active_value = menu.active_index and menu.items[menu.active_index].value or nil
 		table.remove(menu.items, index)
 		self:update_content_dimensions()
-		if previous_active_value then self:activate_value(previous_active_value, menu) end
 		self:scroll_to_index(menu.selected_index, menu)
 	end
 end
@@ -2014,15 +2035,19 @@ function Menu:render()
 		local scroll_clip = '\\clip(0,' .. ay .. ',' .. display.width .. ',' .. by .. ')'
 		local start_index = math.floor(menu.scroll_y / self.scroll_step) + 1
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
-		local selected_index, active_index = menu.selected_index or -1, menu.active_index or -1
+		local selected_index = menu.selected_index or -1
 
 		-- Background
-		ass:rect(ax, ay - (draw_title and self.item_height or 0) - 3, bx, by + 3, {
+		ass:rect(ax, ay - (draw_title and self.item_height or 0) - 2, bx, by + 2, {
 			color = options.color_background, opacity = opacity, radius = 4,
 		})
 
 		for index = start_index, end_index, 1 do
 			local item = menu.items[index]
+			local next_item = menu.items[index + 1]
+			local is_highlighted = selected_index == index or item.active
+			local next_is_active = next_item and next_item.active
+			local next_is_highlighted = selected_index == index + 1 or next_is_active
 
 			if not item then break end
 
@@ -2033,28 +2058,24 @@ function Menu:render()
 			-- controls title & hint clipping proportional to the ratio of their widths
 			local title_hint_ratio = item.hint and item.title_width / (item.title_width + item.hint_width) or 1
 			local content_ax, content_bx = ax + spacing, bx - spacing
-			local font_color = active_index == index and options.color_foreground_text or options.color_background_text
-			local shadow_color = active_index == index and options.color_foreground or options.color_background
+			local font_color = item.active and options.color_foreground_text or options.color_background_text
+			local shadow_color = item.active and options.color_foreground or options.color_background
 
 			-- Separator
-			local separator_size = (item.separator and 3 or 1)
-			local hide_separator = separator_size == 1 and (
-				active_index == index or selected_index == index or
-					active_index - 1 == index or selected_index - 1 == index
-				)
-			if not hide_separator and item_by < by then
-				local sep_ay = item_by - math.floor(separator_size / 2)
-				ass:rect(ax + 3, sep_ay, bx - 3, sep_ay + separator_size, {
+			local separator_ay = item.separator and item_by - 1 or item_by
+			local separator_by = item_by + (item.separator and 2 or 1)
+			if is_highlighted then separator_ay = item_by + 1 end
+			if next_is_highlighted then separator_by = item_by end
+			if separator_by - separator_ay > 0 and item_by < by then
+				ass:rect(ax + spacing / 2, separator_ay, bx - spacing / 2, separator_by, {
 					color = options.color_foreground, opacity = opacity * 0.13,
 				})
 			end
 
 			-- Highlight
-			local highlight_opacity = 0
-				+ (active_index == index and 0.8 or 0)
-				+ (selected_index == index and 0.15 or 0)
+			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (selected_index == index and 0.15 or 0)
 			if highlight_opacity > 0 then
-				ass:rect(ax + 2, item_ay - 1, bx - 2, item_by + 1, {
+				ass:rect(ax + 2, item_ay, bx - 2, item_by, {
 					radius = 2, color = options.color_foreground, opacity = highlight_opacity * self.opacity,
 					clip = item_clip,
 				})
@@ -2097,16 +2118,17 @@ function Menu:render()
 
 		-- Menu title
 		if draw_title then
-			local title_ay = ay - self.item_height - 1
+			local title_ay = ay - self.item_height
+			local title_height = self.item_height - 3
 			menu.ass_safe_title = menu.ass_safe_title or ass_escape(menu.title)
 
 			-- Background
-			ass:rect(ax + 2, title_ay, bx - 2, ay - 3, {
+			ass:rect(ax + 2, title_ay, bx - 2, title_ay + title_height, {
 				color = options.color_foreground, opacity = opacity * 0.55, radius = 2,
 			})
 
 			-- Title
-			ass:txt(ax + menu.width / 2, title_ay + (self.item_height * 0.5), 5, menu.title, {
+			ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.title, {
 				size = self.font_size, bold = true, color = options.color_background, wrap = 2, opacity = opacity,
 				clip = '\\clip(' .. ax .. ',' .. title_ay .. ',' .. bx .. ',' .. ay .. ')',
 			})
@@ -3724,14 +3746,19 @@ function create_self_updating_menu_opener(options)
 		local ignore_initial_active = true
 		local function handle_active_prop_change(name, value)
 			if ignore_initial_active then ignore_initial = false
-			else menu:activate_index(options.active_index_serializer(name, value)) end
+			else menu:activate_unique_index(options.active_index_serializer(name, value)) end
 		end
 
-		local initial_items = options.list_serializer(options.list_prop, mp.get_property_native(options.list_prop))
+		local initial_items, selected_index = options.list_serializer(
+			options.list_prop,
+			mp.get_property_native(options.list_prop)
+		)
 
 		-- Items and active_index are set in the handle_prop_change callback, since adding
 		-- a property observer triggers its handler immediately, we just let that initialize the items.
-		menu = Menu:open({type = options.type, title = options.title, items = initial_items}, options.on_select, {
+		menu = Menu:open(
+			{type = options.type, title = options.title, items = initial_items, selected_index = selected_index},
+			options.on_select, {
 			on_open = function()
 				mp.observe_property(options.list_prop, 'native', handle_list_prop_change)
 				if options.active_prop then
@@ -3757,6 +3784,8 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		end
 
 		local first_item_index = #items + 1
+		local active_index = nil
+		local disabled_item = nil
 
 		-- Add option to disable a subtitle track. This works for all tracks,
 		-- but why would anyone want to disable audio or video? Better to not
@@ -3764,7 +3793,8 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		-- If I'm mistaken and there is an active need for this, feel free to
 		-- open an issue.
 		if track_type == 'sub' then
-			items[#items + 1] = {title = 'Disabled', italic = true, muted = true, hint = '—', value = nil, active = true}
+			disabled_item = {title = 'Disabled', italic = true, muted = true, hint = '—', value = nil, active = true}
+			items[#items + 1] = disabled_item
 		end
 
 		for _, track in ipairs(tracklist) do
@@ -3791,13 +3821,17 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 					title = (track.title and track.title or 'Track ' .. track.id),
 					hint = table.concat(hint_vals_filtered, ', '),
 					value = track.id,
-					selected = first_item_index == #items + 1 or track.selected,
 					active = track.selected,
 				}
+
+				if track.selected then
+					if disabled_item then disabled_item.active = false end
+					active_index = #items
+				end
 			end
 		end
 
-		return items
+		return items, active_index or first_item_index
 	end
 
 	local function selection_handler(value)

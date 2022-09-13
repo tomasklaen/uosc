@@ -1,10 +1,10 @@
 <div align="center">
-    <a href="https://user-images.githubusercontent.com/47283320/185891110-f5f8a478-3970-4a14-bbf5-b444d571e4be.webm"><img src="https://user-images.githubusercontent.com/47283320/185892154-3b0f118a-491a-4175-807e-3de05d85ec9c.png" alt="Preview screenshot"></a>
-    <h1>uosc</h1>
-    <p>
-        Minimalist cursor proximity based UI for <a href="https://mpv.io">MPV player</a>.
-    </p>
-    <br>
+	<a href="https://user-images.githubusercontent.com/47283320/185891110-f5f8a478-3970-4a14-bbf5-b444d571e4be.webm"><img src="https://user-images.githubusercontent.com/47283320/185892154-3b0f118a-491a-4175-807e-3de05d85ec9c.png" alt="Preview screenshot"></a>
+	<h1>uosc</h1>
+	<p>
+		Minimalist cursor proximity based UI for <a href="https://mpv.io">MPV player</a>.
+	</p>
+	<br>
 </div>
 
 Most notable features:
@@ -350,7 +350,7 @@ Tells uosc to send it's version to `<script_id>` script. Useful if you want to d
 ```lua
 -- Register response handler
 mp.register_script_message('uosc-version', function(version)
-    print('uosc version', version)
+  print('uosc version', version)
 end)
 
 -- Ask for version
@@ -375,32 +375,32 @@ Menu data structure:
 
 ```
 Menu {
-    type?: string;
-    title?: string;
-    items: Item[];
-    keep_open?: boolean;
+  type?: string;
+  title?: string;
+  items: Item[];
+  selected_index?: integer;
+  keep_open?: boolean;
 }
 
 Item = Command | Submenu;
 
 Submenu {
-    title?: string;
-    hint?: string;
-    items: Item[];
-    keep_open?: boolean;
+  title?: string;
+  hint?: string;
+  items: Item[];
+  keep_open?: boolean;
 }
 
 Command {
-    title?: string;
-    hint?: string;
-    icon?: string;
-    value: string | string[];
-    bold?: boolean;
-    italic?: boolean;
-    muted?: boolean;
-    selected?: number;
-    active?: number;
-    keep_open?: boolean;
+  title?: string;
+  hint?: string;
+  icon?: string;
+  value: string | string[];
+  bold?: boolean;
+  italic?: boolean;
+  muted?: boolean;
+  active?: integer;
+  keep_open?: boolean;
 }
 ```
 
@@ -408,23 +408,23 @@ When command value is a string, it'll be passed to `mp.command(value)`. If it's 
 
 Menu `type` controls what happens when opening a menu when some other menu is already open. When the new menu type is different, it'll replace the currently opened menu. When it's the same, the currently open menu will simply be closed. This is used to implement toggling of menus with the same type.
 
-`item.icon` property accepts icon names you can pick from here: https://fonts.google.com/icons?selected=Material+Icons
+`item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons?selected=Material+Icons)
 
-When `keep_open` is `true`, activating the item will not close the menu. This property can be defined on both menus and items, and is inherited from parent to child. Set to `false` to override the parent.
+When `keep_open` is `true`, activating the item will not close the menu. This property can be defined on both menus and items, and is inherited from parent to child if child doesn't overwrite it.
 
-It's usually not necessary to define `selected` as it'll default to `active` item, or 1st item in the list.
+It's usually not necessary to define `selected_index` as it'll default to the first `active` item, or 1st item in the list.
 
 Example:
 
 ```lua
 local utils = require('mp.utils')
 local menu = {
-    type = 'menu_type',
-    title = 'Custom menu',
-    items = {
-        {title = 'Foo', hint = 'foo', value = 'quit'},
-        {title = 'Bar', hint = 'bar', value = 'quit', active = true},
-    }
+  type = 'menu_type',
+  title = 'Custom menu',
+  items = {
+    {title = 'Foo', hint = 'foo', value = 'quit'},
+    {title = 'Bar', hint = 'bar', value = 'quit', active = true},
+  }
 }
 local json = utils.format_json(menu)
 mp.commandv('script-message-to', 'uosc', 'open-menu', json)
@@ -442,69 +442,69 @@ The difference between this and `open-menu` is that if the same type menu is alr
 local utils = require('mp.utils')
 local script_name = mp.get_script_name()
 local state = {
-    checkbox = 'no',
-    radio = 'bar'
+  checkbox = 'no',
+  radio = 'bar'
 }
 
 function command(str)
-    return string.format('script-message-to %s %s', script_name, str)
+  return string.format('script-message-to %s %s', script_name, str)
 end
 
 function create_menu_data()
-    return {
-        type = 'test_menu',
-        title = 'Test menu',
-        keep_open = true,
+  return {
+    type = 'test_menu',
+    title = 'Test menu',
+    keep_open = true,
+    items = {
+      {
+        title = 'Checkbox',
+        icon = state.checkbox == 'yes' and 'check_box' or 'check_box_outline_blank',
+        value = command('set-state checkbox ' .. (state.checkbox == 'yes' and 'no' or 'yes'))
+      },
+      {
+        title = 'Radio',
+        hint = state.radio,
         items = {
-            {
-                title = 'Checkbox',
-                icon = state.checkbox == 'yes' and 'check_box' or 'check_box_outline_blank',
-                value = command('set-state checkbox ' .. (state.checkbox == 'yes' and 'no' or 'yes'))
-            },
-            {
-                title = 'Radio',
-                hint = state.radio,
-                items = {
-                    {
-                        title = 'Foo',
-                        icon = state.radio == 'foo' and 'radio_button_checked' or 'radio_button_unchecked',
-                        value = command('set-state radio foo')
-                    },
-                    {
-                        title = 'Bar',
-                        icon = state.radio == 'bar' and 'radio_button_checked' or 'radio_button_unchecked',
-                        value = command('set-state radio bar')
-                    },
-                    {
-                        title = 'Baz',
-                        icon = state.radio == 'baz' and 'radio_button_checked' or 'radio_button_unchecked',
-                        value = command('set-state radio baz')
-                    },
-                },
-            },
-            {
-                title = 'Submit',
-                icon = 'check',
-                value = command('submit'),
-                keep_open = false
-            },
-        }
+          {
+            title = 'Foo',
+            icon = state.radio == 'foo' and 'radio_button_checked' or 'radio_button_unchecked',
+            value = command('set-state radio foo')
+          },
+          {
+            title = 'Bar',
+            icon = state.radio == 'bar' and 'radio_button_checked' or 'radio_button_unchecked',
+            value = command('set-state radio bar')
+          },
+          {
+            title = 'Baz',
+            icon = state.radio == 'baz' and 'radio_button_checked' or 'radio_button_unchecked',
+            value = command('set-state radio baz')
+          },
+        },
+      },
+      {
+        title = 'Submit',
+        icon = 'check',
+        value = command('submit'),
+        keep_open = false
+      },
     }
+  }
 end
 
 mp.add_forced_key_binding('t', 'test_menu', function()
-    local json = utils.format_json(create_menu_data())
-    mp.commandv('script-message-to', 'uosc', 'open-menu', json)
+  local json = utils.format_json(create_menu_data())
+  mp.commandv('script-message-to', 'uosc', 'open-menu', json)
 end)
 
 mp.register_script_message('set-state', function(prop, value)
-    state[prop] = value
-    -- Update currently opened menu
-    local json = utils.format_json(create_menu_data())
-    mp.commandv('script-message-to', 'uosc', 'update-menu', json)
+  state[prop] = value
+  -- Update currently opened menu
+  local json = utils.format_json(create_menu_data())
+  mp.commandv('script-message-to', 'uosc', 'update-menu', json)
 end)
 
 mp.register_script_message('submit', function(prop, value)
-    -- Do something with state
+  -- Do something with state
 end)
 ```
