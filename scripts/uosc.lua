@@ -2407,7 +2407,7 @@ function Button:render()
 	if is_hover_or_active then
 		ass:rect(self.ax, self.ay, self.bx, self.by, {
 			color = self.active and background or foreground, radius = 2,
-			opacity = visibility * (self.active and 0.8 or 0.4),
+			opacity = visibility * (self.active and 0.8 or 0.3),
 		})
 	end
 
@@ -3202,6 +3202,7 @@ function Controls:serialize()
 
 	self:update_dimensions()
 	Elements:update_proximities()
+	Elements:trigger('controls_reflow')
 end
 
 function Controls:clean_controls()
@@ -3535,16 +3536,15 @@ end
 function Volume:update_dimensions()
 	local width = state.fullormaxed and options.volume_size_fullscreen or options.volume_size
 	local controls, timeline, top_bar = Elements.controls, Elements.timeline, Elements.top_bar
-	local padding_top = top_bar.enabled and top_bar.size or 0
-	local padding_bottom = (timeline.enabled and timeline.size_max or 0) +
-		(controls and controls.enabled and controls.by - controls.ay or 0)
-	local available_height = display.height - padding_top - padding_bottom
+	local min_y = top_bar.enabled and top_bar.by or 0
+	local max_y = (controls and controls.enabled and controls.ay) or (timeline.enabled and timeline.ay) or 0
+	local available_height = max_y - min_y
 	local max_height = available_height * 0.8
 	local height = round(math.min(width * 8, max_height))
 	self.enabled = height > width * 2 -- don't render if too small
 	local margin = (width / 2) + Elements.window_border.size
 	self.ax = round(options.volume == 'left' and margin or display.width - margin - width)
-	self.ay = padding_top + round((available_height - height) / 2)
+	self.ay = min_y + round((available_height - height) / 2)
 	self.bx = round(self.ax + width)
 	self.by = round(self.ay + height)
 	self.mute:set_coordinates(self.ax, self.by - round(width * 0.8), self.bx, self.by)
@@ -3553,6 +3553,7 @@ end
 
 function Volume:on_display() self:update_dimensions() end
 function Volume:on_prop_border() self:update_dimensions() end
+function Volume:on_controls_reflow() self:update_dimensions() end
 
 --[[ Curtain ]]
 
