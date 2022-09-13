@@ -1589,7 +1589,7 @@ end
 function Menu:update(data)
 	self.type = data.type
 
-	local new_root = {is_root = true}
+	local new_root = {is_root = true, title_length = text_length(data.title), hint_length = text_length(data.hint)}
 	local new_all = {}
 	local new_by_id = {}
 	local menus_to_serialize = {{new_root, data}}
@@ -1606,8 +1606,6 @@ function Menu:update(data)
 			menu.id = (parent_id and parent_id .. ' > ' or '') .. (menu_data.title or i)
 		end
 		menu.icon = 'chevron_right'
-		menu.title_length = text_length(menu.title)
-		menu.hint_length = text_length(menu.title)
 
 		-- Update items
 		local first_active_index = nil
