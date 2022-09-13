@@ -3200,6 +3200,7 @@ function Controls:serialize()
 	end
 
 	self:update_dimensions()
+	Elements:update_proximities()
 end
 
 function Controls:clean_controls()
