@@ -2950,10 +2950,9 @@ function TopBar:new() return Class.new(self) --[[@as TopBar]] end
 function TopBar:init()
 	Element.init(self, 'top_bar')
 	self.pressed = false
-	self.size_max = 0
-	self.size_min = 0
+	self.size, self.size_max, self.size_min = 0, 0, 0
+	self.icon_size, self.spacing, self.font_size, self.title_bx = 1, 1, 1, 1
 	self.size_min_override = options.timeline_start_hidden and 0 or nil
-	self.font_size = 0
 	self.top_border = options.timeline_border
 
 	-- Order aligns from right to left
@@ -2967,10 +2966,8 @@ end
 function TopBar:decide_enabled()
 	if options.top_bar == 'no-border' then
 		self.enabled = not state.border or state.fullscreen
-	elseif options.top_bar == 'always' then
-		self.enabled = true
 	else
-		self.enabled = false
+		self.enabled = options.top_bar == 'always'
 	end
 	self.enabled = self.enabled and (options.top_bar_controls or options.top_bar_title)
 	for _, element in ipairs(self.buttons) do
