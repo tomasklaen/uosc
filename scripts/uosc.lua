@@ -155,7 +155,6 @@ local options = {
 	timeline_border = 1,
 	timeline_step = 5,
 	timeline_cached_ranges = '4e845c:0.8',
-	timeline_font_scale = 1,
 	timeline_chapters = 'dots',
 	timeline_chapters_opacity = 0.2,
 	timeline_chapters_width = 6,
@@ -174,13 +173,11 @@ local options = {
 	volume_opacity = 0.8,
 	volume_border = 1,
 	volume_step = 1,
-	volume_font_scale = 1,
 
 	speed_persistency = '',
 	speed_opacity = 1,
 	speed_step = 0.1,
 	speed_step_is_factor = false,
-	speed_font_scale = 1,
 
 	menu_item_height = 36,
 	menu_item_height_fullscreen = 50,
@@ -190,7 +187,6 @@ local options = {
 	menu_hjkl_navigation = false,
 	menu_opacity = 1,
 	menu_parent_opacity = 0.4,
-	menu_font_scale = 1,
 
 	top_bar = 'no-border',
 	top_bar_size = 40,
@@ -203,6 +199,7 @@ local options = {
 	window_border_opacity = 0.8,
 
 	ui_scale = 1,
+	font_scale = 1,
 	pause_on_click_shorter_than = 0,
 	flash_duration = 1000,
 	proximity_in = 40,
@@ -1667,7 +1664,7 @@ end
 
 function Menu:update_content_dimensions()
 	self.item_height = state.fullormaxed and options.menu_item_height_fullscreen or options.menu_item_height
-	self.font_size = round(self.item_height * 0.48 * options.menu_font_scale)
+	self.font_size = round(self.item_height * 0.48 * options.font_scale)
 	self.font_size_hint = self.font_size - 1
 	self.item_padding = round((self.item_height - self.font_size) * 0.6)
 	self.scroll_step = self.item_height + self.item_spacing
@@ -2207,7 +2204,7 @@ end
 function Speed:on_coordinates()
 	self.height, self.width = self.by - self.ay, self.bx - self.ax
 	self.notch_spacing = self.width / (self.notches + 1)
-	self.font_size = round(self.height * 0.48 * options.speed_font_scale)
+	self.font_size = round(self.height * 0.48 * options.font_scale)
 end
 
 function Speed:speed_step(speed, up)
@@ -2623,7 +2620,7 @@ function Timeline:update_dimensions()
 		self.size_min = options.timeline_size_min
 		self.size_max = options.timeline_size_max
 	end
-	self.font_size = math.floor(math.min((self.size_max + 60) * 0.2, self.size_max * 0.96) * options.timeline_font_scale)
+	self.font_size = math.floor(math.min((self.size_max + 60) * 0.2, self.size_max * 0.96) * options.font_scale)
 	self.ax = Elements.window_border.size
 	self.ay = display.height - Elements.window_border.size - self.size_max - self.top_border
 	self.bx = display.width - Elements.window_border.size
@@ -2985,7 +2982,7 @@ function TopBar:update_dimensions()
 	self.size = state.fullormaxed and options.top_bar_size_fullscreen or options.top_bar_size
 	self.icon_size = round(self.size * 0.5)
 	self.spacing = math.ceil(self.size * 0.25)
-	self.font_size = math.floor(self.size - (self.spacing * 2))
+	self.font_size = math.floor((self.size - (self.spacing * 2)) * options.font_scale)
 	self.button_width = round(self.size * 1.15)
 	self.ay = Elements.window_border.size
 	self.bx = display.width - Elements.window_border.size
@@ -3471,7 +3468,7 @@ function VolumeSlider:render()
 
 	-- Current volume value
 	local volume_string = tostring(round(state.volume * 10) / 10)
-	local font_size = round(((width * 0.6) - (#volume_string * (width / 20))) * options.volume_font_scale)
+	local font_size = round(((width * 0.6) - (#volume_string * (width / 20))) * options.font_scale)
 	local opacity = math.min(options.volume_opacity + 0.1, 1) * visibility
 	if fay < self.by - self.spacing then
 		ass:txt(self.ax + (width / 2), self.by - self.spacing, 2, volume_string, {
