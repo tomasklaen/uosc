@@ -387,6 +387,7 @@ local state = {
 	is_image = nil,
 	is_stream = nil,
 	has_audio = nil,
+	has_playlist = nil,
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		if not options.autohide then return end
 		handle_mouse_leave()
@@ -3018,10 +3019,10 @@ function TopBar:render()
 	local ass = assdraw.ass_new()
 
 	-- Window title
-	if options.top_bar_title and (state.media_title or state.playlist_count > 1) then
+	if options.top_bar_title and (state.media_title or state.has_playlist) then
 		local max_bx = self.title_bx - self.spacing
 		local text = state.media_title or 'n/a'
-		if state.playlist_count > 1 then
+		if state.has_playlist then
 			text = string.format('%d/%d - ', state.playlist_pos, state.playlist_count) .. text
 		end
 
@@ -3110,7 +3111,7 @@ function Controls:serialize()
 		for _, disposition in ipairs(dispositions) do
 			local value = disposition:sub(1, 1) ~= '!'
 			local name = not value and disposition:sub(2) or disposition
-			local prop = name == 'has_audio' and name or 'is_' .. name
+			local prop = (name == 'has_audio' or name == 'has_playlist') and name or 'is_' .. name
 			if state[prop] ~= value then return false end
 		end
 		return true
@@ -4057,7 +4058,11 @@ mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
 mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('playlist-pos-1', 'number', create_state_setter('playlist_pos'))
-mp.observe_property('playlist-count', 'number', create_state_setter('playlist_count'))
+mp.observe_property('playlist-count', 'number', function(_, value)
+	set_state('playlist_count', value)
+	set_state('has_playlist', value > 1)
+	Elements:trigger('dispositions')
+end)
 mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen', update_fullormaxed))
 mp.observe_property('window-maximized', 'bool', create_state_setter('maximized', update_fullormaxed))
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
@@ -4329,21 +4334,21 @@ mp.add_key_binding(nil, 'open-file', function()
 	)
 end)
 mp.add_key_binding(nil, 'items', function()
-	if state.playlist_count > 1 then
+	if state.has_playlist then
 		mp.command('script-binding uosc/playlist')
 	else
 		mp.command('script-binding uosc/open-file')
 	end
 end)
 mp.add_key_binding(nil, 'next', function()
-	if state.playlist_count > 1 then
+	if state.has_playlist then
 		mp.command('playlist-next')
 	else
 		navigate_directory('forward')
 	end
 end)
 mp.add_key_binding(nil, 'prev', function()
-	if state.playlist_count > 1 then
+	if state.has_playlist then
 		mp.command('playlist-prev')
 	else
 		navigate_directory('backward')
@@ -4352,16 +4357,15 @@ end)
 mp.add_key_binding(nil, 'next-file', function() navigate_directory('forward') end)
 mp.add_key_binding(nil, 'prev-file', function() navigate_directory('backward') end)
 mp.add_key_binding(nil, 'first', function()
-	if mp.get_property_native('playlist-count') > 1 then
+	if state.has_playlist then
 		mp.commandv('set', 'playlist-pos-1', '1')
 	else
 		load_file_in_current_directory(1)
 	end
 end)
 mp.add_key_binding(nil, 'last', function()
-	local playlist_count = mp.get_property_native('playlist-count')
-	if playlist_count > 1 then
-		mp.commandv('set', 'playlist-pos-1', tostring(playlist_count))
+	if state.has_playlist then
+		mp.commandv('set', 'playlist-pos-1', tostring(state.playlist_count))
 	else
 		load_file_in_current_directory(-1)
 	end
@@ -4369,7 +4373,6 @@ end)
 mp.add_key_binding(nil, 'first-file', function() load_file_in_current_directory(1) end)
 mp.add_key_binding(nil, 'last-file', function() load_file_in_current_directory(-1) end)
 mp.add_key_binding(nil, 'delete-file-next', function()
-	local playlist_count = mp.get_property_native('playlist-count')
 	local next_file = nil
 	local path = mp.get_property_native('path')
 	local is_local_file = path and not is_protocol(path)
@@ -4379,7 +4382,7 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 		if Menu:is_open('open-file') then Elements.menu:delete_value(path) end
 	end
 
-	if playlist_count > 1 then
+	if state.has_playlist then
 		mp.commandv('playlist-remove', 'current')
 	else
 		if is_local_file then
