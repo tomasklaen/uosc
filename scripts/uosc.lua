@@ -2917,6 +2917,7 @@ local TopBarButton = class(Element)
 function TopBarButton:new(id, props) return Class.new(self, id, props) --[[@as CycleButton]] end
 function TopBarButton:init(id, props)
 	Element.init(self, id, props)
+	self.anchor_id = 'top_bar'
 	self.icon = props.icon
 	self.background = props.background
 	self.command = props.command
