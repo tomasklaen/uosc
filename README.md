@@ -25,7 +25,7 @@ Most notable features:
 -   Transform chapters into timeline ranges (the red portion of the timeline in the preview).
 -   And a lot of useful options and commands to bind keys to.
 
-[Changelog](./CHANGELOG.md).
+[Changelog](https://github.com/tomasklaen/uosc/releases).
 
 ## Download
 
