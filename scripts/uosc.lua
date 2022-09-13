@@ -778,7 +778,7 @@ end
 -- Check if path is a protocol, such as `http://...`
 ---@param path string
 function is_protocol(path)
-	return type(path) == 'string' and path:match('^%a[%a%d-_]+://')
+	return type(path) == 'string' and path:match('^%a[%a%d-_]+://') ~= nil
 end
 
 ---@param path string
