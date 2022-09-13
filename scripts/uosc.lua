@@ -2630,9 +2630,11 @@ function Timeline:update_dimensions()
 end
 
 function Timeline:get_time_at_x(x)
-	-- padding serves the purpose of matching cursor to timeline_style=line exactly
-	local padding = (options.timeline_style == 'line' and self:get_effective_line_width() or 0) / 2
-	local progress = math.max(0, math.min((x - self.ax - padding) / (self.width - padding * 2), 1))
+	-- line width 1 for timeline_style=bar so mouse input can go all the way from 0 to 1 progress
+	local line_width = (options.timeline_style == 'line' and self:get_effective_line_width() or 1)
+	local time_width = self.width - line_width
+	local progress_x = x - self.ax - line_width / 2
+	local progress = math.max(0, math.min(progress_x / time_width, 1))
 	return state.duration * progress
 end
 
@@ -2694,8 +2696,8 @@ function Timeline:render()
 			and width_normal - width_normal * options.timeline_line_width_minimized_scale
 			or 0
 		local line_width = width_normal - (max_min_width_delta * minimized_fraction)
-		local current_time_x = (bbx - bax - line_width) * progress
-		fax = current_time_x + bax
+		local time_width = self.width - line_width
+		fax = bax + time_width * progress
 		fbx = fax + line_width
 		if line_width > 2 then time_padding = round(line_width / 2) end
 	else
