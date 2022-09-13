@@ -1799,7 +1799,7 @@ end
 ---@param menu? MenuStack
 function Menu:activate_index(index, menu)
 	menu = menu or self.current
-	if index and index >= 1 and index <= #menu.items then menu.items[index] = true end
+	if index and index >= 1 and index <= #menu.items then menu.items[index].active = true end
 	request_render()
 end
 
@@ -3734,7 +3734,7 @@ function toggle_menu_with_items(submenu_id)
 	else open_command_menu({type = 'menu', items = config.menu_items}, submenu_id) end
 end
 
----@param options {type: string; title: string; list_prop: string; list_serializer: fun(name: string, value: any): MenuDataItem[]; active_prop?: string; active_index_serializer: fun(name: string, value: any): integer; on_select: fun(value: any)}
+---@param options {type: string; title: string; list_prop: string; list_serializer: fun(name: string, value: any): MenuDataItem[]; active_prop?: string; on_active_prop: fun(name: string, value: any, menu: Menu): integer; on_select: fun(value: any)}
 function create_self_updating_menu_opener(options)
 	return function()
 		if Menu:is_open(options.type) then Menu:close() return end
@@ -3749,8 +3749,8 @@ function create_self_updating_menu_opener(options)
 
 		local ignore_initial_active = true
 		local function handle_active_prop_change(name, value)
-			if ignore_initial_active then ignore_initial = false
-			else menu:activate_unique_index(options.active_index_serializer(name, value)) end
+			if ignore_initial_active then ignore_initial_active = false
+			else options.on_active_prop(name, value, menu) end
 		end
 
 		local initial_items, selected_index = options.list_serializer(
@@ -4174,13 +4174,12 @@ mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
 			items[index] = {
 				title = item_title or (is_url and item.filename or serialize_path(item.filename).basename),
 				hint = tostring(index),
+				active = item.current,
 				value = index,
 			}
 		end
 		return items
 	end,
-	active_prop = 'playlist-pos-1',
-	active_index_serializer = function(_, playlist_pos) return playlist_pos end,
 	on_select = function(index) mp.commandv('set', 'playlist-pos-1', tostring(index)) end,
 }))
 mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
@@ -4190,25 +4189,40 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 	list_serializer = function(_, _)
 		local items = {}
 		local chapters = get_normalized_chapters()
+		local active_found = false
 
 		for index, chapter in ipairs(chapters) do
-			items[#items + 1] = {
+			local item = {
 				title = chapter.title or '',
 				hint = mp.format_time(chapter.time),
 				value = chapter.time,
 			}
+			items[#items + 1] = item
+			if active_found == false then
+				local is_active = chapter.time >= state.time
+				if is_active then
+					item.active = true
+					active_found = true
+				end
+			end
 		end
 		return items
 	end,
 	active_prop = 'playback-time',
-	active_index_serializer = function(_, playback_time)
+	on_active_prop = function(_, playback_time, menu)
 		-- Select first chapter from the end with time lower
 		-- than current playing position.
 		local position = playback_time
-		if not position then return nil end
-		local items = Menu.current.items
+		if not position then
+			menu:deactivate_items()
+			return
+		end
+		local items = menu.current.items
 		for index = #items, 1, -1 do
-			if position >= items[index].value then return index end
+			if position >= items[index].value then
+				menu:activate_unique_index(index)
+				return
+			end
 		end
 	end,
 	on_select = function(time) mp.commandv('seek', tostring(time), 'absolute') end,
