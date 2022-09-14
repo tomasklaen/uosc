@@ -201,6 +201,7 @@ local options = {
 
 	ui_scale = 1,
 	font_scale = 1,
+	text_border = 1.2,
 	pause_on_click_shorter_than = 0,
 	flash_duration = 1000,
 	proximity_in = 40,
@@ -1011,7 +1012,7 @@ end
 function ass_mt:tooltip(element, value, opts)
 	opts = opts or {}
 	opts.size = opts.size or 16
-	opts.border = 1
+	opts.border = options.text_border
 	opts.border_color = options.color_background
 	local offset = opts.offset or opts.size / 2
 	local align_top = element.ay - offset > opts.size * 5
@@ -2356,7 +2357,7 @@ function Speed:render()
 	local speed_text = (round(state.speed * 100) / 100) .. 'x'
 	ass:txt(half_x, ay, 8, speed_text, {
 		size = self.font_size, color = options.color_background_text,
-		border = 1, border_color = options.color_background, opacity = opacity,
+		border = options.text_border, border_color = options.color_background, opacity = opacity,
 	})
 
 	return ass
@@ -2416,7 +2417,8 @@ function Button:render()
 	-- Icon
 	local x, y = round(self.ax + (self.bx - self.ax) / 2), round(self.ay + (self.by - self.ay) / 2)
 	ass:icon(x, y, self.font_size, self.icon, {
-		color = foreground, border = self.active and 0 or 1, border_color = background, opacity = visibility,
+		color = foreground, border = self.active and 0 or options.text_border, border_color = background,
+		opacity = visibility,
 	})
 
 	return ass
@@ -2939,7 +2941,9 @@ function TopBarButton:render()
 
 	local width, height = self.bx - self.ax, self.by - self.ay
 	local icon_size = math.min(width, height) * 0.5
-	ass:icon(self.ax + width / 2, self.ay + height / 2, icon_size, self.icon, {opacity = visibility, border = 1})
+	ass:icon(self.ax + width / 2, self.ay + height / 2, icon_size, self.icon, {
+		opacity = visibility, border = options.text_border
+	})
 
 	return ass
 end
@@ -3333,7 +3337,7 @@ function MuteButton:render()
 	local icon_name = state.mute and 'volume_off' or 'volume_up'
 	local width = self.bx - self.ax
 	ass:icon(self.ax + (width / 2), self.by, width * 0.7, icon_name,
-		{border = options.volume_border, opacity = options.volume_opacity * visibility, align = 2}
+		{border = options.text_border, opacity = options.volume_opacity * visibility, align = 2}
 	)
 	return ass
 end
