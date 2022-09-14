@@ -326,6 +326,43 @@ local config = {
 			}
 		end
 	end)(),
+	chapter_serializers = (function()
+		-- Parse `chapter_ranges` option into workable data structure
+		local chapter_ranges = {}
+		for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
+			local start_patterns, color, opacity, end_patterns = string.match(
+				definition, '([^<]+)<(%x%x%x%x%x%x):(%d?%.?%d*)>([^>]+)'
+			)
+
+			-- Valid definition
+			if start_patterns then
+				start_patterns = start_patterns:lower()
+				end_patterns = end_patterns:lower()
+				local uses_bof = start_patterns:find('{bof}') ~= nil
+				local uses_eof = end_patterns:find('{eof}') ~= nil
+				local chapter_range = {
+					start_patterns = split(start_patterns, '|'),
+					end_patterns = split(end_patterns, '|'),
+					color = color,
+					opacity = tonumber(opacity),
+					ranges = {},
+					uses_bof = uses_bof,
+					uses_eof = uses_eof,
+				}
+
+				-- Filter out special keywords so we don't use them when matching titles
+				if uses_bof then
+					chapter_range.start_patterns = itable_remove(chapter_range.start_patterns, '{bof}')
+				end
+				if uses_eof and chapter_range.end_patterns then
+					chapter_range.end_patterns = itable_remove(chapter_range.end_patterns, '{eof}')
+				end
+
+				chapter_ranges[#chapter_ranges + 1] = chapter_range
+			end
+		end
+		return chapter_ranges
+	end)(),
 }
 -- Adds `{element}_persistency` property with table of flags when the element should be visible (`{paused = true}`)
 for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
@@ -368,6 +405,7 @@ local state = {
 	duration_or_remaining_time_human = nil, -- depends on options.total_time
 	pause = mp.get_property_native('pause'),
 	chapters = {},
+	chapter_ranges = {},
 	border = mp.get_property_native('border'),
 	fullscreen = mp.get_property_native('fullscreen'),
 	maximized = mp.get_property_native('window-maximized'),
@@ -398,102 +436,6 @@ local state = {
 	margin_top = 0,
 	margin_bottom = 0,
 }
-
--- Parse `chapter_ranges` option into workable data structure
-local chapter_ranges = nil
-for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
-	local start_patterns, color, opacity, end_patterns = string.match(
-		definition, '([^<]+)<(%x%x%x%x%x%x):(%d?%.?%d*)>([^>]+)'
-	)
-
-	-- Valid definition
-	if start_patterns then
-		start_patterns = start_patterns:lower()
-		end_patterns = end_patterns:lower()
-		local uses_bof = start_patterns:find('{bof}') ~= nil
-		local uses_eof = end_patterns:find('{eof}') ~= nil
-		local chapter_range = {
-			start_patterns = split(start_patterns, '|'),
-			end_patterns = split(end_patterns, '|'),
-			color = color,
-			opacity = tonumber(opacity),
-			ranges = {},
-		}
-
-		-- Filter out special keywords so we don't use them when matching titles
-		if uses_bof then
-			chapter_range.start_patterns = itable_remove(chapter_range.start_patterns, '{bof}')
-		end
-		if uses_eof and chapter_range.end_patterns then
-			chapter_range.end_patterns = itable_remove(chapter_range.end_patterns, '{eof}')
-		end
-
-		chapter_range['serialize'] = function(chapters)
-			chapter_range.ranges = {}
-			local current_range = nil
-			-- bof and eof should be used only once per timeline
-			-- eof is only used when last range is missing end
-			local bof_used = false
-
-			local function start_range(chapter)
-				-- If there is already a range started, should we append or overwrite?
-				-- I chose overwrite here.
-				current_range = {['start'] = chapter}
-			end
-
-			local function end_range(chapter)
-				current_range['end'] = chapter
-				chapter_range.ranges[#chapter_range.ranges + 1] = current_range
-				-- Mark both chapter objects
-				current_range['start']._uosc_used_as_range_point = true
-				current_range['end']._uosc_used_as_range_point = true
-				-- Clear for next range
-				current_range = nil
-			end
-
-			for _, chapter in ipairs(chapters) do
-				if type(chapter.title) == 'string' then
-					local lowercase_title = chapter.title:lower()
-
-					-- Is ending check and handling
-					if chapter_range.end_patterns then
-						chapter.is_end_only = false
-						for _, end_pattern in ipairs(chapter_range.end_patterns) do
-							if lowercase_title:find(end_pattern) then
-								if current_range == nil and uses_bof and not bof_used then
-									bof_used = true
-									start_range({time = 0})
-								end
-								if current_range ~= nil then
-									end_range(chapter)
-								end
-								chapter.is_end_only = end_pattern ~= '.*'
-								break
-							end
-						end
-					end
-
-					-- Is start check and handling
-					for _, start_pattern in ipairs(chapter_range.start_patterns) do
-						if lowercase_title:find(start_pattern) then
-							start_range(chapter)
-							chapter.is_end_only = false
-							break
-						end
-					end
-				end
-			end
-
-			-- If there is an unfinished range and range type accepts eof, use it
-			if current_range ~= nil and uses_eof then
-				end_range({time = infinity})
-			end
-		end
-
-		chapter_ranges = chapter_ranges or {}
-		chapter_ranges[#chapter_ranges + 1] = chapter_range
-	end
-end
 
 --[[ CLASSES ]]
 
@@ -883,6 +825,72 @@ function delete_file(path)
 	})
 end
 
+function serialize_chapter_ranges(chapters)
+	state.chapter_ranges = {}
+
+	for _, chapter_serializer in ipairs(config.chapter_serializers) do
+		local current_range = nil
+		-- bof and eof should be used only once per timeline
+		-- eof is only used when last range is missing end
+		local bof_used = false
+
+		local function start_range(chapter)
+			-- If there is already a range started, should we append or overwrite?
+			-- I chose overwrite here.
+			current_range = {['start'] = chapter}
+		end
+
+		local function end_range(chapter)
+			current_range['end'] = chapter
+			current_range.color = chapter_serializer.color
+			current_range.opacity = chapter_serializer.opacity
+			state.chapter_ranges[#state.chapter_ranges + 1] = current_range
+			-- Mark both chapter objects
+			current_range['start']._uosc_used_as_range_point = true
+			current_range['end']._uosc_used_as_range_point = true
+			-- Clear for next range
+			current_range = nil
+		end
+
+		for _, chapter in ipairs(chapters) do
+			if type(chapter.title) == 'string' then
+				local lowercase_title = chapter.title:lower()
+
+				-- Is ending check and handling
+				if chapter_serializer.end_patterns then
+					for _, end_pattern in ipairs(chapter_serializer.end_patterns) do
+						if lowercase_title:find(end_pattern) then
+							if current_range == nil and chapter_serializer.uses_bof and not bof_used then
+								bof_used = true
+								start_range({time = 0})
+							end
+							if current_range ~= nil then
+								end_range(chapter)
+								chapter.is_end_only = end_pattern ~= '.*'
+							end
+							break
+						end
+					end
+				end
+
+				-- Is start check and handling
+				for _, start_pattern in ipairs(chapter_serializer.start_patterns) do
+					if lowercase_title:find(start_pattern) and current_range == nil then
+						start_range(chapter)
+						chapter.is_end_only = false
+						break
+					end
+				end
+			end
+		end
+
+		-- If there is an unfinished range and range type accepts eof, use it
+		if current_range ~= nil and chapter_serializer.uses_eof then
+			end_range({time = infinity})
+		end
+	end
+end
+
 -- Ensures chapters are in chronological order
 function normalize_chapters(chapters)
 	if not chapters then return end
@@ -893,15 +901,12 @@ function normalize_chapters(chapters)
 	return chapters
 end
 
-function serialize_chapters(_, chapters)
+function serialize_chapters(chapters)
 	chapters = normalize_chapters(chapters)
-
 	if not chapters then return end
 
 	-- Reset custom ranges
-	for _, chapter_range in ipairs(state.chapter_ranges or {}) do
-		chapter_range.serialize(chapters)
-	end
+	serialize_chapter_ranges(chapters)
 
 	for _, chapter in ipairs(chapters) do
 		chapter.title_wrapped, chapter.title_wrapped_width = wrap_text(chapter.title, 25)
@@ -2764,17 +2769,13 @@ function Timeline:render()
 	end
 
 	-- Custom ranges
-	if state.chapter_ranges ~= nil then
-		for i, chapter_range in ipairs(state.chapter_ranges) do
-			for i, range in ipairs(chapter_range.ranges) do
-				local rax = time_ax + time_width * (range['start'].time / state.duration)
-				local rbx = time_ax + time_width * math.min(range['end'].time / state.duration, 1)
-				-- for 1px chapter size, use the whole size of the bar including padding
-				local ray = size <= 1 and bay or fay
-				local rby = size <= 1 and bby or fby
-				ass:rect(rax, ray, rbx, rby, {color = chapter_range.color, opacity = chapter_range.opacity})
-			end
-		end
+	for _, chapter_range in ipairs(state.chapter_ranges) do
+		local rax = time_ax + time_width * (chapter_range['start'].time / state.duration)
+		local rbx = time_ax + time_width * math.min(chapter_range['end'].time / state.duration, 1)
+		-- for 1px chapter size, use the whole size of the bar including padding
+		local ray = size <= 1 and bay or fay
+		local rby = size <= 1 and bby or fby
+		ass:rect(rax, ray, rbx, rby, {color = chapter_range.color, opacity = chapter_range.opacity})
 	end
 
 	-- Chapters
@@ -4019,7 +4020,6 @@ function update_title(title_template)
 	set_state('title', mp.command_native({'expand-text', title_template}))
 end
 mp.register_event('file-loaded', function()
-	serialize_chapters()
 	update_title(mp.get_property_native('title'))
 end)
 mp.register_event('end-file ', function() set_state('title', nil) end)
@@ -4055,7 +4055,7 @@ end)
 mp.observe_property('chapter-list', 'native', function(_, chapters)
 	set_state('has_chapter', #chapters > 0)
 	Elements:trigger('dispositions')
-	serialize_chapters()
+	serialize_chapters(chapters)
 end)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
