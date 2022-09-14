@@ -106,9 +106,13 @@ tab  script-binding uosc/peek-timeline
 
 Available commands:
 
-#### `peek-timeline`
+#### `peek-ui`
 
-Expands the bottom timeline until pressed again, or next mouse move. Useful to check times during playback.
+Makes the whole UI visible until you call this command again, or move the cursor. Useful for peeking remaining time and such while watching.
+
+You can also peek only a specific element with `peek-{element}` command.
+
+`{element}` can be one of: `timeline`, `controls`, `volume`, `top-bar`
 
 #### `toggle-progress`
 

@@ -1166,6 +1166,21 @@ function Elements:update_proximities()
 	for _, element in ipairs(mouse_enter_elements) do element:trigger('mouse_enter') end
 end
 
+-- Toggles elements visibility between 0 and 1.
+---@param elements string[] IDs of elements to peek.
+function Elements:peek(elements)
+	local highest_visibility = 0
+	for _, name in ipairs(elements) do
+		local visibility = self[name] and self[name]:get_visibility() or 0
+		if visibility > highest_visibility then highest_visibility = visibility end
+	end
+	local to = highest_visibility > 0.5 and 0 or 1
+	for _, name in ipairs(elements) do
+		local element = self[name]
+		if element then element:tween_property('proximity', element.proximity, to) end
+	end
+end
+
 ---@param name string Event name.
 function Elements:trigger(name, ...)
 	for _, element in self:ipairs() do element:trigger(name, ...) end
@@ -4115,13 +4130,10 @@ mp.observe_property('estimated-display-fps', 'native', update_render_delay)
 
 -- KEY BINDABLE FEATURES
 
-mp.add_key_binding(nil, 'peek-timeline', function()
-	if Elements.timeline.proximity > 0.5 then
-		Elements.timeline:tween_property('proximity', Elements.timeline.proximity, 0)
-	else
-		Elements.timeline:tween_property('proximity', Elements.timeline.proximity, 1)
-	end
-end)
+mp.add_key_binding(nil, 'peek-ui', function() Elements:peek({'timeline', 'controls', 'volume', 'top_bar'}) end)
+mp.add_key_binding(nil, 'peek-timeline', function() Elements:peek({'timeline'}) end)
+mp.add_key_binding(nil, 'peek-volume', function() Elements:peek({'volume'}) end)
+mp.add_key_binding(nil, 'peek-top-bar', function() Elements:peek({'top_bar'}) end)
 mp.add_key_binding(nil, 'toggle-progress', function()
 	local timeline = Elements.timeline
 	if timeline.size_min_override then
