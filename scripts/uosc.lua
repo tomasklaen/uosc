@@ -222,6 +222,7 @@ local options = {
 	subtitle_types = 'aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt',
 	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
+	title = '${media-title}',
 	chapter_ranges = '^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end, segment start<3535a5:0.5>segment end',
 }
 opt.read_options(options, 'uosc')
@@ -367,7 +368,7 @@ local state = {
 	end)(),
 	cwd = mp.get_property('working-directory'),
 	path = nil, -- current file path or URL
-	media_title = '',
+	title = nil,
 	time = nil, -- current media playback time
 	speed = 1,
 	duration = nil, -- current media duration
@@ -3040,9 +3041,9 @@ function TopBar:render()
 	local ass = assdraw.ass_new()
 
 	-- Window title
-	if options.top_bar_title and (state.media_title or state.has_playlist) then
+	if options.top_bar_title and (state.title or state.has_playlist) then
 		local max_bx = self.title_bx - self.spacing
-		local text = state.media_title or 'n/a'
+		local text = state.title or 'n/a'
 		if state.has_playlist then
 			text = string.format('%d/%d - ', state.playlist_pos, state.playlist_count) .. text
 		end
@@ -4069,7 +4070,11 @@ end
 mp.set_key_bindings(mouse_keybinds, 'mouse_movement', 'force')
 mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 
-mp.register_event('file-loaded', parse_chapters)
+mp.register_event('file-loaded', function()
+	parse_chapters()
+	set_state('title', mp.command_native({"expand-text", options.title}))
+end)
+mp.register_event('end-file ', function() set_state('title', nil) end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', update_human_times))
 mp.observe_property('duration', 'number', create_state_setter('duration', update_human_times))
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
@@ -4097,7 +4102,6 @@ mp.observe_property('chapter-list', 'native', parse_chapters)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
-mp.observe_property('media-title', 'string', create_state_setter('media_title'))
 mp.observe_property('playlist-pos-1', 'number', create_state_setter('playlist_pos'))
 mp.observe_property('playlist-count', 'number', function(_, value)
 	set_state('playlist_count', value)
