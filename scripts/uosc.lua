@@ -222,7 +222,6 @@ local options = {
 	subtitle_types = 'aqt,gsub,jss,sub,ttxt,pjs,psb,rt,smi,slt,ssf,srt,ssa,ass,usf,idx,vt',
 	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
-	title = '${media-title}',
 	chapter_ranges = '^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end, segment start<3535a5:0.5>segment end',
 }
 opt.read_options(options, 'uosc')
@@ -4072,7 +4071,9 @@ mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 
 mp.register_event('file-loaded', function()
 	parse_chapters()
-	set_state('title', mp.command_native({"expand-text", options.title}))
+	local title_template = mp.get_property_native('title')
+	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
+	set_state('title', mp.command_native({"expand-text", title_template}))
 end)
 mp.register_event('end-file ', function() set_state('title', nil) end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', update_human_times))
