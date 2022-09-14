@@ -2165,7 +2165,7 @@ function Menu:render()
 	local selected_menu = self.current.items[self.current.selected_index]
 
 	if selected_menu and selected_menu.items then
-		draw_menu(selected_menu, self.bx + menu_gap, selected_menu.top, 0.4)
+		draw_menu(selected_menu, self.bx + menu_gap, selected_menu.top, options.menu_parent_opacity * opacity)
 	end
 
 	return ass
