@@ -1941,13 +1941,13 @@ function Menu:on_global_mouse_move()
 end
 
 function Menu:on_wheel_up()
-	self:scroll_to(self.current.scroll_y - self.scroll_step)
+	self:scroll_to(self.current.scroll_y - self.scroll_step * 3)
 	self:on_global_mouse_move() -- selects item below cursor
 	request_render()
 end
 
 function Menu:on_wheel_down()
-	self:scroll_to(self.current.scroll_y + self.scroll_step)
+	self:scroll_to(self.current.scroll_y + self.scroll_step * 3)
 	self:on_global_mouse_move() -- selects item below cursor
 	request_render()
 end
