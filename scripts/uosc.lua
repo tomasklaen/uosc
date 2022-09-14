@@ -2138,7 +2138,7 @@ function Menu:render()
 			local thumb_height = math.max((menu.height / (menu.scroll_height + menu.height)) * groove_height, 40)
 			local thumb_y = ay + 1 + ((menu.scroll_y / menu.scroll_height) * (groove_height - thumb_height))
 			ass:rect(bx - 3, thumb_y, bx - 1, thumb_y + thumb_height, {
-				color = options.color_foreground, opacity = options.menu_opacity * opacity * 0.8,
+				color = options.color_foreground, opacity = opacity * 0.8,
 			})
 		end
 	end
@@ -2149,12 +2149,12 @@ function Menu:render()
 	-- Parent menus
 	local parent_menu = self.current.parent_menu
 	local parent_offset_x = self.ax
-	local parent_opacity_factor = 0.4
+	local parent_opacity_factor = options.menu_parent_opacity
 	local menu_gap = 2
 
 	while parent_menu do
 		parent_offset_x = parent_offset_x - parent_menu.width - menu_gap
-		draw_menu(parent_menu, parent_offset_x, parent_menu.top, parent_opacity_factor)
+		draw_menu(parent_menu, parent_offset_x, parent_menu.top, parent_opacity_factor * opacity)
 		parent_opacity_factor = parent_opacity_factor * parent_opacity_factor
 		parent_menu = parent_menu.parent_menu
 	end
@@ -2163,7 +2163,7 @@ function Menu:render()
 	local selected_menu = self.current.items[self.current.selected_index]
 
 	if selected_menu and selected_menu.items then
-		draw_menu(selected_menu, self.bx + menu_gap, selected_menu.top, 0.4)
+		draw_menu(selected_menu, self.bx + menu_gap, selected_menu.top, options.menu_parent_opacity * opacity)
 	end
 
 	return ass
