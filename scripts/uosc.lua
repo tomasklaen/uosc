@@ -14,6 +14,7 @@ local utils = require('mp.utils')
 local msg = require('mp.msg')
 local osd = mp.create_osd_overlay('ass-events')
 local infinity = 1e309
+local quarter_pi_sin = math.sin(math.pi/4)
 
 --[[ BASE HELPERS ]]
 
@@ -168,9 +169,9 @@ local options = {
 
 	volume = 'right',
 	volume_size = 40,
-	volume_size_fullscreen = 60,
+	volume_size_fullscreen = 52,
 	volume_persistency = '',
-	volume_opacity = 0.8,
+	volume_opacity = 0.9,
 	volume_border = 1,
 	volume_step = 1,
 
@@ -2589,8 +2590,8 @@ function Timeline:init()
 end
 
 function Timeline:get_visibility()
-	return Elements.controls
-		and math.max(Elements.controls.proximity, Element.get_visibility(self)) or Element.get_visibility(self)
+	return Elements.controls and math.max(Elements.controls.proximity, Element.get_visibility(self))
+		or Element.get_visibility(self)
 end
 
 function Timeline:decide_enabled()
@@ -2768,7 +2769,7 @@ function Timeline:render()
 					clip = dots and '\\iclip(' .. foreground_coordinates .. ')' or nil,
 					opacity = options.timeline_chapters_opacity,
 				}
-				
+
 				if dots then
 					local cx, dx = math.max(ax, fax), math.min(bx, fbx)
 					-- 0.5 because clipping coordinates are rounded
@@ -3350,6 +3351,7 @@ function VolumeSlider:init(props)
 	self.nudge_size = 0
 	self.draw_nudge = false
 	self.spacing = 0
+	self.radius = 1
 end
 
 function VolumeSlider:set_volume(volume)
@@ -3370,6 +3372,7 @@ function VolumeSlider:on_coordinates()
 	self.nudge_size = round(width * 0.18)
 	self.draw_nudge = self.ay < self.nudge_y
 	self.spacing = round(width * 0.2)
+	self.radius = math.max(2, (self.bx - self.ax) / 10)
 end
 function VolumeSlider:on_mbtn_left_down()
 	self.pressed = true
@@ -3385,66 +3388,82 @@ function VolumeSlider:on_wheel_down() self:set_volume(state.volume - options.vol
 
 function VolumeSlider:render()
 	local visibility = self:get_visibility()
-	local width, height = self.bx - self.ax, self.by - self.ay
+	local ax, ay, bx, by = self.ax, self.ay, self.bx, self.by
+	local width, height = bx - ax, by - ay
+
 	if width <= 0 or height <= 0 or visibility <= 0 then return end
+
 	local ass = assdraw.ass_new()
-
 	local nudge_y, nudge_size = self.draw_nudge and self.nudge_y or -infinity, self.nudge_size
-
-	-- Background bar coordinates
-	local bax, bay, bbx, bby = self.ax, self.ay, self.bx, self.by
-
-	-- Foreground bar coordinates
-	local height_without_border = height - (options.volume_border * 2)
-	local fax = self.ax + options.volume_border
-	local fay = self.ay + (height_without_border * (1 - math.min(state.volume / state.volume_max, 1))) +
-		options.volume_border
-	local fbx = self.bx - options.volume_border
-	local fby = self.by - options.volume_border
+	local volume_y = self.ay + options.volume_border +
+		((height - (options.volume_border * 2)) * (1 - math.min(state.volume / state.volume_max, 1)))
 
 	-- Draws a rectangle with nudge at requested position
-	---@param ax number
-	---@param ay number
-	---@param bx number
-	---@param by number
-	function make_nudged_path(ax, ay, bx, by)
-		local fg_path = assdraw.ass_new()
-		fg_path:move_to(bx, by)
-		fg_path:line_to(ax, by)
-		local nudge_bottom_y = nudge_y + nudge_size
-		if ay <= nudge_bottom_y then
-			fg_path:line_to(ax, math.min(nudge_bottom_y))
-			if ay <= nudge_y then
-				fg_path:line_to((ax + nudge_size), nudge_y)
-				local nudge_top_y = nudge_y - nudge_size
-				if ay <= nudge_top_y then
-					fg_path:line_to(ax, nudge_top_y)
-					fg_path:line_to(ax, ay)
-					fg_path:line_to(bx, ay)
-					fg_path:line_to(bx, nudge_top_y)
-				else
-					local triangle_side = ay - nudge_top_y
-					fg_path:line_to((ax + triangle_side), ay)
-					fg_path:line_to((bx - triangle_side), ay)
-				end
-				fg_path:line_to((bx - nudge_size), nudge_y)
-			else
-				local triangle_side = nudge_bottom_y - ay
-				fg_path:line_to((ax + triangle_side), ay)
-				fg_path:line_to((bx - triangle_side), ay)
-			end
-			fg_path:line_to(bx, nudge_bottom_y)
+	---@param p number Padding from slider edges.
+	---@param cy? number A y coordinate where to clip the path from the bottom.
+	function create_nudged_path(p, cy)
+		cy = cy or ay + p
+		local ax, bx, by = ax + p, bx - p, by - p
+		local r = math.max(1, self.radius - p)
+		local d, rh = r * 2, r / 2
+		local nudge_size = ((quarter_pi_sin * (nudge_size - p)) + p) / quarter_pi_sin
+		local path = assdraw.ass_new()
+		path:move_to(bx - r, by)
+		path:line_to(ax + r, by)
+		if cy > by - d then
+			local subtracted_radius = (d - (cy - (by - d))) / 2
+			local xbd = (r - subtracted_radius * 1.35) -- x bezier delta
+			path:bezier_curve(ax + xbd, by, ax + xbd, cy, ax + r, cy)
+			path:line_to(bx - r, cy)
+			path:bezier_curve(bx - xbd, cy, bx - xbd, by, bx - r, by)
 		else
-			fg_path:line_to(ax, ay)
-			fg_path:line_to(bx, ay)
+			path:bezier_curve(ax + rh, by, ax, by - rh, ax, by - r)
+			local nudge_bottom_y = nudge_y + nudge_size
+
+			if cy + rh <= nudge_bottom_y then
+				path:line_to(ax, nudge_bottom_y)
+				if cy <= nudge_y then
+					path:line_to((ax + nudge_size), nudge_y)
+					local nudge_top_y = nudge_y - nudge_size
+					if cy <= nudge_top_y then
+						local r, rh = r, rh
+						if cy > nudge_top_y - r then
+							r = nudge_top_y - cy
+							rh = r / 2
+						end
+						path:line_to(ax, nudge_top_y)
+						path:line_to(ax, cy + r)
+						path:bezier_curve(ax, cy + rh, ax + rh, cy, ax + r, cy)
+						path:line_to(bx - r, cy)
+						path:bezier_curve(bx - rh, cy, bx, cy + rh, bx, cy + r)
+						path:line_to(bx, nudge_top_y)
+					else
+						local triangle_side = cy - nudge_top_y
+						path:line_to((ax + triangle_side), cy)
+						path:line_to((bx - triangle_side), cy)
+					end
+					path:line_to((bx - nudge_size), nudge_y)
+				else
+					local triangle_side = nudge_bottom_y - cy
+					path:line_to((ax + triangle_side), cy)
+					path:line_to((bx - triangle_side), cy)
+				end
+				path:line_to(bx, nudge_bottom_y)
+			else
+				path:line_to(ax, cy + r)
+				path:bezier_curve(ax, cy + rh, ax + rh, cy, ax + r, cy)
+				path:line_to(bx - r, cy)
+				path:bezier_curve(bx - rh, cy, bx, cy + rh, bx, cy + r)
+			end
+			path:line_to(bx, by - r)
+			path:bezier_curve(bx, by - rh, bx - rh, by, bx - r, by)
 		end
-		fg_path:line_to(bx, by)
-		return fg_path
+		return path
 	end
 
-	-- FG & BG paths
-	local fg_path = make_nudged_path(fax, fay, fbx, fby)
-	local bg_path = make_nudged_path(bax, bay, bbx, bby)
+	-- BG & FG paths
+	local bg_path = create_nudged_path(0)
+	local fg_path = create_nudged_path(options.volume_border, volume_y)
 
 	-- Background
 	ass:new_event()
@@ -3469,13 +3488,13 @@ function VolumeSlider:render()
 	local volume_string = tostring(round(state.volume * 10) / 10)
 	local font_size = round(((width * 0.6) - (#volume_string * (width / 20))) * options.font_scale)
 	local opacity = math.min(options.volume_opacity + 0.1, 1) * visibility
-	if fay < self.by - self.spacing then
+	if volume_y < self.by - self.spacing then
 		ass:txt(self.ax + (width / 2), self.by - self.spacing, 2, volume_string, {
 			size = font_size, color = options.color_foreground_text, opacity = opacity,
 			clip = '\\clip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')',
 		})
 	end
-	if fay > self.by - self.spacing - font_size then
+	if volume_y > self.by - self.spacing - font_size then
 		ass:txt(self.ax + (width / 2), self.by - self.spacing, 2, volume_string, {
 			size = font_size, color = options.color_background_text, opacity = opacity,
 			clip = '\\iclip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')',
@@ -3485,9 +3504,7 @@ function VolumeSlider:render()
 	-- Disabled stripes for no audio
 	if not state.has_audio then
 		-- Create 100 foreground clip path
-		local f100ax, f100ay = self.ax + options.volume_border, self.ay + options.volume_border
-		local f100bx, f100by = self.bx - options.volume_border, self.by - options.volume_border
-		local fg_100_path = make_nudged_path(f100ax, f100ay, f100bx, f100by)
+		local fg_100_path = create_nudged_path(options.volume_border)
 
 		-- Render stripes
 		local stripe_height = 12
@@ -3529,6 +3546,10 @@ function Volume:init()
 	Element.init(self, 'volume')
 	self.mute = MuteButton:new({anchor_id = 'volume'})
 	self.slider = VolumeSlider:new({anchor_id = 'volume'})
+end
+
+function Volume:get_visibility()
+	return self.slider.pressed and 1 or Element.get_visibility(self)
 end
 
 function Volume:update_dimensions()
