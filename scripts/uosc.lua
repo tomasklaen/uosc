@@ -2151,12 +2151,12 @@ function Menu:render()
 	-- Parent menus
 	local parent_menu = self.current.parent_menu
 	local parent_offset_x = self.ax
-	local parent_opacity_factor = 0.4
+	local parent_opacity_factor = options.menu_parent_opacity
 	local menu_gap = 2
 
 	while parent_menu do
 		parent_offset_x = parent_offset_x - parent_menu.width - menu_gap
-		draw_menu(parent_menu, parent_offset_x, parent_menu.top, parent_opacity_factor)
+		draw_menu(parent_menu, parent_offset_x, parent_menu.top, parent_opacity_factor * opacity)
 		parent_opacity_factor = parent_opacity_factor * parent_opacity_factor
 		parent_menu = parent_menu.parent_menu
 	end
