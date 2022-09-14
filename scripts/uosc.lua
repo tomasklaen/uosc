@@ -1028,7 +1028,7 @@ end
 ---@param ay number
 ---@param bx number
 ---@param by number
----@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; border_opacity?: number; clip?: string, radius?: number}
+---@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; clip?: string, radius?: number}
 function ass_mt:rect(ax, ay, bx, by, opts)
 	opts = opts or {}
 	local border_size = opts.border or 0
@@ -1042,11 +1042,7 @@ function ass_mt:rect(ax, ay, bx, by, opts)
 	end
 	-- opacity
 	if opts.opacity then
-		tags = tags .. string.format('\\1a&H%X&', opacity_to_alpha(opts.opacity))
-	end
-	-- border opacity
-	if opts.border_opacity then
-		tags = tags .. string.format('\\3a&H%X&', opacity_to_alpha(opts.border_opacity))
+		tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity))
 	end
 	-- clip
 	if opts.clip then
@@ -2337,7 +2333,7 @@ function Speed:render()
 
 			ass:rect(notch_x - notch_thickness, notch_ay, notch_x + notch_thickness, notch_by, {
 				color = options.color_foreground, border = 1, border_color = options.color_background,
-				opacity = math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1) * opacity,
+				opacity = math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1) * opacity
 			})
 		end
 	end
