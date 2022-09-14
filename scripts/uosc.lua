@@ -373,6 +373,7 @@ local state = {
 	duration_or_remaining_time_human = nil, -- depends on options.total_time
 	pause = mp.get_property_native('pause'),
 	chapters = nil,
+	chapter_ranges = nil,
 	border = mp.get_property_native('border'),
 	fullscreen = mp.get_property_native('fullscreen'),
 	maximized = mp.get_property_native('window-maximized'),
@@ -403,7 +404,6 @@ local state = {
 }
 
 -- Parse `chapter_ranges` option into workable data structure
-local chapter_ranges = nil
 for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 	local start_patterns, color, opacity, end_patterns = string.match(
 		definition, '([^<]+)<(%x%x%x%x%x%x):(%d?%.?%d*)>([^>]+)'
@@ -493,8 +493,8 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 			end
 		end
 
-		chapter_ranges = chapter_ranges or {}
-		chapter_ranges[#chapter_ranges + 1] = chapter_range
+		state.chapter_ranges = state.chapter_ranges or {}
+		state.chapter_ranges[#state.chapter_ranges + 1] = chapter_range
 	end
 end
 
