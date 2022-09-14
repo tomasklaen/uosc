@@ -367,7 +367,7 @@ local state = {
 	time_human = nil, -- current playback time in human format
 	duration_or_remaining_time_human = nil, -- depends on options.total_time
 	pause = mp.get_property_native('pause'),
-	chapters = nil,
+	chapters = {},
 	border = mp.get_property_native('border'),
 	fullscreen = mp.get_property_native('fullscreen'),
 	maximized = mp.get_property_native('window-maximized'),
@@ -486,7 +486,7 @@ for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 
 			-- If there is an unfinished range and range type accepts eof, use it
 			if current_range ~= nil and uses_eof then
-				end_range({time = state.duration or infinity})
+				end_range({time = infinity})
 			end
 		end
 
@@ -884,13 +884,8 @@ function delete_file(path)
 end
 
 -- Ensures chapters are in chronological order
-function get_normalized_chapters()
-	local chapters = mp.get_property_native('chapter-list')
-
+function normalize_chapters(chapters)
 	if not chapters then return end
-
-	-- Copy table
-	chapters = itable_slice(chapters)
 
 	-- Ensure chronological order of chapters
 	table.sort(chapters, function(a, b) return a.time < b.time end)
@@ -898,12 +893,10 @@ function get_normalized_chapters()
 	return chapters
 end
 
-function serialize_chapters()
-	-- Sometimes state.duration is not initialized yet for some reason
-	state.duration = mp.get_property_native('duration')
-	local chapters = get_normalized_chapters()
+function serialize_chapters(_, chapters)
+	chapters = normalize_chapters(chapters)
 
-	if not chapters or not state.duration then return end
+	if not chapters then return end
 
 	-- Reset custom ranges
 	for _, chapter_range in ipairs(state.chapter_ranges or {}) do
@@ -2775,7 +2768,7 @@ function Timeline:render()
 		for i, chapter_range in ipairs(state.chapter_ranges) do
 			for i, range in ipairs(chapter_range.ranges) do
 				local rax = time_ax + time_width * (range['start'].time / state.duration)
-				local rbx = time_ax + time_width * (range['end'].time / state.duration)
+				local rbx = time_ax + time_width * math.min(range['end'].time / state.duration, 1)
 				-- for 1px chapter size, use the whole size of the bar including padding
 				local ray = size <= 1 and bay or fay
 				local rby = size <= 1 and bby or fby
@@ -2786,7 +2779,7 @@ function Timeline:render()
 
 	-- Chapters
 	if (options.timeline_chapters_opacity > 0
-		and (state.chapters ~= nil and #state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)
+		and (#state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)
 		) then
 		local diamond_radius = foreground_size < 3 and foreground_size or math.max(foreground_size / 10, 3)
 		local diamond_border = options.timeline_border and math.max(options.timeline_border, 1) or 1
@@ -4214,9 +4207,9 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 	title = 'Chapters',
 	type = 'chapters',
 	list_prop = 'chapter-list',
-	list_serializer = function(_, _)
+	list_serializer = function(_, chapters)
 		local items = {}
-		local chapters = get_normalized_chapters()
+		chapters = normalize_chapters(chapters)
 		local active_found = false
 
 		for index, chapter in ipairs(chapters) do
