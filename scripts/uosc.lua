@@ -247,7 +247,8 @@ local config = {
 		return parts[1] and {color = parts[1], opacity = tonumber(parts[2])} or nil
 	end)(),
 	menu_items = (function()
-		local input_conf_path = mp.command_native({'expand-path', '~~/input.conf'})
+		local input_conf_property = mp.get_property_native('input-conf');
+		local input_conf_path = mp.command_native({'expand-path', input_conf_property == '' and '~~/input.conf'  or input_conf_property})
 		local input_conf_meta, meta_error = utils.file_info(input_conf_path)
 
 		-- File doesn't exist
