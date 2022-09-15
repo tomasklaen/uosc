@@ -4064,13 +4064,19 @@ end
 mp.set_key_bindings(mouse_keybinds, 'mouse_movement', 'force')
 mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 
-mp.register_event('file-loaded', function()
-	parse_chapters()
-	local title_template = mp.get_property_native('title')
+function update_title(title_template)
 	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
 	set_state('title', mp.command_native({"expand-text", title_template}))
+end
+mp.register_event('file-loaded', function()
+	parse_chapters()
+	update_title(mp.get_property_native('title'))
 end)
 mp.register_event('end-file ', function() set_state('title', nil) end)
+mp.observe_property('title', 'string', function(_, title)
+	-- Don't change title if there is currently none
+	if state.title then update_title(title) end
+end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', update_human_times))
 mp.observe_property('duration', 'number', create_state_setter('duration', update_human_times))
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
