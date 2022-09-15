@@ -14,7 +14,7 @@ local utils = require('mp.utils')
 local msg = require('mp.msg')
 local osd = mp.create_osd_overlay('ass-events')
 local infinity = 1e309
-local quarter_pi_sin = math.sin(math.pi/4)
+local quarter_pi_sin = math.sin(math.pi / 4)
 
 --[[ BASE HELPERS ]]
 
@@ -248,7 +248,9 @@ local config = {
 	end)(),
 	menu_items = (function()
 		local input_conf_property = mp.get_property_native('input-conf');
-		local input_conf_path = mp.command_native({'expand-path', input_conf_property == '' and '~~/input.conf'  or input_conf_property})
+		local input_conf_path = mp.command_native({
+			'expand-path', input_conf_property == '' and '~~/input.conf' or input_conf_property,
+		})
 		local input_conf_meta, meta_error = utils.file_info(input_conf_path)
 
 		-- File doesn't exist
@@ -2349,7 +2351,7 @@ function Speed:render()
 
 			ass:rect(notch_x - notch_thickness, notch_ay, notch_x + notch_thickness, notch_by, {
 				color = options.color_foreground, border = 1, border_color = options.color_background,
-				opacity = math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1) * opacity
+				opacity = math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1) * opacity,
 			})
 		end
 	end
@@ -2952,7 +2954,7 @@ function TopBarButton:render()
 	local width, height = self.bx - self.ax, self.by - self.ay
 	local icon_size = math.min(width, height) * 0.5
 	ass:icon(self.ax + width / 2, self.ay + height / 2, icon_size, self.icon, {
-		opacity = visibility, border = options.text_border
+		opacity = visibility, border = options.text_border,
 	})
 
 	return ass
@@ -4066,7 +4068,7 @@ mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 
 function update_title(title_template)
 	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
-	set_state('title', mp.command_native({"expand-text", title_template}))
+	set_state('title', mp.command_native({'expand-text', title_template}))
 end
 mp.register_event('file-loaded', function()
 	parse_chapters()
