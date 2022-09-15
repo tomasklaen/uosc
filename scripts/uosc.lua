@@ -601,8 +601,8 @@ end
 ---@param point {x: number; y: number}
 ---@param rect {ax: number; ay: number; bx: number; by: number}
 function get_point_to_rectangle_proximity(point, rect)
-	local dx = math.max(rect.ax - point.x, 0, point.x - rect.bx + 1)
-	local dy = math.max(rect.ay - point.y, 0, point.y - rect.by + 1)
+	local dx = math.max(rect.ax - point.x, 0, point.x - rect.bx)
+	local dy = math.max(rect.ay - point.y, 0, point.y - rect.by)
 	return math.sqrt(dx * dx + dy * dy);
 end
 
@@ -2651,8 +2651,7 @@ function Timeline:get_time_at_x(x)
 end
 
 function Timeline:set_from_cursor()
-	-- add 0.5 to be in the middle of the pixel
-	mp.commandv('seek', self:get_time_at_x(cursor.x + 0.5), 'absolute+exact')
+	mp.commandv('seek', self:get_time_at_x(cursor.x), 'absolute+exact')
 end
 
 function Timeline:on_mbtn_left_down()
@@ -2881,8 +2880,7 @@ function Timeline:render()
 
 	-- Hovered time and chapter
 	if (self.proximity_raw == 0 or self.pressed) and not (Elements.speed and Elements.speed.dragging) then
-		-- add 0.5 to be in the middle of the pixel
-		local hovered_seconds = self:get_time_at_x(cursor.x + 0.5)
+		local hovered_seconds = self:get_time_at_x(cursor.x)
 		local chapter_title, chapter_title_width = nil, nil
 
 		if (options.timeline_chapters ~= 'never' and state.chapters) then
@@ -2902,7 +2900,7 @@ function Timeline:render()
 		-- 0.5 to switch when the pixel is half filled in
 		local color = ((fax - 0.5) < cursor.x and cursor.x < (fbx + 0.5)) and
 			options.color_background or options.color_foreground
-		local line = {ax = cursor.x, ay = fay, bx = cursor.x + 1, by = fby}
+		local line = {ax = cursor.x - 0.5, ay = fay, bx = cursor.x + 0.5, by = fby}
 		ass:rect(line.ax, line.ay, line.bx, line.by, {color = color, opacity = 0.2})
 
 		-- Timestamp
@@ -3655,8 +3653,9 @@ function update_cursor_position()
 	local dpi_scale = mp.get_property_native('display-hidpi-scale', 1.0)
 	dpi_scale = dpi_scale * options.ui_scale
 
-	cursor.x = cursor.x / dpi_scale
-	cursor.y = cursor.y / dpi_scale
+	-- add 0.5 to be in the middle of the pixel
+	cursor.x = (cursor.x + 0.5) / dpi_scale
+	cursor.y = (cursor.y + 0.5) / dpi_scale
 
 	Elements:update_proximities()
 	request_render()
