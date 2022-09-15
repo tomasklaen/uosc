@@ -2140,7 +2140,7 @@ function Menu:render()
 
 			-- Title
 			ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.title, {
-				size = self.font_size, bold = true, color = options.color_background, wrap = 2, opacity = opacity,
+				size = self.font_size, bold = true, color = options.color_background, wrap = 2, opacity = self.opacity,
 				clip = '\\clip(' .. ax .. ',' .. title_ay .. ',' .. bx .. ',' .. ay .. ')',
 			})
 		end
@@ -2851,7 +2851,7 @@ function Timeline:render()
 
 	-- Time values
 	if text_opacity > 0 then
-		local opts = {size = self.font_size, opacity = math.min(options.timeline_opacity + 0.1, 1) * text_opacity}
+		local opts = {size = self.font_size, opacity = text_opacity}
 
 		-- Elapsed time
 		if state.time_human then
@@ -3500,16 +3500,15 @@ function VolumeSlider:render()
 	-- Current volume value
 	local volume_string = tostring(round(state.volume * 10) / 10)
 	local font_size = round(((width * 0.6) - (#volume_string * (width / 20))) * options.font_scale)
-	local opacity = math.min(options.volume_opacity + 0.1, 1) * visibility
 	if volume_y < self.by - self.spacing then
 		ass:txt(self.ax + (width / 2), self.by - self.spacing, 2, volume_string, {
-			size = font_size, color = options.color_foreground_text, opacity = opacity,
+			size = font_size, color = options.color_foreground_text, opacity = visibility,
 			clip = '\\clip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')',
 		})
 	end
 	if volume_y > self.by - self.spacing - font_size then
 		ass:txt(self.ax + (width / 2), self.by - self.spacing, 2, volume_string, {
-			size = font_size, color = options.color_background_text, opacity = opacity,
+			size = font_size, color = options.color_background_text, opacity = visibility,
 			clip = '\\iclip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')',
 		})
 	end
@@ -3530,7 +3529,7 @@ function VolumeSlider:render()
 			ass:new_event()
 			ass:append('{\\blur0\\bord0\\shad0\\1c&H' .. color ..
 				'\\clip(' .. fg_100_path.scale .. ',' .. fg_100_path.text .. ')}')
-			ass:opacity(0.15 * opacity)
+			ass:opacity(0.15 * visibility)
 			ass:pos(0, 0)
 			ass:draw_start()
 
