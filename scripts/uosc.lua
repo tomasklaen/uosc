@@ -387,12 +387,14 @@ local state = {
 	volume = nil,
 	volume_max = nil,
 	mute = nil,
-	is_video = nil,
-	is_audio = nil, -- true if file is audio only (mp3, etc)
-	is_image = nil,
-	is_stream = nil,
-	has_audio = nil,
-	has_playlist = nil,
+	is_video = false,
+	is_audio = false, -- true if file is audio only (mp3, etc)
+	is_image = false,
+	is_stream = false,
+	has_audio = false,
+	has_sub = false,
+	has_chapter = false,
+	has_playlist = false,
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		if not options.autohide then return end
 		handle_mouse_leave()
@@ -3129,7 +3131,7 @@ function Controls:serialize()
 		for _, disposition in ipairs(dispositions) do
 			local value = disposition:sub(1, 1) ~= '!'
 			local name = not value and disposition:sub(2) or disposition
-			local prop = (name == 'has_audio' or name == 'has_playlist') and name or 'is_' .. name
+			local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
 			if state[prop] ~= value then return false end
 		end
 		return true
@@ -4085,9 +4087,10 @@ mp.observe_property('speed', 'number', create_state_setter('speed', update_human
 mp.observe_property('track-list', 'native', function(name, value)
 	-- checks the file dispositions
 	local path = mp.get_property_native('path')
-	local has_audio, is_video, is_image = false, false, false
+	local has_audio, has_sub, is_video, is_image = false, false, false, false
 	for _, track in ipairs(value) do
 		if track.type == 'audio' then has_audio = true end
+		if track.type == 'sub' then has_sub = true end
 		if track.type == 'video' then
 			is_image = track.image
 			if not is_image and not track.albumart then
@@ -4098,11 +4101,16 @@ mp.observe_property('track-list', 'native', function(name, value)
 	set_state('is_audio', not is_video and has_audio)
 	set_state('is_image', is_image)
 	set_state('has_audio', has_audio)
+	set_state('has_sub', has_sub)
 	set_state('is_video', is_video)
 	set_state('is_stream', is_protocol(path))
 	Elements:trigger('dispositions')
 end)
-mp.observe_property('chapter-list', 'native', parse_chapters)
+mp.observe_property('chapter-list', 'native', function(_, chapters)
+	set_state('has_chapter', #chapters > 0)
+	Elements:trigger('dispositions')
+	parse_chapters(chapters)
+end)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
