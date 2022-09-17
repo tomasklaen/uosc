@@ -902,7 +902,7 @@ function get_normalized_chapters()
 	return chapters
 end
 
-function parse_chapters()
+function serialize_chapters()
 	-- Sometimes state.duration is not initialized yet for some reason
 	state.duration = mp.get_property_native('duration')
 	local chapters = get_normalized_chapters()
@@ -4083,7 +4083,7 @@ function update_title(title_template)
 	set_state('title', mp.command_native({'expand-text', title_template}))
 end
 mp.register_event('file-loaded', function()
-	parse_chapters()
+	serialize_chapters()
 	update_title(mp.get_property_native('title'))
 end)
 mp.register_event('end-file ', function() set_state('title', nil) end)
@@ -4119,7 +4119,7 @@ end)
 mp.observe_property('chapter-list', 'native', function(_, chapters)
 	set_state('has_chapter', #chapters > 0)
 	Elements:trigger('dispositions')
-	parse_chapters(chapters)
+	serialize_chapters()
 end)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
