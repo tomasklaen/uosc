@@ -2756,7 +2756,6 @@ function Timeline:render()
 	ass:rect(fax, fay, fbx, fby, {opacity = options.timeline_opacity})
 
 	-- Uncached ranges
-	state.uncached_ranges = {{0, 600}}
 	if state.uncached_ranges then
 		local texture_opts = {size = 80, opacity = 0.4 - (0.2 * text_opacity), align = 3}
 		local texture_char = text_opacity > 0 and 'b' or 'a'
