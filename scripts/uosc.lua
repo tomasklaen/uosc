@@ -4100,7 +4100,6 @@ mp.observe_property('duration', 'number', create_state_setter('duration', update
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
 mp.observe_property('track-list', 'native', function(name, value)
 	-- checks the file dispositions
-	local path = mp.get_property_native('path')
 	local has_audio, has_sub, is_video, is_image = false, false, false, false
 	for _, track in ipairs(value) do
 		if track.type == 'audio' then has_audio = true end
@@ -4117,7 +4116,6 @@ mp.observe_property('track-list', 'native', function(name, value)
 	set_state('has_audio', has_audio)
 	set_state('has_sub', has_sub)
 	set_state('is_video', is_video)
-	set_state('is_stream', is_protocol(path))
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('chapter-list', 'native', function(_, chapters)
@@ -4146,10 +4144,14 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 	request_render()
 end)
 mp.observe_property('display-hidpi-scale', 'native', update_display_dimensions)
+mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_stream', function()
+	set_state('uncached_ranges', state.is_stream and state.duration and {0, state.duration} or nil)
+	Elements:trigger('dispositions')
+end))
 mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	local cached_ranges = cache_state and cache_state['seekable-ranges'] or {}
 	local uncached_ranges = nil
-	if state.duration and #cached_ranges > 0 then
+	if state.duration and state.is_stream then
 		-- Normalize
 		local ranges = {}
 		for _, range in ipairs(cached_ranges) do
@@ -4160,7 +4162,7 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 		end
 		table.sort(ranges, function(a, b) return a[1] < b[1] end)
 		-- Invert cached ranges into uncached ranges, as that's what we're rendering
-		uncached_ranges = {}
+		uncached_ranges = {{0, state.duration}}
 		for _, cached in pairs(ranges) do
 			local last_uncached = uncached_ranges[#uncached_ranges]
 			if cached[2] - cached[1] > 0.5 then
