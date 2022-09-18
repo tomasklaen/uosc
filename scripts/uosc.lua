@@ -435,6 +435,11 @@ local state = {
 	margin_top = 0,
 	margin_bottom = 0,
 }
+local thumbfast = {
+	width = 0,
+	height = 0,
+	disabled = false
+}
 
 --[[ HELPERS ]]
 
@@ -2894,6 +2899,19 @@ function Timeline:render()
 				text_length_override = chapter_title_width,
 			})
 		end
+
+		-- Thumbnail
+		if not thumbfast.disabled and thumbfast.width ~= 0 and thumbfast.height ~= 0 then
+			mp.commandv("script-message-to", "thumbfast", "thumb",
+				hovered_seconds,
+				math.min(display.width - thumbfast.width - 10, math.max(10, cursor.x - thumbfast.width / 2)),
+				fay - thumbfast.height - (2 + self.font_size * (chapter_title and 2.8 or 1.4))
+			)
+		end
+	else
+		if thumbfast.width ~= 0 and thumbfast.height ~= 0 then
+			mp.commandv("script-message-to", "thumbfast", "clear")
+		end
 	end
 
 	return ass
@@ -4593,5 +4611,13 @@ mp.register_script_message('update-menu', function(json)
 		local menu = data.type and Menu:is_open(data.type)
 		if menu then menu:update(data)
 		else open_command_menu(data) end
+	end
+end)
+mp.register_script_message('thumbfast-info', function(json)
+	local data = utils.parse_json(json)
+	if type(data) ~= 'table' or not data.width or not data.height then
+		msg.error('thumbfast-info: received json didn\'t produce a table with thumbnail information')
+	else
+		thumbfast = data
 	end
 end)
