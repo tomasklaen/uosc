@@ -155,9 +155,7 @@ local options = {
 	timeline_opacity = 0.9,
 	timeline_border = 1,
 	timeline_step = 5,
-	timeline_chapters = 'dots',
-	timeline_chapters_opacity = 0.4,
-	timeline_chapters_width = 6,
+	timeline_chapters = true,
 
 	controls = 'menu,gap,subtitles,<has_audio,!audio>audio,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
@@ -226,8 +224,6 @@ local options = {
 opt.read_options(options, 'uosc')
 -- Normalize values
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
-options.timeline_chapters = itable_index_of({'dots', 'lines', 'lines-top', 'lines-bottom'}, options.timeline_chapters)
-	and options.timeline_chapters or 'never'
 
 --[[ CONFIG ]]
 
@@ -2789,83 +2785,26 @@ function Timeline:render()
 	end
 
 	-- Chapters
-	local chapters_style = options.timeline_chapters
-	if (chapters_style ~= 'never'
+	if (options.timeline_chapters
 		and (state.chapters ~= nil and #state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)
 		) then
+		local diamond_radius = foreground_size < 3 and foreground_size or math.max(foreground_size / 10, 3)
+		local diamond_border = options.timeline_border and math.max(options.timeline_border, 1) or 1
 
-		-- Defaults are for `lines`
-		local dots = false
-		local chapter_width, chapter_opacity = options.timeline_chapters_width, options.timeline_chapters_opacity
-		local chapter_height, chapter_y
-
-		-- Improve visibility on thin timeline
-		if chapters_style == 'dots' then
-			if foreground_size < 3 then
-				chapters_style, chapter_width = 'lines', 3
-				chapter_opacity = math.min(chapter_opacity * 1.5, 1)
-			end
-		else
-			if foreground_size < 6 then
-				chapters_style, chapter_width = 'lines', math.max(chapter_width, 3)
-				chapter_opacity = math.min(chapter_opacity * 1.5, 1)
-			end
-		end
-
-		if chapters_style == 'dots' then
-			dots = true
-			chapter_height = math.min(chapter_width, foreground_size)
-			chapter_y = fay + chapter_height / 2
-		elseif chapters_style == 'lines' then
-			chapter_height = size
-			chapter_y = fay + (chapter_height / 2)
-		elseif chapters_style == 'lines-top' then
-			chapter_height = math.min(self.size_max / 3, size)
-			chapter_y = fay + (chapter_height / 2)
-		elseif chapters_style == 'lines-bottom' then
-			chapter_height = math.min(self.size_max / 3, size)
-			chapter_y = fay + size - (chapter_height / 2)
-		end
-
-		if chapter_height ~= nil then
-			-- for 1px chapter size, use the whole size of the bar including padding
-			chapter_height = size <= 1 and foreground_size or chapter_height
-			local chapter_half_width = chapter_width / 2
-			local chapter_half_height = chapter_height / 2
+		if diamond_radius > 0 then
 			local function draw_chapter(time)
 				local chapter_x = time_ax + time_width * (time / state.duration)
-				local ax, bx = chapter_x - chapter_half_width, chapter_x + chapter_half_width
-				local opts = {
-					color = options.foreground, opacity = chapter_opacity,
-					clip = dots and '\\iclip(' .. foreground_coordinates .. ')' or nil,
-				}
-
-				if dots then
-					local cx, dx = math.max(ax, fax), math.min(bx, fbx)
-					-- 0.5 because clipping coordinates are rounded
-					if (ax - 0.5) < fax or (bx + 0.5) > fbx then
-						ass:circle(chapter_x, chapter_y, chapter_half_height, opts)
-					end
-					if (dx - cx) > 0 then -- intersection
-						opts.color = options.background
-						opts.clip = '\\clip(' .. foreground_coordinates .. ')'
-						ass:circle(chapter_x, chapter_y, chapter_half_height, opts)
-					end
-				else
-					ax, bx = round(ax), round(bx)
-					local cx, dx = math.max(ax, fax), math.min(bx, fbx)
-					local ay, by = chapter_y - chapter_half_height, chapter_y + chapter_half_height
-					if ax < fax then --left of progress
-						ass:rect(ax, ay, math.min(bx, fax), by, opts)
-					end
-					if bx > fbx then --right of progress
-						ass:rect(math.max(ax, fbx), ay, bx, by, opts)
-					end
-					if (dx - cx) > 0 then --intersection
-						opts.color = options.background
-						ass:rect(cx, ay, dx, by, opts)
-					end
-				end
+				ass:new_event()
+				ass:append(string.format(
+					'{\\pos(0,0)\\blur0\\bord%f\\1c&H%s\\3c&H%s\\1a&H%X&}',
+					diamond_border, options.foreground, options.background, opacity_to_alpha(options.timeline_opacity)
+				))
+				ass:draw_start()
+				ass:move_to(chapter_x - diamond_radius, fay)
+				ass:line_to(chapter_x, fay - diamond_radius)
+				ass:line_to(chapter_x + diamond_radius, fay)
+				ass:line_to(chapter_x, fay + diamond_radius)
+				ass:draw_stop()
 			end
 
 			if state.chapters ~= nil then
