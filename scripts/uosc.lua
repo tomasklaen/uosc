@@ -974,7 +974,7 @@ function ass_mt:txt(x, y, align, value, opts)
 	-- font size
 	tags = tags .. '\\fs' .. opts.size
 	-- bold
-	if opts.bold then tags = tags .. '\\b1' end
+	if opts.bold or options.font_bold then tags = tags .. '\\b1' end
 	-- italic
 	if opts.italic then tags = tags .. '\\i1' end
 	-- wrap
