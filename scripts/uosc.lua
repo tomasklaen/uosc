@@ -2624,6 +2624,9 @@ function Timeline:init()
 	self.size_min_override = options.timeline_start_hidden and 0 or nil
 	self.font_size = 0
 	self.top_border = options.timeline_border
+
+	-- Release any dragging when file gets unloaded
+	mp.register_event('end-file', function() self.pressed = false end)
 end
 
 function Timeline:get_visibility()
