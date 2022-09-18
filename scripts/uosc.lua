@@ -3170,7 +3170,7 @@ function Controls:serialize()
 	for i, item in ipairs(items) do
 		local config = shorthands[item.config] and shorthands[item.config] or item.config
 		local config_tooltip = split(config, ' *%? *')
-		config = config_tooltip[1]
+		config = shorthands[config_tooltip[1]] and shorthands[config_tooltip[1]] or config
 		local tooltip = config_tooltip[2]
 		local parts = split(config, ' *: *')
 		local kind, params = parts[1], itable_slice(parts, 2)
