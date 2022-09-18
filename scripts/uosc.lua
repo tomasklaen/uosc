@@ -155,7 +155,7 @@ local options = {
 	timeline_opacity = 0.9,
 	timeline_border = 1,
 	timeline_step = 5,
-	timeline_chapters = true,
+	timeline_chapters_opacity = 0.8,
 
 	controls = 'menu,gap,subtitles,<has_audio,!audio>audio,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
@@ -2785,7 +2785,7 @@ function Timeline:render()
 	end
 
 	-- Chapters
-	if (options.timeline_chapters
+	if (options.timeline_chapters_opacity > 0
 		and (state.chapters ~= nil and #state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)
 		) then
 		local diamond_radius = foreground_size < 3 and foreground_size or math.max(foreground_size / 10, 3)
@@ -2796,8 +2796,9 @@ function Timeline:render()
 				local chapter_x = time_ax + time_width * (time / state.duration)
 				ass:new_event()
 				ass:append(string.format(
-					'{\\pos(0,0)\\blur0\\bord%f\\1c&H%s\\3c&H%s\\1a&H%X&}',
-					diamond_border, options.foreground, options.background, opacity_to_alpha(options.timeline_opacity)
+					'{\\pos(0,0)\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
+					diamond_border, options.foreground, options.background, options.background,
+					opacity_to_alpha(options.timeline_opacity * options.timeline_chapters_opacity)
 				))
 				ass:draw_start()
 				ass:move_to(chapter_x - diamond_radius, fay)
