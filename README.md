@@ -106,11 +106,11 @@ tab  script-binding uosc/peek-timeline
 
 Available commands:
 
-#### `peek-ui`
+#### `toggle-ui`
 
-Makes the whole UI visible until you call this command again, or move the cursor. Useful for peeking remaining time and such while watching.
+Makes the whole UI visible until you call this command again. Useful for peeking remaining time and such while watching.
 
-You can also peek only a specific element with `peek-{element}` command.
+You can also peek only a specific element with `toggle-{element}` command.
 
 `{element}` can be one of: `timeline`, `controls`, `volume`, `top-bar`
 

@@ -1152,19 +1152,13 @@ function Elements:update_proximities()
 	for _, element in ipairs(mouse_enter_elements) do element:trigger('mouse_enter') end
 end
 
--- Toggles elements visibility between 0 and 1.
----@param elements string[] IDs of elements to peek.
-function Elements:peek(elements)
-	local highest_visibility = 0
-	for _, name in ipairs(elements) do
-		local visibility = self[name] and self[name]:get_visibility() or 0
-		if visibility > highest_visibility then highest_visibility = visibility end
-	end
-	local to = highest_visibility > 0.5 and 0 or 1
-	for _, name in ipairs(elements) do
-		local element = self[name]
-		if element then element:tween_property('proximity', element.proximity, to) end
-	end
+-- Toggles passed elements' min visibilities between 0 and 1.
+---@param ids string[] IDs of elements to peek.
+function Elements:toggle(ids)
+	local elements = itable_filter(self.itable, function(element) return itable_index_of(ids, element.id) ~= nil end)
+	local all_visible = itable_find(elements, function(element) return element.min_visibility ~= 1 end) == nil
+	local to = all_visible and 0 or 1
+	for _, element in ipairs(elements) do element:tween_property('min_visibility', element.min_visibility, to) end
 end
 
 ---@param name string Event name.
@@ -1351,7 +1345,9 @@ function Element:init(id, props)
 	self.proximity = 0
 	-- Raw proximity in pixels.
 	self.proximity_raw = infinity
-	---@type number `0-1` factor to force elements visibility.
+	---@type number `0-1` factor to force min visibility. Used for toggling element's permanent visibility.
+	self.min_visibility = 0
+	---@type number `0-1` factor to force a visibility value. Used for flashing, fading out, and other animations
 	self.forced_visibility = nil
 	---@type boolean Render this element even when menu is open.
 	self.ignores_menu = false
@@ -1413,15 +1409,15 @@ function Element:get_visibility()
 			or (persist.image and state.is_image)
 		) then return 1 end
 
-	-- Forced proximity
-	if self.forced_visibility then return self.forced_visibility end
+	-- Forced visibility
+	if self.forced_visibility then return math.max(self.forced_visibility, self.min_visibility) end
 
 	-- Anchor inheritance
 	-- If anchor returns -1, it means all attached elements should force hide.
 	local anchor = self.anchor_id and Elements[self.anchor_id]
 	local anchor_visibility = anchor and anchor:get_visibility() or 0
 
-	return self.forced_visibility or (anchor_visibility == -1 and 0 or math.max(self.proximity, anchor_visibility))
+	return anchor_visibility == -1 and 0 or math.max(self.proximity, anchor_visibility, self.min_visibility)
 end
 
 -- Call method if it exists
@@ -4177,10 +4173,10 @@ mp.observe_property('estimated-display-fps', 'native', update_render_delay)
 
 -- KEY BINDABLE FEATURES
 
-mp.add_key_binding(nil, 'peek-ui', function() Elements:peek({'timeline', 'controls', 'volume', 'top_bar'}) end)
-mp.add_key_binding(nil, 'peek-timeline', function() Elements:peek({'timeline'}) end)
-mp.add_key_binding(nil, 'peek-volume', function() Elements:peek({'volume'}) end)
-mp.add_key_binding(nil, 'peek-top-bar', function() Elements:peek({'top_bar'}) end)
+mp.add_key_binding(nil, 'toggle-ui', function() Elements:toggle({'timeline', 'controls', 'volume', 'top_bar'}) end)
+mp.add_key_binding(nil, 'toggle-timeline', function() Elements:toggle({'timeline'}) end)
+mp.add_key_binding(nil, 'toggle-volume', function() Elements:toggle({'volume'}) end)
+mp.add_key_binding(nil, 'toggle-top-bar', function() Elements:toggle({'top_bar'}) end)
 mp.add_key_binding(nil, 'toggle-progress', function()
 	local timeline = Elements.timeline
 	if timeline.size_min_override then
