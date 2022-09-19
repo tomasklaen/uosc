@@ -961,20 +961,12 @@ function ass_mt:txt(x, y, align, value, opts)
 	tags = tags .. '\\shad' .. shadow_size
 	-- colors
 	tags = tags .. '\\1c&H' .. (opts.color or options.foreground)
-	if border_size > 0 then
-		tags = tags .. '\\3c&H' .. (opts.border_color or options.background)
-	end
-	if shadow_size > 0 then
-		tags = tags .. '\\4c&H' .. (opts.shadow_color or options.background)
-	end
+	if border_size > 0 then tags = tags .. '\\3c&H' .. (opts.border_color or options.background) end
+	if shadow_size > 0 then tags = tags .. '\\4c&H' .. (opts.shadow_color or options.background) end
 	-- opacity
-	if opts.opacity then
-		tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity))
-	end
+	if opts.opacity then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity)) end
 	-- clip
-	if opts.clip then
-		tags = tags .. opts.clip
-	end
+	if opts.clip then tags = tags .. opts.clip end
 	-- render
 	self:new_event()
 	self.text = self.text .. '{' .. tags .. '}' .. value
@@ -2712,6 +2704,7 @@ function Timeline:render()
 	-- Foreground & Background bar coordinates
 	local bax, bay, bbx, bby = self.ax, self.by - size - self.top_border, self.bx, self.by
 	local fax, fay, fbx, fby = 0, bay + self.top_border, 0, bby
+	local fcy = fay + (size / 2)
 
 	local line_width = 0
 
@@ -2750,10 +2743,14 @@ function Timeline:render()
 	ass:rect(fax, fay, fbx, fby, {opacity = options.timeline_opacity})
 
 	-- Uncached ranges
+	local buffered_time = nil
 	if state.uncached_ranges then
 		local opts = {size = 80, align = 3}
 		local texture_char = visibility > 0 and 'b' or 'a'
 		for _, range in ipairs(state.uncached_ranges) do
+			if not buffered_time and (range[1] > state.time or range[2] > state.time) then
+				buffered_time = range[1] - state.time
+			end
 			local ax = range[1] < 0.5 and bax or math.floor(time_ax + time_width * (range[1] / state.duration))
 			local bx = range[2] > state.duration - 0.5 and bbx or
 				math.ceil(time_ax + time_width * (range[2] / state.duration))
@@ -2809,38 +2806,39 @@ function Timeline:render()
 		end
 	end
 
+	local function draw_timeline_text(x, y, align, text, opts)
+		opts.color, opts.border_color = options.foreground_text, options.foreground
+		opts.clip = '\\clip(' .. foreground_coordinates .. ')'
+		ass:txt(x, y, align, text, opts)
+		opts.color, opts.border_color = options.background_text, options.background
+		opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
+		ass:txt(x, y, align, text, opts)
+	end
+
 	-- Time values
 	if text_opacity > 0 then
-		local opts = {
-			size = self.font_size, opacity = math.min(options.timeline_opacity + 0.1, 1) * text_opacity, border = 2,
-		}
+		-- Upcoming cache time
+		if buffered_time and buffered_time > 0 and buffered_time < 60 then
+			local x, align = fbx + 5, 4
+			local font_size = self.font_size * 0.8
+			local human = round(buffered_time) .. 's'
+			local width = text_width_estimate(human, font_size)
+			local min_x = bax + 5 + text_width_estimate(state.time_human, self.font_size)
+			local max_x = bbx - 5 - text_width_estimate(state.duration_or_remaining_time_human, self.font_size)
+			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
+			draw_timeline_text(x, fcy, align, human, {size = font_size, opacity = text_opacity * 0.6, border = 1})
+		end
+
+		local opts = {size = self.font_size, opacity = text_opacity, border = 2}
 
 		-- Elapsed time
 		if state.time_human then
-			local elapsed_x = bax + spacing
-			local elapsed_y = fay + (size / 2)
-			opts.color = options.foreground_text
-			opts.border_color = options.foreground
-			opts.clip = '\\clip(' .. foreground_coordinates .. ')'
-			ass:txt(elapsed_x, elapsed_y, 4, state.time_human, opts)
-			opts.color = options.background_text
-			opts.border_color = options.background
-			opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
-			ass:txt(elapsed_x, elapsed_y, 4, state.time_human, opts)
+			draw_timeline_text(bax + spacing, fcy, 4, state.time_human, opts)
 		end
 
 		-- End time
 		if state.duration_or_remaining_time_human then
-			local end_x = bbx - spacing
-			local end_y = fay + (size / 2)
-			opts.color = options.foreground_text
-			opts.border_color = options.foreground
-			opts.clip = '\\clip(' .. foreground_coordinates .. ')'
-			ass:txt(end_x, end_y, 6, state.duration_or_remaining_time_human, opts)
-			opts.color = options.background_text
-			opts.border_color = options.background
-			opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
-			ass:txt(end_x, end_y, 6, state.duration_or_remaining_time_human, opts)
+			draw_timeline_text(bbx - spacing, fcy, 6, state.duration_or_remaining_time_human, opts)
 		end
 	end
 
