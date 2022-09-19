@@ -3093,12 +3093,12 @@ end
 function Controls:serialize()
 	local shorthands = {
 		menu = 'command:menu:script-binding uosc/menu?Menu',
-		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub?Subtitles',
-		audio = 'command:graphic_eq:script-binding uosc/audio#audio?Audio',
+		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?Subtitles',
+		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?Audio',
 		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?Audio device',
-		video = 'command:theaters:script-binding uosc/video#video?Video',
+		video = 'command:theaters:script-binding uosc/video#video>1?Video',
 		playlist = 'command:list_alt:script-binding uosc/playlist?Playlist',
-		chapters = 'command:bookmarks:script-binding uosc/chapters#chapters?Chapters',
+		chapters = 'command:bookmarks:script-binding uosc/chapters#chapters>0?Chapters',
 		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?Stream quality',
 		['open-file'] = 'command:file_open:script-binding uosc/open-file?Open file',
 		['items'] = 'command:list_alt:script-binding uosc/items?Playlist/Files',
@@ -3244,10 +3244,13 @@ function Controls:clean_controls()
 	request_render()
 end
 
----@param prop string
+---@param badge string
 ---@param element Element An element that supports `badge` property.
-function Controls:register_badge_updater(prop, element)
+function Controls:register_badge_updater(badge, element)
+	local prop_and_limit = split(badge, ' *> *')
+	local prop, limit = prop_and_limit[1], tonumber(prop_and_limit[2] or -1)
 	local observable_name, serializer = prop, nil
+
 	if itable_index_of({'sub', 'audio', 'video'}, prop) then
 		observable_name = 'track-list'
 		serializer = function(value)
@@ -3258,10 +3261,15 @@ function Controls:register_badge_updater(prop, element)
 	else
 		serializer = function(value) return value and (type(value) == 'table' and #value or tostring(value)) or nil end
 	end
+
 	local function handler(_, value)
-		element.badge = serializer(value)
+		local new_value = serializer(value) --[[@as nil|string|integer]]
+		local value_number = tonumber(new_value)
+		if value_number then new_value = value_number > limit and value_number or nil end
+		element.badge = new_value
 		request_render()
 	end
+
 	mp.observe_property(observable_name, 'native', handler)
 	self.disposers[#self.disposers + 1] = function() mp.unobserve_property(handler) end
 end
