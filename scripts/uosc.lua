@@ -24,10 +24,6 @@ function round(number)
 	return modulus < 0.5 and math.floor(number) or math.ceil(number)
 end
 
-function call_me_maybe(fn, ...)
-	if fn then fn(...) end
-end
-
 ---@param str string
 ---@param pattern string
 ---@return string[]
@@ -437,20 +433,6 @@ local state = {
 	margin_bottom = 0,
 }
 
---[[ CLASSES ]]
-
----@class Class
-local Class = {}
-function Class:new(...)
-	local object = setmetatable({}, {__index = self})
-	object:init(...)
-	return object
-end
-function Class:init() end
-function Class:destroy() end
-
-function class(parent) return setmetatable({}, {__index = parent or Class}) end
-
 --[[ HELPERS ]]
 
 -- Sorting comparator close to (but not exactly) how file explorers sort files
@@ -515,7 +497,7 @@ function tween(from, to, setter, factor_or_callback, callback)
 		if not done then
 			done = true
 			timeout:kill()
-			call_me_maybe(callback)
+			if callback then callback() end
 		end
 	end
 
@@ -1343,6 +1325,20 @@ function render()
 	update_margins()
 end
 
+--[[ CLASSES ]]
+
+---@class Class
+local Class = {}
+function Class:new(...)
+	local object = setmetatable({}, {__index = self})
+	object:init(...)
+	return object
+end
+function Class:init() end
+function Class:destroy() end
+
+function class(parent) return setmetatable({}, {__index = parent or Class}) end
+
 --[[ ELEMENT ]]
 
 ---@alias ElementProps {enabled?: boolean; ax?: number; ay?: number; bx?: number; by?: number; ignores_menu?: boolean; anchor_id?: string;}
@@ -1453,7 +1449,7 @@ function Element:tween(from, to, setter, factor_or_callback, callback)
 		from, to, setter, factor_or_callback,
 		function()
 			self._kill_tween = nil
-			call_me_maybe(callback)
+			if callback then callback() end
 		end
 	)
 end
@@ -1559,7 +1555,7 @@ function Menu:close(immediate, callback)
 			menu.is_closing, menu.stack, menu.current, menu.all, menu.by_id = false, nil, nil, {}, {}
 			menu:disable_key_bindings()
 			Elements:update_proximities()
-			call_me_maybe(callback)
+			if callback then callback() end
 			request_render()
 		end
 
@@ -1611,7 +1607,7 @@ function Menu:init(data, callback, opts)
 	self:tween_property('opacity', 0, 1)
 	self:enable_key_bindings()
 	Elements.curtain:fadein()
-	call_me_maybe(self.opts.on_open)
+	if self.opts.on_open then self.opts.on_open() end
 end
 
 ---@param data MenuData
@@ -1993,7 +1989,7 @@ function Menu:destroy()
 	Element.destroy(self)
 	self:disable_key_bindings()
 	Elements.curtain:fadeout()
-	call_me_maybe(self.opts.on_close)
+	if self.opts.on_close then self.opts.on_close() end
 end
 
 function Menu:add_key_binding(key, name, fn, flags)
@@ -3053,7 +3049,7 @@ function Controls:serialize()
 	local shorthands = {
 		menu = 'command:menu:script-binding uosc/menu?Menu',
 		subtitles = 'command:subtitles:script-binding uosc/subtitles?Subtitles',
-		audio = 'command:audiotrack:script-binding uosc/audio?Audio',
+		audio = 'command:graphic_eq:script-binding uosc/audio?Audio',
 		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?Audio device',
 		video = 'command:theaters:script-binding uosc/video?Video',
 		playlist = 'command:list_alt:script-binding uosc/playlist?Playlist',
