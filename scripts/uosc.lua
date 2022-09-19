@@ -3239,6 +3239,7 @@ function Controls:clean_controls()
 		if control.element then Elements:remove(control.element) end
 	end
 	for _, disposer in ipairs(self.disposers) do disposer() end
+	self.disposers = {}
 	self.controls = {}
 	request_render()
 end
@@ -3254,6 +3255,7 @@ function Controls:register_badge_updater(prop, element)
 			for _, track in ipairs(value) do if track.type == prop then count = count + 1 end end
 			return count
 		end
+	else
 		serializer = function(value) return value and (type(value) == 'table' and #value or tostring(value)) or nil end
 	end
 	local function handler(_, value)
