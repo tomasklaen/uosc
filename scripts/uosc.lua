@@ -2884,7 +2884,7 @@ end
 
 --[[ TopBarButton ]]
 
----@alias TopBarButtonProps {icon: string; background: string; anchor_id?: string; command: string}
+---@alias TopBarButtonProps {icon: string; background: string; anchor_id?: string; command: string|fun()}
 
 ---@class TopBarButton : Element
 local TopBarButton = class(Element)
@@ -2900,7 +2900,9 @@ function TopBarButton:init(id, props)
 	self.command = props.command
 end
 
-function TopBarButton:on_mbtn_left_down() mp.command(self.command) end
+function TopBarButton:on_mbtn_left_down()
+	mp.command(type(self.command) == 'function' and self.command() or self.command)
+end
 
 function TopBarButton:render()
 	local visibility = self:get_visibility()
@@ -2935,10 +2937,16 @@ function TopBar:init()
 	self.size_min_override = options.timeline_start_hidden and 0 or nil
 	self.top_border = options.timeline_border
 
+	local function decide_maximized_command()
+		return state.border
+			and (state.fullscreen and 'set fullscreen no;cycle window-maximized' or 'cycle window-maximized')
+			or 'set window-maximized no;cycle fullscreen'
+	end
+
 	-- Order aligns from right to left
 	self.buttons = {
 		TopBarButton:new('tb_close', {icon = 'close', background = '2311e8', command = 'quit'}),
-		TopBarButton:new('tb_max', {icon = 'crop_square', background = '222222', command = 'cycle window-maximized'}),
+		TopBarButton:new('tb_max', {icon = 'crop_square', background = '222222', command = decide_maximized_command}),
 		TopBarButton:new('tb_min', {icon = 'minimize', background = '222222', command = 'cycle window-minimized'}),
 	}
 end
