@@ -541,7 +541,7 @@ end
 function text_length(text)
 	if not text or text == '' then return 0 end
 	local text_length = 0
-	for _, _, length in utf8_iter(text) do text_length = text_length + length end
+	for _, _, length in utf8_iter(tostring(text)) do text_length = text_length + length end
 	return text_length
 end
 
@@ -2382,7 +2382,7 @@ end
 
 --[[ Button ]]
 
----@alias ButtonProps {icon: string; on_click: function; anchor_id?: string; active?: boolean; foreground?: string; background?: string; tooltip?: string}
+---@alias ButtonProps {icon: string; on_click: function; anchor_id?: string; active?: boolean; badge?: string|number; foreground?: string; background?: string; tooltip?: string}
 
 ---@class Button : Element
 local Button = class(Element)
@@ -2390,10 +2390,13 @@ local Button = class(Element)
 ---@param id string
 ---@param props ButtonProps
 function Button:new(id, props) return Class.new(self, id, props) --[[@as Button]] end
+---@param id string
+---@param props ButtonProps
 function Button:init(id, props)
 	self.icon = props.icon
 	self.active = props.active
 	self.tooltip = props.tooltip
+	self.badge = props.badge
 	self.foreground = props.foreground or options.foreground
 	self.background = props.background or options.background
 	---@type fun()
@@ -2431,11 +2434,34 @@ function Button:render()
 	-- Tooltip on hover
 	if is_hover and self.tooltip then ass:tooltip(self, self.tooltip) end
 
+	-- Badge
+	local icon_clip
+	if self.badge then
+		local badge_font_size = self.font_size * 0.6
+		local badge_width = text_width_estimate(self.badge, badge_font_size)
+		local width, height = math.ceil(badge_width + (badge_font_size / 7) * 2), math.ceil(badge_font_size * 0.93)
+		local bx, by = self.bx - 1, self.by - 1
+		ass:rect(bx - width, by - height, bx, by, {
+			color = foreground, radius = 2, opacity = visibility,
+			border = self.active and 0 or 1, border_color = background,
+		})
+		ass:txt(bx - width / 2, by - height / 2, 5, self.badge, {
+			size = badge_font_size, color = background, opacity = visibility,
+		})
+
+		local clip_border = math.max(self.font_size / 20, 1)
+		local clip_path = assdraw.ass_new()
+		clip_path:round_rect_cw(
+			math.floor((bx - width) - clip_border), math.floor((by - height) - clip_border), bx, by, 3
+		)
+		icon_clip = '\\iclip(' .. clip_path.scale .. ', ' .. clip_path.text .. ')'
+	end
+
 	-- Icon
 	local x, y = round(self.ax + (self.bx - self.ax) / 2), round(self.ay + (self.by - self.ay) / 2)
 	ass:icon(x, y, self.font_size, self.icon, {
 		color = foreground, border = self.active and 0 or options.text_border, border_color = background,
-		opacity = visibility,
+		opacity = visibility, clip = icon_clip,
 	})
 
 	return ass
@@ -2452,6 +2478,8 @@ local CycleButton = class(Button)
 ---@param id string
 ---@param props CycleButtonProps
 function CycleButton:new(id, props) return Class.new(self, id, props) --[[@as CycleButton]] end
+---@param id string
+---@param props CycleButtonProps
 function CycleButton:init(id, props)
 	self.prop = props.prop
 	self.states = props.states
@@ -3048,21 +3076,23 @@ function Controls:init()
 	Element.init(self, 'controls')
 	---@type ControlItem[]
 	self.controls = {}
+	---@type fun()[]
+	self.disposers = {}
 	self:serialize()
 end
 
 function Controls:serialize()
 	local shorthands = {
 		menu = 'command:menu:script-binding uosc/menu?Menu',
-		subtitles = 'command:subtitles:script-binding uosc/subtitles?Subtitles',
-		audio = 'command:graphic_eq:script-binding uosc/audio?Audio',
+		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub?Subtitles',
+		audio = 'command:graphic_eq:script-binding uosc/audio#audio?Audio',
 		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?Audio device',
-		video = 'command:theaters:script-binding uosc/video?Video',
-		playlist = 'command:list_alt:script-binding uosc/playlist?Playlist',
-		chapters = 'command:bookmarks:script-binding uosc/chapters?Chapters',
-		['stream-quality'] = 'command:deblur:script-binding uosc/stream-quality?Stream quality',
+		video = 'command:theaters:script-binding uosc/video#video?Video',
+		playlist = 'command:list_alt:script-binding uosc/playlist#playlist?Playlist',
+		chapters = 'command:bookmarks:script-binding uosc/chapters#chapters?Chapters',
+		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?Stream quality',
 		['open-file'] = 'command:file_open:script-binding uosc/open-file?Open file',
-		['items'] = 'command:list_alt:script-binding uosc/items?Playlist/Files',
+		['items'] = 'command:list_alt:script-binding uosc/items#playlist?Playlist/Files',
 		prev = 'command:arrow_back_ios:script-binding uosc/prev?Previous',
 		next = 'command:arrow_forward_ios:script-binding uosc/next?Next',
 		first = 'command:first_page:script-binding uosc/first?First',
@@ -3112,6 +3142,9 @@ function Controls:serialize()
 		local tooltip = config_tooltip[2]
 		config = shorthands[config_tooltip[1]]
 			and split(shorthands[config_tooltip[1]], ' *%? *')[1] or config_tooltip[1]
+		local config_badge = split(config, ' *# *')
+		config = config_badge[1]
+		local badge = config_badge[2]
 		local parts = split(config, ' *: *')
 		local kind, params = parts[1], itable_slice(parts, 2)
 
@@ -3130,8 +3163,7 @@ function Controls:serialize()
 		elseif kind == 'command' then
 			if #params ~= 2 then
 				mp.error(string.format(
-					'command button needs 2 parameters, %d received: %s',
-					#params, table.concat(params, '/')
+					'command button needs 2 parameters, %d received: %s', #params, table.concat(params, '/')
 				))
 			else
 				local element = Button:new('control_' .. i, {
@@ -3139,10 +3171,12 @@ function Controls:serialize()
 					anchor_id = 'controls',
 					on_click = function() mp.command(params[2]) end,
 					tooltip = tooltip,
+					count_prop = 'sub',
 				})
 				self.controls[#self.controls + 1] = {
 					kind = kind, element = element, sizing = 'static', scale = 1, ratio = 1,
 				}
+				if badge then self:register_badge_updater(badge, element) end
 			end
 		elseif kind == 'cycle' then
 			if #params ~= 3 then
@@ -3171,6 +3205,7 @@ function Controls:serialize()
 				self.controls[#self.controls + 1] = {
 					kind = kind, element = element, sizing = 'static', scale = 1, ratio = 1,
 				}
+				if badge then self:register_badge_updater(badge, element) end
 			end
 		elseif kind == 'speed' then
 			if not Elements.speed then
@@ -3194,8 +3229,34 @@ function Controls:clean_controls()
 	for _, control in ipairs(self.controls) do
 		if control.element then Elements:remove(control.element) end
 	end
+	for _, disposer in ipairs(self.disposers) do disposer() end
 	self.controls = {}
 	request_render()
+end
+
+---@param prop string
+---@param element Element An element that supports `badge` property.
+function Controls:register_badge_updater(prop, element)
+	local observable_name, serializer = prop, nil
+	if itable_index_of({'sub', 'audio', 'video'}, prop) then
+		observable_name = 'track-list'
+		serializer = function(value)
+			local count = 0
+			for _, track in ipairs(value) do if track.type == prop then count = count + 1 end end
+			return count
+		end
+	elseif prop == 'playlist' then
+		observable_name = 'playlist-count'
+		serializer = function(count) return count and count > 1 and count or nil end
+	else
+		serializer = function(value) return value and (type(value) == 'table' and #value or tostring(value)) or nil end
+	end
+	local function handler(_, value)
+		element.badge = serializer(value)
+		request_render()
+	end
+	mp.observe_property(observable_name, 'native', handler)
+	self.disposers[#self.disposers + 1] = function() mp.unobserve_property(handler) end
 end
 
 function Controls:get_visibility()
