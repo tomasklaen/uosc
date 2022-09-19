@@ -3075,7 +3075,7 @@ end
 -- `ratio` - Width/height ratio of a static or dynamic element.
 -- `ratio_min` Min ratio for 'dynamic' sized element.
 -- `skip` - Whether it should be skipped, determined during layout phase.
----@alias ControlItem {element?: Element; kind: string; sizing: 'space' | 'static' | 'dynamic'; scale: number; ratio?: number; ratio_min?: number; hide: boolean;}
+---@alias ControlItem {element?: Element; kind: string; sizing: 'space' | 'static' | 'dynamic'; scale: number; ratio?: number; ratio_min?: number; hide: boolean; dispositions?: table<string, boolean>}
 
 ---@class Controls : Element
 local Controls = class(Element)
@@ -3083,14 +3083,12 @@ local Controls = class(Element)
 function Controls:new() return Class.new(self) --[[@as Controls]] end
 function Controls:init()
 	Element.init(self, 'controls')
-	---@type ControlItem[]
+	---@type ControlItem[] All control elements serialized from `options.controls`.
 	self.controls = {}
-	---@type fun()[]
-	self.disposers = {}
-	self:serialize()
-end
+	---@type ControlItem[] Only controls that match current dispositions.
+	self.layout = {}
 
-function Controls:serialize()
+	-- Serialize control elements
 	local shorthands = {
 		menu = 'command:menu:script-binding uosc/menu?Menu',
 		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?Subtitles',
@@ -3112,14 +3110,14 @@ function Controls:serialize()
 		fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!?Fullscreen',
 	}
 
-	-- Parse configs
+	-- Parse out disposition/config pairs
 	local items = {}
 	local in_disposition = false
 	local current_item = nil
 	for c in options.controls:gmatch('.') do
 		if not current_item then current_item = {disposition = '', config = ''} end
-		if c == '<' then in_disposition = true
-		elseif c == '>' then in_disposition = false
+		if c == '<' and #current_item.config == 0 then in_disposition = true
+		elseif c == '>' and #current_item.config == 0 then in_disposition = false
 		elseif c == ',' and not in_disposition then
 			items[#items + 1] = current_item
 			current_item = nil
@@ -3129,19 +3127,6 @@ function Controls:serialize()
 		end
 	end
 	items[#items + 1] = current_item
-
-	-- Filter out based on disposition
-	items = itable_filter(items, function(item)
-		if item.disposition == '' then return true end
-		local dispositions = split(item.disposition, ' *, *')
-		for _, disposition in ipairs(dispositions) do
-			local value = disposition:sub(1, 1) ~= '!'
-			local name = not value and disposition:sub(2) or disposition
-			local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
-			if state[prop] ~= value then return false end
-		end
-		return true
-	end)
 
 	-- Create controls
 	self.controls = {}
@@ -3157,18 +3142,30 @@ function Controls:serialize()
 		local parts = split(config, ' *: *')
 		local kind, params = parts[1], itable_slice(parts, 2)
 
+		-- Serialize dispositions
+		local dispositions = {}
+		for _, definition in ipairs(split(item.disposition, ' *, *')) do
+			if #definition > 0 then
+				local value = definition:sub(1, 1) ~= '!'
+				local name = not value and definition:sub(2) or definition
+				local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
+				dispositions[prop] = value
+			end
+		end
+
 		-- Convert toggles into cycles
 		if kind == 'toggle' then
 			kind = 'cycle'
 			params[#params + 1] = 'no/yes!'
 		end
 
+		-- Create a control element
+		local control = {dispositions = dispositions, kind = kind}
+
 		if kind == 'space' then
-			self.controls[#self.controls + 1] = {kind = kind, sizing = 'space'}
+			control.sizing = 'space'
 		elseif kind == 'gap' then
-			self.controls[#self.controls + 1] = {
-				kind = kind, sizing = 'dynamic', scale = 1, ratio = params[1] or 0.3, ratio_min = 0,
-			}
+			table_assign(control, {sizing = 'dynamic', scale = 1, ratio = params[1] or 0.3, ratio_min = 0})
 		elseif kind == 'command' then
 			if #params ~= 2 then
 				mp.error(string.format(
@@ -3182,9 +3179,7 @@ function Controls:serialize()
 					tooltip = tooltip,
 					count_prop = 'sub',
 				})
-				self.controls[#self.controls + 1] = {
-					kind = kind, element = element, sizing = 'static', scale = 1, ratio = 1,
-				}
+				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
 				if badge then self:register_badge_updater(badge, element) end
 			end
 		elseif kind == 'cycle' then
@@ -3211,37 +3206,46 @@ function Controls:serialize()
 				local element = CycleButton:new('control_' .. i, {
 					prop = params[2], anchor_id = 'controls', states = states, tooltip = tooltip,
 				})
-				self.controls[#self.controls + 1] = {
-					kind = kind, element = element, sizing = 'static', scale = 1, ratio = 1,
-				}
+				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
 				if badge then self:register_badge_updater(badge, element) end
 			end
 		elseif kind == 'speed' then
 			if not Elements.speed then
 				local element = Speed:new({anchor_id = 'controls'})
-				self.controls[#self.controls + 1] = {
-					kind = kind, element = element,
-					sizing = 'dynamic', scale = params[1] or 1.3, ratio = 3.5, ratio_min = 2,
-				}
+				table_assign(control, {
+					element = element, sizing = 'dynamic', scale = params[1] or 1.3, ratio = 3.5, ratio_min = 2,
+				})
 			else
 				msg.error('there can only be 1 speed slider')
 			end
+		else
+			msg.error('unknown element kind "' .. kind .. '"')
+			break
 		end
+
+		self.controls[#self.controls + 1] = control
+	end
+
+	self:reflow()
+end
+
+function Controls:reflow()
+	-- Populate the layout only with items that match current disposition
+	self.layout = {}
+	for _, control in ipairs(self.controls) do
+		local matches = true
+		for prop, value in pairs(control.dispositions) do
+			if state[prop] ~= value then
+				matches = false
+				break
+			end
+		end
+		if control.element then control.element.enabled = matches end
+		if matches then self.layout[#self.layout + 1] = control end
 	end
 
 	self:update_dimensions()
-	Elements:update_proximities()
 	Elements:trigger('controls_reflow')
-end
-
-function Controls:clean_controls()
-	for _, control in ipairs(self.controls) do
-		if control.element then Elements:remove(control.element) end
-	end
-	for _, disposer in ipairs(self.disposers) do disposer() end
-	self.disposers = {}
-	self.controls = {}
-	request_render()
 end
 
 ---@param badge string
@@ -3271,7 +3275,6 @@ function Controls:register_badge_updater(badge, element)
 	end
 
 	mp.observe_property(observable_name, 'native', handler)
-	self.disposers[#self.disposers + 1] = function() mp.unobserve_property(handler) end
 end
 
 function Controls:get_visibility()
@@ -3292,19 +3295,19 @@ function Controls:update_dimensions()
 	self.ax, self.ay = window_border + margin, self.by - size
 
 	-- Re-enable all elements
-	for c, control in ipairs(self.controls) do
+	for c, control in ipairs(self.layout) do
 		control.hide = false
 		if control.element then control.element.enabled = true end
 	end
 
 	-- Controls
 	local available_width = self.bx - self.ax
-	local statics_width = (#self.controls - 1) * spacing
+	local statics_width = (#self.layout - 1) * spacing
 	local min_content_width = statics_width
 	local max_dynamics_width, dynamic_units, spaces = 0, 0, 0
 
 	-- Calculate statics_width, min_content_width, and count spaces
-	for c, control in ipairs(self.controls) do
+	for c, control in ipairs(self.layout) do
 		if control.sizing == 'space' then
 			spaces = spaces + 1
 		elseif control.sizing == 'static' then
@@ -3320,10 +3323,10 @@ function Controls:update_dimensions()
 
 	-- Hide & disable elements in the middle until we fit into available width
 	if min_content_width > available_width then
-		local i = math.ceil(#self.controls / 2 + 0.1)
-		for a = 0, #self.controls - 1, 1 do
+		local i = math.ceil(#self.layout / 2 + 0.1)
+		for a = 0, #self.layout - 1, 1 do
 			i = i + (a * (a % 2 == 0 and 1 or -1))
-			local control = self.controls[i]
+			local control = self.layout[i]
 
 			if control.kind ~= 'gap' and control.kind ~= 'space' then
 				control.hide = true
@@ -3348,7 +3351,7 @@ function Controls:update_dimensions()
 	local width_for_dynamics = available_width - statics_width
 	local space_width = (width_for_dynamics - max_dynamics_width) / spaces
 
-	for c, control in ipairs(self.controls) do
+	for c, control in ipairs(self.layout) do
 		if not control.hide then
 			local sizing, element, scale, ratio = control.sizing, control.element, control.scale, control.ratio
 			local width, height = 0, 0
@@ -3370,13 +3373,11 @@ function Controls:update_dimensions()
 		end
 	end
 
+	Elements:update_proximities()
 	request_render()
 end
 
-function Controls:on_dispositions()
-	self:clean_controls()
-	self:serialize()
-end
+function Controls:on_dispositions() self:reflow() end
 function Controls:on_display() self:update_dimensions() end
 function Controls:on_prop_border() self:update_dimensions() end
 function Controls:on_prop_fullormaxed() self:update_dimensions() end
@@ -4184,7 +4185,7 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 				last_range[2] = range[2]
 			else
 				if range[2] - range[1] > 0.5 then -- skip short ranges
-					uncached_ranges[#uncached_ranges+1] = range
+					uncached_ranges[#uncached_ranges + 1] = range
 					last_range = range
 				end
 			end
