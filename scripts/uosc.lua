@@ -2698,6 +2698,7 @@ function Timeline:render()
 
 	local size_min = self:get_effective_size_min()
 	local size = self:get_effective_size()
+	local visibility = self:get_visibility()
 
 	if size < 1 then return end
 
@@ -2754,17 +2755,16 @@ function Timeline:render()
 
 	-- Uncached ranges
 	if state.uncached_ranges then
-		local texture_opts = {size = 80, opacity = 0.4 - (0.2 * text_opacity), align = 3}
-		local texture_char = text_opacity > 0 and 'b' or 'a'
+		local opts = {size = 80, align = 3}
+		local texture_char = visibility > 0 and 'b' or 'a'
 		for _, range in ipairs(state.uncached_ranges) do
 			local ax = range[1] < 0.5 and bax or math.floor(time_ax + time_width * (range[1] / state.duration))
 			local bx = range[2] > state.duration - 0.5 and bbx or
 				math.ceil(time_ax + time_width * (range[2] / state.duration))
-			texture_opts.color = 'ffffff'
-			ass:texture(ax, fay, bx, fby, texture_char, texture_opts)
-			texture_opts.color = '000000'
-			texture_opts.shift = texture_opts.size / 50
-			ass:texture(ax, fay, bx, fby, texture_char, texture_opts)
+			opts.color, opts.opacity, opts.shift = 'ffffff', 0.4 - (0.2 * visibility), 0
+			ass:texture(ax, fay, bx, fby, texture_char, opts)
+			opts.color, opts.opacity, opts.shift = '000000', 0.6 - (0.2 * visibility), opts.size / 22
+			ass:texture(ax, fay, bx, fby, texture_char, opts)
 		end
 	end
 
