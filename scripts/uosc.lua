@@ -2944,7 +2944,7 @@ function TopBar:init()
 	-- Order aligns from right to left
 	self.buttons = {
 		TopBarButton:new('tb_close', {icon = 'close', background = '2311e8', command = 'quit'}),
-		TopBarButton:new('tb_max', {icon = 'crop_square', background = '222222', command = 'cycle window-maximized'}),
+		TopBarButton:new('tb_max', {icon = 'crop_square', background = '222222', command = 'cycle fullscreen'}),
 		TopBarButton:new('tb_min', {icon = 'minimize', background = '222222', command = 'cycle window-minimized'}),
 	}
 end
