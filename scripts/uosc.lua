@@ -4164,7 +4164,9 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 				else
 					if last_uncached[2] > cached[1] then last_uncached[2] = cached[1] end
 				end
-				uncached_ranges[#uncached_ranges + 1] = {cached[2], state.duration}
+				if state.duration - cached[2] > 0.5 then
+					uncached_ranges[#uncached_ranges + 1] = {cached[2], state.duration}
+				end
 			end
 		end
 	end
