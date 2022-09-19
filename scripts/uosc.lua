@@ -153,7 +153,7 @@ local options = {
 	timeline_step = 5,
 	timeline_chapters_opacity = 0.8,
 
-	controls = 'menu,gap,subtitles,<has_audio,!audio>audio,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
+	controls = 'menu,gap,subtitles,<has_many_audio>audio,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
 	controls_size_fullscreen = 40,
 	controls_margin = 8,
@@ -4111,22 +4111,22 @@ mp.observe_property('duration', 'number', create_state_setter('duration', update
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
 mp.observe_property('track-list', 'native', function(name, value)
 	-- checks the file dispositions
-	local has_audio, has_sub, is_video, is_image = false, false, false, false
+	local is_image = false
+	local types = {sub = 0, audio = 0, video = 0}
 	for _, track in ipairs(value) do
-		if track.type == 'audio' then has_audio = true end
-		if track.type == 'sub' then has_sub = true end
 		if track.type == 'video' then
 			is_image = track.image
-			if not is_image and not track.albumart then
-				is_video = true
-			end
-		end
+			if not is_image and not track.albumart then types.video = types.video + 1 end
+		elseif types[track.type] then types[track.type] = types[track.type] + 1 end
 	end
-	set_state('is_audio', not is_video and has_audio)
+	set_state('is_audio', types.video == 0 and types.audio > 0)
 	set_state('is_image', is_image)
-	set_state('has_audio', has_audio)
-	set_state('has_sub', has_sub)
-	set_state('is_video', is_video)
+	set_state('has_audio', types.audio > 0)
+	set_state('has_many_audio', types.audio > 1)
+	set_state('has_sub', types.sub > 0)
+	set_state('has_many_sub', types.sub > 1)
+	set_state('is_video', types.video > 0)
+	set_state('has_many_video', types.video > 1)
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('chapter-list', 'native', function(_, chapters)
