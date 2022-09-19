@@ -4162,17 +4162,20 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 		end
 		table.sort(ranges, function(a, b) return a[1] < b[1] end)
 		-- Invert cached ranges into uncached ranges, as that's what we're rendering
-		uncached_ranges = {{0, state.duration}}
+		local inverted_ranges = {{0, state.duration}}
 		for _, cached in pairs(ranges) do
-			local last_uncached = uncached_ranges[#uncached_ranges]
-			if cached[2] - cached[1] > 0.5 then
-				if not last_uncached then
-					if cached[1] > 0.5 then uncached_ranges[#uncached_ranges + 1] = {0, cached[1]} end
-				else
-					if last_uncached[2] > cached[1] then last_uncached[2] = cached[1] end
-				end
-				if state.duration - cached[2] > 0.5 then
-					uncached_ranges[#uncached_ranges + 1] = {cached[2], state.duration}
+			inverted_ranges[#inverted_ranges][2] = cached[1]
+			inverted_ranges[#inverted_ranges + 1] = {cached[2], state.duration}
+		end
+		uncached_ranges = {}
+		local last_range = nil
+		for _, range in ipairs(inverted_ranges) do
+			if last_range and last_range[2] + 0.5 > range[1] then -- fuse ranges
+				last_range[2] = range[2]
+			else
+				if range[2] - range[1] > 0.5 then -- skip short ranges
+					uncached_ranges[#uncached_ranges+1] = range
+					last_range = range
 				end
 			end
 		end
