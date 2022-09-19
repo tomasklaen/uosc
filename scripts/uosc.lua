@@ -527,9 +527,7 @@ end
 
 ---@param text string|number
 ---@param font_size number
-function text_width_estimate(text, font_size)
-	return text_length(text) * font_size * options.font_height_to_letter_width_ratio
-end
+function text_width_estimate(text, font_size) return text_length_width_estimate(text_length(text), font_size) end
 
 ---@param length number
 ---@param font_size number
@@ -3031,26 +3029,41 @@ function TopBar:render()
 
 	-- Window title
 	if options.top_bar_title and (state.title or state.has_playlist) then
+		local bg_margin = math.floor((self.size - self.font_size) / 4)
+		local padding = self.font_size / 2
+		local title_ax = self.ax + bg_margin
 		local max_bx = self.title_bx - self.spacing
-		local text = state.title or 'n/a'
+
+		-- Playlist position
 		if state.has_playlist then
-			text = string.format('%d/%d - ', state.playlist_pos, state.playlist_count) .. text
+			local text = state.playlist_pos .. '' .. state.playlist_count
+			local formatted_text = '{\\b1}' .. state.playlist_pos .. '{\\b0\\fs' .. self.font_size * 0.9 .. '}/'
+				.. state.playlist_count
+			local bg_bx = round(title_ax + text_length_width_estimate(#text, self.font_size) + padding * 2)
+
+			ass:rect(title_ax, self.ay + bg_margin, bg_bx, self.by - bg_margin, {
+				color = options.foreground, opacity = visibility, radius = 2,
+			})
+			ass:txt(title_ax + (bg_bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, {
+				size = self.font_size, wrap = 2, color = options.background, opacity = visibility,
+			})
+
+			title_ax = bg_bx + bg_margin
 		end
 
-		-- Background
-		local padding = self.font_size / 2
-		local bg_margin = math.floor((self.size - self.font_size) / 4)
-		local bg_ax = self.ax + bg_margin
-		local bg_bx = math.min(max_bx, self.ax + text_width_estimate(text, self.font_size) + padding * 2)
-		ass:rect(bg_ax, self.ay + bg_margin, bg_bx, self.by - bg_margin, {
-			color = options.background, opacity = visibility * 0.8, radius = 2,
-		})
+		-- Title
+		if max_bx - title_ax > self.font_size * 3 then
+			local text = state.title or 'n/a'
+			local bg_bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
 
-		-- Text
-		ass:txt(bg_ax + padding, self.ay + (self.size / 2), 4, text, {
-			size = self.font_size, wrap = 2, color = 'FFFFFF', border = 1, border_color = '000000', opacity = visibility,
-			clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
-		})
+			ass:rect(title_ax, self.ay + bg_margin, bg_bx, self.by - bg_margin, {
+				color = options.background, opacity = visibility * 0.8, radius = 2,
+			})
+			ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, text, {
+				size = self.font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
+				opacity = visibility, clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
+			})
+		end
 	end
 
 	return ass
@@ -3084,11 +3097,11 @@ function Controls:serialize()
 		audio = 'command:graphic_eq:script-binding uosc/audio#audio?Audio',
 		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?Audio device',
 		video = 'command:theaters:script-binding uosc/video#video?Video',
-		playlist = 'command:list_alt:script-binding uosc/playlist#playlist?Playlist',
+		playlist = 'command:list_alt:script-binding uosc/playlist?Playlist',
 		chapters = 'command:bookmarks:script-binding uosc/chapters#chapters?Chapters',
 		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?Stream quality',
 		['open-file'] = 'command:file_open:script-binding uosc/open-file?Open file',
-		['items'] = 'command:list_alt:script-binding uosc/items#playlist?Playlist/Files',
+		['items'] = 'command:list_alt:script-binding uosc/items?Playlist/Files',
 		prev = 'command:arrow_back_ios:script-binding uosc/prev?Previous',
 		next = 'command:arrow_forward_ios:script-binding uosc/next?Next',
 		first = 'command:first_page:script-binding uosc/first?First',
@@ -3241,10 +3254,6 @@ function Controls:register_badge_updater(prop, element)
 			for _, track in ipairs(value) do if track.type == prop then count = count + 1 end end
 			return count
 		end
-	elseif prop == 'playlist' then
-		observable_name = 'playlist-count'
-		serializer = function(count) return count and count > 1 and count or nil end
-	else
 		serializer = function(value) return value and (type(value) == 'table' and #value or tostring(value)) or nil end
 	end
 	local function handler(_, value)
