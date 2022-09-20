@@ -55,11 +55,13 @@ end
 
 ---@param itable table
 ---@param compare fun(value: any, index: number)
+---@param from_end? boolean Search from the end of the table.
 ---@return number|nil index
 ---@return any|nil value
-function itable_find(itable, compare)
-	for index, value in ipairs(itable) do
-		if compare(value, index) then return index, value end
+function itable_find(itable, compare, from_end)
+	local from, to, step = from_end and #itable or 1, from_end and 1 or #itable, from_end and -1 or 1
+	for index = from, to, step do
+		if compare(itable[index], index) then return index, itable[index] end
 	end
 end
 
@@ -401,6 +403,7 @@ local state = {
 	duration_or_remaining_time_human = nil, -- depends on options.total_time
 	pause = mp.get_property_native('pause'),
 	chapters = {},
+	current_chapter = nil,
 	chapter_ranges = {},
 	border = mp.get_property_native('border'),
 	fullscreen = mp.get_property_native('fullscreen'),
@@ -884,17 +887,12 @@ end
 function serialize_chapters(chapters)
 	chapters = normalize_chapters(chapters)
 	if not chapters then return end
-
-	-- Reset custom ranges
-	serialize_chapter_ranges(chapters)
-
-	for _, chapter in ipairs(chapters) do
+	for index, chapter in ipairs(chapters) do
+		chapter.index = index
 		chapter.title_wrapped, chapter.title_wrapped_width = wrap_text(chapter.title, 25)
 		chapter.title_wrapped = ass_escape(chapter.title_wrapped)
 	end
-
-	state.chapters = chapters
-	request_render()
+	return chapters
 end
 
 --[[ ASSDRAW EXTENSIONS ]]
@@ -1820,14 +1818,16 @@ end
 ---@param menu? MenuStack
 function Menu:activate_value(value, menu)
 	menu = menu or self.current
-	self:activate_index(itable_find(menu.items, function(_, item) return item.value == value end), menu)
+	local index = itable_find(menu.items, function(_, item) return item.value == value end)
+	self:activate_index(index, menu)
 end
 
 ---@param value? any
 ---@param menu? MenuStack
 function Menu:activate_unique_value(value, menu)
 	menu = menu or self.current
-	self:activate_unique_index(itable_find(menu.items, function(_, item) return item.value == value end), menu)
+	local index = itable_find(menu.items, function(_, item) return item.value == value end)
+	self:activate_unique_index(index, menu)
 end
 
 ---@param id string
@@ -2867,18 +2867,13 @@ function Timeline:render()
 	-- Hovered time and chapter
 	if (self.proximity_raw == 0 or self.pressed) and not (Elements.speed and Elements.speed.dragging) then
 		local hovered_seconds = self:get_time_at_x(cursor.x)
-		local chapter_title, chapter_title_width = nil, nil
+		local chapter_title, chapter_title_width
 
-		if (options.timeline_chapters ~= 'never' and state.chapters) then
-			for i = #state.chapters, 1, -1 do
-				local chapter = state.chapters[i]
-				if hovered_seconds >= chapter.time then
-					if not chapter.is_end_only then
-						chapter_title = chapter.title_wrapped
-						chapter_title_width = chapter.title_wrapped_width
-					end
-					break
-				end
+		if state.chapters then
+			local _, chapter = itable_find(state.chapters, function(c) return hovered_seconds >= c.time end, true)
+			if chapter and not chapter.is_end_only then
+				chapter_title = chapter.title_wrapped
+				chapter_title_width = chapter.title_wrapped_width
 			end
 		end
 
@@ -3032,6 +3027,7 @@ function TopBar:render()
 		local bg_margin = math.floor((self.size - self.font_size) / 4)
 		local padding = self.font_size / 2
 		local title_ax = self.ax + bg_margin
+		local title_ay = self.ay + bg_margin
 		local max_bx = self.title_bx - self.spacing
 
 		-- Playlist position
@@ -3039,29 +3035,40 @@ function TopBar:render()
 			local text = state.playlist_pos .. '' .. state.playlist_count
 			local formatted_text = '{\\b1}' .. state.playlist_pos .. '{\\b0\\fs' .. self.font_size * 0.9 .. '}/'
 				.. state.playlist_count
-			local bg_bx = round(title_ax + text_length_width_estimate(#text, self.font_size) + padding * 2)
-
-			ass:rect(title_ax, self.ay + bg_margin, bg_bx, self.by - bg_margin, {
+			local bx = round(title_ax + text_length_width_estimate(#text, self.font_size) + padding * 2)
+			ass:rect(title_ax, title_ay, bx, self.by - bg_margin, {
 				color = options.foreground, opacity = visibility, radius = 2,
 			})
-			ass:txt(title_ax + (bg_bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, {
+			ass:txt(title_ax + (bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, {
 				size = self.font_size, wrap = 2, color = options.background, opacity = visibility,
 			})
-
-			title_ax = bg_bx + bg_margin
+			title_ax = bx + bg_margin
 		end
 
 		-- Title
 		if max_bx - title_ax > self.font_size * 3 then
 			local text = state.title or 'n/a'
-			local bg_bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
-
-			ass:rect(title_ax, self.ay + bg_margin, bg_bx, self.by - bg_margin, {
-				color = options.background, opacity = visibility * 0.8, radius = 2,
-			})
+			local bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
+			local by = self.by - bg_margin
+			ass:rect(title_ax, title_ay, bx, by, { color = options.background, opacity = visibility * 0.8, radius = 2, })
 			ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, text, {
 				size = self.font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
 				opacity = visibility, clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
+			})
+			title_ay = by + 1
+		end
+
+		-- Subtitle: current chapter
+		if state.current_chapter and max_bx - title_ax > self.font_size * 3 then
+			local font_size = self.font_size * 0.8
+			local height = font_size * 1.5
+			local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
+			local ax, by = title_ax + padding / 2, title_ay + height
+			local bx = math.min(max_bx, title_ax + text_width_estimate(text, font_size) + padding * 2)
+			ass:rect(ax, title_ay, bx, by, {color = options.background, opacity = visibility * 0.8, radius = 2})
+			ass:txt(ax + padding, title_ay + height / 2, 4, '{\\i1}' .. text ..'{\\i0}', {
+				size = font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
+				opacity = visibility * 0.8, clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by),
 			})
 		end
 	end
@@ -4106,7 +4113,12 @@ mp.observe_property('title', 'string', function(_, title)
 	-- Don't change title if there is currently none
 	if state.title then update_title(title) end
 end)
-mp.observe_property('playback-time', 'number', create_state_setter('time', update_human_times))
+mp.observe_property('playback-time', 'number', create_state_setter('time', function()
+	update_human_times()
+	-- Select current chapter
+	local _, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, true)
+	set_state('current_chapter', current_chapter)
+end))
 mp.observe_property('duration', 'number', create_state_setter('duration', update_human_times))
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
 mp.observe_property('track-list', 'native', function(name, value)
@@ -4130,9 +4142,11 @@ mp.observe_property('track-list', 'native', function(name, value)
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('chapter-list', 'native', function(_, chapters)
+	local chapters = serialize_chapters(chapters)
+	set_state('chapters', chapters)
+	serialize_chapter_ranges(chapters)
 	set_state('has_chapter', #chapters > 0)
 	Elements:trigger('dispositions')
-	serialize_chapters(chapters)
 end)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
