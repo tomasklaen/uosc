@@ -4116,7 +4116,10 @@ end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
 	update_human_times()
 	-- Select current chapter
-	local _, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, true)
+	local current_chapter
+	if state.time and state.chapters then
+		_, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, true)
+	end
 	set_state('current_chapter', current_chapter)
 end))
 mp.observe_property('duration', 'number', create_state_setter('duration', update_human_times))
