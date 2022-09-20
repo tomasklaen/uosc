@@ -2802,7 +2802,7 @@ function Timeline:render()
 
 		if diamond_radius > 0 then
 			local function draw_chapter(time)
-				local chapter_x = time_ax + time_width * (time / state.duration)
+				local chapter_x, chapter_y = time_ax + time_width * (time / state.duration), fay - 1
 				ass:new_event()
 				ass:append(string.format(
 					'{\\pos(0,0)\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
@@ -2810,10 +2810,10 @@ function Timeline:render()
 					opacity_to_alpha(options.timeline_opacity * options.timeline_chapters_opacity)
 				))
 				ass:draw_start()
-				ass:move_to(chapter_x - diamond_radius, fay)
-				ass:line_to(chapter_x, fay - diamond_radius)
-				ass:line_to(chapter_x + diamond_radius, fay)
-				ass:line_to(chapter_x, fay + diamond_radius)
+				ass:move_to(chapter_x - diamond_radius, chapter_y)
+				ass:line_to(chapter_x, chapter_y - diamond_radius)
+				ass:line_to(chapter_x + diamond_radius, chapter_y)
+				ass:line_to(chapter_x, chapter_y + diamond_radius)
 				ass:draw_stop()
 			end
 
