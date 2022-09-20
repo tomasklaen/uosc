@@ -3051,9 +3051,44 @@ function TopBar:render()
 			title_ax = bg_bx + bg_margin
 		end
 
+		-- Chapter possition
+		chapter_list=mp.get_property("chapter-list")
+		chapter_list_string=tostring(chapter_list)
+		cur_chapter_num = mp.get_property("chapter")
+		chapter_count = mp.get_property("chapters")
+
+		if (chapter_list_string ~= '[]') then
+			local text = "C:" .. cur_chapter_num .. '' .. chapter_count
+			local formatted_text =  "C:" .. '{\\b1}' ..cur_chapter_num .. '{\\b0\\fs' .. self.font_size * 0.9 .. '}/'
+				.. chapter_count
+			local bg_bx = round(title_ax + text_length_width_estimate(#text, self.font_size) + padding * 2)
+
+			ass:rect(title_ax, self.ay + bg_margin, bg_bx, self.by - bg_margin, {
+				color = options.foreground, opacity = visibility, radius = 2,
+			})
+			ass:txt(title_ax + (bg_bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, {
+				size = self.font_size, wrap = 2, color = options.background, opacity = visibility,
+			})
+
+			title_ax = bg_bx + bg_margin
+		end
+
+		
 		-- Title
 		if max_bx - title_ax > self.font_size * 3 then
-			local text = state.title or 'n/a'
+
+			chapter_list=mp.get_property("chapter-list")
+			chapter_list_string=tostring(chapter_list)
+			if (chapter_list_string ~= '[]') then
+				local textp = state.title or 'n/a'
+				cur_chapter_num = mp.get_property("chapter")
+				cur_chapter_title_arg = "chapter-list/" .. cur_chapter_num .. "/title"
+				cur_chapter_title = mp.get_property(cur_chapter_title_arg)
+				text = textp .. '{\\b1}' .. " Chapter : " .. "{\\b0}" .. cur_chapter_title
+			else
+				text = state.title or 'n/a'
+			end
+
 			local bg_bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
 
 			ass:rect(title_ax, self.ay + bg_margin, bg_bx, self.by - bg_margin, {
