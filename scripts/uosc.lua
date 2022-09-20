@@ -1877,6 +1877,13 @@ end
 
 function Menu:back()
 	local menu = self.current
+
+    local item = menu.items[1]
+    if item.hint and item.hint == 'parent dir' then
+        self.callback(item.value)
+        return
+    end
+
 	local parent = menu.parent_menu
 
 	if not parent then return self:close() end
