@@ -2768,6 +2768,7 @@ function Timeline:render()
 	if state.uncached_ranges then
 		local opts = {size = 80, anchor_y = fby}
 		local texture_char = visibility > 0 and 'b' or 'a'
+		local offset = opts.size / (visibility > 0 and 24 or 28)
 		for _, range in ipairs(state.uncached_ranges) do
 			if not buffered_time and (range[1] > state.time or range[2] > state.time) then
 				buffered_time = range[1] - state.time
@@ -2777,7 +2778,7 @@ function Timeline:render()
 				math.ceil(time_ax + time_width * (range[2] / state.duration))
 			opts.color, opts.opacity, opts.anchor_x = 'ffffff', 0.4 - (0.2 * visibility), bax
 			ass:texture(ax, fay, bx, fby, texture_char, opts)
-			opts.color, opts.opacity, opts.anchor_x = '000000', 0.6 - (0.2 * visibility), bax + opts.size / 22
+			opts.color, opts.opacity, opts.anchor_x = '000000', 0.6 - (0.2 * visibility), bax + offset
 			ass:texture(ax, fay, bx, fby, texture_char, opts)
 		end
 	end
@@ -3562,7 +3563,7 @@ function VolumeSlider:render()
 		}
 		ass:texture(ax, ay, bx, by, 'a', texture_opts)
 		texture_opts.color = options.background
-		texture_opts.anchor_x = ax + 5
+		texture_opts.anchor_x = ax + texture_opts.size / 28
 		ass:texture(ax, ay, bx, by, 'a', texture_opts)
 	end
 
