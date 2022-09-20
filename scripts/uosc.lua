@@ -634,7 +634,7 @@ function wrap_text(text, target_line_length)
 		lines[#lines + 1] = string.sub(text, line_start)
 		if line_length > max_length then max_length = line_length end
 	end
-	return table.concat(lines, '\n'), max_length
+	return table.concat(lines, '\n'), max_length, #lines
 end
 
 -- Escape a string for verbatim display on the OSD
@@ -894,7 +894,7 @@ function serialize_chapters(chapters)
 	if not chapters then return end
 	for index, chapter in ipairs(chapters) do
 		chapter.index = index
-		chapter.title_wrapped, chapter.title_wrapped_width = wrap_text(chapter.title, 25)
+		chapter.title_wrapped, chapter.title_wrapped_width, chapter.title_wrapped_lines = wrap_text(chapter.title, 25)
 		chapter.title_wrapped = ass_escape(chapter.title_wrapped)
 	end
 	return chapters
@@ -2879,6 +2879,7 @@ function Timeline:render()
 			if chapter and not chapter.is_end_only then
 				chapter_title = chapter.title_wrapped
 				chapter_title_width = chapter.title_wrapped_width
+				chapter_title_lines = chapter.title_wrapped_lines
 			end
 		end
 
@@ -2902,10 +2903,12 @@ function Timeline:render()
 
 		-- Thumbnail
 		if not thumbfast.disabled and thumbfast.width ~= 0 and thumbfast.height ~= 0 then
+			local final_scale = options.ui_scale * state.hidpi_scale
 			mp.commandv("script-message-to", "thumbfast", "thumb",
 				hovered_seconds,
-				math.min(display.width - thumbfast.width - 10, math.max(10, cursor.x - thumbfast.width / 2)),
-				fay - thumbfast.height - (2 + self.font_size * (chapter_title and 2.8 or 1.4))
+				math.min(display.width * final_scale - thumbfast.width - 10 * final_scale, math.max(10 * final_scale, cursor.x * final_scale - thumbfast.width / 2)),
+				fay * final_scale - thumbfast.height - (2 + self.font_size * (chapter_title and 1.8 or 1.4) +
+					(chapter_title_lines and self.font_size * chapter_title_lines or 0)) * final_scale
 			)
 		end
 	else
@@ -4189,7 +4192,7 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 	update_display_dimensions()
 	request_render()
 end)
-mp.observe_property('display-hidpi-scale', 'native', update_display_dimensions)
+mp.observe_property('display-hidpi-scale', 'native', create_state_setter('hidpi_scale', function() update_display_dimensions() end))
 mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_stream', function()
 	set_state('uncached_ranges', state.is_stream and state.duration and {0, state.duration} or nil)
 	Elements:trigger('dispositions')
