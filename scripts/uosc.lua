@@ -4209,6 +4209,7 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 		end
 	end
 	set_state('uncached_ranges', uncached_ranges)
+	request_render()
 end)
 mp.observe_property('display-fps', 'native', observe_display_fps)
 mp.observe_property('estimated-display-fps', 'native', update_render_delay)
