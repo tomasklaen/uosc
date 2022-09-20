@@ -2044,6 +2044,8 @@ function Menu:render()
 		local start_index = math.floor(menu.scroll_y / self.scroll_step) + 1
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
 		local selected_index = menu.selected_index or -1
+		-- remove menu_opacity to start off with full opacity, but still decay for parent menus
+		local text_opacity = opacity / options.menu_opacity
 
 		-- Background
 		ass:rect(ax, ay - (draw_title and self.item_height or 0) - 2, bx, by + 2, {
@@ -2084,7 +2086,7 @@ function Menu:render()
 			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (selected_index == index and 0.15 or 0)
 			if highlight_opacity > 0 then
 				ass:rect(ax + 2, item_ay, bx - 2, item_by, {
-					radius = 2, color = options.foreground, opacity = highlight_opacity * self.opacity,
+					radius = 2, color = options.foreground, opacity = highlight_opacity * text_opacity,
 					clip = item_clip,
 				})
 			end
@@ -2092,7 +2094,7 @@ function Menu:render()
 			-- Icon
 			if item.icon then
 				ass:icon(content_bx - (icon_size / 2), item_center_y, icon_size * 1.5, item.icon, {
-					color = font_color, opacity = self.opacity, clip = item_clip,
+					color = font_color, opacity = text_opacity, clip = item_clip,
 					shadow = 1, shadow_color = shadow_color,
 				})
 				content_bx = content_bx - icon_size - spacing
@@ -2118,7 +2120,7 @@ function Menu:render()
 					.. round(title_hint_cut_x - spacing / 2) .. ',' .. math.min(item_by, by) .. ')'
 				ass:txt(content_ax, item_center_y, 4, item.ass_safe_title, {
 					size = self.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
-					opacity = self.opacity * (item.muted and 0.5 or 1), clip = clip,
+					opacity = text_opacity * (item.muted and 0.5 or 1), clip = clip,
 					shadow = 1, shadow_color = shadow_color,
 				})
 			end
