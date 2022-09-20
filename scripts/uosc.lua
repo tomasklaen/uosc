@@ -4305,14 +4305,17 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 				value = chapter.time,
 			}
 			items[#items + 1] = item
-			if active_found == false then
-				local is_active = chapter.time >= state.time
-				if is_active then
-					item.active = true
-					active_found = true
-				end
-			end
 		end
+        for index = #items, 1, -1 do
+            if state.time >= items[index].value then
+                items[index].active = true
+                active_found = true
+                break
+            end
+        end
+        if active_found == false and #items > 0 then
+            items[1].active = true
+        end
 		return items
 	end,
 	active_prop = 'playback-time',
