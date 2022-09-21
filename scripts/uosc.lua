@@ -1051,21 +1051,20 @@ end
 ---@param bx number
 ---@param by number
 ---@param char string Texture font character.
----@param opts {size?: number; color: string; align?: number; shift?: number; opacity?: number; clip?: string}
+---@param opts {size?: number; color: string; opacity?: number; clip?: string; anchor_x?: number, anchor_y?: number}
 function ass_mt:texture(ax, ay, bx, by, char, opts)
 	opts = opts or {}
-	local width, height, align = bx - ax, by - ay, opts.align or 1
+	local anchor_x, anchor_y = opts.anchor_x or ax, opts.anchor_y or ay
 	local clip = opts.clip or ('\\clip(' .. ax .. ',' .. ay .. ',' .. bx .. ',' .. by .. ')')
 	local tile_size, opacity = opts.size or 100, opts.opacity or 0.2
-	local align_modulo = align % 3
-	local shift = (opts.shift or 0) * (align_modulo == 0 and -1 or 1)
-	local line = string.rep(char, math.ceil((width + shift) / tile_size))
+	local x, y = ax - (ax - anchor_x) % tile_size, ay - (ay - anchor_y) % tile_size
+	local width, height = bx - x, by - y
+	local line = string.rep(char, math.ceil((width / tile_size)))
 	local lines = ''
 	for i = 1, math.ceil(height / tile_size), 1 do lines = lines .. (lines == '' and '' or '\\N') .. line end
 	self:txt(
-		(align_modulo == 1 and ax or align_modulo == 0 and bx or ax + width / 2) - shift,
-		align < 4 and by or align > 6 and ay or ay + height / 2,
-		align, lines, {font = 'uosc_textures', size = tile_size, color = opts.color, opacity = opacity, clip = clip})
+		x, y, 7, lines,
+		{font = 'uosc_textures', size = tile_size, color = opts.color, opacity = opacity, clip = clip})
 end
 
 --[[ ELEMENTS COLLECTION ]]
@@ -2779,8 +2778,9 @@ function Timeline:render()
 	-- Uncached ranges
 	local buffered_time = nil
 	if state.uncached_ranges then
-		local opts = {size = 80, align = 3}
+		local opts = {size = 80, anchor_y = fby}
 		local texture_char = visibility > 0 and 'b' or 'a'
+		local offset = opts.size / (visibility > 0 and 24 or 28)
 		for _, range in ipairs(state.uncached_ranges) do
 			if not buffered_time and (range[1] > state.time or range[2] > state.time) then
 				buffered_time = range[1] - state.time
@@ -2788,9 +2788,9 @@ function Timeline:render()
 			local ax = range[1] < 0.5 and bax or math.floor(time_ax + time_width * (range[1] / state.duration))
 			local bx = range[2] > state.duration - 0.5 and bbx or
 				math.ceil(time_ax + time_width * (range[2] / state.duration))
-			opts.color, opts.opacity, opts.shift = 'ffffff', 0.4 - (0.2 * visibility), 0
+			opts.color, opts.opacity, opts.anchor_x = 'ffffff', 0.4 - (0.2 * visibility), bax
 			ass:texture(ax, fay, bx, fby, texture_char, opts)
-			opts.color, opts.opacity, opts.shift = '000000', 0.6 - (0.2 * visibility), opts.size / 22
+			opts.color, opts.opacity, opts.anchor_x = '000000', 0.6 - (0.2 * visibility), bax + offset
 			ass:texture(ax, fay, bx, fby, texture_char, opts)
 		end
 	end
@@ -3608,12 +3608,12 @@ function VolumeSlider:render()
 	if not state.has_audio then
 		local fg_100_path = create_nudged_path(options.volume_border)
 		local texture_opts = {
-			size = 200, color = options.foreground, opacity = visibility * 0.1,
+			size = 200, color = options.foreground, opacity = visibility * 0.1, anchor_x = ax,
 			clip = '\\clip(' .. fg_100_path.scale .. ',' .. fg_100_path.text .. ')',
 		}
 		ass:texture(ax, ay, bx, by, 'a', texture_opts)
 		texture_opts.color = options.background
-		texture_opts.shift = 5
+		texture_opts.anchor_x = ax + texture_opts.size / 28
 		ass:texture(ax, ay, bx, by, 'a', texture_opts)
 	end
 
