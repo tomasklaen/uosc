@@ -967,14 +967,14 @@ end
 -- Tooltip
 ---@param element {ax: number; ay: number; bx: number; by: number}
 ---@param value string|number
----@param opts? {size?: number; offset?: number; align?: number; bold?: boolean; italic?: boolean; text_length_override?: number}
+---@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; text_length_override?: number; responsive?: boolean}
 function ass_mt:tooltip(element, value, opts)
 	opts = opts or {}
 	opts.size = opts.size or 16
 	opts.border = options.text_border
 	opts.border_color = options.background
 	local offset = opts.offset or opts.size / 2
-	local align_top = element.ay - offset > opts.size * 5
+	local align_top = opts.responsive == false or element.ay - offset > opts.size * 2
 	local x = element.ax + (element.bx - element.ax) / 2
 	local y = align_top and element.ay - offset or element.by + offset
 	local text_width = opts.text_length_override
@@ -2911,7 +2911,8 @@ function Timeline:render()
 		-- Chapter title
 		if chapter_title then
 			ass:tooltip(tooltip_anchor, chapter_title, {
-				size = self.font_size, bold = true, text_length_override = chapter_title_width, offset = 10,
+				size = self.font_size, offset = 10, responsive = false, bold = true,
+				text_length_override = chapter_title_width,
 			})
 		end
 	end
