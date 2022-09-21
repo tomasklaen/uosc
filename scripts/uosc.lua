@@ -34,7 +34,7 @@ function serialize_rgba(rgba)
 	local a = rgba:sub(7, 8)
 	return {
 		color = rgba:sub(5, 6) .. rgba:sub(3, 4) .. rgba:sub(1, 2),
-		opacity = clamp(0, tonumber(#a == 2 and a or 'ff', 16) / 255, 1)
+		opacity = clamp(0, tonumber(#a == 2 and a or 'ff', 16) / 255, 1),
 	}
 end
 
@@ -185,7 +185,7 @@ local options = {
 	volume_step = 1,
 
 	speed_persistency = '',
-	speed_opacity = 1,
+	speed_opacity = 0.6,
 	speed_step = 0.1,
 	speed_step_is_factor = false,
 
@@ -2319,7 +2319,7 @@ function Speed:render()
 
 	-- Background
 	ass:rect(self.ax, self.ay, self.bx, self.by, {
-		color = options.background, radius = 2, opacity = opacity * 0.6,
+		color = options.background, radius = 2, opacity = opacity * options.speed_opacity,
 	})
 
 	-- Coordinates
@@ -2367,7 +2367,7 @@ function Speed:render()
 	-- Center guide
 	ass:new_event()
 	ass:append('{\\blur0\\bord1\\shad0\\1c&H' .. options.foreground .. '\\3c&H' .. options.background .. '}')
-	ass:opacity(options.speed_opacity, opacity)
+	ass:opacity(opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:move_to(half_x, by - 2 - guide_size)
