@@ -169,7 +169,7 @@ local options = {
 	timeline_step = 5,
 	timeline_chapters_opacity = 0.8,
 
-	controls = 'menu,gap,subtitles,<has_many_audio>audio,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
+	controls = 'menu,gap,subtitles,<has_many_audio>audio,<stream>stream-quality,gap,space,speed,space,<has_playlist>shuffle,<has_playlist>loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
 	controls_size_fullscreen = 40,
 	controls_margin = 8,
