@@ -29,6 +29,15 @@ end
 ---@param max number
 function clamp(min, value, max) return math.max(min, math.min(value, max)) end
 
+---@param rgba string `rrggbb` or `rrggbbaa` hex string.
+function serialize_rgba(rgba)
+	local a = rgba:sub(7, 8)
+	return {
+		color = rgba:sub(5, 6) .. rgba:sub(3, 4) .. rgba:sub(1, 2),
+		opacity = clamp(0, tonumber(#a == 2 and a or 'ff', 16) / 255, 1)
+	}
+end
+
 ---@param str string
 ---@param pattern string
 ---@return string[]
@@ -227,6 +236,10 @@ local options = {
 opt.read_options(options, 'uosc')
 -- Normalize values
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
+options.foreground = serialize_rgba(options.foreground).color
+options.foreground_text = serialize_rgba(options.foreground_text).color
+options.background = serialize_rgba(options.background).color
+options.background_text = serialize_rgba(options.background_text).color
 
 --[[ CONFIG ]]
 
