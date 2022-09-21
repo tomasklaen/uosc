@@ -24,6 +24,11 @@ function round(number)
 	return modulus < 0.5 and math.floor(number) or math.ceil(number)
 end
 
+---@param min number
+---@param value number
+---@param max number
+function clamp(min, value, max) return math.max(min, math.min(value, max)) end
+
 ---@param str string
 ---@param pattern string
 ---@return string[]
@@ -366,26 +371,16 @@ local config = {
 for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
 	local option_name = name .. '_persistency'
 	local value, flags = options[option_name], {}
-
 	if type(value) == 'string' then
 		for _, state in ipairs(split(value, ' *, *')) do flags[state] = true end
 	end
-
 	config[option_name] = flags
 end
 
 --[[ STATE ]]
 
-local display = {
-	width = 1280,
-	height = 720,
-	aspect = 1.77778,
-}
-local cursor = {
-	hidden = true, -- true when autohidden or outside of the player window
-	x = 0,
-	y = 0,
-}
+local display = {width = 1280, height = 720, aspect = 1.77778}
+local cursor = {hidden = true, x = 0, y = 0}
 local state = {
 	os = (function()
 		if os.getenv('windir') ~= nil then return 'windows' end
@@ -435,11 +430,7 @@ local state = {
 	margin_top = 0,
 	margin_bottom = 0,
 }
-local thumbfast = {
-	width = 0,
-	height = 0,
-	disabled = false
-}
+local thumbnail = {width = 0, height = 0, disabled = false}
 
 --[[ HELPERS ]]
 
@@ -990,7 +981,7 @@ function ass_mt:tooltip(element, value, opts)
 		and opts.text_length_override * opts.size * options.font_height_to_letter_width_ratio
 		or text_width_estimate(value, opts.size)
 	local margin = text_width / 2
-	self:txt(math.max(margin, math.min(x, display.width - margin)), y, align_top and 2 or 8, value, opts)
+	self:txt(clamp(margin, x, display.width - margin), y, align_top and 2 or 8, value, opts)
 end
 
 -- Rectangle
@@ -1391,7 +1382,7 @@ function Element:update_proximity()
 	else
 		local range = options.proximity_out - options.proximity_in
 		self.proximity_raw = get_point_to_rectangle_proximity(cursor, self)
-		self.proximity = 1 - (math.min(math.max(self.proximity_raw - options.proximity_in, 0), range) / range)
+		self.proximity = 1 - (clamp(0, self.proximity_raw - options.proximity_in, range) / range)
 	end
 end
 
@@ -1712,7 +1703,7 @@ function Menu:update_dimensions()
 	local min_width = state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width
 
 	for _, menu in ipairs(self.all) do
-		menu.width = round(math.min(math.max(menu.max_width, min_width), display.width * 0.9))
+		menu.width = round(clamp(min_width, menu.max_width, display.width * 0.9))
 		local title_height = (menu.is_root and menu.title) and self.scroll_step or 0
 		local max_height = round((display.height - title_height) * 0.9)
 		local content_height = self.scroll_step * #menu.items
@@ -1768,7 +1759,7 @@ end
 ---@param menu? MenuStack
 function Menu:scroll_to(pos, menu)
 	menu = menu or self.current
-	menu.scroll_y = math.max(math.min(pos or 0, menu.scroll_height), 0)
+	menu.scroll_y = clamp(0, pos or 0, menu.scroll_height)
 	request_render()
 end
 
@@ -1954,7 +1945,7 @@ function Menu:on_pgup()
 	local menu = self.current
 	local items_per_page = round((menu.height / self.scroll_step) * 0.4)
 	local paged_index = (menu.selected_index and menu.selected_index or #menu.items) - items_per_page
-	menu.selected_index = math.min(math.max(1, paged_index), #menu.items)
+	menu.selected_index = clamp(1, paged_index, #menu.items)
 	if menu.selected_index > 0 then self:scroll_to_index(menu.selected_index) end
 end
 
@@ -1962,7 +1953,7 @@ function Menu:on_pgdwn()
 	local menu = self.current
 	local items_per_page = round((menu.height / self.scroll_step) * 0.4)
 	local paged_index = (menu.selected_index and menu.selected_index or 1) + items_per_page
-	menu.selected_index = math.min(math.max(1, paged_index), #menu.items)
+	menu.selected_index = clamp(1, paged_index, #menu.items)
 	if menu.selected_index > 0 then self:scroll_to_index(menu.selected_index) end
 end
 
@@ -2261,7 +2252,7 @@ function Speed:on_global_mouse_move()
 
 	local speed_current = state.speed
 	local speed_drag_current = self.dragging.start_speed + self.dragging.speed_distance
-	speed_drag_current = math.min(math.max(speed_drag_current, 0.01), 100)
+	speed_drag_current = clamp(0.01, speed_drag_current, 100)
 	local drag_dir_up = speed_drag_current > speed_current
 
 	local speed_step_next = speed_current
@@ -2328,7 +2319,7 @@ function Speed:render()
 	local speed_at_center = state.speed
 	if self.dragging then
 		speed_at_center = self.dragging.start_speed + self.dragging.speed_distance
-		speed_at_center = math.min(math.max(speed_at_center, 0.01), 100)
+		speed_at_center = clamp(0.01, speed_at_center, 100)
 	end
 	local nearest_notch_speed = round(speed_at_center / self.notch_every) * self.notch_every
 	local nearest_notch_x = half_x + (((nearest_notch_speed - speed_at_center) / self.notch_every) * self.notch_spacing)
@@ -2684,7 +2675,7 @@ function Timeline:get_time_at_x(x)
 	local line_width = (options.timeline_style == 'line' and self:get_effective_line_width() or 1)
 	local time_width = self.width - line_width
 	local progress_x = x - self.ax - line_width / 2
-	local progress = math.max(0, math.min(progress_x / time_width, 1))
+	local progress = clamp(0, progress_x / time_width, 1)
 	return state.duration * progress
 end
 
@@ -2702,6 +2693,7 @@ function Timeline:on_prop_time() self:decide_enabled() end
 function Timeline:on_prop_border() self:update_dimensions() end
 function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
+function Timeline:on_mouse_leave() mp.commandv('script-message-to', 'thumbfast', 'clear') end
 function Timeline:on_global_mbtn_left_up() self.pressed = false end
 function Timeline:on_global_mouse_leave() self.pressed = false end
 function Timeline:on_global_mouse_move()
@@ -2722,9 +2714,9 @@ function Timeline:render()
 	local ass = assdraw.ass_new()
 
 	-- Text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches timeline.size_min
-	local hide_text_below = math.max(self.font_size * 0.7, size_min * 2)
+	local hide_text_below = math.max(self.font_size * 0.8, size_min * 2)
 	local hide_text_ramp = hide_text_below / 2
-	local text_opacity = math.max(math.min(size - hide_text_below, hide_text_ramp), 0) / hide_text_ramp
+	local text_opacity = clamp(0, size - hide_text_below, hide_text_ramp) / hide_text_ramp
 
 	local spacing = math.max(math.floor((self.size_max - self.font_size) / 2.5), 4)
 	local progress = state.time / state.duration
@@ -2889,33 +2881,38 @@ function Timeline:render()
 		-- 0.5 to switch when the pixel is half filled in
 		local color = ((fax - 0.5) < cursor.x and cursor.x < (fbx + 0.5)) and
 			options.background or options.foreground
-		local line = {ax = cursor.x - 0.5, ay = fay, bx = cursor.x + 0.5, by = fby}
-		ass:rect(line.ax, line.ay, line.bx, line.by, {color = color, opacity = 0.2})
+		local ax, ay, bx, by = cursor.x - 0.5, fay, cursor.x + 0.5, fby
+		ass:rect(ax, ay, bx, by, {color = color, opacity = 0.2})
+		local tooltip_anchor = {ax = ax, ay = ay, bx = bx, by = by}
 
 		-- Timestamp
-		ass:tooltip(line, format_time(hovered_seconds), {size = self.font_size, offset = 2})
+		ass:tooltip(tooltip_anchor, format_time(hovered_seconds), {size = self.font_size, offset = 4})
+		tooltip_anchor.ay = tooltip_anchor.ay - self.font_size - 4
+
+		-- Thumbnail
+		if not thumbnail.disabled and thumbnail.width ~= 0 and thumbnail.height ~= 0 then
+			local scale = options.ui_scale * state.hidpi_scale
+			local border, margin_x, margin_y = 2, 10, 5
+			local thumb_x_margin, thumb_y_margin = (border + margin_x) * scale, (border + margin_y) * scale
+			local thumb_x = round(clamp(
+				thumb_x_margin, cursor.x * scale - thumbnail.width / 2,
+				display.width * scale - thumbnail.width - thumb_x_margin
+			))
+			local thumb_y = round(tooltip_anchor.ay * scale - thumb_y_margin - thumbnail.height)
+			local ax, ay = thumb_x - border, thumb_y - border
+			local bx, by = thumb_x + border + thumbnail.width, thumb_y + border + thumbnail.height
+			ass:rect(ax, ay, bx, by, {
+				color = options.foreground, border = 1, border_color = options.background, radius = 3, opacity = 0.6,
+			})
+			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
+			tooltip_anchor.ax, tooltip_anchor.bx, tooltip_anchor.ay = ax, bx, ay
+		end
 
 		-- Chapter title
 		if chapter_title then
-			ass:tooltip(line, chapter_title, {
-				offset = 2 + self.font_size * 1.4, size = self.font_size, bold = true,
-				text_length_override = chapter_title_width,
+			ass:tooltip(tooltip_anchor, chapter_title, {
+				size = self.font_size, bold = true, text_length_override = chapter_title_width, offset = 10,
 			})
-		end
-
-		-- Thumbnail
-		if not thumbfast.disabled and thumbfast.width ~= 0 and thumbfast.height ~= 0 then
-			local final_scale = options.ui_scale * state.hidpi_scale
-			mp.commandv("script-message-to", "thumbfast", "thumb",
-				hovered_seconds,
-				math.min(display.width * final_scale - thumbfast.width - 10 * final_scale, math.max(10 * final_scale, cursor.x * final_scale - thumbfast.width / 2)),
-				fay * final_scale - thumbfast.height - (2 + self.font_size * (chapter_title and 1.8 or 1.4) +
-					(chapter_title_lines and self.font_size * chapter_title_lines or 0)) * final_scale
-			)
-		end
-	else
-		if thumbfast.width ~= 0 and thumbfast.height ~= 0 then
-			mp.commandv("script-message-to", "thumbfast", "clear")
 		end
 	end
 
@@ -3073,7 +3070,7 @@ function TopBar:render()
 			local text = state.title or 'n/a'
 			local bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
 			local by = self.by - bg_margin
-			ass:rect(title_ax, title_ay, bx, by, { color = options.background, opacity = visibility * 0.8, radius = 2, })
+			ass:rect(title_ax, title_ay, bx, by, {color = options.background, opacity = visibility * 0.8, radius = 2})
 			ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, text, {
 				size = self.font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
 				opacity = visibility, clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
@@ -3089,7 +3086,7 @@ function TopBar:render()
 			local ax, by = title_ax + padding / 2, title_ay + height
 			local bx = math.min(max_bx, title_ax + text_width_estimate(text, font_size) + padding * 2)
 			ass:rect(ax, title_ay, bx, by, {color = options.background, opacity = visibility * 0.8, radius = 2})
-			ass:txt(ax + padding, title_ay + height / 2, 4, '{\\i1}' .. text ..'{\\i0}', {
+			ass:txt(ax + padding, title_ay + height / 2, 4, '{\\i1}' .. text .. '{\\i0}', {
 				size = font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
 				opacity = visibility * 0.8, clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by),
 			})
@@ -3450,7 +3447,7 @@ end
 function VolumeSlider:set_volume(volume)
 	volume = round(volume / options.volume_step) * options.volume_step
 	if state.volume == volume then return end
-	mp.commandv('set', 'volume', math.max(math.min(volume, state.volume_max), 0))
+	mp.commandv('set', 'volume', clamp(0, volume, state.volume_max))
 end
 
 function VolumeSlider:set_from_cursor()
@@ -3896,7 +3893,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 
 		for _, track in ipairs(tracklist) do
 			if track.type == track_type then
-				local hint_vals = {
+				local hint_values = {
 					track.lang and track.lang:upper() or nil,
 					track['demux-h'] and (track['demux-w'] and track['demux-w'] .. 'x' .. track['demux-h']
 						or track['demux-h'] .. 'p'),
@@ -3907,16 +3904,16 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 					track.forced and 'forced' or nil,
 					track.default and 'default' or nil,
 				}
-				local hint_vals_filtered = {}
-				for i = 1, #hint_vals do
-					if hint_vals[i] then
-						hint_vals_filtered[#hint_vals_filtered + 1] = hint_vals[i]
+				local hint_values_filtered = {}
+				for i = 1, #hint_values do
+					if hint_values[i] then
+						hint_values_filtered[#hint_values_filtered + 1] = hint_values[i]
 					end
 				end
 
 				items[#items + 1] = {
 					title = (track.title and track.title or 'Track ' .. track.id),
-					hint = table.concat(hint_vals_filtered, ', '),
+					hint = table.concat(hint_values_filtered, ', '),
 					value = track.id,
 					active = track.selected,
 				}
@@ -4194,7 +4191,7 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 	update_display_dimensions()
 	request_render()
 end)
-mp.observe_property('display-hidpi-scale', 'native', create_state_setter('hidpi_scale', function() update_display_dimensions() end))
+mp.observe_property('display-hidpi-scale', 'native', create_state_setter('hidpi_scale', update_display_dimensions))
 mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_stream', function()
 	set_state('uncached_ranges', state.is_stream and state.duration and {0, state.duration} or nil)
 	Elements:trigger('dispositions')
@@ -4419,10 +4416,10 @@ mp.add_key_binding(nil, 'stream-quality', function()
 
 		mp.set_property_number('playlist-pos', playlist_pos)
 
-		-- Tries to determine live stream vs. pre-recordered VOD. VOD has non-zero
+		-- Tries to determine live stream vs. pre-recorded VOD. VOD has non-zero
 		-- duration property. When reloading VOD, to keep the current time position
 		-- we should provide offset from the start. Stream doesn't have fixed start.
-		-- Decent choice would be to reload stream from it's current 'live' positon.
+		-- Decent choice would be to reload stream from it's current 'live' position.
 		-- That's the reason we don't pass the offset when reloading streams.
 		if duration and duration > 0 then
 			local function seeker()
@@ -4621,8 +4618,9 @@ end)
 mp.register_script_message('thumbfast-info', function(json)
 	local data = utils.parse_json(json)
 	if type(data) ~= 'table' or not data.width or not data.height then
+		thumbnail.disabled = true
 		msg.error('thumbfast-info: received json didn\'t produce a table with thumbnail information')
 	else
-		thumbfast = data
+		thumbnail = data
 	end
 end)

@@ -1,4 +1,24 @@
 {
-	"Lua.diagnostics.disable": ["lowercase-global"],
-	"Lua.diagnostics.globals": ["mp"]
+	"Lua.diagnostics.disable": [
+		"lowercase-global",
+		"redefined-local"
+	],
+	"Lua.diagnostics.globals": [
+		"mp"
+	],
+	"cSpell.words": [
+		"alac",
+		"apng",
+		"bestaudio",
+		"bestvideo",
+		"demux",
+		"gfps",
+		"hidpi",
+		"jfif",
+		"logicaldisk",
+		"samplerate",
+		"thumbfast",
+		"ytdl",
+		"ZWNBSP"
+	]
 }
