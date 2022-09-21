@@ -204,6 +204,7 @@ local options = {
 	top_bar_persistency = '',
 	top_bar_controls = true,
 	top_bar_title = true,
+	top_bar_title_opacity = 0.8,
 
 	window_border_size = 1,
 	window_border_opacity = 0.8,
@@ -2870,7 +2871,7 @@ function Timeline:render()
 			local ax, ay = (thumb_x - border) / scale, (thumb_y - border) / scale
 			local bx, by = (thumb_x + border + thumbnail.width) / scale, (thumb_y + border + thumbnail.height) / scale
 			ass:rect(ax, ay, bx, by, {
-				color = options.foreground, border = 1, border_color = options.background, radius = 3, opacity = 0.6,
+				color = options.foreground, border = 1, border_color = options.background, radius = 3, opacity = 0.8,
 			})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
 			tooltip_anchor.ax, tooltip_anchor.bx, tooltip_anchor.ay = ax, bx, ay
@@ -3042,7 +3043,9 @@ function TopBar:render()
 			local text = state.title or 'n/a'
 			local bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
 			local by = self.by - bg_margin
-			ass:rect(title_ax, title_ay, bx, by, {color = options.background, opacity = visibility * 0.8, radius = 2})
+			ass:rect(title_ax, title_ay, bx, by, {
+				color = options.background, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+			})
 			ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, text, {
 				size = self.font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
 				opacity = visibility, clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
@@ -3057,7 +3060,9 @@ function TopBar:render()
 			local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
 			local ax, by = title_ax + padding / 2, title_ay + height
 			local bx = math.min(max_bx, title_ax + text_width_estimate(text, font_size) + padding * 2)
-			ass:rect(ax, title_ay, bx, by, {color = options.background, opacity = visibility * 0.8, radius = 2})
+			ass:rect(ax, title_ay, bx, by, {
+				color = options.background, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+			})
 			ass:txt(ax + padding, title_ay + height / 2, 4, '{\\i1}' .. text .. '{\\i0}', {
 				size = font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
 				opacity = visibility * 0.8, clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by),
