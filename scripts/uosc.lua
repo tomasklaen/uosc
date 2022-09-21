@@ -231,7 +231,7 @@ local options = {
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
-	chapter_ranges = '^op| op$|opening<968638:0.5>.*, ^ed| ed$|^end|ending$<968638:0.5>.*|{eof}, sponsor start<3535a5:.5>sponsor end, segment start<3535a5:0.5>segment end',
+	chapter_ranges = 'openings:38869680,endings:38869680,ads:a5353580',
 }
 opt.read_options(options, 'uosc')
 -- Normalize values
@@ -342,42 +342,16 @@ local config = {
 			}
 		end
 	end)(),
-	chapter_serializers = (function()
-		-- Parse `chapter_ranges` option into workable data structure
-		local chapter_ranges = {}
-		for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
-			local start_patterns, color, opacity, end_patterns = string.match(
-				definition, '([^<]+)<(%x%x%x%x%x%x):(%d?%.?%d*)>([^>]+)'
-			)
-
-			-- Valid definition
-			if start_patterns then
-				start_patterns = start_patterns:lower()
-				end_patterns = end_patterns:lower()
-				local uses_bof = start_patterns:find('{bof}') ~= nil
-				local uses_eof = end_patterns:find('{eof}') ~= nil
-				local chapter_range = {
-					start_patterns = split(start_patterns, '|'),
-					end_patterns = split(end_patterns, '|'),
-					color = color,
-					opacity = tonumber(opacity),
-					ranges = {},
-					uses_bof = uses_bof,
-					uses_eof = uses_eof,
-				}
-
-				-- Filter out special keywords so we don't use them when matching titles
-				if uses_bof then
-					chapter_range.start_patterns = itable_remove(chapter_range.start_patterns, '{bof}')
-				end
-				if uses_eof and chapter_range.end_patterns then
-					chapter_range.end_patterns = itable_remove(chapter_range.end_patterns, '{eof}')
-				end
-
-				chapter_ranges[#chapter_ranges + 1] = chapter_range
+	chapter_ranges = (function()
+		---@type table<string, {color: string; opacity: number}>
+		local ranges = {}
+		if options.chapter_ranges and options.chapter_ranges ~= '' then
+			for _, definition in ipairs(split(options.chapter_ranges or '', ' *,+ *')) do
+				local type_color = split(definition, ' *:+ *')
+				ranges[type_color[1]] = serialize_rgba(type_color[2])
 			end
 		end
-		return chapter_ranges
+		return ranges
 	end)(),
 }
 -- Adds `{element}_persistency` property with table of flags when the element should be visible (`{paused = true}`)
@@ -817,79 +791,72 @@ function delete_file(path)
 	})
 end
 
-function serialize_chapter_ranges(chapters)
-	state.chapter_ranges = {}
+function serialize_chapter_ranges(normalized_chapters)
+	local ranges = {}
+	local chapters = {}
+	local simple_ranges = {
+		{name = 'openings', patterns = {'^op', '^op$', 'op$', 'opening$', '^intro$'}, requires_next_chapter = true},
+		{name = 'endings', patterns = {'^ed', '^ed$', 'ed$', 'ending$', '^outro$'}},
+	}
 
-	for _, chapter_serializer in ipairs(config.chapter_serializers) do
-		local current_range = nil
-		-- bof and eof should be used only once per timeline
-		-- eof is only used when last range is missing end
-		local bof_used = false
+	for i, normalized_chapter in ipairs(normalized_chapters) do
+		local chapter = table_shallow_copy(normalized_chapter)
+		chapters[i] = chapter
 
-		local function start_range(chapter)
-			-- If there is already a range started, should we append or overwrite?
-			-- I chose overwrite here.
-			current_range = {['start'] = chapter}
-		end
-
-		local function end_range(chapter)
-			current_range['end'] = chapter
-			current_range.color = chapter_serializer.color
-			current_range.opacity = chapter_serializer.opacity
-			state.chapter_ranges[#state.chapter_ranges + 1] = current_range
-			-- Mark both chapter objects
-			current_range['start']._uosc_used_as_range_point = true
-			current_range['end']._uosc_used_as_range_point = true
-			-- Clear for next range
-			current_range = nil
-		end
-
-		for _, chapter in ipairs(chapters) do
-			if type(chapter.title) == 'string' then
-				local lowercase_title = chapter.title:lower()
-
-				-- Is ending check and handling
-				if chapter_serializer.end_patterns then
-					for _, end_pattern in ipairs(chapter_serializer.end_patterns) do
-						if lowercase_title:find(end_pattern) then
-							if current_range == nil and chapter_serializer.uses_bof and not bof_used then
-								bof_used = true
-								start_range({time = 0})
-							end
-							if current_range ~= nil then
-								end_range(chapter)
-								chapter.is_end_only = end_pattern ~= '.*'
-							end
-							break
-						end
+		-- Simple ranges
+		for _, meta in ipairs(simple_ranges) do
+			if config.chapter_ranges[meta.name] then
+				local match = itable_find(meta.patterns, function(p) return chapter.lowercase_title:find(p) end)
+				if match then
+					local next_chapter = normalized_chapters[i + 1]
+					if next_chapter or not meta.requires_next_chapter then
+						ranges[#ranges + 1] = table_assign({
+							start = chapter.time,
+							['end'] = next_chapter and next_chapter.time or infinity,
+						}, config.chapter_ranges[meta.name])
+						chapter.is_range_point = true
+						if next_chapter then next_chapter.is_range_point = true end
 					end
 				end
+			end
+		end
 
-				-- Is start check and handling
-				for _, start_pattern in ipairs(chapter_serializer.start_patterns) do
-					if lowercase_title:find(start_pattern) and current_range == nil then
-						start_range(chapter)
-						chapter.is_end_only = false
+		-- Sponsor blocks
+		if config.chapter_ranges.ads then
+			local id = chapter.lowercase_title:match('segment start *%(([%w]%w-)%)')
+			if id then
+				for j = i + 1, #normalized_chapters, 1 do
+					local end_chapter = normalized_chapters[j]
+					local end_match = end_chapter.lowercase_title:match('segment end *%(' .. id .. '%)')
+					if end_match then
+						ranges[#ranges + 1] = table_assign({
+							start = chapter.time,
+							['end'] = end_chapter.time,
+						}, config.chapter_ranges.ads)
+						chapter.is_range_point = true
+						end_chapter.is_range_point = true
+						end_chapter.is_end_only = true
 						break
 					end
 				end
 			end
 		end
 
-		-- If there is an unfinished range and range type accepts eof, use it
-		if current_range ~= nil and chapter_serializer.uses_eof then
-			end_range({time = infinity})
-		end
 	end
+
+	return chapters, ranges
 end
 
 -- Ensures chapters are in chronological order
 function normalize_chapters(chapters)
-	if not chapters then return end
-
-	-- Ensure chronological order of chapters
+	if not chapters then return {} end
+	-- Ensure chronological order
 	table.sort(chapters, function(a, b) return a.time < b.time end)
-
+	-- Ensure titles
+	for index, chapter in ipairs(chapters) do
+		chapter.title = chapter.title or ('Chapter ' .. index)
+		chapter.lowercase_title = chapter.title:lower()
+	end
 	return chapters
 end
 
@@ -2797,12 +2764,10 @@ function Timeline:render()
 
 	-- Custom ranges
 	for _, chapter_range in ipairs(state.chapter_ranges) do
-		local rax = time_ax + time_width * (chapter_range['start'].time / state.duration)
-		local rbx = time_ax + time_width * math.min(chapter_range['end'].time / state.duration, 1)
-		-- for 1px chapter size, use the whole size of the bar including padding
-		local ray = size <= 1 and bay or fay
-		local rby = size <= 1 and bby or fby
-		ass:rect(rax, ray, rbx, rby, {color = chapter_range.color, opacity = chapter_range.opacity})
+		local rax = chapter_range.start < 0.1 and 0 or time_ax + time_width * (chapter_range.start / state.duration)
+		local rbx = chapter_range['end'] > state.duration - 0.1 and bbx
+			or time_ax + time_width * math.min(chapter_range['end'] / state.duration, 1)
+		ass:rect(rax, fay, rbx, fby, {color = chapter_range.color, opacity = chapter_range.opacity})
 	end
 
 	-- Chapters
@@ -2831,7 +2796,7 @@ function Timeline:render()
 
 			if state.chapters ~= nil then
 				for i, chapter in ipairs(state.chapters) do
-					if not chapter._uosc_used_as_range_point then draw_chapter(chapter.time) end
+					if not chapter.is_range_point then draw_chapter(chapter.time) end
 				end
 			end
 
@@ -2879,16 +2844,6 @@ function Timeline:render()
 	-- Hovered time and chapter
 	if (self.proximity_raw == 0 or self.pressed) and not (Elements.speed and Elements.speed.dragging) then
 		local hovered_seconds = self:get_time_at_x(cursor.x)
-		local chapter_title, chapter_title_width
-
-		if state.chapters then
-			local _, chapter = itable_find(state.chapters, function(c) return hovered_seconds >= c.time end, true)
-			if chapter and not chapter.is_end_only then
-				chapter_title = chapter.title_wrapped
-				chapter_title_width = chapter.title_wrapped_width
-				chapter_title_lines = chapter.title_wrapped_lines
-			end
-		end
 
 		-- Cursor line
 		-- 0.5 to switch when the pixel is half filled in
@@ -2922,11 +2877,14 @@ function Timeline:render()
 		end
 
 		-- Chapter title
-		if chapter_title then
-			ass:tooltip(tooltip_anchor, chapter_title, {
-				size = self.font_size, offset = 10, responsive = false, bold = true,
-				text_length_override = chapter_title_width,
-			})
+		if #state.chapters > 0 then
+			local _, chapter = itable_find(state.chapters, function(c) return hovered_seconds >= c.time end, true)
+			if chapter and not chapter.is_end_only then
+				ass:tooltip(tooltip_anchor, chapter.title_wrapped, {
+					size = self.font_size, offset = 10, responsive = false, bold = true,
+					text_length_override = chapter.title_wrapped_width,
+				})
+			end
 		end
 	end
 
@@ -4179,9 +4137,10 @@ mp.observe_property('track-list', 'native', function(name, value)
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('chapter-list', 'native', function(_, chapters)
-	local chapters = serialize_chapters(chapters)
+	local chapters, chapter_ranges = serialize_chapters(chapters), {}
+	if chapters then chapters, chapter_ranges = serialize_chapter_ranges(chapters) end
 	set_state('chapters', chapters)
-	serialize_chapter_ranges(chapters)
+	set_state('chapter_ranges', chapter_ranges)
 	set_state('has_chapter', #chapters > 0)
 	Elements:trigger('dispositions')
 end)
