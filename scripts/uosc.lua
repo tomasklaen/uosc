@@ -2867,8 +2867,8 @@ function Timeline:render()
 				display.width * scale - thumbnail.width - thumb_x_margin
 			))
 			local thumb_y = round(tooltip_anchor.ay * scale - thumb_y_margin - thumbnail.height)
-			local ax, ay = thumb_x - border, thumb_y - border
-			local bx, by = thumb_x + border + thumbnail.width, thumb_y + border + thumbnail.height
+			local ax, ay = (thumb_x - border) / scale, (thumb_y - border) / scale
+			local bx, by = (thumb_x + border + thumbnail.width) / scale, (thumb_y + border + thumbnail.height) / scale
 			ass:rect(ax, ay, bx, by, {
 				color = options.foreground, border = 1, border_color = options.background, radius = 3, opacity = 0.6,
 			})
