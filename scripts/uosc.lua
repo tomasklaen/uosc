@@ -4246,7 +4246,7 @@ end))
 mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	local cached_ranges = cache_state and cache_state['seekable-ranges'] or {}
 	local uncached_ranges = nil
-	if state.duration and state.is_stream then
+	if state.duration and #cached_ranges > 0 then
 		-- Normalize
 		local ranges = {}
 		for _, range in ipairs(cached_ranges) do
