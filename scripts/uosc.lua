@@ -20,8 +20,7 @@ local quarter_pi_sin = math.sin(math.pi / 4)
 
 ---@param number number
 function round(number)
-	local modulus = number % 1
-	return modulus < 0.5 and math.floor(number) or math.ceil(number)
+	return math.floor(number + 0.5)
 end
 
 ---@param min number
