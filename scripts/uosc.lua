@@ -4246,35 +4246,37 @@ end))
 mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	local cached_ranges = cache_state and cache_state['seekable-ranges'] or {}
 	local uncached_ranges = nil
-	if state.duration and #cached_ranges > 0 then
-		-- Normalize
-		local ranges = {}
-		for _, range in ipairs(cached_ranges) do
-			ranges[#ranges + 1] = {
-				math.max(range['start'] or 0, 0),
-				math.min(range['end'] or state.duration, state.duration),
-			}
-		end
-		table.sort(ranges, function(a, b) return a[1] < b[1] end)
-		-- Invert cached ranges into uncached ranges, as that's what we're rendering
-		local inverted_ranges = {{0, state.duration}}
-		for _, cached in pairs(ranges) do
-			inverted_ranges[#inverted_ranges][2] = cached[1]
-			inverted_ranges[#inverted_ranges + 1] = {cached[2], state.duration}
-		end
-		uncached_ranges = {}
-		local last_range = nil
-		for _, range in ipairs(inverted_ranges) do
-			if last_range and last_range[2] + 0.5 > range[1] then -- fuse ranges
-				last_range[2] = range[2]
-			else
-				if range[2] - range[1] > 0.5 then -- skip short ranges
-					uncached_ranges[#uncached_ranges + 1] = range
-					last_range = range
-				end
+
+	if not state.duration or #cached_ranges == 0 then return end
+
+	-- Normalize
+	local ranges = {}
+	for _, range in ipairs(cached_ranges) do
+		ranges[#ranges + 1] = {
+			math.max(range['start'] or 0, 0),
+			math.min(range['end'] or state.duration, state.duration),
+		}
+	end
+	table.sort(ranges, function(a, b) return a[1] < b[1] end)
+	-- Invert cached ranges into uncached ranges, as that's what we're rendering
+	local inverted_ranges = {{0, state.duration}}
+	for _, cached in pairs(ranges) do
+		inverted_ranges[#inverted_ranges][2] = cached[1]
+		inverted_ranges[#inverted_ranges + 1] = {cached[2], state.duration}
+	end
+	uncached_ranges = {}
+	local last_range = nil
+	for _, range in ipairs(inverted_ranges) do
+		if last_range and last_range[2] + 0.5 > range[1] then -- fuse ranges
+			last_range[2] = range[2]
+		else
+			if range[2] - range[1] > 0.5 then -- skip short ranges
+				uncached_ranges[#uncached_ranges + 1] = range
+				last_range = range
 			end
 		end
 	end
+
 	set_state('uncached_ranges', uncached_ranges)
 end)
 mp.observe_property('display-fps', 'native', observe_display_fps)
