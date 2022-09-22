@@ -4390,6 +4390,7 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 			}
 			items[#items + 1] = item
 		end
+		if not state.time then return items end
 		for index = #items, 1, -1 do
 			if state.time >= items[index].value then
 				items[index].active = true
