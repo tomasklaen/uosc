@@ -840,8 +840,8 @@ function serialize_chapter_ranges(normalized_chapters)
 	local ranges = {}
 	local chapters = {}
 	local simple_ranges = {
-		{name = 'openings', patterns = {'^op', '^op$', 'op$', 'opening$', '^intro$'}, requires_next_chapter = true},
-		{name = 'endings', patterns = {'^ed', '^ed$', 'ed$', 'ending$', '^outro$'}},
+		{name = 'openings', patterns = {'^op ', '^op$', ' op$', 'opening$', '^intro$'}, requires_next_chapter = true},
+		{name = 'endings', patterns = {'^ed ', '^ed$', ' ed$', 'ending$', '^outro$'}},
 	}
 
 	for i, normalized_chapter in ipairs(normalized_chapters) do
