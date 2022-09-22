@@ -169,7 +169,7 @@ local options = {
 	timeline_step = 5,
 	timeline_chapters_opacity = 0.8,
 
-	controls = 'menu,gap,subtitles,<has_many_audio>audio,<stream>stream-quality,gap,space,speed,space,<has_playlist>shuffle,<has_playlist>loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
+	controls = 'menu,gap,subtitles,<has_many_audio>audio,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
 	controls_size_fullscreen = 40,
 	controls_margin = 8,
@@ -208,6 +208,9 @@ local options = {
 
 	window_border_size = 1,
 	window_border_opacity = 0.8,
+
+	next_file_on_end = false,
+	shuffle = false,
 
 	ui_scale = 1,
 	font_scale = 1,
@@ -405,6 +408,7 @@ local state = {
 	has_sub = false,
 	has_chapter = false,
 	has_playlist = false,
+	shuffle = options.shuffle,
 	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		if not options.autohide then return end
 		handle_mouse_leave()
@@ -423,7 +427,7 @@ local thumbnail = {width = 0, height = 0, disabled = false}
 --[[ HELPERS ]]
 
 -- Sorting comparator close to (but not exactly) how file explorers sort files
-local word_order_comparator = (function()
+local file_order_comparator = (function()
 	local symbol_order
 	local default_order
 
@@ -742,39 +746,79 @@ function get_files_in_directory(directory, allowed_types)
 		end)
 	end
 
-	table.sort(files, word_order_comparator)
+	table.sort(files, file_order_comparator)
 
 	return files
 end
 
+-- Returns full absolute paths of files in the same directory as file_path,
+-- and index of the current file in the table.
 ---@param file_path string
----@param direction 'forward'|'backward'
 ---@param allowed_types? string[]
----@return nil|string
-function get_adjacent_file(file_path, direction, allowed_types)
+function get_adjacent_paths(file_path, allowed_types)
 	local current_file = serialize_path(file_path)
 	if not current_file then return end
 	local files = get_files_in_directory(current_file.dirname, allowed_types)
 	if not files then return end
-
+	local current_file_index
+	local paths = {}
 	for index, file in ipairs(files) do
-		if current_file.basename == file then
-			if direction == 'forward' then
-				if files[index + 1] then return utils.join_path(current_file.dirname, files[index + 1]) end
-				if options.directory_navigation_loops and files[1] then
-					return utils.join_path(current_file.dirname, files[1])
-				end
-			else
-				if files[index - 1] then return utils.join_path(current_file.dirname, files[index - 1]) end
-				if options.directory_navigation_loops and files[#files] then
-					return utils.join_path(current_file.dirname, files[#files])
-				end
-			end
-
-			-- This is the only file in directory
-			return nil
-		end
+		paths[#paths + 1] = utils.join_path(current_file.dirname, file)
+		if current_file.basename == file then current_file_index = index end
 	end
+	if not current_file_index then return end
+	return paths, current_file_index
+end
+
+-- Navigates in a list, using delta or, when `state.shuffle` is enabled,
+-- randomness to determine the next item. Loops around if `loop-playlist` is enabled.
+---@param list table
+---@param current_index number
+---@param delta number
+function decide_navigation_in_list(list, current_index, delta)
+	if #list < 2 then return #list, list[#list] end
+
+	if state.shuffle then
+		local new_index = current_index
+		while current_index == new_index do new_index = math.random(#list) end
+		return new_index, list[new_index]
+	end
+	local new_index = current_index + delta
+
+	if mp.get_property_native('loop-playlist') then
+		if new_index > #list then new_index = new_index % #list
+		elseif new_index < 1 then new_index = #list - new_index end
+	elseif new_index < 1 or new_index > #list then
+		return
+	end
+
+	return new_index, list[new_index]
+end
+
+---@param delta number
+function navigate_directory(delta)
+	if not state.path or is_protocol(state.path) then return false end
+	local paths, current_index = get_adjacent_paths(state.path, config.media_types)
+	if paths and current_index then
+		local _, path = decide_navigation_in_list(paths, current_index, delta)
+		if path then mp.commandv('loadfile', path) return true end
+	end
+	return false
+end
+
+---@param delta number
+function navigate_playlist(delta)
+	local playlist, pos = mp.get_property_native('playlist'), mp.get_property_native('playlist-pos-1')
+	if playlist and #playlist > 1 and pos then
+		local index = decide_navigation_in_list(playlist, pos, delta)
+		if index then mp.commandv('playlist-play-index', index - 1) return true end
+	end
+	return false
+end
+
+---@param delta number
+function navigate_item(delta)
+	if state.has_playlist then return navigate_playlist(delta) else return navigate_directory(delta) end
 end
 
 -- Can't use `os.remove()` as it fails on paths with unicode characters.
@@ -2453,6 +2497,7 @@ function CycleButton:new(id, props) return Class.new(self, id, props) --[[@as Cy
 ---@param id string
 ---@param props CycleButtonProps
 function CycleButton:init(id, props)
+	local is_state_prop = itable_index_of({'shuffle'}, props.prop)
 	self.prop = props.prop
 	self.states = props.states
 
@@ -2463,10 +2508,17 @@ function CycleButton:init(id, props)
 	self.current_state_index = 1
 	self.on_click = function()
 		local new_state = self.states[self.current_state_index + 1] or self.states[1]
-		mp.set_property(self.prop, new_state.value)
+		if is_state_prop then
+			local new_value = new_state.value
+			if itable_index_of({'yes', 'no'}, new_state.value) then new_value = new_value == 'yes' end
+			set_state(self.prop, new_value)
+		else
+			mp.set_property(self.prop, new_state.value)
+		end
 	end
 
 	self.handle_change = function(name, value)
+		if is_state_prop and type(value) == 'boolean' then value = value and 'yes' or 'no' end
 		local index = itable_find(self.states, function(state) return state.value == value end)
 		self.current_state_index = index or 1
 		self.icon = self.states[self.current_state_index].icon
@@ -2474,7 +2526,12 @@ function CycleButton:init(id, props)
 		request_render()
 	end
 
-	mp.observe_property(self.prop, 'string', self.handle_change)
+	-- Built in state props
+	if is_state_prop then
+		self['on_prop_' .. self.prop] = function(self, value) self.handle_change(self.prop, value) end
+	else
+		mp.observe_property(self.prop, 'string', self.handle_change)
+	end
 end
 
 function CycleButton:destroy()
@@ -3654,130 +3711,6 @@ if options.controls and options.controls ~= 'never' then Controls:new() end
 if itable_index_of({'left', 'right'}, options.volume) then Volume:new() end
 Curtain:new()
 
--- EVENT HANDLERS
-
-function create_state_setter(name, callback)
-	return function(_, value)
-		set_state(name, value)
-		if callback then callback() end
-		request_render()
-	end
-end
-
-function set_state(name, value)
-	state[name] = value
-	Elements:trigger('prop_' .. name, value)
-end
-
-function update_cursor_position()
-	cursor.x, cursor.y = mp.get_mouse_pos()
-
-	-- mpv reports initial mouse position on linux as (0, 0), which always
-	-- displays the top bar, so we hardcode cursor position as infinity until
-	-- we receive a first real mouse move event with coordinates other than 0,0.
-	if not state.first_real_mouse_move_received then
-		if cursor.x > 0 and cursor.y > 0 then
-			state.first_real_mouse_move_received = true
-		else
-			cursor.x = infinity
-			cursor.y = infinity
-		end
-	end
-
-	local dpi_scale = mp.get_property_native('display-hidpi-scale', 1.0)
-	dpi_scale = dpi_scale * options.ui_scale
-
-	-- add 0.5 to be in the middle of the pixel
-	cursor.x = (cursor.x + 0.5) / dpi_scale
-	cursor.y = (cursor.y + 0.5) / dpi_scale
-
-	Elements:update_proximities()
-	request_render()
-end
-
-function handle_mouse_leave()
-	-- Slowly fadeout elements that are currently visible
-	for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
-		local element = Elements[element_name]
-		if element and element.proximity > 0 then
-			element:tween_property('forced_visibility', element:get_visibility(), 0, function()
-				element.forced_visibility = nil
-			end)
-		end
-	end
-
-	cursor.hidden = true
-	Elements:update_proximities()
-	Elements:trigger('global_mouse_leave')
-end
-
-function handle_mouse_enter()
-	cursor.hidden = false
-	update_cursor_position()
-	Elements:trigger('global_mouse_enter')
-end
-
-function handle_mouse_move()
-	-- Handle case when we are in cursor hidden state but not left the actual
-	-- window (i.e. when autohide simulates mouse_leave).
-	if cursor.hidden then
-		handle_mouse_enter()
-		return
-	end
-
-	update_cursor_position()
-	Elements:proximity_trigger('mouse_move')
-	request_render()
-
-	-- Restart timer that hides UI when mouse is autohidden
-	if options.autohide then
-		state.cursor_autohide_timer:kill()
-		state.cursor_autohide_timer:resume()
-	end
-end
-
-function navigate_directory(direction)
-	local path = mp.get_property_native('path')
-
-	if not path or is_protocol(path) then return end
-
-	local next_file = get_adjacent_file(path, direction, config.media_types)
-
-	if next_file then
-		mp.commandv('loadfile', utils.join_path(serialize_path(path).dirname, next_file))
-	end
-end
-
-function load_file_in_current_directory(index)
-	local path = mp.get_property_native('path')
-
-	if not path or is_protocol(path) then return end
-
-	local serialized = serialize_path(path)
-	if serialized and serialized.dirname then
-		local files = get_files_in_directory(serialized.dirname, config.media_types)
-
-		if not files then return end
-		if index < 0 then index = #files + index + 1 end
-
-		if files[index] then
-			mp.commandv('loadfile', utils.join_path(serialized.dirname, files[index]))
-		end
-	end
-end
-
-function update_render_delay(name, fps)
-	if fps then state.render_delay = 1 / fps end
-end
-
-function observe_display_fps(name, fps)
-	if fps then
-		mp.unobserve_property(update_render_delay)
-		mp.unobserve_property(observe_display_fps)
-		mp.observe_property('display-fps', 'native', update_render_delay)
-	end
-end
-
 --[[ MENUS ]]
 
 ---@param data MenuData
@@ -3952,7 +3885,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	end
 
 	-- Files are already sorted
-	table.sort(directories, word_order_comparator)
+	table.sort(directories, file_order_comparator)
 
 	-- Pre-populate items with parent directory selector if not at root
 	-- Each item value is a serialized path table it points to.
@@ -4064,6 +3997,126 @@ function open_drives_menu(handle_select, opts)
 	return Menu:open({type = opts.type, title = opts.title or 'Drives', items = items}, handle_select)
 end
 
+-- EVENT HANDLERS
+
+function create_state_setter(name, callback)
+	return function(_, value)
+		set_state(name, value)
+		if callback then callback() end
+		request_render()
+	end
+end
+
+function set_state(name, value)
+	state[name] = value
+	Elements:trigger('prop_' .. name, value)
+end
+
+function update_cursor_position()
+	cursor.x, cursor.y = mp.get_mouse_pos()
+
+	-- mpv reports initial mouse position on linux as (0, 0), which always
+	-- displays the top bar, so we hardcode cursor position as infinity until
+	-- we receive a first real mouse move event with coordinates other than 0,0.
+	if not state.first_real_mouse_move_received then
+		if cursor.x > 0 and cursor.y > 0 then
+			state.first_real_mouse_move_received = true
+		else
+			cursor.x = infinity
+			cursor.y = infinity
+		end
+	end
+
+	local dpi_scale = mp.get_property_native('display-hidpi-scale', 1.0)
+	dpi_scale = dpi_scale * options.ui_scale
+
+	-- add 0.5 to be in the middle of the pixel
+	cursor.x = (cursor.x + 0.5) / dpi_scale
+	cursor.y = (cursor.y + 0.5) / dpi_scale
+
+	Elements:update_proximities()
+	request_render()
+end
+
+function handle_mouse_leave()
+	-- Slowly fadeout elements that are currently visible
+	for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
+		local element = Elements[element_name]
+		if element and element.proximity > 0 then
+			element:tween_property('forced_visibility', element:get_visibility(), 0, function()
+				element.forced_visibility = nil
+			end)
+		end
+	end
+
+	cursor.hidden = true
+	Elements:update_proximities()
+	Elements:trigger('global_mouse_leave')
+end
+
+function handle_mouse_enter()
+	cursor.hidden = false
+	update_cursor_position()
+	Elements:trigger('global_mouse_enter')
+end
+
+function handle_mouse_move()
+	-- Handle case when we are in cursor hidden state but not left the actual
+	-- window (i.e. when autohide simulates mouse_leave).
+	if cursor.hidden then
+		handle_mouse_enter()
+		return
+	end
+
+	update_cursor_position()
+	Elements:proximity_trigger('mouse_move')
+	request_render()
+
+	-- Restart timer that hides UI when mouse is autohidden
+	if options.autohide then
+		state.cursor_autohide_timer:kill()
+		state.cursor_autohide_timer:resume()
+	end
+end
+
+function handle_file_end()
+	if not state.loop_file and
+		(state.has_playlist and navigate_playlist(1) or options.next_file_on_end and navigate_directory(1)) then
+		-- Resume only when navigation happened
+		mp.command('set pause no')
+	end
+end
+local file_end_timer = mp.add_timeout(1, handle_file_end)
+file_end_timer:kill()
+
+function load_file_index_in_current_directory(index)
+	if not state.path or is_protocol(state.path) then return end
+
+	local serialized = serialize_path(state.path)
+	if serialized and serialized.dirname then
+		local files = get_files_in_directory(serialized.dirname, config.media_types)
+
+		if not files then return end
+		if index < 0 then index = #files + index + 1 end
+
+		if files[index] then
+			mp.commandv('loadfile', utils.join_path(serialized.dirname, files[index]))
+		end
+	end
+end
+
+function update_render_delay(name, fps)
+	if fps then state.render_delay = 1 / fps end
+end
+
+function observe_display_fps(name, fps)
+	if fps then
+		mp.unobserve_property(update_render_delay)
+		mp.unobserve_property(observe_display_fps)
+		mp.observe_property('display-fps', 'native', update_render_delay)
+	end
+end
+
 --[[ HOOKS]]
 
 -- Mouse movement key binds
@@ -4103,15 +4156,30 @@ function update_title(title_template)
 	set_state('title', mp.command_native({'expand-text', title_template}))
 end
 mp.register_event('file-loaded', function()
+	set_state('path', normalize_path(mp.get_property_native('path')))
 	update_title(mp.get_property_native('title'))
 end)
-mp.register_event('end-file ', function() set_state('title', nil) end)
+mp.register_event('end-file', function() set_state('title', nil) end)
 mp.observe_property('title', 'string', function(_, title)
 	-- Don't change title if there is currently none
 	if state.title then update_title(title) end
 end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
+	-- Create a file-end event that triggers right before file is closed.
+	file_end_timer:kill()
+	if state.duration and state.time then
+		local remaining = state.duration - state.time
+		if remaining < 5 then
+			local timeout = remaining - 0.3
+			if timeout > 0 then
+				file_end_timer.timeout = timeout
+				file_end_timer:resume()
+			else handle_file_end() end
+		end
+	end
+
 	update_human_times()
+
 	-- Select current chapter
 	local current_chapter
 	if state.time and state.chapters then
@@ -4150,6 +4218,7 @@ mp.observe_property('chapter-list', 'native', function(_, chapters)
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('border', 'bool', create_state_setter('border'))
+mp.observe_property('loop-file', 'native', create_state_setter('loop_file'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
 mp.observe_property('playlist-pos-1', 'number', create_state_setter('playlist_pos'))
@@ -4256,7 +4325,7 @@ for _, loader in ipairs(track_loaders) do
 	mp.add_key_binding(nil, menu_type, function()
 		if Menu:is_open(menu_type) then Menu:close() return end
 
-		local path = mp.get_property_native('path') --[[@as string|nil|false]]
+		local path = state.path
 		if path then
 			if is_protocol(path) then
 				path = false
@@ -4350,23 +4419,19 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 	on_select = function(time) mp.commandv('seek', tostring(time), 'absolute') end,
 }))
 mp.add_key_binding(nil, 'show-in-directory', function()
-	local path = mp.get_property_native('path')
-
 	-- Ignore URLs
-	if not path or is_protocol(path) then return end
-
-	path = normalize_path(path)
+	if not state.path or is_protocol(state.path) then return end
 
 	if state.os == 'windows' then
-		utils.subprocess_detached({args = {'explorer', '/select,', path}, cancellable = false})
+		utils.subprocess_detached({args = {'explorer', '/select,', state.path}, cancellable = false})
 	elseif state.os == 'macos' then
-		utils.subprocess_detached({args = {'open', '-R', path}, cancellable = false})
+		utils.subprocess_detached({args = {'open', '-R', state.path}, cancellable = false})
 	elseif state.os == 'linux' then
-		local result = utils.subprocess({args = {'nautilus', path}, cancellable = false})
+		local result = utils.subprocess({args = {'nautilus', state.path}, cancellable = false})
 
 		-- Fallback opens the folder with xdg-open instead
 		if result.status ~= 0 then
-			utils.subprocess({args = {'xdg-open', serialize_path(path).dirname}, cancellable = false})
+			utils.subprocess({args = {'xdg-open', serialize_path(state.path).dirname}, cancellable = false})
 		end
 	end
 end)
@@ -4411,18 +4476,17 @@ end)
 mp.add_key_binding(nil, 'open-file', function()
 	if Menu:is_open('open-file') then Menu:close() return end
 
-	local path = mp.get_property_native('path')
 	local directory
 	local active_file
 
-	if path == nil or is_protocol(path) then
+	if state.path == nil or is_protocol(state.path) then
 		local serialized = serialize_path(get_default_directory())
 		if serialized then
 			directory = serialized.path
 			active_file = nil
 		end
 	else
-		local serialized = serialize_path(path)
+		local serialized = serialize_path(state.path)
 		if serialized then
 			directory = serialized.dirname
 			active_file = serialized.path
@@ -4430,15 +4494,14 @@ mp.add_key_binding(nil, 'open-file', function()
 	end
 
 	if not directory then
-		msg.error('Couldn\'t serialize path "' .. path .. '".')
+		msg.error('Couldn\'t serialize path "' .. state.path .. '".')
 		return
 	end
 
 	-- Update active file in directory navigation menu
 	local function handle_file_loaded()
 		if Menu:is_open('open-file') then
-			local path = normalize_path(mp.get_property_native('path'))
-			Elements.menu:activate_value(path)
+			Elements.menu:activate_value(normalize_path(mp.get_property_native('path')))
 		end
 	end
 
@@ -4454,6 +4517,7 @@ mp.add_key_binding(nil, 'open-file', function()
 		}
 	)
 end)
+mp.add_key_binding(nil, 'shuffle', function() set_state('shuffle', not state.shuffle) end)
 mp.add_key_binding(nil, 'items', function()
 	if state.has_playlist then
 		mp.command('script-binding uosc/playlist')
@@ -4461,65 +4525,54 @@ mp.add_key_binding(nil, 'items', function()
 		mp.command('script-binding uosc/open-file')
 	end
 end)
-mp.add_key_binding(nil, 'next', function()
-	if state.has_playlist then
-		mp.command('playlist-next')
-	else
-		navigate_directory('forward')
-	end
-end)
-mp.add_key_binding(nil, 'prev', function()
-	if state.has_playlist then
-		mp.command('playlist-prev')
-	else
-		navigate_directory('backward')
-	end
-end)
-mp.add_key_binding(nil, 'next-file', function() navigate_directory('forward') end)
-mp.add_key_binding(nil, 'prev-file', function() navigate_directory('backward') end)
+mp.add_key_binding(nil, 'next', function() navigate_item(1) end)
+mp.add_key_binding(nil, 'prev', function() navigate_item(-1) end)
+mp.add_key_binding(nil, 'next-file', function() navigate_directory(1) end)
+mp.add_key_binding(nil, 'prev-file', function() navigate_directory(-1) end)
 mp.add_key_binding(nil, 'first', function()
 	if state.has_playlist then
 		mp.commandv('set', 'playlist-pos-1', '1')
 	else
-		load_file_in_current_directory(1)
+		load_file_index_in_current_directory(1)
 	end
 end)
 mp.add_key_binding(nil, 'last', function()
 	if state.has_playlist then
 		mp.commandv('set', 'playlist-pos-1', tostring(state.playlist_count))
 	else
-		load_file_in_current_directory(-1)
+		load_file_index_in_current_directory(-1)
 	end
 end)
-mp.add_key_binding(nil, 'first-file', function() load_file_in_current_directory(1) end)
-mp.add_key_binding(nil, 'last-file', function() load_file_in_current_directory(-1) end)
+mp.add_key_binding(nil, 'first-file', function() load_file_index_in_current_directory(1) end)
+mp.add_key_binding(nil, 'last-file', function() load_file_index_in_current_directory(-1) end)
 mp.add_key_binding(nil, 'delete-file-next', function()
 	local next_file = nil
-	local path = mp.get_property_native('path')
-	local is_local_file = path and not is_protocol(path)
+	local is_local_file = state.path and not is_protocol(state.path)
 
 	if is_local_file then
-		path = normalize_path(path)
-		if Menu:is_open('open-file') then Elements.menu:delete_value(path) end
+		if Menu:is_open('open-file') then Elements.menu:delete_value(state.path) end
 	end
 
 	if state.has_playlist then
 		mp.commandv('playlist-remove', 'current')
 	else
 		if is_local_file then
-			next_file = get_adjacent_file(path, 'forward', config.media_types)
+			local paths, current_index = get_adjacent_paths(state.path, config.media_types)
+			if paths and current_index then
+				local index, path = decide_navigation_in_list(paths, current_index, 1)
+				if path then next_file = path end
+			end
 		end
 
 		if next_file then mp.commandv('loadfile', next_file)
 		else mp.commandv('stop') end
 	end
 
-	if is_local_file then delete_file(path) end
+	if is_local_file then delete_file(state.path) end
 end)
 mp.add_key_binding(nil, 'delete-file-quit', function()
-	local path = mp.get_property_native('path')
 	mp.command('stop')
-	if path and not is_protocol(path) then delete_file(normalize_path(path)) end
+	if state.path and not is_protocol(state.path) then delete_file(state.path) end
 	mp.command('quit')
 end)
 mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
