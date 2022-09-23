@@ -1516,7 +1516,7 @@ menu.close()
 ---@alias MenuData {type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer;}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean;}
----@alias MenuOptions {on_open?: fun(), on_close?: fun()}
+---@alias MenuOptions {blurred?: boolean; on_open?: fun(), on_close?: fun()}
 
 -- Internal data structure created from `Menu`.
 ---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_length: number; title_width: number; hint_length: number; hint_width: number; max_width: number; is_root?: boolean;}
@@ -1579,6 +1579,9 @@ end
 ---@param opts? MenuOptions
 ---@return Menu
 function Menu:new(data, callback, opts) return Class.new(self, data, callback, opts) --[[@as Menu]] end
+---@param data MenuData
+---@param callback fun(value: any)
+---@param opts? MenuOptions
 function Menu:init(data, callback, opts)
 	Element.init(self, 'menu', {ignores_menu = true})
 
@@ -1609,8 +1612,12 @@ function Menu:init(data, callback, opts)
 
 	self:update(data)
 
-	for _, menu in ipairs(self.all) do
-		self:scroll_to_index(menu.selected_index, menu)
+	if self.opts.blurred then
+		if self.current then self.current.selected_index = nil end
+	else
+		for _, menu in ipairs(self.all) do
+			self:scroll_to_index(menu.selected_index, menu)
+		end
 	end
 
 	self:tween_property('opacity', 0, 1)
@@ -3156,7 +3163,7 @@ function Controls:init()
 
 	-- Serialize control elements
 	local shorthands = {
-		menu = 'command:menu:script-binding uosc/menu?Menu',
+		menu = 'command:menu:script-binding uosc/menu-blurred?Menu',
 		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?Subtitles',
 		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?Audio',
 		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?Audio device',
@@ -3719,8 +3726,8 @@ Curtain:new()
 --[[ MENUS ]]
 
 ---@param data MenuData
----@param submenu_id? string ID of submenu to pre-open.
-function open_command_menu(data, submenu_id)
+---@param opts? {submenu?: string; blurred?: boolean}
+function open_command_menu(data, opts)
 	local menu = Menu:open(data, function(value)
 		if type(value) == 'string' then
 			mp.command(value)
@@ -3728,15 +3735,15 @@ function open_command_menu(data, submenu_id)
 			---@diagnostic disable-next-line: deprecated
 			mp.commandv((unpack or table.unpack)(value))
 		end
-	end)
-	if submenu_id then menu:activate_submenu(submenu_id) end
+	end, opts)
+	if opts and opts.submenu then menu:activate_submenu(opts.submenu) end
 	return menu
 end
 
----@param submenu_id? string Id of submenu to pre-open
-function toggle_menu_with_items(submenu_id)
+---@param opts? {submenu?: string; blurred?: boolean}
+function toggle_menu_with_items(opts)
 	if Menu:is_open('menu') then Menu:close()
-	else open_command_menu({type = 'menu', items = config.menu_items}, submenu_id) end
+	else open_command_menu({type = 'menu', items = config.menu_items}, opts) end
 end
 
 ---@param options {type: string; title: string; list_prop: string; list_serializer: fun(name: string, value: any): MenuDataItem[]; active_prop?: string; on_active_prop: fun(name: string, value: any, menu: Menu): integer; on_select: fun(value: any)}
@@ -4328,6 +4335,7 @@ mp.add_key_binding(nil, 'decide-pause-indicator', function()
 	Elements.pause_indicator:decide()
 end)
 mp.add_key_binding(nil, 'menu', function() toggle_menu_with_items() end)
+mp.add_key_binding(nil, 'menu-blurred', function() toggle_menu_with_items({blurred = true}) end)
 local track_loaders = {
 	{name = 'subtitles', prop = 'sub', allowed_types = config.subtitle_types},
 	{name = 'audio', prop = 'audio', allowed_types = config.media_types},
@@ -4634,7 +4642,7 @@ end)
 
 -- MESSAGE HANDLERS
 
-mp.register_script_message('show-submenu', toggle_menu_with_items)
+mp.register_script_message('show-submenu', function(id) toggle_menu_with_items({submenu = id}) end)
 mp.register_script_message('get-version', function(script)
 	mp.commandv('script-message-to', script, 'uosc-version', config.version)
 end)
@@ -4644,7 +4652,7 @@ mp.register_script_message('open-menu', function(json, submenu_id)
 		msg.error('open-menu: received json didn\'t produce a table with menu configuration')
 	else
 		if data.type and Menu:is_open(data.type) then Menu:close()
-		else open_command_menu(data, submenu_id) end
+		else open_command_menu(data, {submenu_id = submenu_id}) end
 	end
 end)
 mp.register_script_message('update-menu', function(json)

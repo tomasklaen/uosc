@@ -152,7 +152,9 @@ Case for `(flash/decide)-pause-indicator`: mpv handles frame stepping forward by
 
 #### `menu`
 
-Toggles menu. Menu is empty by default and won't show up when this is pressed. Read [Menu](#menu-1) section below to find out how to fill it up with items you want there.
+Toggles default menu. Read [Menu](#menu-1) section below to find out how to fill it up with items you want there.
+
+Note: there's also a `menu-blurred` command that opens a menu without pre-selecting the 1st item, suitable for commands triggered with a mouse, such as control bar buttons.
 
 #### `subtitles`, `audio`, `video`
 
