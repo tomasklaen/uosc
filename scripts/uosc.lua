@@ -247,7 +247,7 @@ options.background = serialize_rgba(options.background).color
 options.background_text = serialize_rgba(options.background_text).color
 if options.chapter_ranges:sub(1, 4) == '^op|' then options.chapter_ranges = defaults.chapter_ranges end
 -- Ensure required environment configuration
-if options.autoload then mp.command('set keep-open-pause no') end
+if options.autoload then mp.command('no-osd set keep-open-pause no') end
 
 --[[ CONFIG ]]
 
