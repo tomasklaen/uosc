@@ -804,8 +804,8 @@ function decide_navigation_in_list(list, current_index, delta)
 		while current_index == new_index do new_index = math.random(#list) end
 		return new_index, list[new_index]
 	end
-	local new_index = current_index + delta
 
+	local new_index = current_index + delta
 	if mp.get_property_native('loop-playlist') then
 		if new_index > #list then new_index = new_index % #list
 		elseif new_index < 1 then new_index = #list - new_index end
@@ -4134,11 +4134,13 @@ function handle_mouse_move()
 end
 
 function handle_file_end()
-	if not state.loop_file and
-		(state.has_playlist and navigate_playlist(1) or options.autoload and navigate_directory(1)) then
-		-- Resume only when navigation happened
-		mp.command('set pause no')
+	local resume = false
+	if not state.loop_file then
+		if state.has_playlist then resume = state.shuffle and navigate_playlist(1)
+		else resume = options.autoload and navigate_directory(1) end
 	end
+	-- Resume only when navigation happened
+	if resume then mp.command('set pause no') end
 end
 local file_end_timer = mp.add_timeout(1, handle_file_end)
 file_end_timer:kill()
@@ -4228,7 +4230,7 @@ mp.observe_property('playback-time', 'number', create_state_setter('time', funct
 	-- Create a file-end event that triggers right before file ends
 	file_end_timer:kill()
 	if state.duration and state.time then
-		local remaining = state.duration - state.time
+		local remaining = (state.duration - state.time) / state.speed
 		if remaining < 5 then
 			local timeout = remaining - 0.02
 			if timeout > 0 then
@@ -4290,7 +4292,7 @@ end)
 mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen', update_fullormaxed))
 mp.observe_property('window-maximized', 'bool', create_state_setter('maximized', update_fullormaxed))
 mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
-mp.observe_property('pause', 'bool', create_state_setter('pause'))
+mp.observe_property('pause', 'bool', create_state_setter('pause', function() file_end_timer:kill() end))
 mp.observe_property('volume', 'number', create_state_setter('volume'))
 mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
 mp.observe_property('mute', 'bool', create_state_setter('mute'))
