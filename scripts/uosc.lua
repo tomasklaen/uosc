@@ -1425,7 +1425,7 @@ end
 function Element:get_visibility()
 	-- Hide when menu is open, unless this is a menu
 	---@diagnostic disable-next-line: undefined-global
-	if not self.ignores_menu and menu and menu:is_open() then return 0 end
+	if not self.ignores_menu and Menu and Menu:is_open() then return 0 end
 
 	-- Persistency
 	local persist = config[self.id .. '_persistency'];
@@ -2790,7 +2790,7 @@ function Timeline:render()
 	local line_width = 0
 
 	if is_line then
-		local minimized_fraction = 1 - (size - size_min) / (self.size_max - size_min)
+		local minimized_fraction = 1 - math.min((size - size_min) / ((self.size_max - size_min) / 8), 1)
 		local width_normal = self:get_effective_line_width()
 		local max_min_width_delta = size_min > 0
 			and width_normal - width_normal * options.timeline_line_width_minimized_scale
@@ -2898,10 +2898,10 @@ function Timeline:render()
 	-- Time values
 	if text_opacity > 0 then
 		-- Upcoming cache time
-		if buffered_time and buffered_time > 0 and buffered_time < 60 then
+		if buffered_time and buffered_time < 60 then
 			local x, align = fbx + 5, 4
 			local font_size = self.font_size * 0.8
-			local human = round(buffered_time) .. 's'
+			local human = round(math.max(buffered_time, 0)) .. 's'
 			local width = text_width_estimate(human, font_size)
 			local min_x = bax + 5 + text_width_estimate(state.time_human, self.font_size)
 			local max_x = bbx - 5 - text_width_estimate(state.duration_or_remaining_time_human, self.font_size)
@@ -3676,7 +3676,7 @@ function Volume:init()
 end
 
 function Volume:get_visibility()
-	return self.slider.pressed and 1 or Element.get_visibility(self)
+	return  self.slider.pressed and 1 or Elements.timeline.proximity_raw == 0 and -1 or Element.get_visibility(self)
 end
 
 function Volume:update_dimensions()
