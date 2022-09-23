@@ -229,7 +229,6 @@ local options = {
 	pause_indicator = 'flash',
 	curtain_opacity = 0.5,
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
-	directory_navigation_loops = false,
 	media_types = '3gp,aac,aiff,alac,ape,apng,asf,avi,avif,bmp,dsf,f4v,flac,flv,gif,h264,h265,heic,heif,jfif,jpeg,jpg,jxl,m2ts,m4a,m4v,mid,midi,mka,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rm,rmvb,svg,tak,tta,tif,tiff,ts,vob,wav,weba,webm,webp,wma,wmv,wv',
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	font_height_to_letter_width_ratio = 0.5,
