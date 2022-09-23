@@ -377,7 +377,7 @@ end
 
 --[[ STATE ]]
 
-local display = {width = 1280, height = 720, aspect = 1.77778}
+local display = {width = 1280, height = 720, scale_x = 1, scale_y = 1}
 local cursor = {hidden = true, x = 0, y = 0}
 local state = {
 	os = (function()
@@ -428,6 +428,7 @@ local state = {
 	playlist_pos = 0,
 	margin_top = 0,
 	margin_bottom = 0,
+	hidpi_scale = 1,
 }
 local thumbnail = {width = 0, height = 0, disabled = false}
 
@@ -1228,13 +1229,11 @@ mp.set_key_bindings({
 --[[ STATE UPDATES ]]
 
 function update_display_dimensions()
-	local dpi_scale = mp.get_property_native('display-hidpi-scale', 1.0)
-	dpi_scale = dpi_scale * options.ui_scale
-
-	local width, height, aspect = mp.get_osd_size()
-	display.width = width / dpi_scale
-	display.height = height / dpi_scale
-	display.aspect = aspect
+	local scale = (state.hidpi_scale or 1) * options.ui_scale
+	local real_width, real_height = mp.get_osd_size()
+	local scaled_width, scaled_height = round(real_width / scale), round(real_height / scale)
+	display.width, display.height = scaled_width, scaled_height
+	display.scale_x, display.scale_y = real_width / scaled_width, real_height / scaled_height
 
 	-- Tell elements about this
 	Elements:trigger('display')
@@ -2585,7 +2584,7 @@ function WindowBorder:render()
 		local ass = assdraw.ass_new()
 		local clip = '\\iclip(' .. self.size .. ',' .. self.size .. ',' ..
 			(display.width - self.size) .. ',' .. (display.height - self.size) .. ')'
-		ass:rect(0, 0, display.width, display.height, {
+		ass:rect(0, 0, display.width + 1, display.height + 1, {
 			color = options.background, clip = clip, opacity = options.window_border_opacity,
 		})
 		return ass
@@ -2938,16 +2937,17 @@ function Timeline:render()
 
 		-- Thumbnail
 		if not thumbnail.disabled and thumbnail.width ~= 0 and thumbnail.height ~= 0 then
-			local scale = options.ui_scale * state.hidpi_scale
-			local border, margin_x, margin_y = 2, 10, 5
-			local thumb_x_margin, thumb_y_margin = (border + margin_x) * scale, (border + margin_y) * scale
+			local scale_x, scale_y = display.scale_x, display.scale_y
+			local border, margin_x, margin_y = math.ceil(2 * scale_x), round(10 * scale_x), round(5 * scale_y)
+			local thumb_x_margin, thumb_y_margin = border + margin_x, border + margin_y
+			local thumb_width, thumb_height = thumbnail.width, thumbnail.height
 			local thumb_x = round(clamp(
-				thumb_x_margin, cursor.x * scale - thumbnail.width / 2,
-				display.width * scale - thumbnail.width - thumb_x_margin
+				thumb_x_margin, cursor.x * scale_x - thumb_width / 2,
+				display.width * scale_x - thumb_width - thumb_x_margin
 			))
-			local thumb_y = round(tooltip_anchor.ay * scale - thumb_y_margin - thumbnail.height)
-			local ax, ay = thumb_x / scale - border, thumb_y / scale - border
-			local bx, by = (thumb_x + thumbnail.width) / scale + border, (thumb_y + thumbnail.height) / scale + border
+			local thumb_y = round(tooltip_anchor.ay * scale_y - thumb_y_margin - thumb_height)
+			local ax, ay = (thumb_x - border) / scale_x, (thumb_y - border) / scale_y
+			local bx, by = (thumb_x + thumb_width + border) / scale_x, (thumb_y + thumb_height + border) / scale_y
 			ass:rect(ax, ay, bx, by, {
 				color = options.foreground, border = 1, border_color = options.background, radius = 3, opacity = 0.8,
 			})
@@ -4048,12 +4048,9 @@ function update_cursor_position()
 		end
 	end
 
-	local dpi_scale = mp.get_property_native('display-hidpi-scale', 1.0)
-	dpi_scale = dpi_scale * options.ui_scale
-
 	-- add 0.5 to be in the middle of the pixel
-	cursor.x = (cursor.x + 0.5) / dpi_scale
-	cursor.y = (cursor.y + 0.5) / dpi_scale
+	cursor.x = (cursor.x + 0.5) / display.scale_x
+	cursor.y = (cursor.y + 0.5) / display.scale_y
 
 	Elements:update_proximities()
 	request_render()
