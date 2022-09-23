@@ -242,6 +242,8 @@ options.foreground = serialize_rgba(options.foreground).color
 options.foreground_text = serialize_rgba(options.foreground_text).color
 options.background = serialize_rgba(options.background).color
 options.background_text = serialize_rgba(options.background_text).color
+-- Ensure required environment configuration
+if options.next_file_on_end then mp.command('set keep-open-pause no') end
 
 --[[ CONFIG ]]
 
@@ -4162,18 +4164,24 @@ mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
 	update_title(mp.get_property_native('title'))
 end)
-mp.register_event('end-file', function() set_state('title', nil) end)
+mp.register_event('end-file', function(event)
+	set_state('title', nil)
+	if event.reason == 'eof' then
+		file_end_timer:kill()
+		handle_file_end()
+	end
+end)
 mp.observe_property('title', 'string', function(_, title)
 	-- Don't change title if there is currently none
 	if state.title then update_title(title) end
 end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
-	-- Create a file-end event that triggers right before file is closed.
+	-- Create a file-end event that triggers right before file ends.
 	file_end_timer:kill()
 	if state.duration and state.time then
 		local remaining = state.duration - state.time
 		if remaining < 5 then
-			local timeout = remaining - 0.3
+			local timeout = remaining - 0.02
 			if timeout > 0 then
 				file_end_timer.timeout = timeout
 				file_end_timer:resume()
