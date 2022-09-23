@@ -234,7 +234,7 @@ local defaults = {
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
-	chapter_ranges = 'openings:38869680,endings:38869680,ads:a5353580',
+	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
 	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
 }
 local options = table_shallow_copy(defaults)
@@ -247,7 +247,7 @@ options.background = serialize_rgba(options.background).color
 options.background_text = serialize_rgba(options.background_text).color
 if options.chapter_ranges:sub(1, 4) == '^op|' then options.chapter_ranges = defaults.chapter_ranges end
 -- Ensure required environment configuration
-if options.autoload then mp.command('set keep-open-pause no') end
+if options.autoload then mp.command('set keep-open yes;set keep-open-pause no') end
 
 --[[ CONFIG ]]
 
@@ -2152,7 +2152,7 @@ function Menu:render()
 			if next_is_highlighted then separator_by = item_by end
 			if separator_by - separator_ay > 0 and item_by < by then
 				ass:rect(ax + spacing / 2, separator_ay, bx - spacing / 2, separator_by, {
-					color = options.foreground, opacity = opacity * 0.13,
+					color = options.foreground, opacity = opacity * (item.separator and 0.08 or 0.06),
 				})
 			end
 
