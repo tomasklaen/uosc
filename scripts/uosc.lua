@@ -4304,7 +4304,12 @@ mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_str
 	Elements:trigger('dispositions')
 end))
 mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
-	local cached_ranges = cache_state and cache_state['seekable-ranges'] or {}
+	local cached_ranges, bof, eof = nil, nil, nil
+	if cache_state then
+		cached_ranges, bof, eof = cache_state['seekable-ranges'], cache_state['bof-cached'], cache_state['eof-cached']
+	else cached_ranges = {} end
+
+
 	local uncached_ranges = nil
 
 	if not (state.duration and (#cached_ranges > 0 or state.cache == 'yes' or
@@ -4322,8 +4327,8 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 		}
 	end
 	table.sort(ranges, function(a, b) return a[1] < b[1] end)
-	if cache_state['bof-cached'] then ranges[1][1] = 0 end
-	if cache_state['eof-cached'] then ranges[#ranges][2] = state.duration end
+	if bof then ranges[1][1] = 0 end
+	if eof then ranges[#ranges][2] = state.duration end
 	-- Invert cached ranges into uncached ranges, as that's what we're rendering
 	local inverted_ranges = {{0, state.duration}}
 	for _, cached in pairs(ranges) do
