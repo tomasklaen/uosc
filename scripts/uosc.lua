@@ -436,6 +436,7 @@ local state = {
 	end),
 	mouse_bindings_enabled = false,
 	uncached_ranges = nil,
+	cache = nil,
 	render_delay = config.render_delay,
 	first_real_mouse_move_received = false,
 	playlist_count = 0,
@@ -4301,19 +4302,19 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 	request_render()
 end)
 mp.observe_property('display-hidpi-scale', 'native', create_state_setter('hidpi_scale', update_display_dimensions))
+mp.observe_property('cache', 'native', create_state_setter('cache'))
 mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_stream', function()
 	Elements:trigger('dispositions')
 end))
-mp.observe_property('cache-buffering-state', 'native', function(_, buffering_state)
-	if buffering_state and buffering_state == 0 and not state.uncached_ranges and state.duration then
-		set_state('uncached_ranges', {{0, state.duration}})
-	end
-end)
 mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	local cached_ranges = cache_state and cache_state['seekable-ranges'] or {}
 	local uncached_ranges = nil
 
-	if not state.duration or #cached_ranges == 0 then return end
+	if not (state.duration and (#cached_ranges > 0 or state.cache == 'yes' or
+	                            (state.cache == 'auto' and state.is_stream))) then
+		if state.uncached_ranges then set_state('uncached_ranges', nil) end
+		return
+	end
 
 	-- Normalize
 	local ranges = {}
