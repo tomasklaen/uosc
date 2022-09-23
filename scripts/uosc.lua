@@ -1528,7 +1528,11 @@ local Menu = class(Element)
 ---@param callback fun(value: any)
 ---@param opts? MenuOptions
 function Menu:open(data, callback, opts)
-	if self:is_open() then self:close(true) end
+	local open_menu = self:is_open()
+	if open_menu then
+		open_menu.is_being_replaced = true
+		open_menu:close(true)
+	end
 	return Menu:new(data, callback, opts)
 end
 
@@ -1598,6 +1602,7 @@ function Menu:init(data, callback, opts)
 	---@type table<string, MenuStack> Map of submenus by their ids, such as `'Tools > Aspect ratio'`.
 	self.by_id = {}
 	self.key_bindings = {}
+	self.is_being_replaced = false
 	self.is_closing = false
 
 	self:update(data)
@@ -1610,6 +1615,13 @@ function Menu:init(data, callback, opts)
 	self:enable_key_bindings()
 	Elements.curtain:fadein()
 	if self.opts.on_open then self.opts.on_open() end
+end
+
+function Menu:destroy()
+	Element.destroy(self)
+	self:disable_key_bindings()
+	if not self.is_being_replaced then Elements.curtain:fadeout() end
+	if self.opts.on_close then self.opts.on_close() end
 end
 
 ---@param data MenuData
@@ -1987,13 +1999,6 @@ end
 function Menu:on_end()
 	self.current.selected_index = #self.current.items
 	if self.current.selected_index > 0 then self:scroll_to_index(self.current.selected_index) end
-end
-
-function Menu:destroy()
-	Element.destroy(self)
-	self:disable_key_bindings()
-	Elements.curtain:fadeout()
-	if self.opts.on_close then self.opts.on_close() end
 end
 
 function Menu:add_key_binding(key, name, fn, flags)
