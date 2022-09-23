@@ -19,9 +19,7 @@ local quarter_pi_sin = math.sin(math.pi / 4)
 --[[ BASE HELPERS ]]
 
 ---@param number number
-function round(number)
-	return math.floor(number + 0.5)
-end
+function round(number) return math.floor(number + 0.5) end
 
 ---@param min number
 ---@param value number
@@ -130,15 +128,6 @@ function table_assign(target, source, props)
 		for prop, value in pairs(source) do target[prop] = value end
 	end
 	return target
-end
-
----@generic T
----@param table T
----@return T
-function table_copy(table)
-	local result = {}
-	for key, value in pairs(table) do result[key] = type(value) == 'table' and table_copy(value) or value end
-	return result
 end
 
 ---@generic T
@@ -845,24 +834,25 @@ end
 
 function serialize_chapter_ranges(normalized_chapters)
 	local ranges = {}
-	local chapters = {}
 	local simple_ranges = {
 		{name = 'openings', patterns = {'^op ', '^op$', ' op$', 'opening$'}, requires_next_chapter = true},
 		{name = 'intros', patterns = {'^intro$'}, requires_next_chapter = true},
 		{name = 'endings', patterns = {'^ed ', '^ed$', ' ed$', 'ending$'}},
 		{name = 'outros', patterns = {'^outro$'}},
 	}
+	local sponsor_ranges = {}
 
-	for i, normalized_chapter in ipairs(normalized_chapters) do
-		local chapter = table_shallow_copy(normalized_chapter)
-		chapters[i] = chapter
+	-- Clone chapters
+	local chapters = {}
+	for i, normalized in ipairs(normalized_chapters) do chapters[i] = table_shallow_copy(normalized) end
 
+	for i, chapter in ipairs(chapters) do
 		-- Simple ranges
 		for _, meta in ipairs(simple_ranges) do
 			if config.chapter_ranges[meta.name] then
 				local match = itable_find(meta.patterns, function(p) return chapter.lowercase_title:find(p) end)
 				if match then
-					local next_chapter = normalized_chapters[i + 1]
+					local next_chapter = chapters[i + 1]
 					if next_chapter or not meta.requires_next_chapter then
 						ranges[#ranges + 1] = table_assign({
 							start = chapter.time,
@@ -879,24 +869,36 @@ function serialize_chapter_ranges(normalized_chapters)
 		if config.chapter_ranges.ads then
 			local id = chapter.lowercase_title:match('segment start *%(([%w]%w-)%)')
 			if id then
-				for j = i + 1, #normalized_chapters, 1 do
-					local end_chapter = normalized_chapters[j]
+				for j = i + 1, #chapters, 1 do
+					local end_chapter = chapters[j]
 					local end_match = end_chapter.lowercase_title:match('segment end *%(' .. id .. '%)')
 					if end_match then
-						ranges[#ranges + 1] = table_assign({
-							start = chapter.time,
-							['end'] = end_chapter.time,
+						local range = table_assign({
+							start_chapter = chapter, end_chapter = end_chapter,
+							start = chapter.time, ['end'] = end_chapter.time,
 						}, config.chapter_ranges.ads)
-						chapter.is_range_point = true
-						end_chapter.is_range_point = true
-						end_chapter.is_end_only = true
+						ranges[#ranges + 1], sponsor_ranges[#sponsor_ranges + 1] = range, range
+						chapter.is_range_point, end_chapter.is_range_point, end_chapter.is_end_only = true, true, true
 						break
 					end
 				end
 			end
 		end
-
 	end
+
+	-- Fix overlapping sponsor block segments
+	for index, range in ipairs(sponsor_ranges) do
+		local next_range = sponsor_ranges[index + 1]
+		if next_range then
+			local delta = next_range.start - range['end']
+			if delta < 0 then
+				local mid_point = range['end'] + delta / 2
+				range['end'], range.end_chapter.time = mid_point - 0.01, mid_point - 0.01
+				next_range.start, next_range.start_chapter.time = mid_point, mid_point
+			end
+		end
+	end
+	table.sort(chapters, function(a, b) return a.time < b.time end)
 
 	return chapters, ranges
 end
