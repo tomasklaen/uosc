@@ -111,6 +111,17 @@ function itable_slice(itable, start_pos, end_pos)
 	return new_table
 end
 
+---@generic T
+---@param a T[]|nil
+---@param b T[]|nil
+---@return T[]
+function itable_join(a, b)
+	local result = {}
+	if a then for _, value in ipairs(a) do result[#result + 1] = value end end
+	if b then for _, value in ipairs(b) do result[#result + 1] = value end end
+	return result
+end
+
 ---@param target any[]
 ---@param source any[]
 function itable_append(target, source)
@@ -224,6 +235,7 @@ local defaults = {
 	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
 	chapter_ranges = 'openings:38869680,endings:38869680,ads:a5353580',
+	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
 }
 local options = table_shallow_copy(defaults)
 opt.read_options(options, 'uosc')
@@ -339,16 +351,28 @@ local config = {
 		end
 	end)(),
 	chapter_ranges = (function()
-		---@type table<string, {color: string; opacity: number}>
+		---@type table<string, string[]> Alternative patterns.
+		local alt_patterns = {}
+		if options.chapter_range_patterns and options.chapter_range_patterns ~= '' then
+			for _, definition in ipairs(split(options.chapter_range_patterns, ';+ *')) do
+				local name_patterns = split(definition, ' *:')
+				local name, patterns = name_patterns[1], name_patterns[2]
+				if name and patterns then alt_patterns[name] = split(patterns, ',') end
+			end
+		end
+
+		---@type table<string, {color: string; opacity: number; patterns?: string[]}>
 		local ranges = {}
 		if options.chapter_ranges and options.chapter_ranges ~= '' then
-			for _, definition in ipairs(split(options.chapter_ranges or '', ' *,+ *')) do
+			for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
 				local name_color = split(definition, ' *:+ *')
 				local name, color = name_color[1], name_color[2]
 				if name and color
 					and name:match('^[a-zA-Z0-9_]+$') and color:match('^[a-fA-F0-9]+$')
 					and (#color == 6 or #color == 8) then
-					ranges[name_color[1]] = serialize_rgba(name_color[2])
+					local range = serialize_rgba(name_color[2])
+					range.patterns = alt_patterns[name]
+					ranges[name_color[1]] = range
 				end
 			end
 		end
@@ -842,6 +866,12 @@ function serialize_chapter_ranges(normalized_chapters)
 		{name = 'outros', patterns = {'^outro$'}},
 	}
 	local sponsor_ranges = {}
+
+	-- Extend with alt patterns
+	for _, meta in ipairs(simple_ranges) do
+		local alt_patterns = config.chapter_ranges[meta.name] and config.chapter_ranges[meta.name].patterns
+		if alt_patterns then meta.patterns = itable_join(meta.patterns, alt_patterns) end
+	end
 
 	-- Clone chapters
 	local chapters = {}
