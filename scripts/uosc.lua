@@ -2066,23 +2066,6 @@ function Menu:enable_key_bindings()
 	self:add_key_binding('right', 'menu-select1', self:create_action('open_selected_item_preselect'))
 	self:add_key_binding('shift+right', 'menu-select-soft1', self:create_action('open_selected_item_soft'))
 	self:add_key_binding('shift+mbtn_left', 'menu-select-soft', self:create_action('open_selected_item_soft'))
-
-	if options.menu_wasd_navigation then
-		self:add_key_binding('w', 'menu-prev2', self:create_action('prev'), 'repeatable')
-		self:add_key_binding('a', 'menu-back2', self:create_action('back'))
-		self:add_key_binding('s', 'menu-next2', self:create_action('next'), 'repeatable')
-		self:add_key_binding('d', 'menu-select2', self:create_action('open_selected_item_preselect'))
-		self:add_key_binding('shift+d', 'menu-select-soft2', self:create_action('open_selected_item_soft'))
-	end
-
-	if options.menu_hjkl_navigation then
-		self:add_key_binding('h', 'menu-back3', self:create_action('back'))
-		self:add_key_binding('j', 'menu-next3', self:create_action('next'), 'repeatable')
-		self:add_key_binding('k', 'menu-prev3', self:create_action('prev'), 'repeatable')
-		self:add_key_binding('l', 'menu-select3', self:create_action('open_selected_item_preselect'))
-		self:add_key_binding('shift+l', 'menu-select-soft3', self:create_action('open_selected_item_soft'))
-	end
-
 	self:add_key_binding('mbtn_back', 'menu-back-alt3', self:create_action('back'))
 	self:add_key_binding('bs', 'menu-back-alt4', self:create_action('back'))
 	self:add_key_binding('enter', 'menu-select-alt3', self:create_action('open_selected_item_preselect'))
