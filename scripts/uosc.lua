@@ -215,6 +215,7 @@ local defaults = {
 	time_precision = 0,
 	font_bold = false,
 	autohide = false,
+	buffered_time_threshold = 60,
 	pause_indicator = 'flash',
 	curtain_opacity = 0.5,
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
@@ -2898,7 +2899,7 @@ function Timeline:render()
 	-- Time values
 	if text_opacity > 0 then
 		-- Upcoming cache time
-		if buffered_time and buffered_time < 60 then
+		if buffered_time and options.buffered_time_threshold > 0 and buffered_time < options.buffered_time_threshold then
 			local x, align = fbx + 5, 4
 			local font_size = self.font_size * 0.8
 			local human = round(math.max(buffered_time, 0)) .. 's'
@@ -3676,7 +3677,7 @@ function Volume:init()
 end
 
 function Volume:get_visibility()
-	return  self.slider.pressed and 1 or Elements.timeline.proximity_raw == 0 and -1 or Element.get_visibility(self)
+	return self.slider.pressed and 1 or Elements.timeline.proximity_raw == 0 and -1 or Element.get_visibility(self)
 end
 
 function Volume:update_dimensions()
