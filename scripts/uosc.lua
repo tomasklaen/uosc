@@ -208,7 +208,7 @@ local options = {
 	window_border_size = 1,
 	window_border_opacity = 0.8,
 
-	next_file_on_end = false,
+	autoload = false,
 	shuffle = false,
 
 	ui_scale = 1,
@@ -243,7 +243,7 @@ options.foreground_text = serialize_rgba(options.foreground_text).color
 options.background = serialize_rgba(options.background).color
 options.background_text = serialize_rgba(options.background_text).color
 -- Ensure required environment configuration
-if options.next_file_on_end then mp.command('set keep-open-pause no') end
+if options.autoload then mp.command('set keep-open-pause no') end
 
 --[[ CONFIG ]]
 
@@ -4086,7 +4086,7 @@ end
 
 function handle_file_end()
 	if not state.loop_file and
-		(state.has_playlist and navigate_playlist(1) or options.next_file_on_end and navigate_directory(1)) then
+		(state.has_playlist and navigate_playlist(1) or options.autoload and navigate_directory(1)) then
 		-- Resume only when navigation happened
 		mp.command('set pause no')
 	end
@@ -4176,7 +4176,7 @@ mp.observe_property('title', 'string', function(_, title)
 	if state.title then update_title(title) end
 end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
-	-- Create a file-end event that triggers right before file ends.
+	-- Create a file-end event that triggers right before file ends
 	file_end_timer:kill()
 	if state.duration and state.time then
 		local remaining = state.duration - state.time
