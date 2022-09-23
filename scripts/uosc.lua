@@ -152,7 +152,7 @@ end
 
 --[[ OPTIONS ]]
 
-local options = {
+local defaults = {
 	timeline_style = 'line',
 	timeline_line_width = 2,
 	timeline_line_width_fullscreen = 3,
@@ -235,6 +235,7 @@ local options = {
 	default_directory = '~/',
 	chapter_ranges = 'openings:38869680,endings:38869680,ads:a5353580',
 }
+local options = table_shallow_copy(defaults)
 opt.read_options(options, 'uosc')
 -- Normalize values
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
@@ -242,6 +243,7 @@ options.foreground = serialize_rgba(options.foreground).color
 options.foreground_text = serialize_rgba(options.foreground_text).color
 options.background = serialize_rgba(options.background).color
 options.background_text = serialize_rgba(options.background_text).color
+if options.chapter_ranges:sub(1, 4) == '^op|' then options.chapter_ranges = defaults.chapter_ranges end
 -- Ensure required environment configuration
 if options.autoload then mp.command('set keep-open-pause no') end
 
@@ -351,8 +353,13 @@ local config = {
 		local ranges = {}
 		if options.chapter_ranges and options.chapter_ranges ~= '' then
 			for _, definition in ipairs(split(options.chapter_ranges or '', ' *,+ *')) do
-				local type_color = split(definition, ' *:+ *')
-				ranges[type_color[1]] = serialize_rgba(type_color[2])
+				local name_color = split(definition, ' *:+ *')
+				local name, color = name_color[1], name_color[2]
+				if name and color
+					and name:match('^[a-zA-Z0-9_]+$') and color:match('^[a-fA-F0-9]+$')
+					and (#color == 6 or #color == 8) then
+					ranges[name_color[1]] = serialize_rgba(name_color[2])
+				end
 			end
 		end
 		return ranges
