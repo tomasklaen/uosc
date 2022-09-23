@@ -1,8 +1,8 @@
 <div align="center">
-	<a href="https://user-images.githubusercontent.com/47283320/185891110-f5f8a478-3970-4a14-bbf5-b444d571e4be.webm"><img src="https://user-images.githubusercontent.com/47283320/185892154-3b0f118a-491a-4175-807e-3de05d85ec9c.png" alt="Preview screenshot"></a>
+	<a href="https://user-images.githubusercontent.com/47283320/192066616-4a51b114-4383-437d-9124-03f4d9937427.webm"><img src="https://user-images.githubusercontent.com/47283320/192066584-f5231409-e21b-43b1-92c6-7de969804e53.png" alt="Preview screenshot"></a>
 	<h1>uosc</h1>
 	<p>
-		Minimalist cursor proximity based UI for <a href="https://mpv.io">MPV player</a>.
+		Feature rich proximity based UI for <a href="https://mpv.io">MPV player</a>.
 	</p>
 	<br>
 </div>
@@ -12,6 +12,7 @@ Most notable features:
 -   UI elements hide and show based on their proximity to cursor instead of every time mouse moves. This gives you 100% control over when you see the UI and when you don't. Click on the preview above to see it in action.
 -   Set min timeline size to make an always visible discrete progress bar.
 -   Build your own context menu with nesting support by editing your `input.conf` file.
+-   Configurable controls bar.
 -   UIs for:
     -   Loading external subtitles.
     -   Selecting subtitle/audio/video track.
@@ -29,21 +30,18 @@ Most notable features:
 
 ## Download
 
-#### Latest version (recommended)
-
--   [`uosc.lua`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.lua) - script file
--   [`uosc.conf`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf) - configuration file with default values (optional)
-
-#### Development (unstable, might be broken)
-
--   [`uosc.lua`](https://raw.githubusercontent.com/tomasklaen/uosc/master/scripts/uosc.lua)
--   [`uosc.conf`](https://raw.githubusercontent.com/tomasklaen/uosc/master/script-opts/uosc.conf)
+-   [`uosc.zip`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip) - main archive with script and its requirements
+-   [`uosc.conf`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf) - configuration file with default values and documentation
 
 ## Installation
 
-1. **uosc** is a replacement for the built in osc, so that has to be disabled first.
+1. Extract `uosc.zip` into your mpv config directory.
 
-    In your `mpv.conf` (_List of all the possible places where configuration files can be located in is documented here: https://mpv.io/manual/master/#files_):
+    _List of all the possible places where it can be located is documented here: https://mpv.io/manual/master/#files_
+
+2. **uosc** is a replacement for the built in osc, so that has to be disabled first.
+
+    In your `mpv.conf` (file that should already exist in your mpv directory, if not, create it):
 
     ```config
     # required so that the 2 UIs don't fight each other
@@ -54,9 +52,9 @@ Most notable features:
     border=no
     ```
 
-2. Save `uosc.lua` into `scripts/` folder.
+3. To configure **uosc**, create a `script-opts/uosc.conf` file, or download `uosc.conf` with all default values from the link above, and save into `script-opts/` folder.
 
-3. To configure **uosc** to your likings, create a `script-opts/uosc.conf` file, or download `uosc.conf` with all default values from one of the links above, and save into `script-opts/` folder.
+4. **OPTIONAL**: To have thumbnails in timeline, install [thumbfast](https://github.com/po5/thumbfast). That's it, no other step necessary, **uosc** integrates with it seamlessly.
 
 4. **OPTIONAL**: If the UI feels sluggish/slow while playing video, you can remedy this a lot by placing this in your `mpv.conf`:
 
@@ -72,17 +70,15 @@ Most notable features:
 
 ## Options
 
-All of the available **uosc** options with their default values are in the provided `uosc.conf`. Follow one of the download links to the version of this file that matches your `uosc.lua`, or just peak the [latest development version](https://github.com/tomasklaen/uosc/blob/master/uosc.conf) for a quick reference, but this might have options that are different or not available in stable release.
+All of the available **uosc** options with their default values and documentation are in the provided `uosc.conf` file.
 
-To change the font, **uosc** respects the mpv `osd-font` configuration. To change it, you have to declare `osd-font` in your `mpv.conf`.
+To change the font, **uosc** respects the mpv's `osd-font` configuration.
 
 ## Keybindings
 
 The only keybinds **uosc** defines by default are menu navigation keys that are active only when one of the menus (context menu, load/select subtitles,...) is active. They are:
 
 -   `↑`, `↓`, `←`, `→` - up, down, previous menu or close, select item
--   `k`, `j`, `h`, `l` - up, down, previous menu or close, select item
--   `w`, `s`, `a`, `d` - up, down, previous menu or close, select item
 -   `enter` - select item
 -   `esc` - close menu
 -   `wheel_up`, `wheel_down` - scroll menu
@@ -101,7 +97,7 @@ To add a keybind to one of this commands, open your `input.conf` file and add on
 Example to bind the `tab` key to peek timeline:
 
 ```
-tab  script-binding uosc/peek-timeline
+tab  script-binding uosc/toggle-ui
 ```
 
 Available commands:
@@ -118,19 +114,11 @@ You can also peek only a specific element with `toggle-{element}` command.
 
 Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
 
-#### `flash-timeline`
+#### `flash-{element}`
 
-#### `flash-top-bar`
+Commands to briefly flash a specified element. Available: `flash-timeline`, `flash-top-bar`, `flash-volume`, `flash-speed`, `flash-pause-indicator`, `decide-pause-indicator`
 
-#### `flash-volume`
-
-#### `flash-speed`
-
-#### `flash-pause-indicator`
-
-#### `decide-pause-indicator`
-
-Commands to briefly flash a specified element. You can use it in your bindings like so:
+ You can use it in your bindings like so:
 
 ```
 space        cycle pause; script-binding uosc/flash-pause-indicator
@@ -514,3 +502,7 @@ mp.register_script_message('submit', function(prop, value)
   -- Do something with state
 end)
 ```
+
+## Wy _uosc_?
+
+It used to mean micro osc as it used to render just a couple rectangles before it grew to what it is. And now it means a minimalist UI design direction where everything is out of your way until needed.
