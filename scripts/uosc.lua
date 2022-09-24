@@ -906,7 +906,8 @@ function serialize_chapter_ranges(normalized_chapters)
 						break
 					end
 				end -- single chapter for ad
-			elseif chapter.lowercase_title:find('%[sponsorblock%]:') or chapter.lowercase_title:find('^sponsors?') then
+			elseif not chapter.is_end_only and
+				(chapter.lowercase_title:find('%[sponsorblock%]:') or chapter.lowercase_title:find('^sponsors?')) then
 				local next_chapter = chapters[i + 1]
 				ranges[#ranges + 1] = table_assign({
 					start = chapter.time,
