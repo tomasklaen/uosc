@@ -1,10 +1,8 @@
---[[ uosc 3.1.2 - 2022-Aug-25 | https://github.com/tomasklaen/uosc ]]
-local uosc_version = '3.1.2'
+--[[ uosc 4.0.0 - 2022-Sep-24 | https://github.com/tomasklaen/uosc ]]
+local uosc_version = '4.0.0'
 
 function lock_osc(name, value)
-	if value == true then
-		mp.set_property('osc', 'no')
-	end
+	if value == true then mp.set_property('osc', 'no') end
 end
 mp.observe_property('osc', 'bool', lock_osc)
 
@@ -192,8 +190,6 @@ local defaults = {
 	menu_item_height_fullscreen = 50,
 	menu_min_width = 260,
 	menu_min_width_fullscreen = 360,
-	menu_wasd_navigation = false,
-	menu_hjkl_navigation = false,
 	menu_opacity = 1,
 	menu_parent_opacity = 0.4,
 

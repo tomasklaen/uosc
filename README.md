@@ -1,8 +1,8 @@
 <div align="center">
-	<a href="https://user-images.githubusercontent.com/47283320/192066616-4a51b114-4383-437d-9124-03f4d9937427.webm"><img src="https://user-images.githubusercontent.com/47283320/192066584-f5231409-e21b-43b1-92c6-7de969804e53.png" alt="Preview screenshot"></a>
+	<a href="https://user-images.githubusercontent.com/47283320/192066616-4a51b114-4383-437d-9124-03f4d9937427.webm"><img src="https://user-images.githubusercontent.com/47283320/192086463-e74c1380-d499-4329-8722-092742bc841e.png" alt="Preview screenshot"></a>
 	<h1>uosc</h1>
 	<p>
-		Feature rich proximity based UI for <a href="https://mpv.io">MPV player</a>.
+		Minimalist feature-rich proximity-based UI for <a href="https://mpv.io">MPV player</a>.
 	</p>
 	<br>
 </div>
@@ -56,7 +56,7 @@ Most notable features:
 
 4. **OPTIONAL**: To have thumbnails in timeline, install [thumbfast](https://github.com/po5/thumbfast). That's it, no other step necessary, **uosc** integrates with it seamlessly.
 
-4. **OPTIONAL**: If the UI feels sluggish/slow while playing video, you can remedy this a lot by placing this in your `mpv.conf`:
+5. **OPTIONAL**: If the UI feels sluggish/slow while playing video, you can remedy this a lot by placing this in your `mpv.conf`:
 
     ```config
     video-sync=display-resample
@@ -118,7 +118,7 @@ Toggles the always visible portion of the timeline. You can look at it as switch
 
 Commands to briefly flash a specified element. Available: `flash-timeline`, `flash-top-bar`, `flash-volume`, `flash-speed`, `flash-pause-indicator`, `decide-pause-indicator`
 
- You can use it in your bindings like so:
+You can use it in your bindings like so:
 
 ```
 space        cycle pause; script-binding uosc/flash-pause-indicator
@@ -503,6 +503,6 @@ mp.register_script_message('submit', function(prop, value)
 end)
 ```
 
-## Wy _uosc_?
+## Why _uosc_?
 
-It used to mean micro osc as it used to render just a couple rectangles before it grew to what it is. And now it means a minimalist UI design direction where everything is out of your way until needed.
+It stood for micro osc as it used to render just a couple rectangles before it grew to what it is today. And now it means a minimalist UI design direction where everything is out of your way until needed.
