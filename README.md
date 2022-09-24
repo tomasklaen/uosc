@@ -13,6 +13,7 @@ Most notable features:
 -   Set min timeline size to make an always visible discrete progress bar.
 -   Build your own context menu with nesting support by editing your `input.conf` file.
 -   Configurable controls bar.
+-   Fast and efficient thumbnails with [thumbfast](https://github.com/po5/thumbfast) integration.
 -   UIs for:
     -   Loading external subtitles.
     -   Selecting subtitle/audio/video track.
