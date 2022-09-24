@@ -2797,7 +2797,8 @@ function Timeline:render()
 	local fax, fay, fbx, fby = 0, bay + self.top_border, 0, bby
 	local fcy = fay + (size / 2)
 
-	local line_width = 0
+	local time_x = bax + self.width * progress
+	local line_width, past_x_adjustment, future_x_adjustment = 0, 1, 1
 
 	if is_line then
 		local minimized_fraction = 1 - math.min((size - size_min) / ((self.size_max - size_min) / 8), 1)
@@ -2806,18 +2807,23 @@ function Timeline:render()
 			and width_normal - width_normal * options.timeline_line_width_minimized_scale
 			or 0
 		line_width = width_normal - (max_min_width_delta * minimized_fraction)
-		local time_width = self.width - line_width
-		fax = bax + time_width * progress
+		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
+		local past_time_width, future_time_width = time_x - bax, bbx - time_x
+		past_x_adjustment = (past_time_width - (time_x - fax)) / past_time_width
+		future_x_adjustment = (future_time_width - (fbx - time_x)) / future_time_width
 	else
-		fax = bax
-		fbx = bax + self.width * progress
+		fax, fbx = bax, bax + self.width * progress
 	end
 
-	local time_ax = bax + line_width / 2
-	local time_width = self.width - line_width
 	local foreground_size = fby - fay
 	local foreground_coordinates = round(fax) .. ',' .. fay .. ',' .. round(fbx) .. ',' .. fby -- for clipping
+
+	-- line_x_adjustment: adjusts x coordinate so that it never lies inside of the line
+	-- it's as if line cuts the timeline and squeezes itself into the cut
+	local lxa = line_width == 0 and function(x) return x end or function(x)
+		return x < time_x and bax + (x - bax) * past_x_adjustment or bbx - (bbx - x) * future_x_adjustment
+	end
 
 	-- Background
 	ass:new_event()
@@ -2843,9 +2849,9 @@ function Timeline:render()
 			if not buffered_time and (range[1] > state.time or range[2] > state.time) then
 				buffered_time = range[1] - state.time
 			end
-			local ax = range[1] < 0.5 and bax or math.floor(time_ax + time_width * (range[1] / state.duration))
+			local ax = range[1] < 0.5 and bax or math.floor(lxa(bax + self.width * (range[1] / state.duration)))
 			local bx = range[2] > state.duration - 0.5 and bbx or
-				math.ceil(time_ax + time_width * (range[2] / state.duration))
+				math.ceil(lxa(bax + self.width * (range[2] / state.duration)))
 			opts.color, opts.opacity, opts.anchor_x = 'ffffff', 0.4 - (0.2 * visibility), bax
 			ass:texture(ax, fay, bx, fby, texture_char, opts)
 			opts.color, opts.opacity, opts.anchor_x = '000000', 0.6 - (0.2 * visibility), bax + offset
@@ -2855,9 +2861,9 @@ function Timeline:render()
 
 	-- Custom ranges
 	for _, chapter_range in ipairs(state.chapter_ranges) do
-		local rax = chapter_range.start < 0.1 and 0 or time_ax + time_width * (chapter_range.start / state.duration)
+		local rax = chapter_range.start < 0.1 and 0 or lxa(bax + self.width * (chapter_range.start / state.duration))
 		local rbx = chapter_range['end'] > state.duration - 0.1 and bbx
-			or time_ax + time_width * math.min(chapter_range['end'] / state.duration, 1)
+			or lxa(bax + self.width * math.min(chapter_range['end'] / state.duration, 1))
 		ass:rect(rax, fay, rbx, fby, {color = chapter_range.color, opacity = chapter_range.opacity})
 	end
 
@@ -2870,7 +2876,8 @@ function Timeline:render()
 
 		if diamond_radius > 0 then
 			local function draw_chapter(time)
-				local chapter_x, chapter_y = time_ax + time_width * (time / state.duration), fay - 1
+				local chapter_x = bax + line_width / 2 + (self.width - line_width) * (time / state.duration)
+				local chapter_y = fay - 1
 				ass:new_event()
 				ass:append(string.format(
 					'{\\pos(0,0)\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
@@ -4283,16 +4290,13 @@ mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_str
 	Elements:trigger('dispositions')
 end))
 mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
-	local cached_ranges, bof, eof = nil, nil, nil
+	local cached_ranges, bof, eof, uncached_ranges = nil, nil, nil, nil
 	if cache_state then
 		cached_ranges, bof, eof = cache_state['seekable-ranges'], cache_state['bof-cached'], cache_state['eof-cached']
 	else cached_ranges = {} end
 
-
-	local uncached_ranges = nil
-
 	if not (state.duration and (#cached_ranges > 0 or state.cache == 'yes' or
-	                            (state.cache == 'auto' and state.is_stream))) then
+		(state.cache == 'auto' and state.is_stream))) then
 		if state.uncached_ranges then set_state('uncached_ranges', nil) end
 		return
 	end
