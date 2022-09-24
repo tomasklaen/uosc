@@ -2,7 +2,7 @@
 	<a href="https://user-images.githubusercontent.com/47283320/192066616-4a51b114-4383-437d-9124-03f4d9937427.webm"><img src="https://user-images.githubusercontent.com/47283320/192086463-e74c1380-d499-4329-8722-092742bc841e.png" alt="Preview screenshot"></a>
 	<h1>uosc</h1>
 	<p>
-		Minimalist feature-rich proximity-based UI for <a href="https://mpv.io">MPV player</a>.
+		Feature-rich minimalist proximity-based UI for <a href="https://mpv.io">MPV player</a>.
 	</p>
 	<br>
 </div>
