@@ -1,11 +1,6 @@
 --[[ uosc 4.0.0 - 2022-Sep-24 | https://github.com/tomasklaen/uosc ]]
 local uosc_version = '4.0.0'
 
-function lock_osc(name, value)
-	if value == true then mp.set_property('osc', 'no') end
-end
-mp.observe_property('osc', 'bool', lock_osc)
-
 local assdraw = require('mp.assdraw')
 local opt = require('mp.options')
 local utils = require('mp.utils')
@@ -4191,6 +4186,7 @@ end
 mp.set_key_bindings(mouse_keybinds, 'mouse_movement', 'force')
 mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 
+mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 function update_title(title_template)
 	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
 	set_state('title', mp.command_native({'expand-text', title_template}))
