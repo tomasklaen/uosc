@@ -892,7 +892,7 @@ function serialize_chapter_ranges(normalized_chapters)
 		-- Sponsor blocks
 		if config.chapter_ranges.ads then
 			local id = chapter.lowercase_title:match('segment start *%(([%w]%w-)%)')
-			if id then
+			if id then -- ad range from sponsorblock
 				for j = i + 1, #chapters, 1 do
 					local end_chapter = chapters[j]
 					local end_match = end_chapter.lowercase_title:match('segment end *%(' .. id .. '%)')
@@ -905,7 +905,15 @@ function serialize_chapter_ranges(normalized_chapters)
 						chapter.is_range_point, end_chapter.is_range_point, end_chapter.is_end_only = true, true, true
 						break
 					end
-				end
+				end -- single chapter for ad
+			elseif chapter.lowercase_title:find('%[sponsorblock%]:') or chapter.lowercase_title:find('^sponsors?') then
+				local next_chapter = chapters[i + 1]
+				ranges[#ranges + 1] = table_assign({
+					start = chapter.time,
+					['end'] = next_chapter and next_chapter.time or infinity,
+				}, config.chapter_ranges.ads)
+				chapter.is_range_point = true
+				if next_chapter then next_chapter.is_range_point = true end
 			end
 		end
 	end
