@@ -882,8 +882,6 @@ function serialize_chapter_ranges(normalized_chapters)
 							start = chapter.time,
 							['end'] = next_chapter and next_chapter.time or infinity,
 						}, config.chapter_ranges[meta.name])
-						chapter.is_range_point = true
-						if next_chapter then next_chapter.is_range_point = true end
 					end
 				end
 			end
@@ -902,7 +900,7 @@ function serialize_chapter_ranges(normalized_chapters)
 							start = chapter.time, ['end'] = end_chapter.time,
 						}, config.chapter_ranges.ads)
 						ranges[#ranges + 1], sponsor_ranges[#sponsor_ranges + 1] = range, range
-						chapter.is_range_point, end_chapter.is_range_point, end_chapter.is_end_only = true, true, true
+						end_chapter.is_end_only = true
 						break
 					end
 				end -- single chapter for ad
@@ -913,8 +911,6 @@ function serialize_chapter_ranges(normalized_chapters)
 					start = chapter.time,
 					['end'] = next_chapter and next_chapter.time or infinity,
 				}, config.chapter_ranges.ads)
-				chapter.is_range_point = true
-				if next_chapter then next_chapter.is_range_point = true end
 			end
 		end
 	end
@@ -2898,7 +2894,7 @@ function Timeline:render()
 
 			if state.chapters ~= nil then
 				for i, chapter in ipairs(state.chapters) do
-					if not chapter.is_range_point then draw_chapter(chapter.time) end
+					draw_chapter(chapter.time)
 				end
 			end
 
