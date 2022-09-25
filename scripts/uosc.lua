@@ -2798,15 +2798,15 @@ function Timeline:render()
 	local fcy = fay + (size / 2)
 
 	local time_x = bax + self.width * progress
-	local line_width, past_x_adjustment, future_x_adjustment = 0, 1, 1
+	local line_width, line_width_max, past_x_adjustment, future_x_adjustment = 0, 0, 1, 1
 
 	if is_line then
 		local minimized_fraction = 1 - math.min((size - size_min) / ((self.size_max - size_min) / 8), 1)
-		local width_normal = self:get_effective_line_width()
+		line_width_max = self:get_effective_line_width()
 		local max_min_width_delta = size_min > 0
-			and width_normal - width_normal * options.timeline_line_width_minimized_scale
+			and line_width_max - line_width_max * options.timeline_line_width_minimized_scale
 			or 0
-		line_width = width_normal - (max_min_width_delta * minimized_fraction)
+		line_width = line_width_max - (max_min_width_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
 		local past_time_width, future_time_width = time_x - bax, bbx - time_x
@@ -2821,7 +2821,7 @@ function Timeline:render()
 
 	-- line_x_adjustment: adjusts x coordinate so that it never lies inside of the line
 	-- it's as if line cuts the timeline and squeezes itself into the cut
-	local lxa = line_width == 0 and function(x) return x end or function(x)
+	local lxa = line_width == line_width_max and function(x) return x end or function(x)
 		return x < time_x and bax + (x - bax) * past_x_adjustment or bbx - (bbx - x) * future_x_adjustment
 	end
 
