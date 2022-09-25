@@ -4709,5 +4709,6 @@ mp.register_script_message('thumbfast-info', function(json)
 		msg.error('thumbfast-info: received json didn\'t produce a table with thumbnail information')
 	else
 		thumbnail = data
+		request_render()
 	end
 end)
