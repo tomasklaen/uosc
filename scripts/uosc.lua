@@ -2741,11 +2741,15 @@ function Timeline:update_dimensions()
 end
 
 function Timeline:get_time_at_x(x)
-	-- line width 1 for timeline_style=bar so mouse input can go all the way from 0 to 1 progress
-	local line_width = (options.timeline_style == 'line' and self:get_effective_line_width() or 1)
-	local time_width = self.width - line_width
-	local progress_x = x - self.ax - line_width / 2
-	local progress = clamp(0, progress_x / time_width, 1)
+	local line_width = (options.timeline_style == 'line' and self:get_effective_line_width() - 1 or 0)
+	local time_width = self.width - line_width - 1
+	local fax = (time_width) * state.time / state.duration
+	local fbx = fax + line_width
+	-- time starts 0.5 pixels in
+	x = x - self.ax - 0.5
+	if x > fbx then x = x - line_width
+	elseif x > fax then x = fax end
+	local progress = clamp(0, x / time_width, 1)
 	return state.duration * progress
 end
 
@@ -2797,21 +2801,18 @@ function Timeline:render()
 	local fax, fay, fbx, fby = 0, bay + self.top_border, 0, bby
 	local fcy = fay + (size / 2)
 
-	local time_x = bax + self.width * progress
-	local line_width, line_width_max, past_x_adjustment, future_x_adjustment = 0, 0, 1, 1
+	local line_width = 0
 
 	if is_line then
 		local minimized_fraction = 1 - math.min((size - size_min) / ((self.size_max - size_min) / 8), 1)
-		line_width_max = self:get_effective_line_width()
+		local line_width_max = self:get_effective_line_width()
 		local max_min_width_delta = size_min > 0
 			and line_width_max - line_width_max * options.timeline_line_width_minimized_scale
 			or 0
 		line_width = line_width_max - (max_min_width_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
-		local past_time_width, future_time_width = time_x - bax, bbx - time_x
-		past_x_adjustment = (past_time_width - (time_x - fax)) / past_time_width
-		future_x_adjustment = (future_time_width - (fbx - time_x)) / future_time_width
+		line_width = line_width - 1
 	else
 		fax, fbx = bax, bax + self.width * progress
 	end
@@ -2819,10 +2820,14 @@ function Timeline:render()
 	local foreground_size = fby - fay
 	local foreground_coordinates = round(fax) .. ',' .. fay .. ',' .. round(fbx) .. ',' .. fby -- for clipping
 
-	-- line_x_adjustment: adjusts x coordinate so that it never lies inside of the line
-	-- it's as if line cuts the timeline and squeezes itself into the cut
-	local lxa = line_width == line_width_max and function(x) return x end or function(x)
-		return x < time_x and bax + (x - bax) * past_x_adjustment or bbx - (bbx - x) * future_x_adjustment
+	-- time starts 0.5 pixels in
+	local time_ax = bax + 0.5
+	local time_width = self.width - line_width - 1
+
+	-- time to x: calculates x coordinate so that it never lies inside of the line
+	local function t2x(time)
+		local x = time_ax + time_width * time / state.duration
+		return time <= state.time and x or x + line_width
 	end
 
 	-- Background
@@ -2849,9 +2854,8 @@ function Timeline:render()
 			if not buffered_time and (range[1] > state.time or range[2] > state.time) then
 				buffered_time = range[1] - state.time
 			end
-			local ax = range[1] < 0.5 and bax or math.floor(lxa(bax + self.width * (range[1] / state.duration)))
-			local bx = range[2] > state.duration - 0.5 and bbx or
-				math.ceil(lxa(bax + self.width * (range[2] / state.duration)))
+			local ax = range[1] < 0.5 and bax or math.floor(t2x(range[1]))
+			local bx = range[2] > state.duration - 0.5 and bbx or math.ceil(t2x(range[2]))
 			opts.color, opts.opacity, opts.anchor_x = 'ffffff', 0.4 - (0.2 * visibility), bax
 			ass:texture(ax, fay, bx, fby, texture_char, opts)
 			opts.color, opts.opacity, opts.anchor_x = '000000', 0.6 - (0.2 * visibility), bax + offset
@@ -2861,9 +2865,9 @@ function Timeline:render()
 
 	-- Custom ranges
 	for _, chapter_range in ipairs(state.chapter_ranges) do
-		local rax = chapter_range.start < 0.1 and 0 or lxa(bax + self.width * (chapter_range.start / state.duration))
+		local rax = chapter_range.start < 0.1 and bax or t2x(chapter_range.start)
 		local rbx = chapter_range['end'] > state.duration - 0.1 and bbx
-			or lxa(bax + self.width * math.min(chapter_range['end'] / state.duration, 1))
+			or t2x(math.min(chapter_range['end'], state.duration))
 		ass:rect(rax, fay, rbx, fby, {color = chapter_range.color, opacity = chapter_range.opacity})
 	end
 
@@ -2876,7 +2880,7 @@ function Timeline:render()
 
 		if diamond_radius > 0 then
 			local function draw_chapter(time)
-				local chapter_x = bax + line_width / 2 + (self.width - line_width) * (time / state.duration)
+				local chapter_x = t2x(time)
 				local chapter_y = fay - 1
 				ass:new_event()
 				ass:append(string.format(
