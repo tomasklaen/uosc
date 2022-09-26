@@ -242,6 +242,38 @@ if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
 
 --[[ CONFIG ]]
 
+local function create_default_menu()
+	return {
+		{title = 'Open file', value = 'script-binding uosc/open-file'},
+		{title = 'Playlist', value = 'script-binding uosc/playlist'},
+		{title = 'Chapters', value = 'script-binding uosc/chapters'},
+		{title = 'Subtitle tracks', value = 'script-binding uosc/subtitles'},
+		{title = 'Audio tracks', value = 'script-binding uosc/audio'},
+		{title = 'Stream quality', value = 'script-binding uosc/stream-quality'},
+		{title = 'Navigation', items = {
+			{title = 'Next', hint = 'playlist or file', value = 'script-binding uosc/next'},
+			{title = 'Prev', hint = 'playlist or file', value = 'script-binding uosc/prev'},
+			{title = 'Delete file & Next', value = 'script-binding uosc/delete-file-next'},
+			{title = 'Delete file & Prev', value = 'script-binding uosc/delete-file-prev'},
+			{title = 'Delete file & Quit', value = 'script-binding uosc/delete-file-quit'},
+		},},
+		{title = 'Utils', items = {
+			{title = 'Load subtitles', value = 'script-binding uosc/load-subtitles'},
+			{title = 'Aspect ratio', items = {
+				{title = 'Default', value = 'set video-aspect-override "-1"'},
+				{title = '16:9', value = 'set video-aspect-override "16:9"'},
+				{title = '4:3', value = 'set video-aspect-override "4:3"'},
+				{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
+			},},
+			{title = 'Audio devices', value = 'script-binding uosc/audio-device'},
+			{title = 'Screenshot', value = 'async screenshot'},
+			{title = 'Show in directory', value = 'script-binding uosc/show-in-directory'},
+			{title = 'Open config folder', value = 'script-binding uosc/open-config-directory'},
+		},},
+		{title = 'Quit', value = 'quit'},
+	}
+end
+
 local config = {
 	version = uosc_version,
 	-- sets max rendering frequency in case the
@@ -259,7 +291,7 @@ local config = {
 		local input_conf_meta, meta_error = utils.file_info(input_conf_path)
 
 		-- File doesn't exist
-		if not input_conf_meta or not input_conf_meta.is_file then return end
+		if not input_conf_meta or not input_conf_meta.is_file then return create_default_menu() end
 
 		local main_menu = {items = {}, items_by_command = {}}
 		local by_id = {}
@@ -310,35 +342,7 @@ local config = {
 			return main_menu.items
 		else
 			-- Default context menu
-			return {
-				{title = 'Open file', value = 'script-binding uosc/open-file'},
-				{title = 'Playlist', value = 'script-binding uosc/playlist'},
-				{title = 'Chapters', value = 'script-binding uosc/chapters'},
-				{title = 'Subtitle tracks', value = 'script-binding uosc/subtitles'},
-				{title = 'Audio tracks', value = 'script-binding uosc/audio'},
-				{title = 'Stream quality', value = 'script-binding uosc/stream-quality'},
-				{title = 'Navigation', items = {
-					{title = 'Next', hint = 'playlist or file', value = 'script-binding uosc/next'},
-					{title = 'Prev', hint = 'playlist or file', value = 'script-binding uosc/prev'},
-					{title = 'Delete file & Next', value = 'script-binding uosc/delete-file-next'},
-					{title = 'Delete file & Prev', value = 'script-binding uosc/delete-file-prev'},
-					{title = 'Delete file & Quit', value = 'script-binding uosc/delete-file-quit'},
-				},},
-				{title = 'Utils', items = {
-					{title = 'Load subtitles', value = 'script-binding uosc/load-subtitles'},
-					{title = 'Aspect ratio', items = {
-						{title = 'Default', value = 'set video-aspect-override "-1"'},
-						{title = '16:9', value = 'set video-aspect-override "16:9"'},
-						{title = '4:3', value = 'set video-aspect-override "4:3"'},
-						{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
-					},},
-					{title = 'Audio devices', value = 'script-binding uosc/audio-device'},
-					{title = 'Screenshot', value = 'async screenshot'},
-					{title = 'Show in directory', value = 'script-binding uosc/show-in-directory'},
-					{title = 'Open config folder', value = 'script-binding uosc/open-config-directory'},
-				},},
-				{title = 'Quit', value = 'quit'},
-			}
+			return create_default_menu()
 		end
 	end)(),
 	chapter_ranges = (function()
