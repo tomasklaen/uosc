@@ -4219,7 +4219,7 @@ end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
 	-- Create a file-end event that triggers right before file ends
 	file_end_timer:kill()
-	if state.duration and state.time then
+	if state.duration and state.time and not state.pause then
 		local remaining = (state.duration - state.time) / state.speed
 		if remaining < 5 then
 			local timeout = remaining - 0.02
