@@ -2269,7 +2269,7 @@ function Speed:get_visibility()
 	-- We force inherit, because I want to see speed value when peeking timeline
 	local this_visibility = Element.get_visibility(self)
 	return Elements.timeline.proximity_raw ~= 0
-		and math.max(Elements.timeline.proximity, this_visibility) or this_visibility
+		and math.max(Elements.timeline:get_visibility(), this_visibility) or this_visibility
 end
 
 function Speed:on_coordinates()
