@@ -416,6 +416,7 @@ local state = {
 	volume = nil,
 	volume_max = nil,
 	mute = nil,
+	is_idle = false,
 	is_video = false,
 	is_audio = false, -- true if file is audio only (mp3, etc)
 	is_image = false,
@@ -4280,7 +4281,10 @@ mp.observe_property('playlist-count', 'number', function(_, value)
 end)
 mp.observe_property('fullscreen', 'bool', create_state_setter('fullscreen', update_fullormaxed))
 mp.observe_property('window-maximized', 'bool', create_state_setter('maximized', update_fullormaxed))
-mp.observe_property('idle-active', 'bool', create_state_setter('idle'))
+mp.observe_property('idle-active', 'bool', function(_, idle)
+	set_state('is_idle', idle)
+	Elements:trigger('dispositions')
+end)
 mp.observe_property('pause', 'bool', create_state_setter('pause', function() file_end_timer:kill() end))
 mp.observe_property('volume', 'number', create_state_setter('volume'))
 mp.observe_property('volume-max', 'number', create_state_setter('volume_max'))
