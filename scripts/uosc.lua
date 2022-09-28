@@ -1466,6 +1466,7 @@ function Element:get_visibility()
 			or (persist.paused and state.pause)
 			or (persist.video and state.is_video)
 			or (persist.image and state.is_image)
+			or (persist.idle and state.is_idle)
 		) then return 1 end
 
 	-- Forced visibility
