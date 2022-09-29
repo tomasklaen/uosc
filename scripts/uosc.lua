@@ -4652,7 +4652,6 @@ mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
 		local current_device = mp.get_property('audio-device') or 'auto'
 		local ao = mp.get_property('current-ao') or ''
 		local items = {}
-		local active_index = nil
 		for _, device in ipairs(audio_device_list) do
 			if device.name == 'auto' or string.match(device.name, '^' .. ao) then
 				local hint = string.match(device.name, ao .. '/(.+)')
@@ -4660,12 +4659,12 @@ mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
 				items[#items + 1] = {
 					title = device.description,
 					hint = hint,
+					active = device.name == current_device,
 					value = device.name,
 				}
-				if device.name == current_device then active_index = #items end
 			end
 		end
-		return items, active_index
+		return items
 	end,
 	on_select = function(name) mp.commandv('set', 'audio-device', name) end,
 }))
