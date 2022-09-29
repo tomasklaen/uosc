@@ -163,6 +163,10 @@ Playlist navigation.
 
 Chapter navigation.
 
+#### `editions`
+
+edition navigation.
+
 #### `stream-quality`
 
 Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv property from predefined options (configurable with `stream_quality_options`) and video reload, there is no fetching of available formats going on.
@@ -322,6 +326,7 @@ alt+s       script-binding uosc/load-subtitles     #! Utils > Load subtitles
 #           set video-aspect-override "4:3"        #! Utils > Aspect ratio > 4:3
 #           set video-aspect-override "2.35:1"     #! Utils > Aspect ratio > 2.35:1
 #           script-binding uosc/audio-device       #! Utils > Audio devices
+#           script-binding uosc/editions           #! Utils > Editions
 ctrl+s      async screenshot                       #! Utils > Screenshot
 O           script-binding uosc/show-in-directory  #! Utils > Show in directory
 #           script-binding uosc/open-config-directory #! Utils > Open config directory
