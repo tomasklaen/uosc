@@ -3367,7 +3367,7 @@ end
 function Controls:register_badge_updater(badge, element)
 	local prop_and_limit = split(badge, ' *> *')
 	local prop, limit = prop_and_limit[1], tonumber(prop_and_limit[2] or -1)
-	local observable_name, serializer = prop, nil
+	local observable_name, serializer, is_external_prop = prop, nil, false
 
 	if itable_index_of({'sub', 'audio', 'video'}, prop) then
 		observable_name = 'track-list'
@@ -3377,6 +3377,7 @@ function Controls:register_badge_updater(badge, element)
 			return count
 		end
 	else
+		if prop:sub(1, 1) == '@' then prop, is_external_prop = prop:sub(2), true end
 		serializer = function(value) return value and (type(value) == 'table' and #value or tostring(value)) or nil end
 	end
 
@@ -3388,7 +3389,8 @@ function Controls:register_badge_updater(badge, element)
 		request_render()
 	end
 
-	mp.observe_property(observable_name, 'native', handler)
+	if is_external_prop then element['on_external_prop_' .. prop] = function(_, value) handler(prop, value) end
+	else mp.observe_property(observable_name, 'native', handler) end
 end
 
 function Controls:get_visibility()
@@ -4733,4 +4735,7 @@ mp.register_script_message('thumbfast-info', function(json)
 		thumbnail = data
 		request_render()
 	end
+end)
+mp.register_script_message('set', function(name, value)
+	Elements:trigger('external_prop_' .. name, utils.parse_json(value))
 end)

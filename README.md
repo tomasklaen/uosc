@@ -509,6 +509,22 @@ mp.register_script_message('submit', function(prop, value)
 end)
 ```
 
+### `set <prop> <value>`
+
+Tell **uosc** to set an external property to this value. Currently, this is only used to display control button badges:
+
+In your script, set the value of `foo` to `1`.
+
+```lua
+mp.commandv('script-message-to', 'uosc', 'set', 'foo', 1)
+```
+
+This property can now be used as a control button badge by prefixing it with `@`.
+
+```
+controls=command:icon_name:command_name#@foo?My foo button
+```
+
 ## Why _uosc_?
 
 It stood for micro osc as it used to render just a couple rectangles before it grew to what it is today. And now it means a minimalist UI design direction where everything is out of your way until needed.
