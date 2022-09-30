@@ -4456,28 +4456,21 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 	title = 'Chapters',
 	type = 'chapters',
 	list_prop = 'chapter-list',
-	active_prop = 'playback-time',
-	serializer = function(chapters, playback_time)
+	active_prop = 'chapter',
+	serializer = function(chapters, current_chapter)
 		local items = {}
 		chapters = normalize_chapters(chapters)
-		for _, chapter in ipairs(chapters) do
-			local item = {
+		for index, chapter in ipairs(chapters) do
+			items[index] = {
 				title = chapter.title or '',
 				hint = mp.format_time(chapter.time),
-				value = chapter.time,
+				value = index,
+				active = index - 1 == current_chapter,
 			}
-			items[#items + 1] = item
-		end
-		if not playback_time then return items end
-		for index = #items, 1, -1 do
-			if playback_time >= items[index].value then
-				items[index].active = true
-				break
-			end
 		end
 		return items
 	end,
-	on_select = function(time) mp.commandv('seek', tostring(time), 'absolute') end,
+	on_select = function(index) mp.commandv('set', 'chapter', tostring(index - 1)) end,
 }))
 mp.add_key_binding(nil, 'editions', create_self_updating_menu_opener({
 	title = 'Editions',
