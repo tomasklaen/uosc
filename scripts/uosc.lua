@@ -861,7 +861,7 @@ function serialize_chapter_ranges(normalized_chapters)
 	local simple_ranges = {
 		{name = 'openings', patterns = {'^op ', '^op$', ' op$', 'opening$'}, requires_next_chapter = true},
 		{name = 'intros', patterns = {'^intro$'}, requires_next_chapter = true},
-		{name = 'endings', patterns = {'^ed ', '^ed$', ' ed$', 'ending$'}},
+		{name = 'endings', patterns = {'^ed ', '^ed$', ' ed$', 'ending$', 'closing$'}},
 		{name = 'outros', patterns = {'^outro$'}},
 	}
 	local sponsor_ranges = {}
