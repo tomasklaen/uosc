@@ -266,6 +266,7 @@ local function create_default_menu()
 				{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
 			},},
 			{title = 'Audio devices', value = 'script-binding uosc/audio-device'},
+			{title = 'Editions', value = 'script-binding uosc/editions'},
 			{title = 'Screenshot', value = 'async screenshot'},
 			{title = 'Show in directory', value = 'script-binding uosc/show-in-directory'},
 			{title = 'Open config folder', value = 'script-binding uosc/open-config-directory'},
@@ -3208,7 +3209,8 @@ function Controls:init()
 		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?Audio device',
 		video = 'command:theaters:script-binding uosc/video#video>1?Video',
 		playlist = 'command:list_alt:script-binding uosc/playlist?Playlist',
-		chapters = 'command:bookmarks:script-binding uosc/chapters#chapters>0?Chapters',
+		chapters = 'command:bookmark:script-binding uosc/chapters#chapters>0?Chapters',
+		['editions'] = 'command:bookmarks:script-binding uosc/editions#editions>1?Editions',
 		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?Stream quality',
 		['open-file'] = 'command:file_open:script-binding uosc/open-file?Open file',
 		['items'] = 'command:list_alt:script-binding uosc/items?Playlist/Files',
@@ -4266,6 +4268,10 @@ mp.observe_property('track-list', 'native', function(name, value)
 	set_state('has_many_video', types.video > 1)
 	Elements:trigger('dispositions')
 end)
+mp.observe_property('editions', 'number', function(_, editions)
+	if editions then set_state('has_many_edition', editions > 1) end
+	Elements:trigger('dispositions')
+end)
 mp.observe_property('chapter-list', 'native', function(_, chapters)
 	local chapters, chapter_ranges = serialize_chapters(chapters), {}
 	if chapters then chapters, chapter_ranges = serialize_chapter_ranges(chapters) end
@@ -4486,6 +4492,26 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 		end
 	end,
 	on_select = function(time) mp.commandv('seek', tostring(time), 'absolute') end,
+}))
+mp.add_key_binding(nil, 'editions', create_self_updating_menu_opener({
+	title = 'Editions',
+	type = 'editions',
+	list_prop = 'edition-list',
+	list_serializer = function(_, editions)
+		local items = {}
+		local editions = mp.get_property_native('edition-list', {})
+		local current_edition = mp.get_property_number('current-edition')
+		for _, edition in ipairs(editions) do
+			items[#items + 1] = {
+				title = edition.title or 'Edition',
+				hint = tostring(edition.id + 1),
+				active = edition.id == current_edition,
+				value = edition.id,
+			}
+		end
+		return items
+	end,
+	on_select = function(id) mp.commandv('set', 'edition', id) end,
 }))
 mp.add_key_binding(nil, 'show-in-directory', function()
 	-- Ignore URLs
