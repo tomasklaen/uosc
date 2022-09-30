@@ -165,7 +165,7 @@ Chapter navigation.
 
 #### `editions`
 
-edition navigation.
+Editions menu. Editions are different video cuts available in some mkv files.
 
 #### `stream-quality`
 

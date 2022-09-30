@@ -3787,29 +3787,29 @@ function toggle_menu_with_items(opts)
 	else open_command_menu({type = 'menu', items = config.menu_items}, opts) end
 end
 
----@param options {type: string; title: string; list_prop: string; list_serializer: fun(name: string, value: any): MenuDataItem[]; active_prop?: string; on_active_prop: fun(name: string, value: any, menu: Menu): integer; on_select: fun(value: any)}
+---@param options {type: string; title: string; list_prop: string; active_prop?: string; serializer: fun(list: any, active: any): MenuDataItem[]; on_select: fun(value: any)}
 function create_self_updating_menu_opener(options)
 	return function()
 		if Menu:is_open(options.type) then Menu:close() return end
+		local list = mp.get_property_native(options.list_prop)
+		local active = options.active_prop and mp.get_property_native(options.active_prop) or nil
 		local menu
 
-		-- Update active index and playlist content on playlist changes
-		local ignore_initial_prop = true
+		local function update() menu:update_items(options.serializer(list, active)) end
+
+		local ignore_initial_list = true
 		local function handle_list_prop_change(name, value)
-			if ignore_initial_prop then ignore_initial_prop = false
-			else menu:update_items(options.list_serializer(name, value)) end
+			if ignore_initial_list then ignore_initial_list = false
+			else list = value update() end
 		end
 
 		local ignore_initial_active = true
 		local function handle_active_prop_change(name, value)
 			if ignore_initial_active then ignore_initial_active = false
-			else options.on_active_prop(name, value, menu) end
+			else active = value update() end
 		end
 
-		local initial_items, selected_index = options.list_serializer(
-			options.list_prop,
-			mp.get_property_native(options.list_prop)
-		)
+		local initial_items, selected_index = options.serializer(list, active)
 
 		-- Items and active_index are set in the handle_prop_change callback, since adding
 		-- a property observer triggers its handler immediately, we just let that initialize the items.
@@ -3831,7 +3831,7 @@ function create_self_updating_menu_opener(options)
 end
 
 function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop, load_command)
-	local function serialize_tracklist(_, tracklist)
+	local function serialize_tracklist(tracklist)
 		local items = {}
 
 		if load_command then
@@ -3908,7 +3908,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		title = menu_title,
 		type = track_type,
 		list_prop = 'track-list',
-		list_serializer = serialize_tracklist,
+		serializer = serialize_tracklist,
 		on_select = selection_handler,
 	})
 end
@@ -4434,7 +4434,7 @@ mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
 	title = 'Playlist',
 	type = 'playlist',
 	list_prop = 'playlist',
-	list_serializer = function(_, playlist)
+	serializer = function(playlist)
 		local items = {}
 		for index, item in ipairs(playlist) do
 			local is_url = item.filename:find('://')
@@ -4454,7 +4454,8 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 	title = 'Chapters',
 	type = 'chapters',
 	list_prop = 'chapter-list',
-	list_serializer = function(_, chapters)
+	active_prop = 'playback-time',
+	serializer = function(chapters, playback_time)
 		local items = {}
 		chapters = normalize_chapters(chapters)
 		for _, chapter in ipairs(chapters) do
@@ -4465,31 +4466,14 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 			}
 			items[#items + 1] = item
 		end
-		if not state.time then return items end
+		if not playback_time then return items end
 		for index = #items, 1, -1 do
-			if state.time >= items[index].value then
+			if playback_time >= items[index].value then
 				items[index].active = true
 				break
 			end
 		end
 		return items
-	end,
-	active_prop = 'playback-time',
-	on_active_prop = function(_, playback_time, menu)
-		-- Select first chapter from the end with time lower
-		-- than current playing position.
-		local position = playback_time
-		if not position then
-			menu:deactivate_items()
-			return
-		end
-		local items = menu.current.items
-		for index = #items, 1, -1 do
-			if position >= items[index].value then
-				menu:activate_unique_index(index)
-				return
-			end
-		end
 	end,
 	on_select = function(time) mp.commandv('seek', tostring(time), 'absolute') end,
 }))
@@ -4497,16 +4481,15 @@ mp.add_key_binding(nil, 'editions', create_self_updating_menu_opener({
 	title = 'Editions',
 	type = 'editions',
 	list_prop = 'edition-list',
-	list_serializer = function(_, editions)
+	active_prop = 'current-edition',
+	serializer = function(editions, current_id)
 		local items = {}
-		local editions = mp.get_property_native('edition-list', {})
-		local current_edition = mp.get_property_number('current-edition')
-		for _, edition in ipairs(editions) do
+		for _, edition in ipairs(editions or {}) do
 			items[#items + 1] = {
 				title = edition.title or 'Edition',
 				hint = tostring(edition.id + 1),
-				active = edition.id == current_edition,
 				value = edition.id,
+				active = edition.id == current_id,
 			}
 		end
 		return items
@@ -4674,8 +4657,9 @@ mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
 	title = 'Audio devices',
 	type = 'audio-device-list',
 	list_prop = 'audio-device-list',
-	list_serializer = function(_, audio_device_list)
-		local current_device = mp.get_property('audio-device') or 'auto'
+	active_prop = 'audio-device',
+	serializer = function(audio_device_list, current_device)
+		current_device = current_device or 'auto'
 		local ao = mp.get_property('current-ao') or ''
 		local items = {}
 		for _, device in ipairs(audio_device_list) do
