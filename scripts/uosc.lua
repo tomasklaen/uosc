@@ -4354,9 +4354,6 @@ mp.observe_property('estimated-display-fps', 'native', update_render_delay)
 -- KEY BINDABLE FEATURES
 
 mp.add_key_binding(nil, 'toggle-ui', function() Elements:toggle({'timeline', 'controls', 'volume', 'top_bar'}) end)
-mp.add_key_binding(nil, 'toggle-timeline', function() Elements:toggle({'timeline'}) end)
-mp.add_key_binding(nil, 'toggle-volume', function() Elements:toggle({'volume'}) end)
-mp.add_key_binding(nil, 'toggle-top-bar', function() Elements:toggle({'top_bar'}) end)
 mp.add_key_binding(nil, 'toggle-progress', function()
 	local timeline = Elements.timeline
 	if timeline.size_min_override then
@@ -4725,3 +4722,4 @@ end)
 mp.register_script_message('set', function(name, value)
 	Elements:trigger('external_prop_' .. name, utils.parse_json(value))
 end)
+mp.register_script_message('toggle-elements', function(elements) Elements:toggle(split(elements, ' *, *')) end)

@@ -107,9 +107,13 @@ Available commands:
 
 Makes the whole UI visible until you call this command again. Useful for peeking remaining time and such while watching.
 
-You can also peek only a specific element with `toggle-{element}` command.
+There's also a `toggle-elements <elements>` message you can send to toggle one or more specific elements by specifying their names separated by comma:
 
-`{element}` can be one of: `timeline`, `controls`, `volume`, `top-bar`
+```
+script-message-to uosc toggle-elements timeline,speed
+```
+
+Available element names: `timeline`, `controls`, `volume`, `top-bar`, `speed`
 
 #### `toggle-progress`
 
