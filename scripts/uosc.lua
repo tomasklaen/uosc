@@ -2268,13 +2268,6 @@ function Speed:init(props)
 	self.dragging = nil
 end
 
-function Speed:get_visibility()
-	-- We force inherit, because I want to see speed value when peeking timeline
-	local this_visibility = Element.get_visibility(self)
-	return Elements.timeline.proximity_raw ~= 0
-		and math.max(Elements.timeline:get_visibility(), this_visibility) or this_visibility
-end
-
 function Speed:on_coordinates()
 	self.height, self.width = self.by - self.ay, self.bx - self.ax
 	self.notch_spacing = self.width / (self.notches + 1)
