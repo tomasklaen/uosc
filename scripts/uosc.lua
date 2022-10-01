@@ -2691,6 +2691,7 @@ function Timeline:new() return Class.new(self) --[[@as Timeline]] end
 function Timeline:init()
 	Element.init(self, 'timeline')
 	self.pressed = false
+	self.obstructed = false
 	self.size_max = 0
 	self.size_min = 0
 	self.size_min_override = options.timeline_start_hidden and 0 or nil
@@ -2707,7 +2708,7 @@ function Timeline:get_visibility()
 end
 
 function Timeline:decide_enabled()
-	self.enabled = state.duration and state.duration > 0 and state.time
+	self.enabled = not self.obstructed and state.duration and state.duration > 0 and state.time
 end
 
 function Timeline:get_effective_size_min()
@@ -2738,6 +2739,12 @@ function Timeline:update_dimensions()
 	self.bx = display.width - Elements.window_border.size
 	self.by = display.height - Elements.window_border.size
 	self.width = self.bx - self.ax
+
+	-- Disable if not enough space
+	local available_space = display.height - Elements.window_border.size * 2
+	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
+	self.obstructed = available_space < self.size_max + 10
+	self:decide_enabled()
 end
 
 function Timeline:get_time_at_x(x)
@@ -3398,16 +3405,24 @@ function Controls:update_dimensions()
 	local spacing = options.controls_spacing
 	local margin = options.controls_margin
 
+	-- Disable when not enough space
+	local available_space = display.height - Elements.window_border.size * 2
+	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
+	if Elements.timeline.enabled then available_space = available_space - Elements.timeline.size_max end
+	self.enabled = available_space > size + 10
+
+	-- Reset hide/enabled flags
+	for c, control in ipairs(self.layout) do
+		control.hide = false
+		if control.element then control.element.enabled = self.enabled end
+	end
+
+	if not self.enabled then return end
+
 	-- Container
 	self.bx = display.width - window_border - margin
 	self.by = (Elements.timeline.enabled and Elements.timeline.ay or display.height - window_border) - margin
 	self.ax, self.ay = window_border + margin, self.by - size
-
-	-- Re-enable all elements
-	for c, control in ipairs(self.layout) do
-		control.hide = false
-		if control.element then control.element.enabled = true end
-	end
 
 	-- Controls
 	local available_width = self.bx - self.ax
@@ -3708,7 +3723,8 @@ function Volume:update_dimensions()
 	local width = state.fullormaxed and options.volume_size_fullscreen or options.volume_size
 	local controls, timeline, top_bar = Elements.controls, Elements.timeline, Elements.top_bar
 	local min_y = top_bar.enabled and top_bar.by or 0
-	local max_y = (controls and controls.enabled and controls.ay) or (timeline.enabled and timeline.ay) or 0
+	local max_y = (controls and controls.enabled and controls.ay) or (timeline.enabled and timeline.ay)
+		or display.height - top_bar.size
 	local available_height = max_y - min_y
 	local max_height = available_height * 0.8
 	local height = round(math.min(width * 8, max_height))
@@ -3718,6 +3734,7 @@ function Volume:update_dimensions()
 	self.ay = min_y + round((available_height - height) / 2)
 	self.bx = round(self.ax + width)
 	self.by = round(self.ay + height)
+	self.mute.enabled, self.slider.enabled = self.enabled, self.enabled
 	self.mute:set_coordinates(self.ax, self.by - round(width * 0.8), self.bx, self.by)
 	self.slider:set_coordinates(self.ax, self.ay, self.bx, self.mute.ay)
 end
@@ -3753,8 +3770,8 @@ end
 
 WindowBorder:new()
 PauseIndicator:new()
-Timeline:new()
 TopBar:new()
+Timeline:new()
 if options.controls and options.controls ~= 'never' then Controls:new() end
 if itable_index_of({'left', 'right'}, options.volume) then Volume:new() end
 Curtain:new()
