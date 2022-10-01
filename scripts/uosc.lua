@@ -1741,10 +1741,11 @@ function Menu:update(data)
 	local current_selected_index = self.current.selected_index
 
 	self:update_content_dimensions()
+	self:reset_navigation()
 	-- `update_content_dimensions()` triggers `select_item_below_cursor()`
+	-- `reset_navigation()` sets an index if current one is nil
 	-- so we need to remember and re-apply `selected_index`.
 	self.current.selected_index = current_selected_index
-	self:reset_navigation()
 end
 
 ---@param items MenuDataItem[]
