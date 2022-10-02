@@ -1561,7 +1561,7 @@ menu.close()
 ---@alias MenuData {type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer;}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean;}
----@alias MenuOptions {blurred?: boolean; on_open?: fun(), on_close?: fun()}
+---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(), on_close?: fun()}
 
 -- Internal data structure created from `Menu`.
 ---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_length: number; title_width: number; hint_length: number; hint_width: number; max_width: number; is_root?: boolean;}
@@ -1634,6 +1634,7 @@ function Menu:init(data, callback, opts)
 	self.callback = callback
 	self.opts = opts or {}
 	self.offset_x = 0 -- Used for submenu transition animation.
+	self.mouse_nav = self.opts.mouse_nav -- Stops pre-selecting items
 	self.item_height = nil
 	self.item_spacing = 1
 	self.item_padding = nil
@@ -1657,12 +1658,10 @@ function Menu:init(data, callback, opts)
 
 	self:update(data)
 
-	if self.opts.blurred then
+	if self.mouse_nav then
 		if self.current then self.current.selected_index = nil end
 	else
-		for _, menu in ipairs(self.all) do
-			self:scroll_to_index(menu.selected_index, menu)
-		end
+		for _, menu in ipairs(self.all) do self:scroll_to_index(menu.selected_index, menu) end
 	end
 
 	self:tween_property('opacity', 0, 1)
@@ -1724,9 +1723,7 @@ function Menu:update(data)
 			menu.items[i] = item
 		end
 
-		if menu.is_root then
-			menu.selected_index = menu_data.selected_index or first_active_index or (#menu.items > 0 and 1 or nil)
-		end
+		if menu.is_root then menu.selected_index = menu_data.selected_index or first_active_index end
 
 		-- Retain old state
 		local old_menu = self.by_id[menu.is_root and '__root__' or menu.id]
@@ -1738,12 +1735,8 @@ function Menu:update(data)
 
 	self.root, self.all, self.by_id = new_root, new_all, new_by_id
 	self.current = self.by_id[old_current_id] or self.root
-	local current_selected_index = self.current.selected_index
 
 	self:update_content_dimensions()
-	-- `update_content_dimensions()` triggers `select_item_below_cursor()`
-	-- so we need to remember and re-apply `selected_index`.
-	self.current.selected_index = current_selected_index
 	self:reset_navigation()
 end
 
@@ -1798,7 +1791,7 @@ function Menu:update_dimensions()
 		menu.height = math.min(content_height - self.item_spacing, max_height)
 		menu.top = round(math.max((display.height - menu.height) / 2, title_height * 1.5))
 		menu.scroll_height = math.max(content_height - menu.height - self.item_spacing, 0)
-		self:scroll_to(menu.scroll_y, menu) -- re-applies scroll limits
+		self:scroll_to(menu.scroll_y, menu) -- clamps scroll_y to scroll limits
 	end
 
 	local ax = round((display.width - self.current.width) / 2) + self.offset_x
@@ -1809,8 +1802,12 @@ function Menu:reset_navigation()
 	local menu = self.current
 
 	-- Reset indexes and scroll
-	self:select_index(menu.selected_index or (menu.items and #menu.items > 0 and 1 or nil))
-	self:scroll_to(menu.scroll_y)
+	self:scroll_to(menu.scroll_y) -- clamps scroll_y to scroll limits
+	if self.mouse_nav then
+		self:select_item_below_cursor()
+	else
+		self:select_index((menu.items and #menu.items > 0) and clamp(1, menu.selected_index or 1, #menu.items) or nil)
+	end
 
 	-- Walk up the parent menu chain and activate items that lead to current menu
 	local parent = menu.parent_menu
@@ -2012,6 +2009,7 @@ function Menu:on_global_mbtn_left_down()
 end
 
 function Menu:on_global_mouse_move()
+	self.mouse_nav = true
 	if self.proximity_raw == 0 then self:select_item_below_cursor()
 	else self.current.selected_index = nil end
 	request_render()
@@ -2063,23 +2061,23 @@ end
 function Menu:enable_key_bindings()
 	-- The `mp.set_key_bindings()` method would be easier here, but that
 	-- doesn't support 'repeatable' flag, so we are stuck with this monster.
-	self:add_key_binding('up', 'menu-prev1', self:create_action('prev'), 'repeatable')
-	self:add_key_binding('down', 'menu-next1', self:create_action('next'), 'repeatable')
-	self:add_key_binding('left', 'menu-back1', self:create_action('back'))
-	self:add_key_binding('right', 'menu-select1', self:create_action('open_selected_item_preselect'))
-	self:add_key_binding('shift+right', 'menu-select-soft1', self:create_action('open_selected_item_soft'))
-	self:add_key_binding('shift+mbtn_left', 'menu-select-soft', self:create_action('open_selected_item_soft'))
-	self:add_key_binding('mbtn_back', 'menu-back-alt3', self:create_action('back'))
-	self:add_key_binding('bs', 'menu-back-alt4', self:create_action('back'))
-	self:add_key_binding('enter', 'menu-select-alt3', self:create_action('open_selected_item_preselect'))
-	self:add_key_binding('kp_enter', 'menu-select-alt4', self:create_action('open_selected_item_preselect'))
-	self:add_key_binding('shift+enter', 'menu-select-alt5', self:create_action('open_selected_item_soft'))
-	self:add_key_binding('shift+kp_enter', 'menu-select-alt6', self:create_action('open_selected_item_soft'))
-	self:add_key_binding('esc', 'menu-close', self:create_action('close'))
-	self:add_key_binding('pgup', 'menu-page-up', self:create_action('on_pgup'))
-	self:add_key_binding('pgdwn', 'menu-page-down', self:create_action('on_pgdwn'))
-	self:add_key_binding('home', 'menu-home', self:create_action('on_home'))
-	self:add_key_binding('end', 'menu-end', self:create_action('on_end'))
+	self:add_key_binding('up', 'menu-prev1', self:create_key_action('prev'), 'repeatable')
+	self:add_key_binding('down', 'menu-next1', self:create_key_action('next'), 'repeatable')
+	self:add_key_binding('left', 'menu-back1', self:create_key_action('back'))
+	self:add_key_binding('right', 'menu-select1', self:create_key_action('open_selected_item_preselect'))
+	self:add_key_binding('shift+right', 'menu-select-soft1', self:create_key_action('open_selected_item_soft'))
+	self:add_key_binding('shift+mbtn_left', 'menu-select-soft', self:create_key_action('open_selected_item_soft'))
+	self:add_key_binding('mbtn_back', 'menu-back-alt3', self:create_key_action('back'))
+	self:add_key_binding('bs', 'menu-back-alt4', self:create_key_action('back'))
+	self:add_key_binding('enter', 'menu-select-alt3', self:create_key_action('open_selected_item_preselect'))
+	self:add_key_binding('kp_enter', 'menu-select-alt4', self:create_key_action('open_selected_item_preselect'))
+	self:add_key_binding('shift+enter', 'menu-select-alt5', self:create_key_action('open_selected_item_soft'))
+	self:add_key_binding('shift+kp_enter', 'menu-select-alt6', self:create_key_action('open_selected_item_soft'))
+	self:add_key_binding('esc', 'menu-close', self:create_key_action('close'))
+	self:add_key_binding('pgup', 'menu-page-up', self:create_key_action('on_pgup'))
+	self:add_key_binding('pgdwn', 'menu-page-down', self:create_key_action('on_pgdwn'))
+	self:add_key_binding('home', 'menu-home', self:create_key_action('on_home'))
+	self:add_key_binding('end', 'menu-end', self:create_key_action('on_end'))
 end
 
 function Menu:disable_key_bindings()
@@ -2087,8 +2085,11 @@ function Menu:disable_key_bindings()
 	self.key_bindings = {}
 end
 
-function Menu:create_action(name)
-	return function(...) self:maybe(name, ...) end
+function Menu:create_key_action(name)
+	return function(...)
+		self.mouse_nav = false
+		self:maybe(name, ...)
+	end
 end
 
 function Menu:render()
@@ -3779,7 +3780,7 @@ Curtain:new()
 --[[ MENUS ]]
 
 ---@param data MenuData
----@param opts? {submenu?: string; blurred?: boolean}
+---@param opts? {submenu?: string; mouse_nav?: boolean}
 function open_command_menu(data, opts)
 	local menu = Menu:open(data, function(value)
 		if type(value) == 'string' then
@@ -3793,7 +3794,7 @@ function open_command_menu(data, opts)
 	return menu
 end
 
----@param opts? {submenu?: string; blurred?: boolean}
+---@param opts? {submenu?: string; mouse_nav?: boolean}
 function toggle_menu_with_items(opts)
 	if Menu:is_open('menu') then Menu:close()
 	else open_command_menu({type = 'menu', items = config.menu_items}, opts) end
@@ -4400,7 +4401,7 @@ mp.add_key_binding(nil, 'decide-pause-indicator', function()
 	Elements.pause_indicator:decide()
 end)
 mp.add_key_binding(nil, 'menu', function() toggle_menu_with_items() end)
-mp.add_key_binding(nil, 'menu-blurred', function() toggle_menu_with_items({blurred = true}) end)
+mp.add_key_binding(nil, 'menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
 local track_loaders = {
 	{name = 'subtitles', prop = 'sub', allowed_types = config.subtitle_types},
 	{name = 'audio', prop = 'audio', allowed_types = config.media_types},
