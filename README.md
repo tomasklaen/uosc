@@ -541,6 +541,14 @@ This property can now be used as a control button badge by prefixing it with `@`
 controls=command:icon_name:command_name#@foo?My foo button
 ```
 
+### `osc-idlescreen <mode> <no_osd>`
+
+Controls the visibility of the mpv logo on idle.
+
+Valid arguments for ``mode`` are ``yes``, ``no``, and ``cycle`` to toggle between yes and no.
+
+Depending on the value of ``no_osd`` an osd message can be shown.
+
 ## Why _uosc_?
 
 It stood for micro osc as it used to render just a couple rectangles before it grew to what it is today. And now it means a minimalist UI design direction where everything is out of your way until needed.
