@@ -1064,7 +1064,7 @@ end
 function ass_mt:rect(ax, ay, bx, by, opts)
 	opts = opts or {}
 	local border_size = opts.border or 0
-	local tags = '\\pos(0,0)\\rDefault\\blur0'
+	local tags = '\\pos(0,0)\\rDefault\\an7\\blur0'
 	-- border
 	tags = tags .. '\\bord' .. border_size
 	-- colors
@@ -2411,7 +2411,7 @@ function Speed:render()
 
 	-- Center guide
 	ass:new_event()
-	ass:append('{\\rDefault\\blur0\\bord1\\shad0\\1c&H' .. options.foreground .. '\\3c&H' .. options.background .. '}')
+	ass:append('{\\rDefault\\an7\\blur0\\bord1\\shad0\\1c&H' .. options.foreground .. '\\3c&H' .. options.background .. '}')
 	ass:opacity(opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -2841,7 +2841,7 @@ function Timeline:render()
 	-- Background
 	ass:new_event()
 	ass:pos(0, 0)
-	ass:append('{\\rDefault\\blur0\\bord0\\1c&H' .. options.background .. '}')
+	ass:append('{\\rDefault\\an7\\blur0\\bord0\\1c&H' .. options.background .. '}')
 	ass:opacity(math.max(options.timeline_opacity - 0.1, 0))
 	ass:draw_start()
 	ass:rect_cw(bax, bay, fax, bby) --left of progress
@@ -2892,7 +2892,7 @@ function Timeline:render()
 				local chapter_y = fay - 1
 				ass:new_event()
 				ass:append(string.format(
-					'{\\pos(0,0)\\rDefault\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
+					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
 					diamond_border, options.foreground, options.background, options.background,
 					opacity_to_alpha(options.timeline_opacity * options.timeline_chapters_opacity)
 				))
@@ -3655,7 +3655,7 @@ function VolumeSlider:render()
 
 	-- Background
 	ass:new_event()
-	ass:append('{\\rDefault\\blur0\\bord0\\1c&H' .. options.background ..
+	ass:append('{\\rDefault\\an7\\blur0\\bord0\\1c&H' .. options.background ..
 		'\\iclip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')}')
 	ass:opacity(math.max(options.volume_opacity - 0.1, 0), visibility)
 	ass:pos(0, 0)
@@ -3665,7 +3665,7 @@ function VolumeSlider:render()
 
 	-- Foreground
 	ass:new_event()
-	ass:append('{\\rDefault\\blur0\\bord0\\1c&H' .. options.foreground .. '}')
+	ass:append('{\\rDefault\\an7\\blur0\\bord0\\1c&H' .. options.foreground .. '}')
 	ass:opacity(options.volume_opacity, visibility)
 	ass:pos(0, 0)
 	ass:draw_start()
