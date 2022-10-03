@@ -3869,28 +3869,24 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 
 		for _, track in ipairs(tracklist) do
 			if track.type == track_type then
-				local hint_values = {
-					track.lang and track.lang:upper() or nil,
-					track['demux-h'] and (track['demux-w'] and track['demux-w'] .. 'x' .. track['demux-h']
-						or track['demux-h'] .. 'p'),
-					track['demux-fps'] and string.format('%.5gfps', track['demux-fps']) or nil,
-					track.codec,
-					track['audio-channels'] and track['audio-channels'] .. ' channels' or nil,
-					track['demux-samplerate'] and string.format('%.3gkHz', track['demux-samplerate'] / 1000) or nil,
-					track.forced and 'forced' or nil,
-					track.default and 'default' or nil,
-					track.external and 'external' or '',
-				}
-				local hint_values_filtered = {}
-				for i = 1, #hint_values do
-					if hint_values[i] then
-						hint_values_filtered[#hint_values_filtered + 1] = hint_values[i]
-					end
+				local hint_values = {}
+				local function h(value) hint_values[#hint_values + 1] = value end
+
+				if track.lang then h(track.lang:upper()) end
+				if track['demux-h'] then
+					h(track['demux-w'] and (track['demux-w'] .. 'x' .. track['demux-h']) or (track['demux-h'] .. 'p'))
 				end
+				if track['demux-fps'] then h(string.format('%.5gfps', track['demux-fps'])) end
+				h(track.codec)
+				if track['audio-channels'] then h(track['audio-channels'] .. ' channels') end
+				if track['demux-samplerate'] then h(string.format('%.3gkHz', track['demux-samplerate'] / 1000)) end
+				if track.forced then h('forced') end
+				if track.default then h('default') end
+				if track.external then h('external') end
 
 				items[#items + 1] = {
 					title = (track.title and track.title or 'Track ' .. track.id),
-					hint = table.concat(hint_values_filtered, ', '):gsub(',%s$', ''),
+					hint = table.concat(hint_values, ', '),
 					value = track.id,
 					active = track.selected,
 				}
