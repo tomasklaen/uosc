@@ -107,21 +107,33 @@ Available commands:
 
 Makes the whole UI visible until you call this command again. Useful for peeking remaining time and such while watching.
 
-There's also a `toggle-elements <elements>` message you can send to toggle one or more specific elements by specifying their names separated by comma:
+There's also a `toggle-elements <ids>` message you can send to toggle one or more specific elements by specifying their names separated by comma:
 
 ```
 script-message-to uosc toggle-elements timeline,speed
 ```
 
-Available element names: `timeline`, `controls`, `volume`, `top-bar`, `speed`
+Available element IDs: `timeline`, `controls`, `volume`, `top_bar`, `speed`
 
 #### `toggle-progress`
 
 Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
 
-#### `flash-{element}`
+#### `flash-ui`
 
-Commands to briefly flash a specified element. Available: `flash-timeline`, `flash-top-bar`, `flash-volume`, `flash-speed`, `flash-pause-indicator`, `decide-pause-indicator`
+Command(s) to briefly flash the whole UI. Elements are revealed for a second and then fade away.
+
+To flash individual elements, you can use: `flash-timeline`, `flash-top-bar`, `flash-volume`, `flash-speed`, `flash-pause-indicator`, `decide-pause-indicator`
+
+There's also a `flash-elements <ids>` message you can use to flash one or more specific elements. Example:
+
+```
+script-message-to uosc flash-elements timeline,speed
+```
+
+Available element IDs: `timeline`, `controls`, `volume`, `top_bar`, `speed`, `pause_indicator`
+
+This is useful in combination with other commands that modify values represented by flashed elements, for example: flashing volume element when changing the volume.
 
 You can use it in your bindings like so:
 
@@ -137,11 +149,11 @@ down         add volume -10; script-binding uosc/flash-volume
 [            add speed -0.25; script-binding uosc/flash-speed
 ]            add speed  0.25; script-binding uosc/flash-speed
 \            set speed 1; script-binding uosc/flash-speed
->            script-binding uosc/next; script-binding uosc/flash-top-bar; script-binding uosc/flash-timeline
-<            script-binding uosc/prev; script-binding uosc/flash-top-bar; script-binding uosc/flash-timeline
+>            script-binding uosc/next; script-message-to uosc flash-elements top_bar,timeline
+<            script-binding uosc/prev; script-message-to uosc flash-elements top_bar,timeline
 ```
 
-Case for `(flash/decide)-pause-indicator`: mpv handles frame stepping forward by briefly resuming the video, which causes pause indicator to flash, and none likes that when they are trying to compare frames. The solution is to enable manual pause indicator (`pause_indicator=manual`) and use `flash-pause-indicator` (for a brief flash) or `decide-pause-indicator` (for a static indicator) as a secondary command to all bindings you wish would display it (see space binding example above).
+Case for `(flash/decide)-pause-indicator`: mpv handles frame stepping forward by briefly resuming the video, which causes pause indicator to flash, and none likes that when they are trying to compare frames. The solution is to enable manual pause indicator (`pause_indicator=manual`) and use `flash-pause-indicator` (for a brief flash) or `decide-pause-indicator` (for a static indicator) as a secondary command to appropriate bindings.
 
 #### `menu`
 

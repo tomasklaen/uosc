@@ -1223,6 +1223,13 @@ function Elements:toggle(ids)
 	for _, element in ipairs(elements) do element:tween_property('min_visibility', element.min_visibility, to) end
 end
 
+-- Flash passed elements.
+---@param ids string[] IDs of elements to peek.
+function Elements:flash(ids)
+	local elements = itable_filter(self.itable, function(element) return itable_index_of(ids, element.id) ~= nil end)
+	for _, element in ipairs(elements) do element:flash() end
+end
+
 ---@param name string Event name.
 function Elements:trigger(name, ...)
 	for _, element in self:ipairs() do element:trigger(name, ...) end
@@ -1528,6 +1535,7 @@ function Element:flash()
 	if options.flash_duration > 0 and (self.proximity < 1 or self._flash_out_timer:is_enabled()) then
 		self:tween_stop()
 		self.forced_visibility = 1
+		request_render()
 		self._flash_out_timer:kill()
 		self._flash_out_timer:resume()
 	end
@@ -4369,6 +4377,12 @@ mp.observe_property('estimated-display-fps', 'native', update_render_delay)
 -- KEY BINDABLE FEATURES
 
 mp.add_key_binding(nil, 'toggle-ui', function() Elements:toggle({'timeline', 'controls', 'volume', 'top_bar'}) end)
+mp.add_key_binding(nil, 'flash-ui', function() Elements:flash({'timeline', 'controls', 'volume', 'top_bar'}) end)
+mp.add_key_binding(nil, 'flash-timeline', function() Elements:flash({'timeline'}) end)
+mp.add_key_binding(nil, 'flash-top-bar', function() Elements:flash({'top_bar'}) end)
+mp.add_key_binding(nil, 'flash-volume', function() Elements:flash({'volume'}) end)
+mp.add_key_binding(nil, 'flash-speed', function() Elements:flash({'speed'}) end)
+mp.add_key_binding(nil, 'flash-pause-indicator', function() Elements:flash({'pause_indicator'}) end)
 mp.add_key_binding(nil, 'toggle-progress', function()
 	local timeline = Elements.timeline
 	if timeline.size_min_override then
@@ -4379,24 +4393,7 @@ mp.add_key_binding(nil, 'toggle-progress', function()
 		timeline:tween_property('size_min_override', timeline.size_min, 0)
 	end
 end)
-mp.add_key_binding(nil, 'flash-timeline', function()
-	Elements.timeline:flash()
-end)
-mp.add_key_binding(nil, 'flash-top-bar', function()
-	Elements.top_bar:flash()
-end)
-mp.add_key_binding(nil, 'flash-volume', function()
-	if Elements.volume then Elements.volume:flash() end
-end)
-mp.add_key_binding(nil, 'flash-speed', function()
-	if Elements.speed then Elements.speed:flash() end
-end)
-mp.add_key_binding(nil, 'flash-pause-indicator', function()
-	Elements.pause_indicator:flash()
-end)
-mp.add_key_binding(nil, 'decide-pause-indicator', function()
-	Elements.pause_indicator:decide()
-end)
+mp.add_key_binding(nil, 'decide-pause-indicator', function() Elements.pause_indicator:decide() end)
 mp.add_key_binding(nil, 'menu', function() toggle_menu_with_items() end)
 mp.add_key_binding(nil, 'menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
 local track_loaders = {
@@ -4738,3 +4735,4 @@ mp.register_script_message('set', function(name, value)
 	Elements:trigger('external_prop_' .. name, utils.parse_json(value))
 end)
 mp.register_script_message('toggle-elements', function(elements) Elements:toggle(split(elements, ' *, *')) end)
+mp.register_script_message('flash-elements', function(elements) Elements:flash(split(elements, ' *, *')) end)
