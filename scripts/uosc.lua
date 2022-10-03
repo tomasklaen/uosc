@@ -3879,6 +3879,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 					track['demux-samplerate'] and string.format('%.3gkHz', track['demux-samplerate'] / 1000) or nil,
 					track.forced and 'forced' or nil,
 					track.default and 'default' or nil,
+					track.external and 'external' or '',
 				}
 				local hint_values_filtered = {}
 				for i = 1, #hint_values do
@@ -3889,7 +3890,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 
 				items[#items + 1] = {
 					title = (track.title and track.title or 'Track ' .. track.id),
-					hint = table.concat(hint_values_filtered, ', '),
+					hint = table.concat(hint_values_filtered, ', '):gsub(',%s$', ''),
 					value = track.id,
 					active = track.selected,
 				}
