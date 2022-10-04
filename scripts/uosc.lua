@@ -285,7 +285,7 @@ local config = {
 	subtitle_types = split(options.subtitle_types, ' *, *'),
 	stream_quality_options = split(options.stream_quality_options, ' *, *'),
 	menu_items = (function()
-		local input_conf_property = mp.get_property_native('input-conf');
+		local input_conf_property = mp.get_property_native('input-conf')
 		local input_conf_path = mp.command_native({
 			'expand-path', input_conf_property == '' and '~~/input.conf' or input_conf_property,
 		})
@@ -533,7 +533,7 @@ end
 function get_point_to_rectangle_proximity(point, rect)
 	local dx = math.max(rect.ax - point.x, 0, point.x - rect.bx)
 	local dy = math.max(rect.ay - point.y, 0, point.y - rect.by)
-	return math.sqrt(dx * dx + dy * dy);
+	return math.sqrt(dx * dx + dy * dy)
 end
 
 ---@param text string|number
@@ -562,7 +562,7 @@ function utf8_iter(string)
 
 		local char_byte = string.byte(string, byte_start)
 
-		byte_count = 1;
+		byte_count = 1
 		if char_byte < 192 then byte_count = 1
 		elseif char_byte < 224 then byte_count = 2
 		elseif char_byte < 240 then byte_count = 3
@@ -1468,7 +1468,7 @@ function Element:get_visibility()
 	if not self.ignores_menu and Menu and Menu:is_open() then return 0 end
 
 	-- Persistency
-	local persist = config[self.id .. '_persistency'];
+	local persist = config[self.id .. '_persistency']
 	if persist and (
 		(persist.audio and state.is_audio)
 			or (persist.paused and state.pause)
@@ -3970,8 +3970,8 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		end
 	else
 		local serialized = serialize_path(directory.dirname)
-		serialized.is_directory = true;
-		serialized.is_to_parent = true;
+		serialized.is_directory = true
+		serialized.is_to_parent = true
 		items[#items + 1] = {title = '..', hint = 'parent dir', value = serialized, separator = true}
 	end
 
@@ -4199,15 +4199,11 @@ if options.pause_on_click_shorter_than > 0 then
 	-- Cycles pause when click is shorter than `options.pause_on_click_shorter_than`
 	-- while filtering out double clicks.
 	local duration_seconds = options.pause_on_click_shorter_than / 1000
-	local last_down_event;
-	local click_timer = mp.add_timeout(duration_seconds, function()
-		mp.command('cycle pause')
-	end);
+	local last_down_event
+	local click_timer = mp.add_timeout(duration_seconds, function() mp.command('cycle pause') end)
 	click_timer:kill()
 	mouse_keybinds[#mouse_keybinds + 1] = {'mbtn_left', function()
-		if mp.get_time() - last_down_event < duration_seconds then
-			click_timer:resume()
-		end
+		if mp.get_time() - last_down_event < duration_seconds then click_timer:resume() end
 	end, function()
 		if click_timer:is_enabled() then
 			click_timer:kill()
