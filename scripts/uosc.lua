@@ -437,6 +437,8 @@ local state = {
 	mouse_bindings_enabled = false,
 	uncached_ranges = nil,
 	cache = nil,
+	cache_buffering = 100,
+	cache_underrun = false,
 	render_delay = config.render_delay,
 	first_real_mouse_move_received = false,
 	playlist_count = 0,
@@ -1006,7 +1008,7 @@ end
 ---@param y number
 ---@param align number
 ---@param value string|number
----@param opts {size: number; font?: string; color?: string; bold?: boolean; italic?: boolean; border?: number; border_color?: string; shadow?: number; shadow_color?: string; wrap?: number; opacity?: number; clip?: string}
+---@param opts {size: number; font?: string; color?: string; bold?: boolean; italic?: boolean; border?: number; border_color?: string; shadow?: number; shadow_color?: string; rotate?: number; wrap?: number; opacity?: number; clip?: string}
 function ass_mt:txt(x, y, align, value, opts)
 	local border_size = opts.border or 0
 	local shadow_size = opts.shadow or 0
@@ -1019,6 +1021,8 @@ function ass_mt:txt(x, y, align, value, opts)
 	if opts.bold or options.font_bold then tags = tags .. '\\b1' end
 	-- italic
 	if opts.italic then tags = tags .. '\\i1' end
+	-- rotate
+	if opts.rotate then tags = tags .. '\\frz' .. opts.rotate end
 	-- wrap
 	if opts.wrap then tags = tags .. '\\q' .. opts.wrap end
 	-- border
@@ -2687,6 +2691,36 @@ function PauseIndicator:render()
 	return ass
 end
 
+--[[ BufferingIndicator ]]
+
+---@class BufferingIndicator : Element
+local BufferingIndicator = class(Element)
+
+function BufferingIndicator:new() return Class.new(self) --[[@as BufferingIndicator]] end
+function BufferingIndicator:init()
+	Element.init(self, 'buffer_indicator')
+	self.ignores_menu = true
+	self.enabled = false
+end
+
+function BufferingIndicator:decide_enabled()
+	self.enabled = state.cache_underrun or state.cache_buffering and state.cache_buffering < 100
+	if self.enabled then Elements.curtain:register(self)
+	else Elements.curtain:unregister(self) end
+end
+
+function BufferingIndicator:on_prop_cache_buffering() self:decide_enabled() end
+function BufferingIndicator:on_prop_cache_underrun() self:decide_enabled() end
+
+function BufferingIndicator:render()
+	local ass = assdraw.ass_new()
+	local progress = state.render_last_time * 2 % 1
+	local opts = {rotate = progress * -360, color = fg}
+	ass:icon(display.width / 2, display.height / 2, state.fullormaxed and 120 or 90, 'autorenew', opts)
+	request_render()
+	return ass
+end
+
 --[[ Timeline ]]
 
 ---@class Timeline : Element
@@ -3757,8 +3791,8 @@ end
 
 ---@param id string
 function Curtain:register(id)
-	self.dependents[#self.dependents] = id
-	self:tween_property('opacity', self.opacity, 1)
+	self.dependents[#self.dependents + 1] = id
+	if #self.dependents == 1 then self:tween_property('opacity', self.opacity, 1) end
 end
 
 ---@param id string
@@ -3785,6 +3819,7 @@ Timeline:new()
 if options.controls and options.controls ~= 'never' then Controls:new() end
 if itable_index_of({'left', 'right'}, options.volume) then Volume:new() end
 Curtain:new()
+BufferingIndicator:new()
 
 --[[ MENUS ]]
 
@@ -4321,6 +4356,7 @@ mp.observe_property('osd-dimensions', 'native', function(name, val)
 end)
 mp.observe_property('display-hidpi-scale', 'native', create_state_setter('hidpi_scale', update_display_dimensions))
 mp.observe_property('cache', 'native', create_state_setter('cache'))
+mp.observe_property('cache-buffering-state', 'number', create_state_setter('cache_buffering'))
 mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_stream', function()
 	Elements:trigger('dispositions')
 end))
@@ -4328,6 +4364,7 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	local cached_ranges, bof, eof, uncached_ranges = nil, nil, nil, nil
 	if cache_state then
 		cached_ranges, bof, eof = cache_state['seekable-ranges'], cache_state['bof-cached'], cache_state['eof-cached']
+		set_state('cache_underrun', cache_state['underrun'])
 	else cached_ranges = {} end
 
 	if not (state.duration and (#cached_ranges > 0 or state.cache == 'yes' or
