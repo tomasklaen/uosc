@@ -1023,7 +1023,7 @@ function ass_mt:txt(x, y, align, value, opts)
 	-- shadow
 	tags = tags .. '\\shad' .. shadow_size
 	-- colors
-	tags = tags .. '\\1c&H' .. (opts.color or options.foreground)
+	tags = tags .. '\\1c&H' .. (opts.color or options.background_text)
 	if border_size > 0 then tags = tags .. '\\3c&H' .. (opts.border_color or options.background) end
 	if shadow_size > 0 then tags = tags .. '\\4c&H' .. (opts.shadow_color or options.background) end
 	-- opacity
@@ -2965,8 +2965,7 @@ function Timeline:render()
 
 		-- Cursor line
 		-- 0.5 to switch when the pixel is half filled in
-		local color = ((fax - 0.5) < cursor.x and cursor.x < (fbx + 0.5)) and
-			options.background or options.foreground
+		local color = ((fax - 0.5) < cursor.x and cursor.x < (fbx + 0.5)) and options.background or options.foreground
 		local ax, ay, bx, by = cursor.x - 0.5, fay, cursor.x + 0.5, fby
 		ass:rect(ax, ay, bx, by, {color = color, opacity = 0.2})
 		local tooltip_anchor = {ax = ax, ay = ay, bx = bx, by = by}
@@ -3151,7 +3150,7 @@ function TopBar:render()
 				color = options.foreground, opacity = visibility, radius = 2,
 			})
 			ass:txt(title_ax + (bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, {
-				size = self.font_size, wrap = 2, color = options.background, opacity = visibility,
+				size = self.font_size, wrap = 2, color = options.foreground_text, opacity = visibility,
 			})
 			title_ax = bx + bg_margin
 		end
@@ -3165,8 +3164,9 @@ function TopBar:render()
 				color = options.background, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 			})
 			ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, text, {
-				size = self.font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
-				opacity = visibility, clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
+				size = self.font_size, wrap = 2, color = options.background_text,
+				border = 1, border_color = options.background, opacity = visibility,
+				clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
 			})
 			title_ay = by + 1
 		end
@@ -3182,8 +3182,9 @@ function TopBar:render()
 				color = options.background, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 			})
 			ass:txt(ax + padding, title_ay + height / 2, 4, '{\\i1}' .. text .. '{\\i0}', {
-				size = font_size, wrap = 2, color = options.foreground, border = 1, border_color = options.background,
-				opacity = visibility * 0.8, clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by),
+				size = font_size, wrap = 2, color = options.background_text,
+				border = 1, border_color = options.background, opacity = visibility * 0.8,
+				clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by),
 			})
 		end
 	end
@@ -3700,11 +3701,11 @@ function VolumeSlider:render()
 	if not state.has_audio then
 		local fg_100_path = create_nudged_path(options.volume_border)
 		local texture_opts = {
-			size = 200, color = options.foreground, opacity = visibility * 0.1, anchor_x = ax,
+			size = 200, color = 'ffffff', opacity = visibility * 0.1, anchor_x = ax,
 			clip = '\\clip(' .. fg_100_path.scale .. ',' .. fg_100_path.text .. ')',
 		}
 		ass:texture(ax, ay, bx, by, 'a', texture_opts)
-		texture_opts.color = options.background
+		texture_opts.color = '000000'
 		texture_opts.anchor_x = ax + texture_opts.size / 28
 		ass:texture(ax, ay, bx, by, 'a', texture_opts)
 	end
