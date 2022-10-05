@@ -195,37 +195,21 @@ Open file menu. Browsing starts in current file directory, or user directory whe
 
 Opens `playlist` menu when playlist exists, or `open-file` menu otherwise.
 
-#### `next`
+#### `next`, `prev`
 
-Open next item in playlist, or file in current directory when there is no playlist.
+Open next/previous item in playlist, or file in current directory when there is no playlist. Enable `loop-playlist` to loop around.
 
-#### `prev`
+#### `first`, `last`
 
-Open previous item in playlist, or file in current directory when there is no playlist.
+Open first/last item in playlist, or file in current directory when there is no playlist.
 
-#### `first`
+#### `next-file`, `prev-file`
 
-Open first item in playlist, or file in current directory when there is no playlist.
+Open next/prev file in current directory. Enable `loop-playlist` to loop around
 
-#### `last`
+#### `first-file`, `last-file`
 
-Open last item in playlist, or file in current directory when there is no playlist.
-
-#### `next-file`
-
-Open next file in current directory. Set `directory_navigation_loops=yes` to open first file when at the end.
-
-#### `prev-file`
-
-Open previous file in current directory. Set `directory_navigation_loops=yes` to open last file when at the start.
-
-#### `first-file`
-
-Open first file in current directory.
-
-#### `last-file`
-
-Open last file in current directory.
+Open first/last file in current directory.
 
 #### `delete-file-next`
 
