@@ -3757,8 +3757,8 @@ end
 
 ---@param id string
 function Curtain:register(id)
-	self.dependents[#self.dependents] = id
-	self:tween_property('opacity', self.opacity, 1)
+	self.dependents[#self.dependents + 1] = id
+	if #self.dependents == 1 then self:tween_property('opacity', self.opacity, 1) end
 end
 
 ---@param id string
