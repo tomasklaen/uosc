@@ -1677,14 +1677,14 @@ function Menu:init(data, callback, opts)
 
 	self:tween_property('opacity', 0, 1)
 	self:enable_key_bindings()
-	Elements.curtain:fadein()
+	Elements.curtain:register('menu')
 	if self.opts.on_open then self.opts.on_open() end
 end
 
 function Menu:destroy()
 	Element.destroy(self)
 	self:disable_key_bindings()
-	if not self.is_being_replaced then Elements.curtain:fadeout() end
+	if not self.is_being_replaced then Elements.curtain:unregister('menu') end
 	if self.opts.on_close then self.opts.on_close() end
 end
 
@@ -2362,8 +2362,6 @@ function Speed:on_wheel_up() mp.set_property_native('speed', self:speed_step(sta
 function Speed:on_wheel_down() mp.set_property_native('speed', self:speed_step(state.speed, false)) end
 
 function Speed:render()
-	if not self.dragging and (Elements.curtain.opacity > 0) then return end
-
 	local visibility = self:get_visibility()
 	local opacity = self.dragging and 1 or visibility
 
@@ -3753,10 +3751,21 @@ function Curtain:new() return Class.new(self) --[[@as Curtain]] end
 function Curtain:init()
 	Element.init(self, 'curtain', {ignores_menu = true})
 	self.opacity = 0
+	---@type string[]
+	self.dependents = {}
 end
 
-function Curtain:fadeout() self:tween_property('opacity', self.opacity, 0) end
-function Curtain:fadein() self:tween_property('opacity', self.opacity, 1) end
+---@param id string
+function Curtain:register(id)
+	self.dependents[#self.dependents] = id
+	self:tween_property('opacity', self.opacity, 1)
+end
+
+---@param id string
+function Curtain:unregister(id)
+	self.dependents = itable_filter(self.dependents, function(item) return item ~= id end)
+	if #self.dependents == 0 then self:tween_property('opacity', self.opacity, 0) end
+end
 
 function Curtain:render()
 	if self.opacity == 0 or options.curtain_opacity == 0 then return end
