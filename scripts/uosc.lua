@@ -1329,25 +1329,6 @@ end
 
 --[[ RENDERING ]]
 
--- Request that render() is called.
--- The render is then either executed immediately, or rate-limited if it was
--- called a small time ago.
-function request_render()
-	if state.render_timer == nil then
-		state.render_timer = mp.add_timeout(0, render)
-	end
-
-	if not state.render_timer:is_enabled() then
-		local now = mp.get_time()
-		local timeout = state.render_delay - (now - state.render_last_time)
-		if timeout < 0 then
-			timeout = 0
-		end
-		state.render_timer.timeout = timeout
-		state.render_timer:resume()
-	end
-end
-
 function render()
 	state.render_last_time = mp.get_time()
 
@@ -1376,6 +1357,18 @@ function render()
 	osd:update()
 
 	update_margins()
+end
+
+-- Request that render() is called.
+-- The render is then either executed immediately, or rate-limited if it was
+-- called a small time ago.
+state.render_timer = mp.add_timeout(0, render)
+state.render_timer:kill()
+function request_render()
+	if state.render_timer:is_enabled() then return end
+	local timeout = math.max(0, state.render_delay - (mp.get_time() - state.render_last_time))
+	state.render_timer.timeout = timeout
+	state.render_timer:resume()
 end
 
 --[[ CLASSES ]]
