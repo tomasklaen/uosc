@@ -160,6 +160,7 @@ local defaults = {
 	timeline_border = 1,
 	timeline_step = 5,
 	timeline_chapters_opacity = 0.8,
+	timeline_drag_seek_keyframes = false,
 
 	controls = 'menu,gap,subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
@@ -2785,7 +2786,10 @@ function Timeline:get_time_at_x(x)
 	return state.duration * progress
 end
 
-function Timeline:set_from_cursor() mp.commandv('seek', self:get_time_at_x(cursor.x), 'absolute+exact') end
+---@param fast? boolean
+function Timeline:set_from_cursor(fast)
+	mp.commandv('seek', self:get_time_at_x(cursor.x), fast and 'absolute+keyframes' or 'absolute+exact')
+end
 function Timeline:clear_thumbnail() mp.commandv('script-message-to', 'thumbfast', 'clear') end
 
 function Timeline:on_mbtn_left_down()
@@ -2804,7 +2808,7 @@ function Timeline:on_global_mouse_leave()
 	self:clear_thumbnail()
 end
 function Timeline:on_global_mouse_move()
-	if self.pressed then self:set_from_cursor() end
+	if self.pressed then self:set_from_cursor(options.timeline_drag_seek_keyframes) end
 end
 function Timeline:on_wheel_up() mp.commandv('seek', options.timeline_step) end
 function Timeline:on_wheel_down() mp.commandv('seek', -options.timeline_step) end
