@@ -1014,7 +1014,7 @@ function ass_mt:txt(x, y, align, value, opts)
 	-- font size
 	tags = tags .. '\\fs' .. opts.size
 	-- bold
-	if opts.bold or options.font_bold then tags = tags .. '\\b1' end
+	if opts.bold or (opts.bold == nil and options.font_bold) then tags = tags .. '\\b1' end
 	-- italic
 	if opts.italic then tags = tags .. '\\i1' end
 	-- rotate
@@ -1125,7 +1125,7 @@ function ass_mt:texture(ax, ay, bx, by, char, opts)
 	for i = 1, math.ceil(height / tile_size), 1 do lines = lines .. (lines == '' and '' or '\\N') .. line end
 	self:txt(
 		x, y, 7, lines,
-		{font = 'uosc_textures', size = tile_size, color = opts.color, opacity = opacity, clip = clip})
+		{font = 'uosc_textures', size = tile_size, color = opts.color, bold = false, opacity = opacity, clip = clip})
 end
 
 --[[ ELEMENTS COLLECTION ]]
