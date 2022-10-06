@@ -160,7 +160,6 @@ local defaults = {
 	timeline_border = 1,
 	timeline_step = 5,
 	timeline_chapters_opacity = 0.8,
-	timeline_drag_seek_keyframes = false,
 
 	controls = 'menu,gap,subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
@@ -2807,8 +2806,17 @@ function Timeline:on_global_mouse_leave()
 	self.pressed = false
 	self:clear_thumbnail()
 end
+
+Timeline.seek_timer = mp.add_timeout(0.05, function() Elements.timeline:set_from_cursor() end)
+Timeline.seek_timer:kill()
 function Timeline:on_global_mouse_move()
-	if self.pressed then self:set_from_cursor(options.timeline_drag_seek_keyframes) end
+	if self.pressed then
+		if self.width / state.duration < 10 then
+			self:set_from_cursor(true)
+			self.seek_timer:kill()
+			self.seek_timer:resume()
+		else self:set_from_cursor() end
+	end
 end
 function Timeline:on_wheel_up() mp.commandv('seek', options.timeline_step) end
 function Timeline:on_wheel_down() mp.commandv('seek', -options.timeline_step) end
