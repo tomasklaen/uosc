@@ -2481,7 +2481,7 @@ function Button:render()
 	if is_hover_or_active then
 		ass:rect(self.ax, self.ay, self.bx, self.by, {
 			color = self.active and background or foreground, radius = 2,
-			opacity = visibility * (self.active and 0.8 or 0.3),
+			opacity = visibility * (self.active and 1 or 0.3),
 		})
 	end
 
@@ -2876,7 +2876,7 @@ function Timeline:render()
 	ass:new_event()
 	ass:pos(0, 0)
 	ass:append('{\\rDefault\\an7\\blur0\\bord0\\1c&H' .. bg .. '}')
-	ass:opacity(math.max(options.timeline_opacity - 0.1, 0))
+	ass:opacity(options.timeline_opacity)
 	ass:draw_start()
 	ass:rect_cw(bax, bay, fax, bby) --left of progress
 	ass:rect_cw(fbx, bay, bbx, bby) --right of progress
@@ -3012,7 +3012,7 @@ function Timeline:render()
 			local thumb_y = round(tooltip_anchor.ay * scale_y - thumb_y_margin - thumb_height)
 			local ax, ay = (thumb_x - border) / scale_x, (thumb_y - border) / scale_y
 			local bx, by = (thumb_x + thumb_width + border) / scale_x, (thumb_y + thumb_height + border) / scale_y
-			ass:rect(ax, ay, bx, by, {color = fg, border = 1, border_color = bg, radius = 3, opacity = 0.8})
+			ass:rect(ax, ay, bx, by, {color = fg, border = 1, border_color = bg, radius = 3})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
 			tooltip_anchor.ax, tooltip_anchor.bx, tooltip_anchor.ay = ax, bx, ay
 		end
@@ -3685,7 +3685,7 @@ function VolumeSlider:render()
 	ass:new_event()
 	ass:append('{\\rDefault\\an7\\blur0\\bord0\\1c&H' .. bg ..
 		'\\iclip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')}')
-	ass:opacity(math.max(options.volume_opacity - 0.1, 0), visibility)
+	ass:opacity(options.volume_opacity, visibility)
 	ass:pos(0, 0)
 	ass:draw_start()
 	ass:append(bg_path.text)
