@@ -2795,23 +2795,24 @@ function Timeline:get_time_at_x(x)
 	return state.duration * progress
 end
 
-function Timeline:set_from_cursor()
-	mp.commandv('seek', self:get_time_at_x(cursor.x), 'absolute+exact')
-end
+function Timeline:set_from_cursor() mp.commandv('seek', self:get_time_at_x(cursor.x), 'absolute+exact') end
+function Timeline:clear_thumbnail() mp.commandv('script-message-to', 'thumbfast', 'clear') end
 
 function Timeline:on_mbtn_left_down()
 	self.pressed = true
 	self:set_from_cursor()
 end
-
 function Timeline:on_prop_duration() self:decide_enabled() end
 function Timeline:on_prop_time() self:decide_enabled() end
 function Timeline:on_prop_border() self:update_dimensions() end
 function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
-function Timeline:on_mouse_leave() mp.commandv('script-message-to', 'thumbfast', 'clear') end
+function Timeline:on_mouse_leave() self:clear_thumbnail() end
 function Timeline:on_global_mbtn_left_up() self.pressed = false end
-function Timeline:on_global_mouse_leave() self.pressed = false end
+function Timeline:on_global_mouse_leave()
+	self.pressed = false
+	self:clear_thumbnail()
+end
 function Timeline:on_global_mouse_move()
 	if self.pressed then self:set_from_cursor() end
 end
