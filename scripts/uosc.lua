@@ -2709,16 +2709,8 @@ function BufferingIndicator:decide_enabled()
 	local cache = state.cache_underrun or state.cache_buffering and state.cache_buffering < 100
 	local player = state.core_idle and not state.eof_reached
 	if self.enabled then
-		if not player or (state.pause and not cache) then
-			self.enabled = false
-			Elements.curtain:unregister(self)
-		end
-	else
-		if player and cache and state.uncached_ranges then
-			self.enabled = true
-			Elements.curtain:register(self)
-		end
-	end
+		if not player or (state.pause and not cache) then self.enabled = false end
+	elseif player and cache and state.uncached_ranges then self.enabled = true end
 end
 
 function BufferingIndicator:on_prop_pause() self:decide_enabled() end
@@ -2730,8 +2722,9 @@ function BufferingIndicator:on_prop_cache_underrun() self:decide_enabled() end
 
 function BufferingIndicator:render()
 	local ass = assdraw.ass_new()
+	ass:rect(0, 0, display.width, display.height, {color = bg, opacity = 0.3})
 	local progress = state.render_last_time * 2 % 1
-	local opacity = (Elements.menu and not Elements.menu.is_closing) and 0.1 or nil
+	local opacity = (Elements.menu and not Elements.menu.is_closing) and 0.3 or nil
 	local opts = {rotate = progress * -360, color = fg, opacity = opacity}
 	ass:icon(display.width / 2, display.height / 2, state.fullormaxed and 120 or 90, 'autorenew', opts)
 	request_render()
@@ -3830,13 +3823,13 @@ end
 --[[ CREATE STATIC ELEMENTS ]]
 
 WindowBorder:new()
+BufferingIndicator:new()
 PauseIndicator:new()
 TopBar:new()
 Timeline:new()
 if options.controls and options.controls ~= 'never' then Controls:new() end
 if itable_index_of({'left', 'right'}, options.volume) then Volume:new() end
 Curtain:new()
-BufferingIndicator:new()
 
 --[[ MENUS ]]
 
