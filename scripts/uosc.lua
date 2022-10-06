@@ -1063,7 +1063,7 @@ end
 ---@param ay number
 ---@param bx number
 ---@param by number
----@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; clip?: string, radius?: number}
+---@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; border_opacity?: number; clip?: string, radius?: number}
 function ass_mt:rect(ax, ay, bx, by, opts)
 	opts = opts or {}
 	local border_size = opts.border or 0
@@ -1072,13 +1072,10 @@ function ass_mt:rect(ax, ay, bx, by, opts)
 	tags = tags .. '\\bord' .. border_size
 	-- colors
 	tags = tags .. '\\1c&H' .. (opts.color or fg)
-	if border_size > 0 then
-		tags = tags .. '\\3c&H' .. (opts.border_color or bg)
-	end
+	if border_size > 0 then tags = tags .. '\\3c&H' .. (opts.border_color or bg) end
 	-- opacity
-	if opts.opacity then
-		tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity))
-	end
+	if opts.opacity then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity)) end
+	if opts.border_opacity then tags = tags .. string.format('\\3a&H%X&', opacity_to_alpha(opts.border_opacity)) end
 	-- clip
 	if opts.clip then
 		tags = tags .. opts.clip
@@ -3013,7 +3010,7 @@ function Timeline:render()
 			local thumb_y = round(tooltip_anchor.ay * scale_y - thumb_y_margin - thumb_height)
 			local ax, ay = (thumb_x - border) / scale_x, (thumb_y - border) / scale_y
 			local bx, by = (thumb_x + thumb_width + border) / scale_x, (thumb_y + thumb_height + border) / scale_y
-			ass:rect(ax, ay, bx, by, {color = fg, border = 1, border_color = bg, radius = 3})
+			ass:rect(ax, ay, bx, by, {color = bg, border = 1, border_color = fg, border_opacity = 0.1, radius = 2})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
 			tooltip_anchor.ax, tooltip_anchor.bx, tooltip_anchor.ay = ax, bx, ay
 		end
