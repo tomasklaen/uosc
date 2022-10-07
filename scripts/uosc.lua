@@ -4210,22 +4210,25 @@ if options.pause_on_click_shorter_than > 0 then
 	-- Cycles pause when click is shorter than `options.pause_on_click_shorter_than`
 	-- while filtering out double clicks.
 	local duration_seconds = options.pause_on_click_shorter_than / 1000
-	local last_down_event
-	local click_timer = mp.add_timeout(duration_seconds, function() mp.command('cycle pause') end)
-	click_timer:kill()
-	local keybind = {{'mbtn_left', function()
-		if mp.get_time() - last_down_event < duration_seconds then click_timer:resume() end
-	end, function()
-		if click_timer:is_enabled() then
-			click_timer:kill()
-			last_down_event = 0
+	local last_click = 0
+	mp.add_key_binding('mbtn_left', 'uosc_mouse', function(tab)
+		if tab.event == 'up' then
+			local delta = mp.get_time() - last_click
+			-- in windowed mode the up event comes shortly after the down event, ignore
+			if delta > 0.01 and delta < duration_seconds then
+				last_click = 0
+				mp.command('cycle pause')
+			end
 		else
-			last_down_event = mp.get_time()
+			last_click = mp.get_time()
 		end
-	end,
-	}}
-	mp.set_key_bindings(keybind, 'mouse_movement', 'force')
-	mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
+	end, {complex = true})
+	mp.observe_property('mouse-pos', 'native', function(_, mouse)
+		if mouse.hover and mp.get_time() - last_click < duration_seconds then
+			last_click = 0
+			mp.command('cycle pause')
+		end
+	end)
 end
 
 mp.observe_property('mouse-pos', 'native', function(_, mouse)
