@@ -4120,24 +4120,17 @@ function set_state(name, value)
 	Elements:trigger('prop_' .. name, value)
 end
 
-function update_cursor_position()
-	cursor.x, cursor.y = mp.get_mouse_pos()
-
+function update_cursor_position(x, y)
 	-- mpv reports initial mouse position on linux as (0, 0), which always
 	-- displays the top bar, so we hardcode cursor position as infinity until
 	-- we receive a first real mouse move event with coordinates other than 0,0.
 	if not state.first_real_mouse_move_received then
-		if cursor.x > 0 and cursor.y > 0 then
-			state.first_real_mouse_move_received = true
-		else
-			cursor.x = infinity
-			cursor.y = infinity
-		end
+		if x > 0 and y > 0 then state.first_real_mouse_move_received = true
+		else x, y = infinity, infinity end
 	end
 
 	-- add 0.5 to be in the middle of the pixel
-	cursor.x = (cursor.x + 0.5) / display.scale_x
-	cursor.y = (cursor.y + 0.5) / display.scale_y
+	cursor.x, cursor.y = (x + 0.5) / display.scale_x, (y + 0.5) / display.scale_y
 
 	Elements:update_proximities()
 	request_render()
@@ -4159,21 +4152,14 @@ function handle_mouse_leave()
 	Elements:trigger('global_mouse_leave')
 end
 
-function handle_mouse_enter()
+function handle_mouse_enter(x, y)
 	cursor.hidden = false
-	update_cursor_position()
+	update_cursor_position(x, y)
 	Elements:trigger('global_mouse_enter')
 end
 
-function handle_mouse_move()
-	-- Handle case when we are in cursor hidden state but not left the actual
-	-- window (i.e. when autohide simulates mouse_leave).
-	if cursor.hidden then
-		handle_mouse_enter()
-		return
-	end
-
-	update_cursor_position()
+function handle_mouse_move(x, y)
+	update_cursor_position(x, y)
 	Elements:proximity_trigger('mouse_move')
 	request_render()
 
@@ -4227,33 +4213,37 @@ end
 --[[ HOOKS]]
 
 -- Mouse movement key binds
-local mouse_keybinds = {
-	{'mouse_move', handle_mouse_move},
-	{'mouse_leave', handle_mouse_leave},
-	{'mouse_enter', handle_mouse_enter},
-}
 if options.pause_on_click_shorter_than > 0 then
 	-- Cycles pause when click is shorter than `options.pause_on_click_shorter_than`
 	-- while filtering out double clicks.
 	local duration_seconds = options.pause_on_click_shorter_than / 1000
-	local last_down_event
-	local click_timer = mp.add_timeout(duration_seconds, function() mp.command('cycle pause') end)
-	click_timer:kill()
-	mouse_keybinds[#mouse_keybinds + 1] = {'mbtn_left', function()
-		if mp.get_time() - last_down_event < duration_seconds then click_timer:resume() end
-	end, function()
-		if click_timer:is_enabled() then
-			click_timer:kill()
-			last_down_event = 0
+	local last_click = 0
+	mp.add_key_binding('mbtn_left', 'uosc_mouse', function(tab)
+		if tab.event == 'up' then
+			local delta = mp.get_time() - last_click
+			-- in windowed mode the up event comes shortly after the down event, ignore
+			if delta > 0.01 and delta < duration_seconds then
+				last_click = 0
+				mp.command('cycle pause')
+			end
 		else
-			last_down_event = mp.get_time()
+			last_click = mp.get_time()
 		end
-	end,
-	}
+	end, {complex = true})
+	mp.observe_property('mouse-pos', 'native', function(_, mouse)
+		if mouse.hover and mp.get_time() - last_click < duration_seconds then
+			last_click = 0
+			mp.command('cycle pause')
+		end
+	end)
 end
-mp.set_key_bindings(mouse_keybinds, 'mouse_movement', 'force')
-mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 
+mp.observe_property('mouse-pos', 'native', function(_, mouse)
+	if mouse.hover then
+		if cursor.hidden then handle_mouse_enter(mouse.x, mouse.y) end
+		handle_mouse_move(mouse.x, mouse.y)
+	else handle_mouse_leave() end
+end)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 function update_title(title_template)
 	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
