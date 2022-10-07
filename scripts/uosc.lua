@@ -436,6 +436,8 @@ local state = {
 	cache = nil,
 	cache_buffering = 100,
 	cache_underrun = false,
+	core_idle = false,
+	eof_reached = false,
 	render_delay = config.render_delay,
 	first_real_mouse_move_received = false,
 	playlist_count = 0,
@@ -2690,18 +2692,26 @@ function BufferingIndicator:init()
 end
 
 function BufferingIndicator:decide_enabled()
-	self.enabled = state.cache_underrun or state.cache_buffering and state.cache_buffering < 100
-	if self.enabled then Elements.curtain:register(self)
-	else Elements.curtain:unregister(self) end
+	local cache = state.cache_underrun or state.cache_buffering and state.cache_buffering < 100
+	local player = state.core_idle and not state.eof_reached
+	if self.enabled then
+		if not player or (state.pause and not cache) then self.enabled = false end
+	elseif player and cache and state.uncached_ranges then self.enabled = true end
 end
 
+function BufferingIndicator:on_prop_pause() self:decide_enabled() end
+function BufferingIndicator:on_prop_core_idle() self:decide_enabled() end
+function BufferingIndicator:on_prop_eof_reached() self:decide_enabled() end
+function BufferingIndicator:on_prop_uncached_ranges() self:decide_enabled() end
 function BufferingIndicator:on_prop_cache_buffering() self:decide_enabled() end
 function BufferingIndicator:on_prop_cache_underrun() self:decide_enabled() end
 
 function BufferingIndicator:render()
 	local ass = assdraw.ass_new()
+	ass:rect(0, 0, display.width, display.height, {color = bg, opacity = 0.3})
 	local progress = state.render_last_time * 2 % 1
-	local opts = {rotate = progress * -360, color = fg}
+	local opacity = (Elements.menu and not Elements.menu.is_closing) and 0.3 or nil
+	local opts = {rotate = progress * -360, color = fg, opacity = opacity}
 	ass:icon(display.width / 2, display.height / 2, state.fullormaxed and 120 or 90, 'autorenew', opts)
 	request_render()
 	return ass
@@ -3803,13 +3813,13 @@ end
 --[[ CREATE STATIC ELEMENTS ]]
 
 WindowBorder:new()
+BufferingIndicator:new()
 PauseIndicator:new()
 TopBar:new()
 Timeline:new()
 if options.controls and options.controls ~= 'never' then Controls:new() end
 if itable_index_of({'left', 'right'}, options.volume) then Volume:new() end
 Curtain:new()
-BufferingIndicator:new()
 
 --[[ MENUS ]]
 
@@ -4397,6 +4407,8 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 end)
 mp.observe_property('display-fps', 'native', observe_display_fps)
 mp.observe_property('estimated-display-fps', 'native', update_render_delay)
+mp.observe_property('eof-reached', 'native', create_state_setter('eof_reached'))
+mp.observe_property('core-idle', 'native', create_state_setter('core_idle'))
 
 -- KEY BINDABLE FEATURES
 
