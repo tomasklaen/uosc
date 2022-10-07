@@ -804,6 +804,7 @@ function decide_navigation_in_list(list, current_index, delta)
 
 	if state.shuffle then
 		local new_index = current_index
+		math.randomseed(os.time())
 		while current_index == new_index do new_index = math.random(#list) end
 		return new_index, list[new_index]
 	end
