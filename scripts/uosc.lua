@@ -994,8 +994,7 @@ end
 ---@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; clip?: string; align?: number}
 function ass_mt:icon(x, y, size, name, opts)
 	opts = opts or {}
-	opts.size = size
-	opts.font = 'MaterialIconsRound-Regular'
+	opts.font, opts.size, opts.bold = 'MaterialIconsRound-Regular', size, false
 	self:txt(x, y, opts.align or 5, name, opts)
 end
 
