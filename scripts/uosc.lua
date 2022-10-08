@@ -2803,7 +2803,9 @@ end
 
 ---@param fast? boolean
 function Timeline:set_from_cursor(fast)
-	mp.commandv('seek', self:get_time_at_x(cursor.x), fast and 'absolute+keyframes' or 'absolute+exact')
+	if state.time and state.duration then
+		mp.commandv('seek', self:get_time_at_x(cursor.x), fast and 'absolute+keyframes' or 'absolute+exact')
+	end
 end
 function Timeline:clear_thumbnail() mp.commandv('script-message-to', 'thumbfast', 'clear') end
 
