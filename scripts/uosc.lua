@@ -205,7 +205,9 @@ local defaults = {
 	ui_scale = 1,
 	font_scale = 1,
 	text_border = 1.2,
-	pause_on_click_shorter_than = 0,
+	pause_on_click_shorter_than = 0, -- deprecated by below
+	click_threshold = 0,
+	click_command = 'cycle pause; script-binding uosc/flash-pause-indicator',
 	flash_duration = 1000,
 	proximity_in = 40,
 	proximity_out = 120,
@@ -233,6 +235,10 @@ opt.read_options(options, 'uosc')
 -- Normalize values
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
 if options.chapter_ranges:sub(1, 4) == '^op|' then options.chapter_ranges = defaults.chapter_ranges end
+if options.pause_on_click_shorter_than > 0 and options.click_threshold == 0 then
+	msg.warn('`pause_on_click_shorter_than` is deprecated. Use `click_threshold` and `click_command` instead.')
+	options.click_threshold = options.pause_on_click_shorter_than
+end
 -- Ensure required environment configuration
 if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
 -- Color shorthands
@@ -4218,13 +4224,13 @@ function observe_display_fps(name, fps)
 	end
 end
 
---[[ HOOKS]]
+--[[ HOOKS ]]
 
--- Mouse movement key binds
-if options.pause_on_click_shorter_than > 0 then
-	-- Cycles pause when click is shorter than `options.pause_on_click_shorter_than`
+-- Click detection
+if options.click_threshold > 0 then
+	-- Executes custom command for clicks shorter than `options.click_threshold`
 	-- while filtering out double clicks.
-	local duration_seconds = options.pause_on_click_shorter_than / 1000
+	local duration_seconds = options.click_threshold / 1000
 	local last_click = 0
 	mp.add_key_binding('mbtn_left', 'uosc_mouse', function(tab)
 		if tab.event == 'up' then
@@ -4232,7 +4238,7 @@ if options.pause_on_click_shorter_than > 0 then
 			-- in windowed mode the up event comes shortly after the down event, ignore
 			if delta > 0.01 and delta < duration_seconds then
 				last_click = 0
-				mp.command('cycle pause')
+				mp.command(options.click_command)
 			end
 		else
 			last_click = mp.get_time()
@@ -4241,7 +4247,7 @@ if options.pause_on_click_shorter_than > 0 then
 	mp.observe_property('mouse-pos', 'native', function(_, mouse)
 		if mouse.hover and mp.get_time() - last_click < duration_seconds then
 			last_click = 0
-			mp.command('cycle pause')
+			mp.command(options.click_command)
 		end
 	end)
 end
