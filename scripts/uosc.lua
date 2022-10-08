@@ -4232,26 +4232,22 @@ end
 if options.click_threshold > 0 then
 	-- Executes custom command for clicks shorter than `options.click_threshold`
 	-- while filtering out double clicks.
-	local duration_seconds = options.click_threshold / 1000
-	local last_click = 0
-	mp.add_key_binding('mbtn_left', 'uosc_mouse', function(tab)
-		if tab.event == 'up' then
-			local delta = mp.get_time() - last_click
-			-- in windowed mode the up event comes shortly after the down event, ignore
-			if delta > 0.01 and delta < duration_seconds then
-				last_click = 0
-				mp.command(options.click_command)
-			end
-		else
-			last_click = mp.get_time()
-		end
-	end, {complex = true})
-	mp.observe_property('mouse-pos', 'native', function(_, mouse)
-		if mouse.hover and mp.get_time() - last_click < duration_seconds then
-			last_click = 0
-			mp.command(options.click_command)
-		end
+	local click_time = options.click_threshold / 1000
+	local doubleclick_time = mp.get_property_native('input-doubleclick-time') / 1000
+	local last_down, last_up = 0, 0
+	local click_timer = mp.add_timeout(math.max(click_time, doubleclick_time), function()
+		local delta = last_up - last_down
+		if delta > 0 and delta < click_time and delta > 0.02 then mp.command(options.click_command) end
 	end)
+	click_timer:kill()
+	mp.set_key_bindings({{'mbtn_left',
+		function() last_up = mp.get_time() end,
+		function()
+			last_down = mp.get_time()
+			if click_timer:is_enabled() then click_timer:kill() else click_timer:resume() end
+		end,
+	},}, 'mouse_movement', 'force')
+	mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 end
 
 mp.observe_property('mouse-pos', 'native', function(_, mouse)
