@@ -4275,7 +4275,10 @@ end)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 function update_title(title_template)
 	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
-	set_state('title', mp.command_native({'expand-text', title_template}))
+	local title = mp.command_native({'expand-text', title_template})
+	if state.title ~= title then
+		set_state('title', title)
+	end
 end
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
@@ -4288,9 +4291,9 @@ mp.register_event('end-file', function(event)
 		handle_file_end()
 	end
 end)
-mp.observe_property('title', 'string', function(_, title)
+mp.register_idle(function()
 	-- Don't change title if there is currently none
-	if state.title then update_title(title) end
+	if state.title then update_title(mp.get_property_native('title')) end
 end)
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
 	-- Create a file-end event that triggers right before file ends
