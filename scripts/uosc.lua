@@ -2565,6 +2565,7 @@ function CycleButton:init(id, props)
 	-- Built in state props
 	if is_state_prop then
 		self['on_prop_' .. self.prop] = function(self, value) self.handle_change(self.prop, value) end
+		self.handle_change(self.prop, state[self.prop])
 	else
 		mp.observe_property(self.prop, 'string', self.handle_change)
 	end
