@@ -4229,6 +4229,14 @@ function observe_display_fps(name, fps)
 	end
 end
 
+function select_current_chapter()
+	local current_chapter
+	if state.time and state.chapters then
+		_, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, true)
+	end
+	set_state('current_chapter', current_chapter)
+end
+
 --[[ HOOKS ]]
 
 -- Click detection
@@ -4298,13 +4306,7 @@ mp.observe_property('playback-time', 'number', create_state_setter('time', funct
 	end
 
 	update_human_times()
-
-	-- Select current chapter
-	local current_chapter
-	if state.time and state.chapters then
-		_, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, true)
-	end
-	set_state('current_chapter', current_chapter)
+	select_current_chapter()
 end))
 mp.observe_property('duration', 'number', create_state_setter('duration', update_human_times))
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
@@ -4338,6 +4340,7 @@ mp.observe_property('chapter-list', 'native', function(_, chapters)
 	set_state('chapters', chapters)
 	set_state('chapter_ranges', chapter_ranges)
 	set_state('has_chapter', #chapters > 0)
+	select_current_chapter()
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('border', 'bool', create_state_setter('border'))
