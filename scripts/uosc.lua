@@ -2819,7 +2819,10 @@ function Timeline:on_prop_border() self:update_dimensions() end
 function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
 function Timeline:on_mouse_leave() self:clear_thumbnail() end
-function Timeline:on_global_mbtn_left_up() self.pressed = false end
+function Timeline:on_global_mbtn_left_up()
+	self.pressed = false
+	self:clear_thumbnail()
+end
 function Timeline:on_global_mouse_leave()
 	self.pressed = false
 	self:clear_thumbnail()
