@@ -452,6 +452,7 @@ local state = {
 	hidpi_scale = 1,
 }
 local thumbnail = {width = 0, height = 0, disabled = false}
+local external = {} -- Properties set by external scripts
 
 --[[ HELPERS ]]
 
@@ -2544,12 +2545,14 @@ function CycleButton:init(id, props)
 	self.current_state_index = 1
 	self.on_click = function()
 		local new_state = self.states[self.current_state_index + 1] or self.states[1]
-		if is_state_prop then
-			local new_value = new_state.value
-			if itable_index_of({'yes', 'no'}, new_state.value) then new_value = new_value == 'yes' end
+		local new_value = new_state.value
+		if self.owner then
+			mp.commandv('script-message-to', self.owner, 'set', self.prop, new_value)
+		elseif is_state_prop then
+			if itable_index_of({'yes', 'no'}, new_value) then new_value = new_value == 'yes' end
 			set_state(self.prop, new_value)
 		else
-			mp.set_property(self.prop, new_state.value)
+			mp.set_property(self.prop, new_value)
 		end
 	end
 
@@ -2562,8 +2565,12 @@ function CycleButton:init(id, props)
 		request_render()
 	end
 
-	-- Built in state props
-	if is_state_prop then
+	local prop_parts = split(self.prop, '@')
+	if #prop_parts == 2 then -- External prop with a script owner
+		self.prop, self.owner = prop_parts[1], prop_parts[2]
+		self['on_external_prop_' .. self.prop] = function(_, value) self.handle_change(self.prop, value) end
+		self.handle_change(self.prop, external[self.prop])
+	elseif is_state_prop then -- uosc's state props
 		self['on_prop_' .. self.prop] = function(self, value) self.handle_change(self.prop, value) end
 		self.handle_change(self.prop, state[self.prop])
 	else
@@ -4778,7 +4785,8 @@ mp.register_script_message('thumbfast-info', function(json)
 	end
 end)
 mp.register_script_message('set', function(name, value)
-	Elements:trigger('external_prop_' .. name, utils.parse_json(value))
+	external[name] = value
+	Elements:trigger('external_prop_' .. name, value)
 end)
 mp.register_script_message('toggle-elements', function(elements) Elements:toggle(split(elements, ' *, *')) end)
 mp.register_script_message('flash-elements', function(elements) Elements:flash(split(elements, ' *, *')) end)

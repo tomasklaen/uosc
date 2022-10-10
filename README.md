@@ -511,7 +511,7 @@ end)
 
 ### `set <prop> <value>`
 
-Tell **uosc** to set an external property to this value. Currently, this is only used to display control button badges:
+Tell **uosc** to set an external property to this value. Currently, this is only used to set/display control button active state and badges:
 
 In your script, set the value of `foo` to `1`.
 
@@ -523,6 +523,32 @@ This property can now be used as a control button badge by prefixing it with `@`
 
 ```
 controls=command:icon_name:command_name#@foo?My foo button
+```
+
+It can also be used as a `toggle` or `cycle` property name by specifying its owner with a `@{script_name}` suffix:
+
+```
+toggle:icon_name:foo@script_name
+cycle:icon_name:foo@script_name:no/yes!
+```
+
+If user clicks this `toggle` or `cycle` button, uosc will send this `set` message back to the script owner:
+
+```lua
+mp.commandv('script-message-to', 'script_name', 'set', 'foo', new_value)
+```
+
+You can then listen to this message, do what you need with the new value, and update uosc state accordingly:
+
+```lua
+-- Send initial value so that the button has a correct active state
+mp.commandv('script-message-to', 'uosc', 'set', 'foo', 'yes')
+-- Listen for changes coming from `toggle` or `cycle` button
+mp.register_script_message('set', function(prop, value)
+    -- ... do something with `value`
+    -- Update uosc external prop
+    mp.commandv('script-message-to', 'uosc', 'set', 'foo', value)
+end)
 ```
 
 ## Why _uosc_?
