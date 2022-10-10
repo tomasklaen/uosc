@@ -4271,7 +4271,7 @@ end)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 function update_title(title_template)
 	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
-	set_state('title', mp.command_native({'expand-text', title_template}))
+	set_state('title', ass_escape(mp.command_native({'expand-text', title_template})))
 end
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
