@@ -3221,12 +3221,12 @@ function TopBar:render()
 			local font_size = self.font_size * 0.8
 			local height = font_size * 1.5
 			local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
-			local ax, by = title_ax + padding / 2, title_ay + height
+			local by = title_ay + height
 			local bx = math.min(max_bx, title_ax + text_width_estimate(text, font_size) + padding * 2)
-			ass:rect(ax, title_ay, bx, by, {
+			ass:rect(title_ax, title_ay, bx, by, {
 				color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 			})
-			ass:txt(ax + padding, title_ay + height / 2, 4, '{\\i1}' .. text .. '{\\i0}', {
+			ass:txt(title_ax + padding, title_ay + height / 2, 4, '{\\i1}' .. text .. '{\\i0}', {
 				size = font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility * 0.8,
 				clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by),
 			})
