@@ -4297,7 +4297,7 @@ function observe_title()
 	-- Idle is needed as some template variables might not be present until everything else initialized
 	mp.unregister_idle(observe_title)
 	local hot_keywords = {'time'}
-	local timer = mp.add_periodic_timer(0.9, function() print('updating') update_title(mp.get_property_native('title')) end)
+	local timer = mp.add_periodic_timer(0.9, function() update_title(mp.get_property_native('title')) end)
 	timer:kill()
 	mp.observe_property('title', 'string', function(_, title)
 		-- Don't change title if there is currently none
