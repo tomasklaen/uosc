@@ -3438,7 +3438,9 @@ function Controls:register_badge_updater(badge, element)
 			return count
 		end
 	else
-		if prop:sub(1, 1) == '@' then prop, is_external_prop = prop:sub(2), true end
+		local parts = split(prop, '@')
+		-- Support both new `prop@owner` and old `@prop` syntaxes
+		if #parts > 1 then prop, is_external_prop = parts[1] ~= '' and parts[1] or parts[2], true end
 		serializer = function(value) return value and (type(value) == 'table' and #value or tostring(value)) or nil end
 	end
 
