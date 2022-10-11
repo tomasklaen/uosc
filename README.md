@@ -304,23 +304,22 @@ Define a folder without defining any of its contents:
 
 Example context menu:
 
-This is the default pre-configured menu if none is defined in your `input.conf`, but with added shortcuts.
+This is the default pre-configured menu if none is defined in your `input.conf`, but with added shortcuts. To both pause & move the window with left mouse button, so that you can have the menu on the right one, enable `click_threshold` in `uosc.conf` (see default `uosc.conf` for example/docs).
 
 ```
 menu        script-binding uosc/menu
 mbtn_right  script-binding uosc/menu
-o           script-binding uosc/open-file          #! Open file
-P           script-binding uosc/playlist           #! Playlist
-C           script-binding uosc/chapters           #! Chapters
-S           script-binding uosc/subtitles          #! Subtitle tracks
-A           script-binding uosc/audio              #! Audio tracks
+s           script-binding uosc/subtitles          #! Subtitles
+a           script-binding uosc/audio              #! Audio tracks
 q           script-binding uosc/stream-quality     #! Stream quality
+p           script-binding uosc/items              #! Playlist
+c           script-binding uosc/chapters           #! Chapters
 >           script-binding uosc/next               #! Navigation > Next
 <           script-binding uosc/prev               #! Navigation > Prev
 alt+>       script-binding uosc/delete-file-next   #! Navigation > Delete file & Next
 alt+<       script-binding uosc/delete-file-prev   #! Navigation > Delete file & Prev
 alt+esc     script-binding uosc/delete-file-quit   #! Navigation > Delete file & Quit
-alt+s       script-binding uosc/load-subtitles     #! Utils > Load subtitles
+o           script-binding uosc/open-file          #! Navigation > Open file
 #           set video-aspect-override "-1"         #! Utils > Aspect ratio > Default
 #           set video-aspect-override "16:9"       #! Utils > Aspect ratio > 16:9
 #           set video-aspect-override "4:3"        #! Utils > Aspect ratio > 4:3

@@ -249,21 +249,20 @@ local fgt, bgt = serialize_rgba(options.foreground_text).color, serialize_rgba(o
 
 local function create_default_menu()
 	return {
-		{title = 'Open file', value = 'script-binding uosc/open-file'},
-		{title = 'Playlist', value = 'script-binding uosc/playlist'},
-		{title = 'Chapters', value = 'script-binding uosc/chapters'},
-		{title = 'Subtitle tracks', value = 'script-binding uosc/subtitles'},
+		{title = 'Subtitles', value = 'script-binding uosc/subtitles'},
 		{title = 'Audio tracks', value = 'script-binding uosc/audio'},
 		{title = 'Stream quality', value = 'script-binding uosc/stream-quality'},
+		{title = 'Playlist', value = 'script-binding uosc/items'},
+		{title = 'Chapters', value = 'script-binding uosc/chapters'},
 		{title = 'Navigation', items = {
 			{title = 'Next', hint = 'playlist or file', value = 'script-binding uosc/next'},
 			{title = 'Prev', hint = 'playlist or file', value = 'script-binding uosc/prev'},
 			{title = 'Delete file & Next', value = 'script-binding uosc/delete-file-next'},
 			{title = 'Delete file & Prev', value = 'script-binding uosc/delete-file-prev'},
 			{title = 'Delete file & Quit', value = 'script-binding uosc/delete-file-quit'},
+			{title = 'Open file', value = 'script-binding uosc/open-file'},
 		},},
 		{title = 'Utils', items = {
-			{title = 'Load subtitles', value = 'script-binding uosc/load-subtitles'},
 			{title = 'Aspect ratio', items = {
 				{title = 'Default', value = 'set video-aspect-override "-1"'},
 				{title = '16:9', value = 'set video-aspect-override "16:9"'},
