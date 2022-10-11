@@ -4,7 +4,7 @@
 		Feature-rich minimalist proximity-based UI for <a href="https://mpv.io">MPV player</a>.
 	</p>
 	<br/>
-	<a href="https://user-images.githubusercontent.com/47283320/192066616-4a51b114-4383-437d-9124-03f4d9937427.webm"><img src="https://user-images.githubusercontent.com/47283320/193610246-11c75221-d516-4a37-aac0-9ab37d827b99.png" alt="Preview screenshot"></a>
+	<a href="https://user-images.githubusercontent.com/47283320/195073006-bfa72bcc-89d2-4dc7-b8dc-f3c13273910c.webm"><img src="https://user-images.githubusercontent.com/47283320/195072935-44d591d9-00bb-4a55-8795-9cf81f65d397.png" alt="Preview screenshot"></a>
 </div>
 
 Most notable features:
