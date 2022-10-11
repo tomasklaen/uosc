@@ -1,5 +1,5 @@
---[[ uosc 4.2.0 - 2022-Oct-02 | https://github.com/tomasklaen/uosc ]]
-local uosc_version = '4.2.0'
+--[[ uosc 4.3.0 - 2022-Oct-11 | https://github.com/tomasklaen/uosc ]]
+local uosc_version = '4.3.0'
 
 local assdraw = require('mp.assdraw')
 local opt = require('mp.options')
