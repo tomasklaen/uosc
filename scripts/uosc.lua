@@ -654,6 +654,24 @@ function wrap_text(text, target_line_length)
 	return table.concat(lines, '\n'), max_length, #lines
 end
 
+---Extracts the properties used by property expansion of that string.
+---@param str string
+---@param res { [string] : boolean } | nil
+---@return { [string] : boolean }
+local function get_expansion_props(str, res)
+	res = res or {}
+	for str in str:gmatch('%$(%b{})') do
+		local name, str = str:match('^{[?!]?=?([^:]+):?(.*)}$')
+		if name then
+			local s = name:find('==') or nil
+			if s then name = name:sub(0, s - 1) end
+			res[name] = true
+			if str and str ~= '' then get_expansion_props(str, res) end
+		end
+	end
+	return res
+end
+
 -- Escape a string for verbatim display on the OSD
 ---@param str string
 function ass_escape(str)
@@ -4290,30 +4308,31 @@ mp.observe_property('mouse-pos', 'native', function(_, mouse)
 	else handle_mouse_leave() end
 end)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
-function update_title(title_template)
-	if title_template:sub(-6) == ' - mpv' then title_template = title_template:sub(1, -7) end
-	set_state('title', ass_escape(mp.command_native({'expand-text', title_template})))
-end
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
-	update_title(mp.get_property_native('title'))
 end)
 mp.register_event('end-file', function(event)
-	set_state('title', nil)
 	if event.reason == 'eof' then
 		file_end_timer:kill()
 		handle_file_end()
 	end
 end)
 do
-	local hot_keywords = {'time', 'percent'}
-	local timer = mp.add_periodic_timer(0.9, function() update_title(mp.get_property_native('title')) end)
-	timer:kill()
+	local template = nil
+	function update_title()
+		if template:sub(-6) == ' - mpv' then template = template:sub(1, -7) end
+		-- escape ASS, and strip newlines and trailing slashes and trim whitespace
+		local t = mp.command_native({'expand-text', template}):gsub('\\n', ' '):gsub('[\\%s]+$', ''):gsub('^%s+', '')
+		set_state('title', ass_escape(t))
+	end
 	mp.observe_property('title', 'string', function(_, title)
-		update_title(title)
-		-- Enable periodic updates for templates with hot variables
-		local is_hot = itable_find(hot_keywords, function(var) return string.find(title or '', var) ~= nil end)
-		if is_hot then timer:resume() else timer:kill() end
+		mp.unobserve_property(update_title)
+		template = title
+		local props = get_expansion_props(title)
+		for prop, _ in pairs(props) do
+			mp.observe_property(prop, 'native', update_title)
+		end
+		if not next(props) then update_title() end
 	end)
 end
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
