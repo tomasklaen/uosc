@@ -1230,10 +1230,18 @@ end
 -- Toggles passed elements' min visibilities between 0 and 1.
 ---@param ids string[] IDs of elements to peek.
 function Elements:toggle(ids)
-	local elements = itable_filter(self.itable, function(element) return itable_index_of(ids, element.id) ~= nil end)
-	local all_visible = itable_find(elements, function(element) return element.min_visibility ~= 1 end) == nil
-	local to = all_visible and 0 or 1
-	for _, element in ipairs(elements) do element:tween_property('min_visibility', element.min_visibility, to) end
+	local has_invisible = itable_find(ids, function(id) return Elements[id] and Elements[id].min_visibility ~= 1 end)
+	self:set_min_visibility(has_invisible and 1 or 0, ids)
+end
+
+-- Set (animate) elements' min visibilities to passed value.
+---@param visibility number 0-1 floating point.
+---@param ids string[] IDs of elements to peek.
+function Elements:set_min_visibility(visibility, ids)
+	for _, id in ipairs(ids) do
+		local element = Elements[id]
+		if element then element:tween_property('min_visibility', element.min_visibility, visibility) end
+	end
 end
 
 -- Flash passed elements.
@@ -4802,4 +4810,9 @@ mp.register_script_message('set', function(name, value)
 	Elements:trigger('external_prop_' .. name, value)
 end)
 mp.register_script_message('toggle-elements', function(elements) Elements:toggle(split(elements, ' *, *')) end)
+mp.register_script_message('set-min-visibility', function(visibility, elements)
+	local fraction = tonumber(visibility)
+	local ids = split(elements and elements ~= '' and elements or 'timeline,controls,volume,top_bar', ' *, *')
+	if fraction then Elements:set_min_visibility(clamp(0, fraction, 1), ids) end
+end)
 mp.register_script_message('flash-elements', function(elements) Elements:flash(split(elements, ' *, *')) end)

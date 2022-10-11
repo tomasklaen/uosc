@@ -115,6 +115,8 @@ script-message-to uosc toggle-elements timeline,speed
 
 Available element IDs: `timeline`, `controls`, `volume`, `top_bar`, `speed`
 
+Under the hood, `toggle-ui` is using `toggle-elements`, and that is in turn using the `set-min-visibility <visibility> [<ids>]` message. `<visibility>` is a `0-1` floating point. Leave out `<ids>` to set it for all elements.
+
 #### `toggle-progress`
 
 Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
