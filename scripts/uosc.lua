@@ -303,11 +303,16 @@ local config = {
 		local by_id = {}
 
 		for line in io.lines(input_conf_path) do
-			local key, command, title = string.match(line, '%s*([%S]+)%s+(.-)%s+#!%s*(.-)%s*$')
-			if not key then
-				key, command, title = string.match(line, '%s*([%S]+)%s+(.-)%s+#menu:%s*(.-)%s*$')
+			local key, command, comment = string.match(line, '%s*([%S]+)%s+(.-)%s+#%s*(.-)%s*$')
+			local title = ''
+			if comment then
+				local comments = split(comment, '#')
+				local titles = itable_filter(comments, function(v, i) return v:match('^!') or v:match('^menu:') end)
+				if titles and #titles > 0 then
+					title = titles[1]:match('^!%s*(.*)%s*') or titles[1]:match('^menu:%s*(.*)%s*')
+				end
 			end
-			if key then
+			if title ~= '' then
 				local is_dummy = key:sub(1, 1) == '#'
 				local submenu_id = ''
 				local target_menu = main_menu
