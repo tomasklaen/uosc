@@ -225,6 +225,8 @@ local defaults = {
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
 	media_types = '3g2,3gp,aac,aiff,ape,apng,asf,au,avi,avif,bmp,dsf,f4v,flac,flv,gif,h264,h265,j2k,jp2,jfif,jpeg,jpg,jxl,m2ts,m4a,m4v,mid,midi,mj2,mka,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rm,rmvb,spx,svg,tak,tga,tta,tif,tiff,ts,vob,wav,weba,webm,webp,wma,wmv,wv,y4m',
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
+	monospace = false,
+	font_width_scale = 1,
 	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
 	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
@@ -564,7 +566,7 @@ end
 function text_length(text)
 	if not text or text == '' then return 0 end
 	local text_length = 0
-	for _, _, length in utf8_iter(tostring(text)) do text_length = text_length + length end
+	for char, length in utf8_iter(tostring(text)) do text_length = text_length + length end
 	return text_length
 end
 
@@ -587,8 +589,9 @@ function utf8_iter(string)
 
 		local start = byte_start
 		byte_start = byte_start + byte_count
+		local byte_end, length = start + byte_count - 1, (byte_count > 2 and 2 or 1)
 
-		return start, byte_count, (byte_count > 2 and 2 or 1)
+		return string:sub(start, byte_end), length, start, byte_end, byte_count
 	end
 end
 
@@ -603,9 +606,7 @@ function wrap_text(text, target_line_length)
 	local before_line_start = 0
 	local before_removed_length = 0
 	local max_length = 0
-	for char_start, count, char_length in utf8_iter(text) do
-		local char_end = char_start + count - 1
-		local char = text.sub(text, char_start, char_end)
+	for char, char_length, char_start, char_end in utf8_iter(text) do
 		local can_wrap = false
 		for _, c in ipairs(wrap_at_chars) do
 			if char == c then
@@ -1368,6 +1369,46 @@ end
 
 --[[ RENDERING ]]
 
+if options.monospace then
+	function char_width(char) return 0.6 end
+else
+	-- Character width table for characters that differ from 0.5
+	local char_width_table = {
+		{0.91, {'@'}},
+		{0.9, {'—'}},
+		{0.85, {'W'}},
+		{0.8, {'%'}},
+		{0.75, {'m', 'G', 'M'}},
+		{0.7, {'O', 'Ó', 'Ô', 'Q'}},
+		{0.65, {'w', 'C', 'Č', 'D', 'Ď', 'H', 'N', 'Ň', 'R', 'Ř', 'U', 'Ú', '└'}},
+		{0.6, {'A', 'Á', 'Ä', 'B', 'E', 'É', 'K', 'P', 'S', 'Š', 'V', 'X', 'Y', 'Ý', '&'}},
+		{0.55, {'F', 'T', 'Ť', 'Z', 'Ž'}},
+		{0.53, {'~', '+', '=', '<', '>'}},
+		{0.455, {'c', 'Č', 'k', 's', 'š', 'v', 'x', 'y', 'ý', 'z', 'ž', 'J', '1'}},
+		{0.42, {'^', '*'}},
+		{0.35, {'*'}},
+		{0.3, {'r', 'ř', '(', ')', '{', '}', '-', '`'}},
+		{0.255, {' ', 't', 'ť', 'I', 'Í', '!', ',', '.', ';', ':', '[', ']', '/', '\\'}},
+		{0.24, {'f', '|'}},
+		{0.2, {'i', 'í', 'j', 'l', 'ĺ', 'ľ', "'"}},
+	}
+	local char_width_map = {}
+	for _, width_chars in ipairs(char_width_table) do
+		for _, char in ipairs(width_chars[2]) do char_width_map[char] = width_chars[1] end
+	end
+	function char_width(char) return char_width_map[char] end
+end
+
+---@param text string|number
+function text_width_ratio(text)
+	if not text or text == '' then return 0 end
+	local text_width = 0
+	for char, length in utf8_iter(tostring(text)) do
+		text_width = text_width + (char_width(char) or length > 1 and 0.575 or 0.5)
+	end
+	return text_width * options.font_width_scale
+end
+
 function render()
 	state.render_last_time = mp.get_time()
 
@@ -1381,6 +1422,26 @@ function render()
 				ass:new_event()
 				ass:merge(result)
 			end
+		end
+	end
+
+	-- Text width estimation tests
+	do
+		local tests = {
+			'qwretyuiopasdfghjklzxcvbnm',
+			'QWERTYUIOPASDFGHJKLZXCVBNM',
+			'└└└└└└└└└└└└└└└└└└└└└└└└└└└└└└',
+			'!@#$%^&*()_+-={}:"|<>?[];\'\\.,/',
+			'|                                    |',
+			'オープニングエンディングオープニングエンディング',
+			'在线中文输入在线中文输入在线中文输入',
+		}
+		local font_size = 16
+		local left, box_height, step = 20, math.ceil(font_size * 1.5), math.ceil(font_size * 1.5) + 4
+		for index, text in ipairs(tests) do
+			local top = 40 + index * step
+			ass:rect(left, top, left + text_width_ratio(text) * font_size, top + box_height, {color = '000000'})
+			ass:txt(left, top + box_height / 2, 4, text, {size = font_size, color = 'ffffff', border = 1})
 		end
 	end
 
