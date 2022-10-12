@@ -205,6 +205,7 @@ local defaults = {
 	ui_scale = 1,
 	font_scale = 1,
 	text_border = 1.2,
+	text_width_estimation = true,
 	pause_on_click_shorter_than = 0, -- deprecated by below
 	click_threshold = 0,
 	click_command = 'cycle pause; script-binding uosc/flash-pause-indicator',
@@ -225,7 +226,6 @@ local defaults = {
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
 	media_types = '3g2,3gp,aac,aiff,ape,apng,asf,au,avi,avif,bmp,dsf,f4v,flac,flv,gif,h264,h265,j2k,jp2,jfif,jpeg,jpg,jxl,m2ts,m4a,m4v,mid,midi,mj2,mka,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rm,rmvb,spx,svg,tak,tga,tta,tif,tiff,ts,vob,wav,weba,webm,webp,wma,wmv,wv,y4m',
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
-	font_height_to_letter_width_ratio = 0.5,
 	default_directory = '~/',
 	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
 	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
@@ -550,108 +550,421 @@ function get_point_to_rectangle_proximity(point, rect)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
----@param text string|number
----@param font_size number
-function text_width_estimate(text, font_size) return text_length_width_estimate(text_length(text), font_size) end
+do
+	-- https://en.wikipedia.org/wiki/Unicode_block
+	---@alias CodePointRange {[1]: integer; [2]: integer}
 
----@param length number
----@param font_size number
-function text_length_width_estimate(length, font_size)
-	return length * font_size * options.font_height_to_letter_width_ratio
-end
+	---@type CodePointRange[]
+	local zero_width_blocks = {
+		{0x0000, 0x001F}, -- C0
+		{0x007F, 0x009F}, -- Delete + C1
+		{0x034F, 0x034F}, -- combining grapheme joiner
+		{0x061C, 0x061C}, -- Arabic Letter	Strong
+		{0x200B, 0x200F}, -- {zero-width space, zero-width non-joiner, zero-width joiner, left-to-right mark, right-to-left mark}
+		{0x2028, 0x202E}, -- {line separator, paragraph separator, Left-to-Right Embedding, Right-to-Left Embedding, Pop Directional Format, Left-to-Right Override, Right-to-Left Override}
+		{0x2060, 0x2060}, -- word joiner
+		{0x2066, 0x2069}, -- {Left-to-Right Isolate, Right-to-Left Isolate, First Strong Isolate, Pop Directional Isolate}
+		{0xFEFF, 0xFEFF}, -- zero-width non-breaking space
+		-- Some other characters can also be combined https://en.wikipedia.org/wiki/Combining_character
+		{0x0300, 0x036F}, -- Combining Diacritical Marks	 0 BMP	Inherited
+		{0x1AB0, 0x1AFF}, -- Combining Diacritical Marks Extended	 0 BMP	Inherited
+		{0x1DC0, 0x1DFF}, -- Combining Diacritical Marks Supplement	 0 BMP	Inherited
+		{0x20D0, 0x20FF}, -- Combining Diacritical Marks for Symbols	 0 BMP	Inherited
+		{0xFE20, 0xFE2F}, -- Combining Half Marks	 0 BMP	Cyrillic (2 characters), Inherited (14 characters)
+		-- Egyptian Hieroglyph Format Controls and Shorthand format Controls
+		{0x13430, 0x1345F}, -- Egyptian Hieroglyph Format Controls	 1 SMP	Egyptian Hieroglyphs
+		{0x1BCA0, 0x1BCAF}, -- Shorthand Format Controls	 1 SMP	Common
+		-- not sure how to deal with those https://en.wikipedia.org/wiki/Spacing_Modifier_Letters
+		{0x02B0, 0x02FF}, -- Spacing Modifier Letters	 0 BMP	Bopomofo (2 characters), Latin (14 characters), Common (64 characters)
+	}
 
----@param text string|number
-function text_length(text)
-	if not text or text == '' then return 0 end
-	local text_length = 0
-	for _, _, length in utf8_iter(tostring(text)) do text_length = text_length + length end
-	return text_length
-end
+	-- All characters have the same width as the first one
+	---@type CodePointRange[]
+	local same_width_blocks = {
+		{0x3400, 0x4DBF}, -- CJK Unified Ideographs Extension A	 0 BMP	Han
+		{0x4E00, 0x9FFF}, -- CJK Unified Ideographs	 0 BMP	Han
+		{0x20000, 0x2A6DF}, -- CJK Unified Ideographs Extension B	 2 SIP	Han
+		{0x2A700, 0x2B73F}, -- CJK Unified Ideographs Extension C	 2 SIP	Han
+		{0x2B740, 0x2B81F}, -- CJK Unified Ideographs Extension D	 2 SIP	Han
+		{0x2B820, 0x2CEAF}, -- CJK Unified Ideographs Extension E	 2 SIP	Han
+		{0x2CEB0, 0x2EBEF}, -- CJK Unified Ideographs Extension F	 2 SIP	Han
+		{0x2F800, 0x2FA1F}, -- CJK Compatibility Ideographs Supplement	 2 SIP	Han
+		{0x30000, 0x3134F}, -- CJK Unified Ideographs Extension G	 3 TIP	Han
+		{0x31350, 0x323AF}, -- CJK Unified Ideographs Extension H	 3 TIP	Han
+	}
 
-function utf8_iter(string)
-	local byte_start, byte_count = 1, 1
+	---Get byte count of utf-8 character at index i in str
+	---@param str string
+	---@param i integer?
+	---@return integer
+	local function utf8_char_bytes(str, i)
+		local char_byte = str:byte(i)
+		if char_byte < 0xC0 then return 1
+		elseif char_byte < 0xE0 then return 2
+		elseif char_byte < 0xF0 then return 3
+		elseif char_byte < 0xF8 then return 4
+		else return 1 end
+	end
 
-	return function()
-		if #string < byte_start then return nil end
+	---Creates an iterator for an utf-8 encoded string
+	---Iterates over utf-8 characters instead of bytes
+	---@param str string
+	---@return fun(): string
+	local function utf8_iter(str)
+		local byte_start = 1
+		return function()
+			local start = byte_start
+			if #str < start then return nil end
+			local byte_count = utf8_char_bytes(str, start)
+			byte_start = start + byte_count
+			return start, str:sub(start, start + byte_count - 1)
+		end
+	end
 
-		local char_byte = string.byte(string, byte_start)
+	---Extract Unicode code point from utf-8 character at index i in str
+	---@param str string
+	---@param i integer
+	---@return integer
+	local function utf8_to_unicode(str, i)
+		local byte_count = utf8_char_bytes(str, i)
+		local char_byte = str:byte(i)
+		local unicode = char_byte
+		if byte_count ~= 1 then
+			local shift = 2 ^ (8 - byte_count)
+			char_byte = char_byte - math.floor(0xFF / shift) * shift
+			unicode = char_byte * (2 ^ 6) ^ (byte_count - 1)
+		end
+		for j = 2, byte_count do
+			char_byte = str:byte(i + j - 1) - 0x80
+			unicode = unicode + char_byte * (2 ^ 6) ^ (byte_count - j)
+		end
+		return round(unicode)
+	end
 
-		byte_count = 1
-		if char_byte < 192 then byte_count = 1
-		elseif char_byte < 224 then byte_count = 2
-		elseif char_byte < 240 then byte_count = 3
-		elseif char_byte < 248 then byte_count = 4
-		elseif char_byte < 252 then byte_count = 5
-		elseif char_byte < 254 then byte_count = 6
+	---Convert Unicode code point to utf-8 string
+	---@param unicode integer
+	---@return string?
+	local function unicode_to_utf8(unicode)
+		if unicode < 0x80 then return string.char(unicode)
+		else
+			local byte_count
+			if unicode < 0x800 then byte_count = 2
+			elseif unicode < 0x10000 then byte_count = 3
+			elseif unicode < 0x110000 then byte_count = 4
+			else return end -- too big
+
+			local res = {}
+			local shift = 2 ^ 6
+			local after_shift = unicode
+			for _ = byte_count, 2, -1 do
+				local before_shift = after_shift
+				after_shift = math.floor(before_shift / shift)
+				table.insert(res, 1, before_shift - after_shift * shift + 0x80)
+			end
+			shift = 2 ^ (8 - byte_count)
+			table.insert(res, 1, after_shift + math.floor(0xFF / shift) * shift)
+			---@diagnostic disable-next-line: deprecated
+			return string.char(unpack(res))
+		end
+	end
+
+	local text_osd = mp.create_osd_overlay("ass-events")
+	text_osd.compute_bounds, text_osd.hidden = true, true
+	---@type integer, integer
+	local osd_width, osd_height = 100, 100
+	mp.observe_property('osd-dimensions', 'native', function (_, dim)
+		if dim then osd_width, osd_height = dim.w, dim.h end
+	end)
+
+	---@param ass_text string
+	---@return integer, integer, integer, integer
+	local function measure_bounds(ass_text)
+		osd_width, osd_height = mp.get_osd_size()
+		text_osd.res_x, text_osd.res_y = osd_width, osd_height
+		text_osd.data = ass_text
+		local res = text_osd:update()
+		return res.x0, res.y0, res.x1, res.y1
+	end
+
+	---@type {wrap: integer; bold: boolean; italic: boolean, rotate: number; size: number}
+	local bounds_opts = {wrap = 2, bold = false, italic = false, rotate = 0, size = 0}
+
+	---Measure text width and normalize to a font size of 1
+	---text has to be ass safe
+	---@param text string
+	---@param size number
+	---@param bold boolean
+	---@param italic boolean
+	---@param horizontal boolean
+	---@return number, integer
+	local function normalized_text_width(text, size, bold, italic, horizontal)
+		bounds_opts.bold, bounds_opts.italic, bounds_opts.rotate = bold, italic, horizontal and 0 or -90
+		local x1, y1 = nil, nil
+		size = size / 0.8
+		-- prevent endless loop
+		local repetitions_left = 5
+		repeat
+			size = size * 0.8
+			bounds_opts.size = size
+			local ass = assdraw.ass_new()
+			ass:txt(0, 0, horizontal and 7 or 1, text, bounds_opts)
+			_, _, x1, y1 = measure_bounds(ass.text)
+			repetitions_left = repetitions_left - 1
+			-- make sure nothing got clipped
+		until (x1 and x1 < osd_width and y1 < osd_height) or repetitions_left == 0
+		local width = (repetitions_left == 0 and not x1) and 0 or (horizontal and x1 or y1)
+		return width / size, horizontal and osd_width or osd_height
+	end
+
+	---Estimates character length based on utf8 byte count
+	---1 character length is roughly the size of a latin character
+	---@param char string
+	---@return number
+	local function char_length(char)
+		return #char > 2 and 2 or 1
+	end
+
+	---Estimates string length based on utf8 byte count
+	---Note: Making a string in the iterator with the character is a waste here,
+	---but as this function is only used when measureing whole string widths it's fine
+	---@param text string
+	---@return number
+	local function text_length(text)
+		if not text or text == '' then return 0 end
+		local text_length = 0
+		for _, char in utf8_iter(tostring(text)) do text_length = text_length + char_length(char) end
+		return text_length
+	end
+
+	local width_length_ratio = 0.5
+	---@type {[boolean]: {[string]: {[1]: number, [2]: integer}}}
+	local char_width_cache = {}
+
+	---Finds the best orientation of text on screen and returns the estimated max size
+	---and if the text should be drawn horizontally
+	---@param text string
+	---@return number, boolean
+	local function fit_on_screen(text)
+		local estimated_width = text_length(text) * width_length_ratio
+		if osd_width >= osd_height then
+			-- Fill the screen as much as we can, bigger is more accurate.
+			return math.min(osd_width / estimated_width, osd_height), true
+		else
+			return math.min(osd_height / estimated_width, osd_width), false
+		end
+	end
+
+	---Gets next stage from cache
+	---@param cache {[any]: table}
+	---@param value any
+	local function get_cache_stage(cache, value)
+		local stage = cache[value]
+		if not stage then
+			stage = {}
+			cache[value] = stage
+		end
+		return stage
+	end
+
+	---Is measured resolution sufficient
+	---@param px integer
+	---@return boolean
+	local function no_remeasure_required(px)
+		return px >= 800 or (px * 1.1 >= osd_width and px * 1.1 >= osd_height)
+	end
+
+	---Get measured width of character
+	---@param char string
+	---@param bold boolean
+	---@return number, integer
+	local function character_width(char, bold)
+		---@type {[string]: {[1]: number, [2]: integer}}
+		local char_widths = get_cache_stage(char_width_cache, bold)
+		local width_px = char_widths[char]
+		if width_px and no_remeasure_required(width_px[2]) then return width_px[1], width_px[2] end
+
+		local unicode = utf8_to_unicode(char, 1)
+		for _, block in ipairs(zero_width_blocks) do
+			if unicode >= block[1] and unicode <= block[2] then
+				char_widths[char] = {0, infinity}
+				return 0, infinity
+			end
 		end
 
-		local start = byte_start
-		byte_start = byte_start + byte_count
-
-		return start, byte_count, (byte_count > 2 and 2 or 1)
-	end
-end
-
-function wrap_text(text, target_line_length)
-	local line_length = 0
-	local wrap_at_chars = {' ', '　', '-', '–'}
-	local remove_when_wrap = {' ', '　'}
-	local lines = {}
-	local line_start = 1
-	local before_end = nil
-	local before_length = 0
-	local before_line_start = 0
-	local before_removed_length = 0
-	local max_length = 0
-	for char_start, count, char_length in utf8_iter(text) do
-		local char_end = char_start + count - 1
-		local char = text.sub(text, char_start, char_end)
-		local can_wrap = false
-		for _, c in ipairs(wrap_at_chars) do
-			if char == c then
-				can_wrap = true
+		local repr_char = nil
+		for _, block in ipairs(same_width_blocks) do
+			if unicode >= block[1] and unicode <= block[2] then
+				repr_char = unicode_to_utf8(block[1])
+				width_px = char_widths[repr_char]
+				if width_px and no_remeasure_required(width_px[2]) then
+					char_widths[char] = width_px
+					return width_px[1], width_px[2]
+				end
 				break
 			end
 		end
-		line_length = line_length + char_length
-		if can_wrap or (char_end == #text) then
-			local remove = false
-			for _, c in ipairs(remove_when_wrap) do
-				if char == c then
-					remove = true
-					break
-				end
+
+		if not repr_char then repr_char = char end
+		-- half as many repetitions for wide characters
+		local char_count = 10 / char_length(char)
+		local max_size, horizontal = fit_on_screen(repr_char:rep(char_count))
+		local size = math.min(max_size * 0.9, 50)
+		char_count = math.min(math.floor(char_count * max_size / size * 0.8), 100)
+		local enclosing_char, enclosing_width, next_char_count = '|', 0, char_count
+		if repr_char == enclosing_char then enclosing_char = ''
+		else enclosing_width = 2 * character_width(enclosing_char, bold) end
+		local width_ratio, width, px = nil, nil, nil
+		repeat
+			char_count = next_char_count
+			local str = enclosing_char .. repr_char:rep(char_count) .. enclosing_char
+			width, px = normalized_text_width(str, size, bold, false, horizontal)
+			width = width - enclosing_width
+			width_ratio = width * size / (horizontal and osd_width or osd_height)
+			next_char_count = math.min(math.floor(char_count / width_ratio * 0.9), 100)
+		until width_ratio < 0.05 or width_ratio > 0.5 or char_count == next_char_count
+		width = width / char_count
+
+		width_px = {width, px}
+		if char ~= repr_char then char_widths[repr_char] = width_px end
+		char_widths[char] = width_px
+		return width, px
+	end
+
+	---Calculate text width from individual measured characters
+	---@param text string|number
+	---@param bold boolean
+	---@return number, integer
+	local function character_based_width(text, bold)
+		local max_width = 0
+		local min_px = infinity
+		for line in tostring(text):gmatch("([^\n]*)\n?") do
+			local total_width = 0
+			for _, char in utf8_iter(line) do
+				local width, px = character_width(char, bold)
+				total_width = total_width + width
+				if px < min_px then min_px = px end
 			end
-			local line_length_after_remove = line_length - (remove and char_length or 0)
-			if line_length_after_remove < target_line_length then
-				before_end = remove and char_start - 1 or char_end
-				before_length = line_length_after_remove
-				before_line_start = char_end + 1
-				before_removed_length = remove and char_length or 0
-			else
-				if (target_line_length - before_length) <
-					(line_length_after_remove - target_line_length) then
-					lines[#lines + 1] = text.sub(text, line_start, before_end)
-					line_start = before_line_start
-					line_length = line_length - before_length - before_removed_length
-					if before_length > max_length then max_length = before_length end
-				else
-					lines[#lines + 1] = text.sub(text, line_start, remove and char_start - 1 or char_end)
-					line_start = char_end + 1
-					line_length = remove and line_length - char_length or line_length
-					if line_length > max_length then max_length = line_length end
-					line_length = 0
-				end
-				before_end = line_start
-				before_length = 0
-			end
+			if total_width > max_width then max_width = total_width end
+		end
+		return max_width, min_px
+	end
+
+	---Measure width of whole text
+	---@param text string|number
+	---@param bold boolean
+	---@param italic boolean
+	---@return number, integer
+	local function whole_text_width(text, bold, italic)
+		text = tostring(text)
+		local size, horizontal = fit_on_screen(text)
+		return normalized_text_width(ass_escape(text), size * 0.9, bold, italic, horizontal)
+	end
+
+	---Get scale factor calculated from font size, bold and italic
+	---@param opts {size: number; bold?: boolean; italic?: boolean}
+	local function opts_scale_factor(opts)
+		return (opts.italic and 1.01 or 1) * opts.size
+	end
+
+	---@type {[boolean]: {[boolean]: {[string|number]: {[1]: number, [2]: integer}}}} | {[boolean]: {[string|number]: {[1]: number, [2]: integer}}}
+	local width_cache = {}
+
+	---Calculate width of text with the given opts
+	---@param text string|number
+	---@return number
+	---@param opts {size: number; bold?: boolean; italic?: boolean}
+	function text_width(text, opts)
+		if not text or text == '' then return 0 end
+
+		---@type boolean, boolean
+		local bold, italic = opts.bold or false, opts.italic or false
+
+		if options.text_width_estimation then
+			---@type {[string|number]: {[1]: number, [2]: integer}}
+			local text_width = get_cache_stage(width_cache, bold)
+			local width_px = text_width[text]
+			if width_px and no_remeasure_required(width_px[2]) then return width_px[1] * opts_scale_factor(opts) end
+
+			local width, px = character_based_width(text, bold)
+			width_cache[bold][text] = {width, px}
+			return width * opts_scale_factor(opts)
+		else
+			---@type {[string|number]: {[1]: number, [2]: integer}}
+			local text_width = get_cache_stage(get_cache_stage(width_cache, bold), italic)
+			local width_px = text_width[text]
+			if width_px and no_remeasure_required(width_px[2]) then return width_px[1] * opts.size end
+
+			local width, px = whole_text_width(text, bold, italic)
+			width_cache[bold][italic][text] = {width, px}
+			return width * opts.size
 		end
 	end
-	if #text >= line_start then
-		lines[#lines + 1] = string.sub(text, line_start)
-		if line_length > max_length then max_length = line_length end
+
+	---Wrap the text at the closest oportunity to target_line_length
+	---@param text string
+	---@param opts {size: number; bold?: boolean; italic?: boolean}
+	---@param target_line_length number
+	---@return string
+	function wrap_text(text, opts, target_line_length)
+		local target_line_width = target_line_length * width_length_ratio * opts.size
+		local bold, scale_factor = opts.bold or false, opts_scale_factor(opts)
+		local wrap_at_chars = {' ', '　', '-', '–'}
+		local remove_when_wrap = {' ', '　'}
+		local lines = {}
+		for text_line in text:gmatch("([^\n]*)\n?") do
+			local line_width = 0
+			local line_start = 1
+			local before_end = nil
+			local before_width = 0
+			local before_line_start = 0
+			local before_removed_width = 0
+			for char_start, char in utf8_iter(text_line) do
+				local char_end = char_start + #char - 1
+				local can_wrap = false
+				for _, c in ipairs(wrap_at_chars) do
+					if char == c then
+						can_wrap = true
+						break
+					end
+				end
+				local char_width = character_width(char, bold) * scale_factor
+				line_width = line_width + char_width
+				if can_wrap or (char_end == #text_line) then
+					local remove = false
+					for _, c in ipairs(remove_when_wrap) do
+						if char == c then
+							remove = true
+							break
+						end
+					end
+					local line_width_after_remove = line_width - (remove and char_width or 0)
+					if line_width_after_remove < target_line_width then
+						before_end = remove and char_start - 1 or char_end
+						before_width = line_width_after_remove
+						before_line_start = char_end + 1
+						before_removed_width = remove and char_width or 0
+					else
+						if (target_line_width - before_width) <
+							(line_width_after_remove - target_line_width) then
+							lines[#lines + 1] = text_line:sub(line_start, before_end)
+							line_start = before_line_start
+							line_width = line_width - before_width - before_removed_width
+						else
+							lines[#lines + 1] = text_line:sub(line_start, remove and char_start - 1 or char_end)
+							line_start = char_end + 1
+							line_width = remove and line_width - char_width or line_width
+							line_width = 0
+						end
+						before_end = line_start
+						before_width = 0
+					end
+				end
+			end
+			if #text_line >= line_start then lines[#lines + 1] = text_line:sub(line_start)
+			elseif text_line == '' then lines[#lines + 1] = '' end
+		end
+		return table.concat(lines, '\n')
 	end
-	return table.concat(lines, '\n'), max_length, #lines
 end
 
 ---Extracts the properties used by property expansion of that string.
@@ -987,9 +1300,12 @@ end
 function serialize_chapters(chapters)
 	chapters = normalize_chapters(chapters)
 	if not chapters then return end
+	--- timeline font size isn't accessible here, so normalize to size 1 and then scale during rendering
+	local opts = {size = 1, bold = true}
 	for index, chapter in ipairs(chapters) do
 		chapter.index = index
-		chapter.title_wrapped, chapter.title_wrapped_width, chapter.title_wrapped_lines = wrap_text(chapter.title, 25)
+		chapter.title_wrapped = wrap_text(chapter.title, opts, 25)
+		chapter.title_wrapped_width = text_width(chapter.title_wrapped, opts)
 		chapter.title_wrapped = ass_escape(chapter.title_wrapped)
 	end
 	return chapters
@@ -1072,7 +1388,7 @@ end
 -- Tooltip
 ---@param element {ax: number; ay: number; bx: number; by: number}
 ---@param value string|number
----@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; text_length_override?: number; responsive?: boolean}
+---@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, responsive?: boolean}
 function ass_mt:tooltip(element, value, opts)
 	opts = opts or {}
 	opts.size = opts.size or 16
@@ -1082,10 +1398,7 @@ function ass_mt:tooltip(element, value, opts)
 	local align_top = opts.responsive == false or element.ay - offset > opts.size * 2
 	local x = element.ax + (element.bx - element.ax) / 2
 	local y = align_top and element.ay - offset or element.by + offset
-	local text_width = opts.text_length_override
-		and opts.text_length_override * opts.size * options.font_height_to_letter_width_ratio
-		or text_width_estimate(value, opts.size)
-	local margin = text_width / 2
+	local margin = (opts.width_overwrite or text_width(value, opts)) / 2 + 10
 	self:txt(clamp(margin, x, display.width - margin), y, align_top and 2 or 8, value, opts)
 end
 
@@ -1607,9 +1920,9 @@ menu.close()
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(), on_close?: fun()}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_length: number; title_width: number; hint_length: number; hint_width: number; max_width: number; is_root?: boolean;}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean;}
 ---@alias MenuStackItem MenuStackValue|MenuStack
----@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; title_length: number; title_width: number; hint_length: number; hint_width: number}
+---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; title_width: number; hint_width: number}
 
 ---@class Menu : Element
 local Menu = class(Element)
@@ -1724,7 +2037,7 @@ end
 function Menu:update(data)
 	self.type = data.type
 
-	local new_root = {is_root = true, title_length = text_length(data.title), hint_length = text_length(data.hint)}
+	local new_root = {is_root = true}
 	local new_all = {}
 	local new_by_id = {}
 	local menus_to_serialize = {{new_root, data}}
@@ -1754,8 +2067,6 @@ function Menu:update(data)
 				'title', 'icon', 'hint', 'active', 'bold', 'italic', 'muted', 'value', 'keep_open', 'separator',
 			})
 			if item.keep_open == nil then item.keep_open = menu.keep_open end
-			item.title_length = text_length(item.title)
-			item.hint_length = text_length(item.hint)
 
 			-- Submenu
 			if item_data.items then
@@ -1797,13 +2108,16 @@ function Menu:update_content_dimensions()
 	self.item_padding = round((self.item_height - self.font_size) * 0.6)
 	self.scroll_step = self.item_height + self.item_spacing
 
+	local title_opts = {size = self.font_size, italic = false, bold = false}
+	local hint_opts = {size = self.font_size_hint}
+
 	for _, menu in ipairs(self.all) do
 		-- Estimate width of a widest item
 		local max_width = 0
 		for _, item in ipairs(menu.items) do
 			local icon_width = item.icon and self.font_size or 0
-			item.title_width = text_length_width_estimate(item.title_length, self.font_size)
-			item.hint_width = text_length_width_estimate(item.hint_length, self.font_size_hint)
+			item.title_width = text_width(item.title, title_opts)
+			item.hint_width = text_width(item.hint, hint_opts)
 			local spacings_in_item = 1 + (item.title_width > 0 and 1 or 0)
 				+ (item.hint_width > 0 and 1 or 0) + (icon_width > 0 and 1 or 0)
 			local estimated_width = item.title_width + item.hint_width + icon_width
@@ -1812,7 +2126,8 @@ function Menu:update_content_dimensions()
 		end
 
 		-- Also check menu title
-		local menu_title_width = text_length_width_estimate(menu.title_length, self.font_size)
+		title_opts.bold, title_opts.italic = true, false
+		local menu_title_width = text_width(menu.title, title_opts)
 		if menu_title_width > max_width then max_width = menu_title_width end
 
 		menu.max_width = max_width
@@ -2525,20 +2840,20 @@ function Button:render()
 	-- Tooltip on hover
 	if is_hover and self.tooltip then ass:tooltip(self, self.tooltip) end
 
+
 	-- Badge
 	local icon_clip
 	if self.badge then
 		local badge_font_size = self.font_size * 0.6
-		local badge_width = text_width_estimate(self.badge, badge_font_size)
+		local badge_opts = {size = badge_font_size, color = background, opacity = visibility}
+		local badge_width = text_width(self.badge, badge_opts)
 		local width, height = math.ceil(badge_width + (badge_font_size / 7) * 2), math.ceil(badge_font_size * 0.93)
 		local bx, by = self.bx - 1, self.by - 1
 		ass:rect(bx - width, by - height, bx, by, {
 			color = foreground, radius = 2, opacity = visibility,
 			border = self.active and 0 or 1, border_color = background,
 		})
-		ass:txt(bx - width / 2, by - height / 2, 5, self.badge, {
-			size = badge_font_size, color = background, opacity = visibility,
-		})
+		ass:txt(bx - width / 2, by - height / 2, 5, self.badge, badge_opts)
 
 		local clip_border = math.max(self.font_size / 20, 1)
 		local clip_path = assdraw.ass_new()
@@ -3029,28 +3344,27 @@ function Timeline:render()
 
 	-- Time values
 	if text_opacity > 0 then
+		local time_opts = {size = self.font_size, opacity = text_opacity, border = 2}
 		-- Upcoming cache time
 		if buffered_time and options.buffered_time_threshold > 0 and buffered_time < options.buffered_time_threshold then
 			local x, align = fbx + 5, 4
-			local font_size = self.font_size * 0.8
+			local cache_opts = {size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = 1}
 			local human = round(math.max(buffered_time, 0)) .. 's'
-			local width = text_width_estimate(human, font_size)
-			local min_x = bax + spacing + 5 + text_width_estimate(state.time_human, self.font_size)
-			local max_x = bbx - spacing - 5 - text_width_estimate(state.duration_or_remaining_time_human, self.font_size)
+			local width = text_width(human, cache_opts)
+			local time_width = text_width('00:00:00', time_opts)
+			local min_x, max_x = bax + spacing + 5 + time_width, bbx - spacing - 5 - time_width
 			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
-			draw_timeline_text(x, fcy, align, human, {size = font_size, opacity = text_opacity * 0.6, border = 1})
+			draw_timeline_text(x, fcy, align, human, cache_opts)
 		end
-
-		local opts = {size = self.font_size, opacity = text_opacity, border = 2}
 
 		-- Elapsed time
 		if state.time_human then
-			draw_timeline_text(bax + spacing, fcy, 4, state.time_human, opts)
+			draw_timeline_text(bax + spacing, fcy, 4, state.time_human, time_opts)
 		end
 
 		-- End time
 		if state.duration_or_remaining_time_human then
-			draw_timeline_text(bbx - spacing, fcy, 6, state.duration_or_remaining_time_human, opts)
+			draw_timeline_text(bbx - spacing, fcy, 6, state.duration_or_remaining_time_human, time_opts)
 		end
 	end
 
@@ -3066,7 +3380,9 @@ function Timeline:render()
 		local tooltip_anchor = {ax = ax, ay = ay, bx = bx, by = by}
 
 		-- Timestamp
-		ass:tooltip(tooltip_anchor, format_time(hovered_seconds), {size = self.font_size, offset = 4})
+		local opts = {size = self.font_size, offset = 4}
+		opts.width_overwrite = text_width('00:00:00', opts)
+		ass:tooltip(tooltip_anchor, format_time(hovered_seconds), opts)
 		tooltip_anchor.ay = tooltip_anchor.ay - self.font_size - 4
 
 		-- Thumbnail
@@ -3093,7 +3409,7 @@ function Timeline:render()
 			if chapter and not chapter.is_end_only then
 				ass:tooltip(tooltip_anchor, chapter.title_wrapped, {
 					size = self.font_size, offset = 10, responsive = false, bold = true,
-					text_length_override = chapter.title_wrapped_width,
+					width_overwrite = chapter.title_wrapped_width * self.font_size,
 				})
 			end
 		end
@@ -3238,26 +3554,26 @@ function TopBar:render()
 			local text = state.playlist_pos .. '' .. state.playlist_count
 			local formatted_text = '{\\b1}' .. state.playlist_pos .. '{\\b0\\fs' .. self.font_size * 0.9 .. '}/'
 				.. state.playlist_count
-			local bx = round(title_ax + text_length_width_estimate(#text, self.font_size) + padding * 2)
+			local opts = {size = self.font_size, wrap = 2, color = fgt, opacity = visibility}
+			local bx = round(title_ax + text_width(text, opts) + padding * 2)
 			ass:rect(title_ax, title_ay, bx, self.by - bg_margin, {color = fg, opacity = visibility, radius = 2})
-			ass:txt(title_ax + (bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, {
-				size = self.font_size, wrap = 2, color = fgt, opacity = visibility,
-			})
+			ass:txt(title_ax + (bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, opts)
 			title_ax = bx + bg_margin
 		end
 
 		-- Title
 		local text = state.title
 		if max_bx - title_ax > self.font_size * 3 and text and text ~= '' then
-			local bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
+			local opts = {
+				size = self.font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility,
+				clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
+			}
+			local bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)
 			local by = self.by - bg_margin
 			ass:rect(title_ax, title_ay, bx, by, {
 				color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 			})
-			ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, text, {
-				size = self.font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility,
-				clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
-			})
+			ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, text, opts)
 			title_ay = by + 1
 		end
 
@@ -3267,14 +3583,16 @@ function TopBar:render()
 			local height = font_size * 1.5
 			local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
 			local by = title_ay + height
-			local bx = math.min(max_bx, title_ax + text_width_estimate(text, font_size) + padding * 2)
+			local opts = {
+				size = font_size, italic = true, wrap = 2, color = bgt,
+				border = 1, border_color = bg, opacity = visibility * 0.8,
+			}
+			local bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)
+			opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
 			ass:rect(title_ax, title_ay, bx, by, {
 				color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 			})
-			ass:txt(title_ax + padding, title_ay + height / 2, 4, '{\\i1}' .. text .. '{\\i0}', {
-				size = font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility * 0.8,
-				clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by),
-			})
+			ass:txt(title_ax + padding, title_ay + height / 2, 4, text, opts)
 		end
 	end
 
@@ -3899,7 +4217,7 @@ function open_command_menu(data, opts)
 			mp.command(value)
 		else
 			---@diagnostic disable-next-line: deprecated
-			mp.commandv((unpack or table.unpack)(value))
+			mp.commandv(unpack(value))
 		end
 	end, opts)
 	if opts and opts.submenu then menu:activate_submenu(opts.submenu) end
