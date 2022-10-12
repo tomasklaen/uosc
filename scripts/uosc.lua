@@ -3239,8 +3239,8 @@ function TopBar:render()
 		end
 
 		-- Title
-		if max_bx - title_ax > self.font_size * 3 then
-			local text = state.title or 'n/a'
+		local text = state.title
+		if max_bx - title_ax > self.font_size * 3 and text and text ~= '' then
 			local bx = math.min(max_bx, title_ax + text_width_estimate(text, self.font_size) + padding * 2)
 			local by = self.by - bg_margin
 			ass:rect(title_ax, title_ay, bx, by, {
