@@ -3027,8 +3027,8 @@ function Timeline:render()
 			local font_size = self.font_size * 0.8
 			local human = round(math.max(buffered_time, 0)) .. 's'
 			local width = text_width_estimate(human, font_size)
-			local min_x = bax + 5 + text_width_estimate(state.time_human, self.font_size)
-			local max_x = bbx - 5 - text_width_estimate(state.duration_or_remaining_time_human, self.font_size)
+			local min_x = bax + spacing + 5 + text_width_estimate(state.time_human, self.font_size)
+			local max_x = bbx - spacing - 5 - text_width_estimate(state.duration_or_remaining_time_human, self.font_size)
 			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
 			draw_timeline_text(x, fcy, align, human, {size = font_size, opacity = text_opacity * 0.6, border = 1})
 		end
