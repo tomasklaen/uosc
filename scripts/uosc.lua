@@ -1298,7 +1298,10 @@ mp.set_key_bindings({
 	{
 		'mbtn_left',
 		Elements:create_proximity_dispatcher('mbtn_left_up'),
-		Elements:create_proximity_dispatcher('mbtn_left_down'),
+		function(...)
+			update_mouse_pos(nil, mp.get_property_native('mouse-pos'), true)
+			Elements:proximity_trigger('mbtn_left_down', ...)
+		end,
 	},
 	{'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left', 'force')
@@ -4304,12 +4307,13 @@ if options.click_threshold > 0 then
 	mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 end
 
-mp.observe_property('mouse-pos', 'native', function(_, mouse)
-	if mouse.hover then
+function update_mouse_pos(_, mouse, ignore_hover)
+	if ignore_hover or mouse.hover then
 		if cursor.hidden then handle_mouse_enter(mouse.x, mouse.y) end
 		handle_mouse_move(mouse.x, mouse.y)
 	else handle_mouse_leave() end
-end)
+end
+mp.observe_property('mouse-pos', 'native', update_mouse_pos)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
