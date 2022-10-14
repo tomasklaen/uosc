@@ -1798,10 +1798,11 @@ function Menu:update_content_dimensions()
 		-- Estimate width of a widest item
 		local max_width = 0
 		for _, item in ipairs(menu.items) do
-			local spacings_in_item = 2 + (item.hint and 1 or 0) + (item.icon and 1 or 0)
 			local icon_width = item.icon and self.font_size or 0
 			item.title_width = text_length_width_estimate(item.title_length, self.font_size)
 			item.hint_width = text_length_width_estimate(item.hint_length, self.font_size_hint)
+			local spacings_in_item = 1 + (item.title_width > 0 and 1 or 0)
+				+ (item.hint_width > 0 and 1 or 0) + (icon_width > 0 and 1 or 0)
 			local estimated_width = item.title_width + item.hint_width + icon_width
 				+ (self.item_padding * spacings_in_item)
 			if estimated_width > max_width then max_width = estimated_width end
