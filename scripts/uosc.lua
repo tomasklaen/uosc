@@ -2245,7 +2245,7 @@ function Menu:render()
 			})
 
 			-- Title
-			ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.title, {
+			ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.ass_safe_title, {
 				size = self.font_size, bold = true, color = bg, wrap = 2, opacity = opacity,
 				clip = '\\clip(' .. ax .. ',' .. title_ay .. ',' .. bx .. ',' .. ay .. ')',
 			})
