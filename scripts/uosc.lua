@@ -1798,10 +1798,11 @@ function Menu:update_content_dimensions()
 		-- Estimate width of a widest item
 		local max_width = 0
 		for _, item in ipairs(menu.items) do
-			local spacings_in_item = 2 + (item.hint and 1 or 0) + (item.icon and 1 or 0)
 			local icon_width = item.icon and self.font_size or 0
 			item.title_width = text_length_width_estimate(item.title_length, self.font_size)
 			item.hint_width = text_length_width_estimate(item.hint_length, self.font_size_hint)
+			local spacings_in_item = 1 + (item.title_width > 0 and 1 or 0)
+				+ (item.hint_width > 0 and 1 or 0) + (icon_width > 0 and 1 or 0)
 			local estimated_width = item.title_width + item.hint_width + icon_width
 				+ (self.item_padding * spacings_in_item)
 			if estimated_width > max_width then max_width = estimated_width end
@@ -2200,16 +2201,17 @@ function Menu:render()
 			end
 
 			local title_cut_x = content_bx
-			if item.hint then
+			if item.hint_width > 0 then
 				-- controls title & hint clipping proportional to the ratio of their widths
 				local title_content_ratio = item.title_width / (item.title_width + item.hint_width)
-				title_cut_x = content_ax + (content_bx - content_ax) * title_content_ratio - spacing / 2
+				title_cut_x = round(content_ax + (content_bx - content_ax - spacing) * title_content_ratio
+					+ (item.title_width > 0 and spacing / 2 or 0))
 			end
 
 			-- Hint
 			if item.hint then
 				item.ass_safe_hint = item.ass_safe_hint or ass_escape(item.hint)
-				local clip = '\\clip(' .. round(title_cut_x + spacing) .. ',' ..
+				local clip = '\\clip(' .. title_cut_x .. ',' ..
 					math.max(item_ay, ay) .. ',' .. bx .. ',' .. math.min(item_by, by) .. ')'
 				ass:txt(content_bx, item_center_y, 6, item.ass_safe_hint, {
 					size = self.font_size_hint, color = font_color, wrap = 2, opacity = 0.5 * opacity, clip = clip,
@@ -2221,7 +2223,7 @@ function Menu:render()
 			if item.title then
 				item.ass_safe_title = item.ass_safe_title or ass_escape(item.title)
 				local clip = '\\clip(' .. ax .. ',' .. math.max(item_ay, ay) .. ','
-					.. round(title_cut_x) .. ',' .. math.min(item_by, by) .. ')'
+					.. title_cut_x .. ',' .. math.min(item_by, by) .. ')'
 				ass:txt(content_ax, item_center_y, 4, item.ass_safe_title, {
 					size = self.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
 					opacity = text_opacity * (item.muted and 0.5 or 1), clip = clip,
