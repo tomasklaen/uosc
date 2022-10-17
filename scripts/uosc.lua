@@ -143,6 +143,10 @@ function table_shallow_copy(table)
 	return result
 end
 
+--[[ EASING FUNCTIONS ]]
+
+function ease_out_quart(x) return 1 - ((1 - x) ^ 4) end
+
 --[[ OPTIONS ]]
 
 local defaults = {
@@ -1698,6 +1702,11 @@ function Menu:init(data, callback, opts)
 	self.key_bindings = {}
 	self.is_being_replaced = false
 	self.is_closing = false
+	---@type {y: integer, time: number}[]
+	self.drag_data = nil
+	self.is_dragging = false
+	---@type {y: number, distance: number, time: number, menu: MenuStack}
+	self.fling = nil
 
 	self:update(data)
 
@@ -1892,6 +1901,13 @@ function Menu:scroll_to(pos, menu)
 	request_render()
 end
 
+---@param delta? number
+---@param menu? MenuStack
+function Menu:scroll_by(delta, menu)
+	menu = menu or self.current
+	self:scroll_to(menu.scroll_y + delta, menu)
+end
+
 ---@param index? integer
 ---@param menu? MenuStack
 function Menu:scroll_to_index(index, menu)
@@ -2044,29 +2060,64 @@ function Menu:on_prop_fullormaxed() self:update_content_dimensions() end
 
 function Menu:on_global_mbtn_left_down()
 	if self.proximity_raw == 0 then
-		self:select_item_below_cursor()
-		self:open_selected_item({preselect_submenu_item = false})
+		self.drag_data = {{y = cursor.y, time = mp.get_time()}}
+		self.fling = nil
 	else
 		if cursor.x < self.ax then self:back()
 		else self:close() end
 	end
 end
 
+function Menu:fling_distance()
+	local first, last = self.drag_data[1], self.drag_data[#self.drag_data]
+	if mp.get_time() - last.time > 0.05 then return 0 end
+	for i = #self.drag_data - 1, 1, -1 do
+		local drag = self.drag_data[i]
+		if last.time - drag.time > 0.03 then return ((drag.y - last.y) / ((last.time - drag.time) / 0.03)) * 10 end
+	end
+	return #self.drag_data < 2 and 0 or ((first.y - last.y) / ((first.time - last.time) / 0.03)) * 10
+end
+
+function Menu:on_global_mbtn_left_up()
+	if self.proximity_raw == 0 and not self.is_dragging then
+		self:select_item_below_cursor()
+		self:open_selected_item({preselect_submenu_item = false})
+	end
+	if self.is_dragging then
+		local distance = self:fling_distance()
+		if math.abs(distance) > 50 then
+			self.fling = {
+				y = self.current.scroll_y, distance = distance,
+				time = self.drag_data[#self.drag_data].time, menu = self.current,
+			}
+		end
+	end
+	self.is_dragging = false
+	self.drag_data = nil
+end
+
+
 function Menu:on_global_mouse_move()
 	self.mouse_nav = true
-	if self.proximity_raw == 0 then self:select_item_below_cursor()
+	if self.drag_data then
+		self.is_dragging = self.is_dragging or math.abs(cursor.y - self.drag_data[1].y) >= 10
+		local distance = self.drag_data[#self.drag_data].y - cursor.y
+		if distance ~= 0 then self:scroll_by(distance) end
+		self.drag_data[#self.drag_data + 1] = {y = cursor.y, time = mp.get_time()}
+	end
+	if self.proximity_raw == 0 or self.is_dragging then self:select_item_below_cursor()
 	else self.current.selected_index = nil end
 	request_render()
 end
 
 function Menu:on_wheel_up()
-	self:scroll_to(self.current.scroll_y - self.scroll_step * 3)
+	self:scroll_by(self.scroll_step * -3)
 	self:on_global_mouse_move() -- selects item below cursor
 	request_render()
 end
 
 function Menu:on_wheel_down()
-	self:scroll_to(self.current.scroll_y + self.scroll_step * 3)
+	self:scroll_by(self.scroll_step * 3)
 	self:on_global_mouse_move() -- selects item below cursor
 	request_render()
 end
@@ -2137,6 +2188,13 @@ function Menu:create_key_action(name)
 end
 
 function Menu:render()
+	if self.fling then
+		local time_delta = state.render_last_time - self.fling.time
+		local progress = ease_out_quart(math.min(time_delta / 0.5, 1))
+		self:scroll_to(round(self.fling.y + self.fling.distance * progress), self.fling.menu)
+		if progress < 1 then request_render() else self.fling = nil end
+	end
+
 	local ass = assdraw.ass_new()
 	local opacity = options.menu_opacity * self.opacity
 	local spacing = self.item_padding
