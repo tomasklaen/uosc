@@ -2670,6 +2670,7 @@ function PauseIndicator:init()
 	self.opacity = 0
 
 	mp.observe_property('pause', 'bool', function(_, paused)
+		if Elements.timeline.pressed then return end
 		if options.pause_indicator == 'flash' then
 			if self.paused == paused then return end
 			self:flash()
@@ -2857,6 +2858,8 @@ function Timeline:clear_thumbnail() mp.commandv('script-message-to', 'thumbfast'
 
 function Timeline:on_mbtn_left_down()
 	self.pressed = true
+	self.pressed_pause = state.pause
+	mp.set_property_native('pause', true)
 	self:set_from_cursor()
 end
 function Timeline:on_prop_duration() self:decide_enabled() end
@@ -2866,7 +2869,10 @@ function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
 function Timeline:on_mouse_leave() self:clear_thumbnail() end
 function Timeline:on_global_mbtn_left_up()
-	self.pressed = false
+	if self.pressed then
+		mp.set_property_native('pause', self.pressed_pause)
+		self.pressed = false
+	end
 	self:clear_thumbnail()
 end
 function Timeline:on_global_mouse_leave()
