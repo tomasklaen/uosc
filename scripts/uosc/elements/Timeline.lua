@@ -24,7 +24,9 @@ function Timeline:get_visibility()
 end
 
 function Timeline:decide_enabled()
-	self.enabled = not self.obstructed and state.duration and state.duration > 0 and state.time
+	local previous = self.enabled
+	self.enabled = not self.obstructed and state.duration ~= nil and state.duration > 0 and state.time ~= nil
+	if self.enabled ~= previous then Elements:trigger('timeline_enabled', self.enabled) end
 end
 
 function Timeline:get_effective_size_min()
