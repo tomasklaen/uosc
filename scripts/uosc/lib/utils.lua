@@ -1,0 +1,481 @@
+--[[ UI specific utilities that might or might not depend on its state or options ]]
+
+-- Sorting comparator close to (but not exactly) how file explorers sort files
+file_order_comparator = (function()
+	local symbol_order
+	local default_order
+
+	if state.os == 'win' then
+		symbol_order = {
+			['!'] = 1, ['#'] = 2, ['$'] = 3, ['%'] = 4, ['&'] = 5, ['('] = 6, [')'] = 6, [','] = 7,
+			['.'] = 8, ["'"] = 9, ['-'] = 10, [';'] = 11, ['@'] = 12, ['['] = 13, [']'] = 13, ['^'] = 14,
+			['_'] = 15, ['`'] = 16, ['{'] = 17, ['}'] = 17, ['~'] = 18, ['+'] = 19, ['='] = 20,
+		}
+		default_order = 21
+	else
+		symbol_order = {
+			['`'] = 1, ['^'] = 2, ['~'] = 3, ['='] = 4, ['_'] = 5, ['-'] = 6, [','] = 7, [';'] = 8,
+			['!'] = 9, ["'"] = 10, ['('] = 11, [')'] = 11, ['['] = 12, [']'] = 12, ['{'] = 13, ['}'] = 14,
+			['@'] = 15, ['$'] = 16, ['*'] = 17, ['&'] = 18, ['%'] = 19, ['+'] = 20, ['.'] = 22, ['#'] = 23,
+		}
+		default_order = 21
+	end
+
+	-- Alphanumeric sorting for humans in Lua
+	-- http://notebook.kulchenko.com/algorithms/alphanumeric-natural-sorting-for-humans-in-lua
+	local function pad_number(d)
+		local dec, n = d:match("(%.?)0*(.+)")
+		return #dec > 0 and ("%.12f"):format(d) or ("%03d%s"):format(#n, n)
+	end
+
+	---@param a string|number
+	---@param b string|number
+	---@return boolean
+	return function(a, b)
+		a, b = tostring(a), tostring(b)
+		local ai = a:sub(1, 1)
+		local bi = b:sub(1, 1)
+		if ai == nil and bi then return true end
+		if bi == nil and ai then return false end
+		local a_order = symbol_order[ai] or default_order
+		local b_order = symbol_order[bi] or default_order
+		if a_order ~= b_order then return a_order < b_order end
+		return a:lower():gsub("%.?%d+", pad_number)..("%3d"):format(#b)
+			< b:lower():gsub("%.?%d+", pad_number)..("%3d"):format(#a)
+	end
+end)()
+
+-- Creates in-between frames to animate value from `from` to `to` numbers.
+---@param from number
+---@param to number|fun():number
+---@param setter fun(value: number)
+---@param factor_or_callback? number|fun()
+---@param callback? fun() Called either on animation end, or when animation is killed.
+function tween(from, to, setter, factor_or_callback, callback)
+	local factor = factor_or_callback
+	if type(factor_or_callback) == 'function' then callback = factor_or_callback end
+	if type(factor) ~= 'number' then factor = 0.3 end
+
+	local current, done, timeout = from, false, nil
+	local get_to = type(to) == 'function' and to or function() return to --[[@as number]] end
+	local cutoff = math.abs(get_to() - from) * 0.01
+
+	local function finish()
+		if not done then
+			done = true
+			timeout:kill()
+			if callback then callback() end
+		end
+	end
+
+	local function tick()
+		local to = get_to()
+		current = current + ((to - current) * factor)
+		local is_end = math.abs(to - current) <= cutoff
+		setter(is_end and to or current)
+		request_render()
+		if is_end then finish()
+		else timeout:resume() end
+	end
+
+	timeout = mp.add_timeout(state.render_delay, tick)
+	tick()
+
+	return finish
+end
+
+---@param point {x: number; y: number}
+---@param rect {ax: number; ay: number; bx: number; by: number}
+function get_point_to_rectangle_proximity(point, rect)
+	local dx = math.max(rect.ax - point.x, 0, point.x - rect.bx)
+	local dy = math.max(rect.ay - point.y, 0, point.y - rect.by)
+	return math.sqrt(dx * dx + dy * dy)
+end
+
+---Extracts the properties used by property expansion of that string.
+---@param str string
+---@param res { [string] : boolean } | nil
+---@return { [string] : boolean }
+function get_expansion_props(str, res)
+	res = res or {}
+	for str in str:gmatch('%$(%b{})') do
+		local name, str = str:match('^{[?!]?=?([^:]+):?(.*)}$')
+		if name then
+			local s = name:find('==') or nil
+			if s then name = name:sub(0, s - 1) end
+			res[name] = true
+			if str and str ~= '' then get_expansion_props(str, res) end
+		end
+	end
+	return res
+end
+
+-- Escape a string for verbatim display on the OSD
+---@param str string
+function ass_escape(str)
+	-- There is no escape for '\' in ASS (I think?) but '\' is used verbatim if
+	-- it isn't followed by a recognized character, so add a zero-width
+	-- non-breaking space
+	str = str:gsub('\\', '\\\239\187\191')
+	str = str:gsub('{', '\\{')
+	str = str:gsub('}', '\\}')
+	-- Precede newlines with a ZWNBSP to prevent ASS's weird collapsing of
+	-- consecutive newlines
+	str = str:gsub('\n', '\239\187\191\\N')
+	-- Turn leading spaces into hard spaces to prevent ASS from stripping them
+	str = str:gsub('\\N ', '\\N\\h')
+	str = str:gsub('^ ', '\\h')
+	return str
+end
+
+---@param seconds number
+---@return string
+function format_time(seconds)
+	local human = mp.format_time(seconds)
+	if options.time_precision > 0 then
+		local formatted = string.format('%.' .. options.time_precision .. 'f', math.abs(seconds) % 1)
+		human = human .. '.' .. string.sub(formatted, 3)
+	end
+	return human
+end
+
+---@param opacity number 0-1
+function opacity_to_alpha(opacity)
+	return 255 - math.ceil(255 * opacity)
+end
+
+-- Ensures path is absolute and normalizes slashes to the current platform
+---@param path string
+function normalize_path(path)
+	if not path or is_protocol(path) then return path end
+
+	-- Ensure path is absolute
+	if not (path:match('^/') or path:match('^%a+:') or path:match('^\\\\')) then
+		path = utils.join_path(state.cwd, path)
+	end
+
+	-- Remove trailing slashes
+	if #path > 1 then
+		path = path:gsub('[\\/]+$', '')
+		path = #path == 0 and '/' or path
+	end
+
+	-- Use proper slashes
+	if state.os == 'windows' then
+		-- Drive letters on windows need trailing backslash
+		if path:sub(#path) == ':' then
+			path = path .. '\\'
+		end
+
+		return path:gsub('/', '\\')
+	else
+		return path:gsub('\\', '/')
+	end
+end
+
+-- Check if path is a protocol, such as `http://...`
+---@param path string
+function is_protocol(path)
+	return type(path) == 'string' and (path:match('^%a[%a%d-_]+://') ~= nil or path:match('^%a[%a%d-_]+:\\?') ~= nil)
+end
+
+---@param path string
+function get_extension(path)
+	local parts = split(path, '%.')
+	return parts and #parts > 1 and parts[#parts] or nil
+end
+
+---@return string
+function get_default_directory()
+	return mp.command_native({'expand-path', options.default_directory})
+end
+
+-- Serializes path into its semantic parts
+---@param path string
+---@return nil|{path: string; is_root: boolean; dirname?: string; basename: string; filename: string; extension?: string;}
+function serialize_path(path)
+	if not path or is_protocol(path) then return end
+
+	local normal_path = normalize_path(path)
+	-- normalize_path() already strips slashes, but leaves trailing backslash
+	-- for windows drive letters, but we don't need it here.
+	local working_path = normal_path:sub(#normal_path) == '\\' and normal_path:sub(1, #normal_path - 1) or normal_path
+	local parts = split(working_path, '[\\/]+')
+	local basename = parts and parts[#parts] or working_path
+	local dirname = #parts > 1
+		and table.concat(itable_slice(parts, 1, #parts - 1), state.os == 'windows' and '\\' or '/')
+		or nil
+	local dot_split = split(basename, '%.')
+
+	return {
+		path = normal_path,
+		is_root = dirname == nil,
+		dirname = dirname,
+		basename = basename,
+		filename = #dot_split > 1 and table.concat(itable_slice(dot_split, 1, #dot_split - 1), '.') or basename,
+		extension = #dot_split > 1 and dot_split[#dot_split] or nil,
+	}
+end
+
+---@param directory string
+---@param allowed_types? string[]
+---@return nil|string[]
+function get_files_in_directory(directory, allowed_types)
+	local files, error = utils.readdir(directory, 'files')
+
+	if not files then
+		msg.error('Retrieving files failed: ' .. (error or ''))
+		return
+	end
+
+	-- Filter only requested file types
+	if allowed_types then
+		files = itable_filter(files, function(file)
+			local extension = get_extension(file)
+			return extension and itable_index_of(allowed_types, extension:lower())
+		end)
+	end
+
+	table.sort(files, file_order_comparator)
+
+	return files
+end
+
+-- Returns full absolute paths of files in the same directory as file_path,
+-- and index of the current file in the table.
+---@param file_path string
+---@param allowed_types? string[]
+function get_adjacent_paths(file_path, allowed_types)
+	local current_file = serialize_path(file_path)
+	if not current_file then return end
+	local files = get_files_in_directory(current_file.dirname, allowed_types)
+	if not files then return end
+	local current_file_index
+	local paths = {}
+	for index, file in ipairs(files) do
+		paths[#paths + 1] = utils.join_path(current_file.dirname, file)
+		if current_file.basename == file then current_file_index = index end
+	end
+	if not current_file_index then return end
+	return paths, current_file_index
+end
+
+-- Navigates in a list, using delta or, when `state.shuffle` is enabled,
+-- randomness to determine the next item. Loops around if `loop-playlist` is enabled.
+---@param list table
+---@param current_index number
+---@param delta number
+function decide_navigation_in_list(list, current_index, delta)
+	if #list < 2 then return #list, list[#list] end
+
+	if state.shuffle then
+		local new_index = current_index
+		math.randomseed(os.time())
+		while current_index == new_index do new_index = math.random(#list) end
+		return new_index, list[new_index]
+	end
+
+	local new_index = current_index + delta
+	if mp.get_property_native('loop-playlist') then
+		if new_index > #list then new_index = new_index % #list
+		elseif new_index < 1 then new_index = #list - new_index end
+	elseif new_index < 1 or new_index > #list then
+		return
+	end
+
+	return new_index, list[new_index]
+end
+
+---@param delta number
+function navigate_directory(delta)
+	if not state.path or is_protocol(state.path) then return false end
+	local paths, current_index = get_adjacent_paths(state.path, config.media_types)
+	if paths and current_index then
+		local _, path = decide_navigation_in_list(paths, current_index, delta)
+		if path then mp.commandv('loadfile', path) return true end
+	end
+	return false
+end
+
+---@param delta number
+function navigate_playlist(delta)
+	local playlist, pos = mp.get_property_native('playlist'), mp.get_property_native('playlist-pos-1')
+	if playlist and #playlist > 1 and pos then
+		local index = decide_navigation_in_list(playlist, pos, delta)
+		if index then mp.commandv('playlist-play-index', index - 1) return true end
+	end
+	return false
+end
+
+---@param delta number
+function navigate_item(delta)
+	if state.has_playlist then return navigate_playlist(delta) else return navigate_directory(delta) end
+end
+
+-- Can't use `os.remove()` as it fails on paths with unicode characters.
+-- Returns `result, error`, result is table of:
+-- `status:number(<0=error), stdout, stderr, error_string, killed_by_us:boolean`
+---@param path string
+function delete_file(path)
+	local args = state.os == 'windows' and {'cmd', '/C', 'del', path} or {'rm', path}
+	return mp.command_native({
+		name = 'subprocess',
+		args = args,
+		playback_only = false,
+		capture_stdout = true,
+		capture_stderr = true,
+	})
+end
+
+function serialize_chapter_ranges(normalized_chapters)
+	local ranges = {}
+	local simple_ranges = {
+		{name = 'openings', patterns = {'^op ', '^op$', ' op$', 'opening$'}, requires_next_chapter = true},
+		{name = 'intros', patterns = {'^intro$'}, requires_next_chapter = true},
+		{name = 'endings', patterns = {'^ed ', '^ed$', ' ed$', 'ending$', 'closing$'}},
+		{name = 'outros', patterns = {'^outro$'}},
+	}
+	local sponsor_ranges = {}
+
+	-- Extend with alt patterns
+	for _, meta in ipairs(simple_ranges) do
+		local alt_patterns = config.chapter_ranges[meta.name] and config.chapter_ranges[meta.name].patterns
+		if alt_patterns then meta.patterns = itable_join(meta.patterns, alt_patterns) end
+	end
+
+	-- Clone chapters
+	local chapters = {}
+	for i, normalized in ipairs(normalized_chapters) do chapters[i] = table_shallow_copy(normalized) end
+
+	for i, chapter in ipairs(chapters) do
+		-- Simple ranges
+		for _, meta in ipairs(simple_ranges) do
+			if config.chapter_ranges[meta.name] then
+				local match = itable_find(meta.patterns, function(p) return chapter.lowercase_title:find(p) end)
+				if match then
+					local next_chapter = chapters[i + 1]
+					if next_chapter or not meta.requires_next_chapter then
+						ranges[#ranges + 1] = table_assign({
+							start = chapter.time,
+							['end'] = next_chapter and next_chapter.time or infinity,
+						}, config.chapter_ranges[meta.name])
+					end
+				end
+			end
+		end
+
+		-- Sponsor blocks
+		if config.chapter_ranges.ads then
+			local id = chapter.lowercase_title:match('segment start *%(([%w]%w-)%)')
+			if id then -- ad range from sponsorblock
+				for j = i + 1, #chapters, 1 do
+					local end_chapter = chapters[j]
+					local end_match = end_chapter.lowercase_title:match('segment end *%(' .. id .. '%)')
+					if end_match then
+						local range = table_assign({
+							start_chapter = chapter, end_chapter = end_chapter,
+							start = chapter.time, ['end'] = end_chapter.time,
+						}, config.chapter_ranges.ads)
+						ranges[#ranges + 1], sponsor_ranges[#sponsor_ranges + 1] = range, range
+						end_chapter.is_end_only = true
+						break
+					end
+				end -- single chapter for ad
+			elseif not chapter.is_end_only and
+				(chapter.lowercase_title:find('%[sponsorblock%]:') or chapter.lowercase_title:find('^sponsors?')) then
+				local next_chapter = chapters[i + 1]
+				ranges[#ranges + 1] = table_assign({
+					start = chapter.time,
+					['end'] = next_chapter and next_chapter.time or infinity,
+				}, config.chapter_ranges.ads)
+			end
+		end
+	end
+
+	-- Fix overlapping sponsor block segments
+	for index, range in ipairs(sponsor_ranges) do
+		local next_range = sponsor_ranges[index + 1]
+		if next_range then
+			local delta = next_range.start - range['end']
+			if delta < 0 then
+				local mid_point = range['end'] + delta / 2
+				range['end'], range.end_chapter.time = mid_point - 0.01, mid_point - 0.01
+				next_range.start, next_range.start_chapter.time = mid_point, mid_point
+			end
+		end
+	end
+	table.sort(chapters, function(a, b) return a.time < b.time end)
+
+	return chapters, ranges
+end
+
+-- Ensures chapters are in chronological order
+function normalize_chapters(chapters)
+	if not chapters then return {} end
+	-- Ensure chronological order
+	table.sort(chapters, function(a, b) return a.time < b.time end)
+	-- Ensure titles
+	for index, chapter in ipairs(chapters) do
+		chapter.title = chapter.title or ('Chapter ' .. index)
+		chapter.lowercase_title = chapter.title:lower()
+	end
+	return chapters
+end
+
+function serialize_chapters(chapters)
+	chapters = normalize_chapters(chapters)
+	if not chapters then return end
+	--- timeline font size isn't accessible here, so normalize to size 1 and then scale during rendering
+	local opts = {size = 1, bold = true}
+	for index, chapter in ipairs(chapters) do
+		chapter.index = index
+		chapter.title_wrapped = wrap_text(chapter.title, opts, 25)
+		chapter.title_wrapped_width = text_width(chapter.title_wrapped, opts)
+		chapter.title_wrapped = ass_escape(chapter.title_wrapped)
+	end
+	return chapters
+end
+
+--[[ RENDERING ]]
+
+function render()
+	state.render_last_time = mp.get_time()
+
+	-- Actual rendering
+	local ass = assdraw.ass_new()
+
+	for _, element in Elements:ipairs() do
+		if element.enabled then
+			local result = element:maybe('render')
+			if result then
+				ass:new_event()
+				ass:merge(result)
+			end
+		end
+	end
+
+	-- submit
+	if osd.res_x == display.width and osd.res_y == display.height and osd.data == ass.text then
+		return
+	end
+
+	osd.res_x = display.width
+	osd.res_y = display.height
+	osd.data = ass.text
+	osd.z = 2000
+	osd:update()
+
+	update_margins()
+end
+
+-- Request that render() is called.
+-- The render is then either executed immediately, or rate-limited if it was
+-- called a small time ago.
+state.render_timer = mp.add_timeout(0, render)
+state.render_timer:kill()
+function request_render()
+	if state.render_timer:is_enabled() then return end
+	local timeout = math.max(0, state.render_delay - (mp.get_time() - state.render_last_time))
+	state.render_timer.timeout = timeout
+	state.render_timer:resume()
+end
