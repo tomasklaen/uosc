@@ -167,7 +167,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	end
 
 	-- Files are already sorted
-	table.sort(directories, file_order_comparator)
+	sort_filenames(directories)
 
 	-- Pre-populate items with parent directory selector if not at root
 	-- Each item value is a serialized path table it points to.

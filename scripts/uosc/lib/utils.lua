@@ -1,7 +1,7 @@
 --[[ UI specific utilities that might or might not depend on its state or options ]]
 
 -- Sorting comparator close to (but not exactly) how file explorers sort files
-file_order_comparator = (function()
+sort_filenames = (function()
 	local symbol_order
 	local default_order
 
@@ -24,24 +24,25 @@ file_order_comparator = (function()
 	-- Alphanumeric sorting for humans in Lua
 	-- http://notebook.kulchenko.com/algorithms/alphanumeric-natural-sorting-for-humans-in-lua
 	local function pad_number(d)
-		local dec, n = d:match("(%.?)0*(.+)")
-		return #dec > 0 and ("%.12f"):format(d) or ("%03d%s"):format(#n, n)
+		local dec, n = d:match('(%.?)0*(.+)')
+		return #dec > 0 and ('%.12f'):format(d) or ('%03d%s'):format(#n, n)
 	end
 
-	---@param a string|number
-	---@param b string|number
-	---@return boolean
-	return function(a, b)
-		a, b = tostring(a), tostring(b)
-		local ai = a:sub(1, 1)
-		local bi = b:sub(1, 1)
-		if ai == nil and bi then return true end
-		if bi == nil and ai then return false end
-		local a_order = symbol_order[ai] or default_order
-		local b_order = symbol_order[bi] or default_order
-		if a_order ~= b_order then return a_order < b_order end
-		return a:lower():gsub("%.?%d+", pad_number)..("%3d"):format(#b)
-			< b:lower():gsub("%.?%d+", pad_number)..("%3d"):format(#a)
+	--- In place sorting of filenames
+	---@param filenames string[]
+	return function(filenames)
+		local tuples = {}
+		for i, filename in ipairs(filenames) do
+			local first_char = filename:sub(1, 1)
+			local order = symbol_order[first_char] or default_order
+			local formatted = filename:lower():gsub('%.?%d+', pad_number) .. ('%3d'):format(#filename)
+			tuples[i] = {order, formatted, filename}
+		end
+		table.sort(tuples, function(a, b)
+			if a[1] ~= b[1] then return a[1] < b[1] end
+			return a[2] < b[2]
+		end)
+		for i, tuple in ipairs(tuples) do filenames[i] = tuple[3] end
 	end
 end)()
 
@@ -236,7 +237,7 @@ function get_files_in_directory(directory, allowed_types)
 		end)
 	end
 
-	table.sort(files, file_order_comparator)
+	sort_filenames(files)
 
 	return files
 end
