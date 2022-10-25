@@ -486,25 +486,27 @@ local file_order_comparator = (function()
 		default_order = 21
 	end
 
+	-- Alphanum sorting for humans in Lua
+	-- http://notebook.kulchenko.com/algorithms/alphanumeric-natural-sorting-for-humans-in-lua
+	local function padnum(d)
+		local dec, n = d:match("(%.?)0*(.+)")
+		return #dec > 0 and ("%.12f"):format(d) or ("%03d%s"):format(#n, n)
+	end
+
 	---@param a string|number
 	---@param b string|number
 	---@return boolean
 	return function(a, b)
-		a = a:lower()
-		b = b:lower()
-		for i = 1, math.max(#a, #b) do
-			local ai = a:sub(i, i)
-			local bi = b:sub(i, i)
-			if ai == nil and bi then return true end
-			if bi == nil and ai then return false end
-			local a_order = symbol_order[ai] or default_order
-			local b_order = symbol_order[bi] or default_order
-			if a_order == b_order then
-				return a < b
-			else
-				return a_order < b_order
-			end
-		end
+		a, b = tostring(a), tostring(b)
+		local ai = a:sub(1, 1)
+		local bi = b:sub(1, 1)
+		if ai == nil and bi then return true end
+		if bi == nil and ai then return false end
+		local a_order = symbol_order[ai] or default_order
+		local b_order = symbol_order[bi] or default_order
+		if a_order ~= b_order then return a_order < b_order end
+		return a:lower():gsub("%.?%d+",padnum)..("%3d"):format(#b)
+			< b:lower():gsub("%.?%d+",padnum)..("%3d"):format(#a)
 	end
 end)()
 
