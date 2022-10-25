@@ -143,6 +143,11 @@ function table_shallow_copy(table)
 	return result
 end
 
+--[[ EASING FUNCTIONS ]]
+
+function ease_out_quart(x) return 1 - ((1 - x) ^ 4) end
+function ease_out_sext(x) return 1 - ((1 - x) ^ 6) end
+
 --[[ OPTIONS ]]
 
 local defaults = {
@@ -1051,7 +1056,7 @@ end
 -- Check if path is a protocol, such as `http://...`
 ---@param path string
 function is_protocol(path)
-	return type(path) == 'string' and path:match('^%a[%a%d-_]+://') ~= nil
+	return type(path) == 'string' and (path:match('^%a[%a%d-_]+://') ~= nil or path:match('^%a[%a%d-_]+:\\?') ~= nil)
 end
 
 ---@param path string
@@ -1920,9 +1925,10 @@ menu.close()
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(), on_close?: fun()}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean;}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling}
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; title_width: number; hint_width: number}
+---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
 
 ---@class Menu : Element
 local Menu = class(Element)
@@ -2011,6 +2017,9 @@ function Menu:init(data, callback, opts)
 	self.key_bindings = {}
 	self.is_being_replaced = false
 	self.is_closing = false
+	---@type {y: integer, time: number}[]
+	self.drag_data = nil
+	self.is_dragging = false
 
 	self:update(data)
 
@@ -2081,7 +2090,7 @@ function Menu:update(data)
 
 		-- Retain old state
 		local old_menu = self.by_id[menu.is_root and '__root__' or menu.id]
-		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y'}) end
+		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling'}) end
 
 		new_all[#new_all + 1] = menu
 		new_by_id[menu.is_root and '__root__' or menu.id] = menu
@@ -2150,6 +2159,7 @@ function Menu:update_dimensions()
 		menu.height = math.min(content_height - self.item_spacing, max_height)
 		menu.top = round(math.max((display.height - menu.height) / 2, title_height * 1.5))
 		menu.scroll_height = math.max(content_height - menu.height - self.item_spacing, 0)
+		menu.scroll_y = menu.scroll_y or 0
 		self:scroll_to(menu.scroll_y, menu) -- clamps scroll_y to scroll limits
 	end
 
@@ -2201,10 +2211,38 @@ end
 
 ---@param pos? number
 ---@param menu? MenuStack
-function Menu:scroll_to(pos, menu)
+function Menu:set_scroll_to(pos, menu)
 	menu = menu or self.current
 	menu.scroll_y = clamp(0, pos or 0, menu.scroll_height)
 	request_render()
+end
+
+---@param delta? number
+---@param menu? MenuStack
+function Menu:set_scroll_by(delta, menu)
+	menu = menu or self.current
+	self:set_scroll_to(menu.scroll_y + delta, menu)
+end
+
+---@param pos? number
+---@param menu? MenuStack
+---@param fling_options? table
+function Menu:scroll_to(pos, menu, fling_options)
+	menu = menu or self.current
+	menu.fling = {
+		y = menu.scroll_y, distance = clamp(-menu.scroll_y, pos - menu.scroll_y, menu.scroll_height - menu.scroll_y),
+		time = mp.get_time(), duration = 0.1, easing = ease_out_sext,
+	}
+	if fling_options then table_assign(menu.fling, fling_options) end
+	request_render()
+end
+
+---@param delta? number
+---@param menu? MenuStack
+---@param fling_options? Fling
+function Menu:scroll_by(delta, menu, fling_options)
+	menu = menu or self.current
+	self:scroll_to((menu.fling and (menu.fling.y + menu.fling.distance) or menu.scroll_y) + delta, menu, fling_options)
 end
 
 ---@param index? integer
@@ -2359,32 +2397,58 @@ function Menu:on_prop_fullormaxed() self:update_content_dimensions() end
 
 function Menu:on_global_mbtn_left_down()
 	if self.proximity_raw == 0 then
-		self:select_item_below_cursor()
-		self:open_selected_item({preselect_submenu_item = false})
+		self.drag_data = {{y = cursor.y, time = mp.get_time()}}
+		self.current.fling = nil
 	else
 		if cursor.x < self.ax then self:back()
 		else self:close() end
 	end
 end
 
+function Menu:fling_distance()
+	local first, last = self.drag_data[1], self.drag_data[#self.drag_data]
+	if mp.get_time() - last.time > 0.05 then return 0 end
+	for i = #self.drag_data - 1, 1, -1 do
+		local drag = self.drag_data[i]
+		if last.time - drag.time > 0.03 then return ((drag.y - last.y) / ((last.time - drag.time) / 0.03)) * 10 end
+	end
+	return #self.drag_data < 2 and 0 or ((first.y - last.y) / ((first.time - last.time) / 0.03)) * 10
+end
+
+function Menu:on_global_mbtn_left_up()
+	if self.proximity_raw == 0 and not self.is_dragging then
+		self:select_item_below_cursor()
+		self:open_selected_item({preselect_submenu_item = false})
+	end
+	if self.is_dragging then
+		local distance = self:fling_distance()
+		if math.abs(distance) > 50 then
+			self.current.fling = {
+				y = self.current.scroll_y, distance = distance, time = self.drag_data[#self.drag_data].time,
+				easing = ease_out_quart, duration = 0.5, update_cursor = true
+			}
+		end
+	end
+	self.is_dragging = false
+	self.drag_data = nil
+end
+
+
 function Menu:on_global_mouse_move()
 	self.mouse_nav = true
-	if self.proximity_raw == 0 then self:select_item_below_cursor()
+	if self.drag_data then
+		self.is_dragging = self.is_dragging or math.abs(cursor.y - self.drag_data[1].y) >= 10
+		local distance = self.drag_data[#self.drag_data].y - cursor.y
+		if distance ~= 0 then self:set_scroll_by(distance) end
+		self.drag_data[#self.drag_data + 1] = {y = cursor.y, time = mp.get_time()}
+	end
+	if self.proximity_raw == 0 or self.is_dragging then self:select_item_below_cursor()
 	else self.current.selected_index = nil end
 	request_render()
 end
 
-function Menu:on_wheel_up()
-	self:scroll_to(self.current.scroll_y - self.scroll_step * 3)
-	self:on_global_mouse_move() -- selects item below cursor
-	request_render()
-end
-
-function Menu:on_wheel_down()
-	self:scroll_to(self.current.scroll_y + self.scroll_step * 3)
-	self:on_global_mouse_move() -- selects item below cursor
-	request_render()
-end
+function Menu:on_wheel_up() self:scroll_by(self.scroll_step * -3, nil, {update_cursor = true}) end
+function Menu:on_wheel_down() self:scroll_by(self.scroll_step * 3, nil, {update_cursor = true}) end
 
 function Menu:on_pgup()
 	local menu = self.current
@@ -2452,6 +2516,18 @@ function Menu:create_key_action(name)
 end
 
 function Menu:render()
+	local update_cursor = false
+	for _, menu in ipairs(self.all) do
+		if menu.fling then
+			update_cursor = update_cursor or menu.fling.update_cursor or false
+			local time_delta = state.render_last_time - menu.fling.time
+			local progress = menu.fling.easing(math.min(time_delta / menu.fling.duration, 1))
+			self:set_scroll_to(round(menu.fling.y + menu.fling.distance * progress), menu)
+			if progress < 1 then request_render() else menu.fling = nil end
+		end
+	end
+	if update_cursor then self:select_item_below_cursor() end
+
 	local ass = assdraw.ass_new()
 	local opacity = options.menu_opacity * self.opacity
 	local spacing = self.item_padding
@@ -2985,6 +3061,7 @@ function PauseIndicator:init()
 	self.opacity = 0
 
 	mp.observe_property('pause', 'bool', function(_, paused)
+		if Elements.timeline.pressed then return end
 		if options.pause_indicator == 'flash' then
 			if self.paused == paused then return end
 			self:flash()
@@ -3172,6 +3249,8 @@ function Timeline:clear_thumbnail() mp.commandv('script-message-to', 'thumbfast'
 
 function Timeline:on_mbtn_left_down()
 	self.pressed = true
+	self.pressed_pause = state.pause
+	mp.set_property_native('pause', true)
 	self:set_from_cursor()
 end
 function Timeline:on_prop_duration() self:decide_enabled() end
@@ -3181,7 +3260,10 @@ function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
 function Timeline:on_mouse_leave() self:clear_thumbnail() end
 function Timeline:on_global_mbtn_left_up()
-	self.pressed = false
+	if self.pressed then
+		mp.set_property_native('pause', self.pressed_pause)
+		self.pressed = false
+	end
 	self:clear_thumbnail()
 end
 function Timeline:on_global_mouse_leave()
