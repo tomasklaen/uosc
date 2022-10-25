@@ -35,12 +35,12 @@ sort_filenames = (function()
 		for i, filename in ipairs(filenames) do
 			local first_char = filename:sub(1, 1)
 			local order = symbol_order[first_char] or default_order
-			local formatted = filename:lower():gsub('%.?%d+', pad_number) .. ('%3d'):format(#filename)
+			local formatted = filename:lower():gsub('%.?%d+', pad_number)
 			tuples[i] = {order, formatted, filename}
 		end
 		table.sort(tuples, function(a, b)
 			if a[1] ~= b[1] then return a[1] < b[1] end
-			return a[2] < b[2]
+			return a[2] == b[2] and #b[3] < #a[3] or a[2] < b[2]
 		end)
 		for i, tuple in ipairs(tuples) do filenames[i] = tuple[3] end
 	end
