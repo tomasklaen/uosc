@@ -5,7 +5,7 @@ sort_filenames = (function()
 	local symbol_order
 	local default_order
 
-	if state.os == 'win' then
+	if state.os == 'windows' then
 		symbol_order = {
 			['!'] = 1, ['#'] = 2, ['$'] = 3, ['%'] = 4, ['&'] = 5, ['('] = 6, [')'] = 6, [','] = 7,
 			['.'] = 8, ["'"] = 9, ['-'] = 10, [';'] = 11, ['@'] = 12, ['['] = 13, [']'] = 13, ['^'] = 14,
