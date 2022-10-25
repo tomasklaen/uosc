@@ -197,8 +197,16 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	end
 
 	for _, file in ipairs(files) do
-		local serialized = serialize_path(utils.join_path(directory.path, file))
-		if serialized then
+		if not is_protocol(file) then
+			local dot_split = split(file, '%.')
+			local serialized = {
+				path = utils.join_path(directory.path, file),
+				is_root = false,
+				dirname = directory.path,
+				basename = file,
+				filename = #dot_split > 1 and table.concat(itable_slice(dot_split, 1, #dot_split - 1), '.') or file,
+				extension = #dot_split > 1 and dot_split[#dot_split] or nil,
+			}
 			serialized.is_file = true
 			items[#items + 1] = {title = serialized.basename, value = serialized}
 		end
