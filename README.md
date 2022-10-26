@@ -145,12 +145,12 @@ right        seek  5
 left         seek -5
 shift+right  seek  30; script-binding uosc/flash-timeline
 shift+left   seek -30; script-binding uosc/flash-timeline
-m            cycle mute; script-binding uosc/flash-volume
-up           add volume  10; script-binding uosc/flash-volume
-down         add volume -10; script-binding uosc/flash-volume
-[            add speed -0.25; script-binding uosc/flash-speed
-]            add speed  0.25; script-binding uosc/flash-speed
-\            set speed 1; script-binding uosc/flash-speed
+m            no-osd cycle mute; script-binding uosc/flash-volume
+up           no-osd add volume  10; script-binding uosc/flash-volume
+down         no-osd add volume -10; script-binding uosc/flash-volume
+[            no-osd add speed -0.25; script-binding uosc/flash-speed
+]            no-osd add speed  0.25; script-binding uosc/flash-speed
+\            no-osd set speed 1; script-binding uosc/flash-speed
 >            script-binding uosc/next; script-message-to uosc flash-elements top_bar,timeline
 <            script-binding uosc/prev; script-message-to uosc flash-elements top_bar,timeline
 ```
