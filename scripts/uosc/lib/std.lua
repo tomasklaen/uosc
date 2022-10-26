@@ -37,6 +37,20 @@ function split(str, pattern)
 	return list
 end
 
+---Get index of the last appearance of `sub` in `str`
+---@param str string
+---@param sub string
+---@return integer|nil
+function string.last_index_of(str, sub)
+	local sub_length = #sub
+	for i = #str, 1, -1 do
+		for j = 1, sub_length do
+			if str:byte(i + j - 1) ~= sub:byte(j) then break end
+			if j == sub_length then return i end
+		end
+	end
+end
+
 ---@param itable table
 ---@param value any
 ---@return integer|nil
