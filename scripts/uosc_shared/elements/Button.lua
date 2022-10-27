@@ -1,4 +1,4 @@
-local Element = require('elements/Element')
+local Element = require('uosc_shared/elements/Element')
 
 ---@alias ButtonProps {icon: string; on_click: function; anchor_id?: string; active?: boolean; badge?: string|number; foreground?: string; background?: string; tooltip?: string}
 

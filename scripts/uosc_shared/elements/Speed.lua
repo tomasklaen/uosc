@@ -1,4 +1,4 @@
-local Element = require('elements/Element')
+local Element = require('uosc_shared/elements/Element')
 
 ---@alias Dragging { start_time: number; start_x: number; distance: number; speed_distance: number; start_speed: number; }
 

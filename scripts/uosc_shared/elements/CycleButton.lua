@@ -1,4 +1,4 @@
-local Button = require('elements/Button')
+local Button = require('uosc_shared/elements/Button')
 
 ---@alias CycleState {value: any; icon: string; active?: boolean}
 ---@alias CycleButtonProps {prop: string; states: CycleState[]; anchor_id?: string; tooltip?: string}

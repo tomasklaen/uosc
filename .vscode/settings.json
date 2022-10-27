@@ -1,4 +1,11 @@
 {
+	"editor.insertSpaces": false,
+	"editor.tabSize": 4,
+	"Lua.runtime.path": [
+		"?.lua",
+		"?/init.lua",
+		"scripts/?.lua"
+	],
 	"Lua.diagnostics.disable": [
 		"lowercase-global",
 		"redefined-local"

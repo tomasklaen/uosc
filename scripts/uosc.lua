@@ -1,7 +1,6 @@
 --[[ uosc 4.3.0 - 2022-Oct-11 | https://github.com/tomasklaen/uosc ]]
 local uosc_version = '4.3.0'
 
-require('lib/std')
 assdraw = require('mp.assdraw')
 opt = require('mp.options')
 utils = require('mp.utils')
@@ -9,6 +8,11 @@ msg = require('mp.msg')
 osd = mp.create_osd_overlay('ass-events')
 infinity = 1e309
 quarter_pi_sin = math.sin(math.pi / 4)
+
+-- Enables relative requires from `scripts` directory
+package.path = package.path .. ';' .. mp.find_config_file('scripts') .. '/?.lua'
+
+require('uosc_shared/lib/std')
 
 --[[ OPTIONS ]]
 
@@ -324,14 +328,14 @@ state = {
 }
 thumbnail = {width = 0, height = 0, disabled = false}
 external = {} -- Properties set by external scripts
-Elements = require('elements/Elements')
-Menu = require('elements/Menu')
+Elements = require('uosc_shared/elements/Elements')
+Menu = require('uosc_shared/elements/Menu')
 
 -- State dependent utilities
-require('lib/utils')
-require('lib/text')
-require('lib/ass')
-require('lib/menus')
+require('uosc_shared/lib/utils')
+require('uosc_shared/lib/text')
+require('uosc_shared/lib/ass')
+require('uosc_shared/lib/menus')
 
 --[[ STATE UPDATERS ]]
 
@@ -1063,11 +1067,11 @@ mp.register_script_message('flash-elements', function(elements) Elements:flash(s
 
 --[[ ELEMENTS ]]
 
-require('elements/WindowBorder'):new()
-require('elements/BufferingIndicator'):new()
-require('elements/PauseIndicator'):new()
-require('elements/TopBar'):new()
-require('elements/Timeline'):new()
-if options.controls and options.controls ~= 'never' then require('elements/Controls'):new() end
-if itable_index_of({'left', 'right'}, options.volume) then require('elements/Volume'):new() end
-require('elements/Curtain'):new()
+require('uosc_shared/elements/WindowBorder'):new()
+require('uosc_shared/elements/BufferingIndicator'):new()
+require('uosc_shared/elements/PauseIndicator'):new()
+require('uosc_shared/elements/TopBar'):new()
+require('uosc_shared/elements/Timeline'):new()
+if options.controls and options.controls ~= 'never' then require('uosc_shared/elements/Controls'):new() end
+if itable_index_of({'left', 'right'}, options.volume) then require('uosc_shared/elements/Volume'):new() end
+require('uosc_shared/elements/Curtain'):new()

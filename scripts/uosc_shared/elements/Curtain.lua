@@ -1,4 +1,4 @@
-local Element = require('elements/Element')
+local Element = require('uosc_shared/elements/Element')
 
 ---@class Curtain : Element
 local Curtain = class(Element)
