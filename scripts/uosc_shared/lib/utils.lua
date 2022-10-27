@@ -1,6 +1,6 @@
 --[[ UI specific utilities that might or might not depend on its state or options ]]
 
--- Sorting comparator close to (but not exactly) how file explorers sort files
+-- Sorting comparator close to (but not exactly) how file explorers sort files.
 sort_filenames = (function()
 	local symbol_order
 	local default_order
@@ -93,7 +93,7 @@ function get_point_to_rectangle_proximity(point, rect)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
----Extracts the properties used by property expansion of that string.
+-- Extracts the properties used by property expansion of that string.
 ---@param str string
 ---@param res { [string] : boolean } | nil
 ---@return { [string] : boolean }
@@ -111,7 +111,7 @@ function get_expansion_props(str, res)
 	return res
 end
 
--- Escape a string for verbatim display on the OSD
+-- Escape a string for verbatim display on the OSD.
 ---@param str string
 function ass_escape(str)
 	-- There is no escape for '\' in ASS (I think?) but '\' is used verbatim if
@@ -145,7 +145,7 @@ function opacity_to_alpha(opacity)
 	return 255 - math.ceil(255 * opacity)
 end
 
--- Ensures path is absolute and remove trailing slashes/backslashes
+-- Ensures path is absolute and remove trailing slashes/backslashes.
 ---@param path string
 function normalize_path(path)
 	if not path or is_protocol(path) then return path end
@@ -157,18 +157,18 @@ function normalize_path(path)
 
 	-- Use proper slashes
 	if state.os == 'windows' then
-		path = path:trim_end('\\')
+		path = trim_end(path, '\\')
 		-- Drive letters on windows need trailing backslash
 		if path:sub(#path) == ':' then
 			path = path .. '\\'
 		end
 		return path
 	else
-		return path:trim_end('/')
+		return trim_end(path, '/')
 	end
 end
 
--- Check if path is a protocol, such as `http://...`
+-- Check if path is a protocol, such as `http://...`.
 ---@param path string
 function is_protocol(path)
 	return type(path) == 'string' and (path:match('^%a[%a%d-_]+://') ~= nil or path:match('^%a[%a%d-_]+:\\?') ~= nil)
@@ -185,7 +185,7 @@ function get_default_directory()
 	return mp.command_native({'expand-path', options.default_directory})
 end
 
--- Serializes path into its semantic parts
+-- Serializes path into its semantic parts.
 ---@param path string
 ---@return nil|{path: string; is_root: boolean; dirname?: string; basename: string; filename: string; extension?: string;}
 function serialize_path(path)
@@ -194,7 +194,7 @@ function serialize_path(path)
 	local normal_path = normalize_path(path)
 	local dirname, basename = utils.split_path(normal_path)
 	if basename == '' then dirname = nil end
-	local dot_i = basename:last_index_of('.')
+	local dot_i = string_last_index_of(basename, '.')
 
 	return {
 		path = normal_path,

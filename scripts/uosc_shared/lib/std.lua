@@ -17,11 +17,11 @@ function serialize_rgba(rgba)
 	}
 end
 
----Trim any `char` from the end of the string
+-- Trim any `char` from the end of the string.
 ---@param str string
 ---@param char string
 ---@return string
-function string.trim_end(str, char)
+function trim_end(str, char)
 	local char, end_i = char:byte(), nil
 	for i = #str, 1, -1 do
 		if str:byte(i) ~= char then
@@ -52,11 +52,11 @@ function split(str, pattern)
 	return list
 end
 
----Get index of the last appearance of `sub` in `str`
+-- Get index of the last appearance of `sub` in `str`.
 ---@param str string
 ---@param sub string
 ---@return integer|nil
-function string.last_index_of(str, sub)
+function string_last_index_of(str, sub)
 	local sub_length = #sub
 	for i = #str, 1, -1 do
 		for j = 1, sub_length do
