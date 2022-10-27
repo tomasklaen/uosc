@@ -149,7 +149,7 @@ end
 ---@param handle_select fun(path: string): nil
 ---@param opts NavigationMenuOptions
 function open_file_navigation_menu(directory_path, handle_select, opts)
-	directory = serialize_path(directory_path)
+	directory = serialize_path(normalize_path(directory_path))
 	opts = opts or {}
 
 	if not directory then
@@ -184,11 +184,12 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 	local items_start_index = #items + 1
 
+	local path_separator = path_separator(directory.path)
 	for _, dir in ipairs(directories) do
 		local serialized = serialize_path(utils.join_path(directory.path, dir))
 		if serialized then
 			serialized.is_directory = true
-			items[#items + 1] = {title = serialized.basename, value = serialized, hint = '/'}
+			items[#items + 1] = {title = serialized.basename, value = serialized, hint = path_separator}
 		end
 	end
 
@@ -214,7 +215,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	end
 
 	local menu_data = {
-		type = opts.type, title = opts.title or directory.basename .. '/', items = items,
+		type = opts.type, title = opts.title or directory.basename .. path_separator, items = items,
 		on_open = opts.on_open, on_close = opts.on_close,
 	}
 

@@ -22,7 +22,7 @@ end
 ---@param char string
 ---@return string
 function trim_end(str, char)
-	local char, end_i = char:byte(), nil
+	local char, end_i = char:byte(), 0
 	for i = #str, 1, -1 do
 		if str:byte(i) ~= char then
 			end_i = i
