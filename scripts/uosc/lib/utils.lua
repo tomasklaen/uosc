@@ -198,23 +198,17 @@ function serialize_path(path)
 	if not path or is_protocol(path) then return end
 
 	local normal_path = normalize_path(path)
-	-- normalize_path() already strips slashes, but leaves trailing backslash
-	-- for windows drive letters, but we don't need it here.
-	local working_path = normal_path:sub(#normal_path) == '\\' and normal_path:sub(1, #normal_path - 1) or normal_path
-	local parts = split(working_path, '[\\/]+')
-	local basename = parts and parts[#parts] or working_path
-	local dirname = #parts > 1
-		and table.concat(itable_slice(parts, 1, #parts - 1), state.os == 'windows' and '\\' or '/')
-		or nil
-	local dot_split = split(basename, '%.')
+	local dirname, basename = utils.split_path(normal_path)
+	if basename == '' then dirname = nil end
+	local dot_i = basename:last_index_of('.')
 
 	return {
 		path = normal_path,
 		is_root = dirname == nil,
 		dirname = dirname,
 		basename = basename,
-		filename = #dot_split > 1 and table.concat(itable_slice(dot_split, 1, #dot_split - 1), '.') or basename,
-		extension = #dot_split > 1 and dot_split[#dot_split] or nil,
+		filename = dot_i and basename:sub(1, dot_i - 1) or basename,
+		extension = dot_i and basename:sub(dot_i + 1) or nil,
 	}
 end
 
