@@ -474,9 +474,10 @@ function load_file_index_in_current_directory(index)
 
 	local serialized = serialize_path(state.path)
 	if serialized and serialized.dirname then
-		local files = get_files_in_directory(serialized.dirname, config.media_types)
+		local files = read_directory(serialized.dirname, config.media_types)
 
 		if not files then return end
+		sort_filenames(files)
 		if index < 0 then index = #files + index + 1 end
 
 		if files[index] then
@@ -954,7 +955,7 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 		mp.commandv('playlist-remove', 'current')
 	else
 		if is_local_file then
-			local paths, current_index = get_adjacent_paths(state.path, config.media_types)
+			local paths, current_index = get_adjacent_files(state.path, config.media_types)
 			if paths and current_index then
 				local index, path = decide_navigation_in_list(paths, current_index, 1)
 				if path then next_file = path end

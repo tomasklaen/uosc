@@ -157,17 +157,13 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		return
 	end
 
-	local directories, dirs_error = utils.readdir(directory.path, 'dirs')
-	local files, files_error = get_files_in_directory(directory.path, opts.allowed_types)
+	local files, directories = read_directory(directory.path, opts.allowed_types)
 	local is_root = not directory.dirname
 
-	if not files or not directories then
-		msg.error('Retrieving files from ' .. directory .. ' failed: ' .. (dirs_error or files_error or ''))
-		return
-	end
+	if not files or not directories then return end
 
-	-- Files are already sorted
 	sort_filenames(directories)
+	sort_filenames(files)
 
 	-- Pre-populate items with parent directory selector if not at root
 	-- Each item value is a serialized path table it points to.

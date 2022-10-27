@@ -175,9 +175,15 @@ function is_protocol(path)
 end
 
 ---@param path string
-function get_extension(path)
-	local parts = split(path, '%.')
-	return parts and #parts > 1 and parts[#parts] or nil
+---@param extensions string[] Lowercase extensions without the dot.
+function has_any_extension(path, extensions)
+	local path_last_dot_index = string_last_index_of(path, '.')
+	if not path_last_dot_index then return false end
+	local path_extension = path:sub(path_last_dot_index + 1):lower()
+	for _, extension in ipairs(extensions) do
+		if path_extension == extension then return true end
+	end
+	return false
 end
 
 ---@return string
@@ -206,39 +212,47 @@ function serialize_path(path)
 	}
 end
 
----@param directory string
----@param allowed_types? string[]
----@return nil|string[]
-function get_files_in_directory(directory, allowed_types)
-	local files, error = utils.readdir(directory, 'files')
+-- Reads items in directory and splits it into directories and files tables.
+---@param path string
+---@param allowed_types? string[] Filter `files` table to contain only files with these extensions.
+---@return string[]|nil files
+---@return string[]|nil directories
+function read_directory(path, allowed_types)
+	local items, error = utils.readdir(path, 'all')
 
-	if not files then
-		msg.error('Retrieving files failed: ' .. (error or ''))
-		return
+	if not items then
+		msg.error('Reading files from "' .. path .. '" failed: ' .. error)
+		return nil, nil
 	end
 
-	-- Filter only requested file types
-	if allowed_types then
-		files = itable_filter(files, function(file)
-			local extension = get_extension(file)
-			return extension and itable_index_of(allowed_types, extension:lower())
-		end)
+	local files, directories = {}, {}
+
+	for _, item in ipairs(items) do
+		if item ~= '.' and item ~= '..' then
+			local info = utils.file_info(utils.join_path(path, item))
+			if info then
+				if info.is_file then
+					if not allowed_types or has_any_extension(item, allowed_types) then
+						files[#files + 1] = item
+					end
+				else directories[#directories + 1] = item end
+			end
+		end
 	end
 
-	sort_filenames(files)
-
-	return files
+	return files, directories
 end
 
 -- Returns full absolute paths of files in the same directory as file_path,
 -- and index of the current file in the table.
 ---@param file_path string
 ---@param allowed_types? string[]
-function get_adjacent_paths(file_path, allowed_types)
+function get_adjacent_files(file_path, allowed_types)
 	local current_file = serialize_path(file_path)
 	if not current_file then return end
-	local files = get_files_in_directory(current_file.dirname, allowed_types)
+	local files = read_directory(current_file.dirname, allowed_types)
 	if not files then return end
+	sort_filenames(files)
 	local current_file_index
 	local paths = {}
 	for index, file in ipairs(files) do
@@ -278,7 +292,7 @@ end
 ---@param delta number
 function navigate_directory(delta)
 	if not state.path or is_protocol(state.path) then return false end
-	local paths, current_index = get_adjacent_paths(state.path, config.media_types)
+	local paths, current_index = get_adjacent_files(state.path, config.media_types)
 	if paths and current_index then
 		local _, path = decide_navigation_in_list(paths, current_index, delta)
 		if path then mp.commandv('loadfile', path) return true end
