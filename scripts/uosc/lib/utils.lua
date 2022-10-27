@@ -145,32 +145,26 @@ function opacity_to_alpha(opacity)
 	return 255 - math.ceil(255 * opacity)
 end
 
--- Ensures path is absolute and normalizes slashes to the current platform
+-- Ensures path is absolute and remove trailing slashes/backslashes
 ---@param path string
 function normalize_path(path)
 	if not path or is_protocol(path) then return path end
 
 	-- Ensure path is absolute
-	if not (path:match('^/') or path:match('^%a+:') or path:match('^\\\\')) then
+	if not (path:match(state.os == 'windows' and '^%a+:' or '^/') or path:match('^\\\\')) then
 		path = utils.join_path(state.cwd, path)
-	end
-
-	-- Remove trailing slashes
-	if #path > 1 then
-		path = path:gsub('[\\/]+$', '')
-		path = #path == 0 and '/' or path
 	end
 
 	-- Use proper slashes
 	if state.os == 'windows' then
+		path = path:trim_end('\\')
 		-- Drive letters on windows need trailing backslash
 		if path:sub(#path) == ':' then
 			path = path .. '\\'
 		end
-
-		return path:gsub('/', '\\')
+		return path
 	else
-		return path:gsub('\\', '/')
+		return path:trim_end('/')
 	end
 end
 
