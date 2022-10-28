@@ -30,9 +30,7 @@ function BufferingIndicator:render()
 	ass:rect(0, 0, display.width, display.height, {color = bg, opacity = 0.3})
 	local size = round(30 + math.min(display.width, display.height) / 10)
 	local opacity = (Elements.menu and not Elements.menu.is_closing) and 0.3 or 0.8
-	local opts = {rotate = (state.render_last_time * 1.75 % 1) * -360, color = fg, opacity = opacity}
-	ass:icon(display.width / 2, display.height / 2, size, 'autorenew', opts)
-	request_render()
+	ass:spinner(display.width / 2, display.height / 2, size, {color = fg, opacity = opacity})
 	return ass
 end
 

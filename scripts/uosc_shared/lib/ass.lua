@@ -2,7 +2,7 @@
 
 local ass_mt = getmetatable(assdraw.ass_new())
 
--- Opacity
+-- Opacity.
 ---@param opacity number|number[] Opacity of all elements, or an array of [primary, secondary, border, shadow] opacities.
 ---@param fraction? number Optionally adjust the above opacity by this fraction.
 function ass_mt:opacity(opacity, fraction)
@@ -20,7 +20,7 @@ function ass_mt:opacity(opacity, fraction)
 	end
 end
 
--- Icon
+-- Icon.
 ---@param x number
 ---@param y number
 ---@param size number
@@ -32,7 +32,7 @@ function ass_mt:icon(x, y, size, name, opts)
 	self:txt(x, y, opts.align or 5, name, opts)
 end
 
--- Text
+-- Text.
 -- Named `txt` because `ass.text` is a value.
 ---@param x number
 ---@param y number
@@ -72,7 +72,7 @@ function ass_mt:txt(x, y, align, value, opts)
 	self.text = self.text .. '{' .. tags .. '}' .. value
 end
 
--- Tooltip
+-- Tooltip.
 ---@param element {ax: number; ay: number; bx: number; by: number}
 ---@param value string|number
 ---@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, responsive?: boolean}
@@ -89,7 +89,7 @@ function ass_mt:tooltip(element, value, opts)
 	self:txt(clamp(margin, x, display.width - margin), y, align_top and 2 or 8, value, opts)
 end
 
--- Rectangle
+-- Rectangle.
 ---@param ax number
 ---@param ay number
 ---@param bx number
@@ -123,7 +123,7 @@ function ass_mt:rect(ax, ay, bx, by, opts)
 	self:draw_stop()
 end
 
--- Circle
+-- Circle.
 ---@param x number
 ---@param y number
 ---@param radius number
@@ -134,7 +134,7 @@ function ass_mt:circle(x, y, radius, opts)
 	self:rect(x - radius, y - radius, x + radius, y + radius, opts)
 end
 
--- Texture
+-- Texture.
 ---@param ax number
 ---@param ay number
 ---@param bx number
@@ -154,4 +154,17 @@ function ass_mt:texture(ax, ay, bx, by, char, opts)
 	self:txt(
 		x, y, 7, lines,
 		{font = 'uosc_textures', size = tile_size, color = opts.color, bold = false, opacity = opacity, clip = clip})
+end
+
+-- Rotating spinner icon.
+---@param x number
+---@param y number
+---@param size number
+---@param opts? {color?: string; opacity?: number; clip?: string; border?: number; border_color?: string;}
+function ass_mt:spinner(x, y, size, opts)
+	opts = opts or {}
+	opts.rotate = (state.render_last_time * 1.75 % 1) * -360
+	opts.color = opts.color or fg
+	self:icon(x, y, size, 'autorenew', opts)
+	request_render()
 end

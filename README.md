@@ -409,7 +409,8 @@ When command value is a string, it'll be passed to `mp.command(value)`. If it's 
 
 Menu `type` controls what happens when opening a menu when some other menu is already open. When the new menu type is different, it'll replace the currently opened menu. When it's the same, the currently open menu will simply be closed. This is used to implement toggling of menus with the same type.
 
-`item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons?selected=Material+Icons)
+`item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons?selected=Material+Icons)\
+There is also a special icon name `spinner` which will display a rotating spinner. Along with a no-op command on an item and `keep_open=true`, this can be used to display placeholder menus/items that are still loading.
 
 When `keep_open` is `true`, activating the item will not close the menu. This property can be defined on both menus and items, and is inherited from parent to child if child doesn't overwrite it.
 
