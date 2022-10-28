@@ -498,7 +498,7 @@ function Menu:fling_distance()
 end
 
 function Menu:on_global_mbtn_left_up()
-	if self.proximity_raw == 0 and not self.is_dragging then
+	if self.proximity_raw == 0 and self.drag_data and not self.is_dragging then
 		self:select_item_below_cursor()
 		self:open_selected_item({preselect_submenu_item = false})
 	end
