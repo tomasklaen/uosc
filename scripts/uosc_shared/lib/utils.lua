@@ -145,33 +145,90 @@ function opacity_to_alpha(opacity)
 	return 255 - math.ceil(255 * opacity)
 end
 
--- Ensures path is absolute and remove trailing slashes/backslashes.
+do
+	local os_separator = state.os == 'windows' and '\\' or '/'
+
+	-- Get appropriate path separator for the given path.
+	---@param path string
+	---@return string
+	function path_separator(path)
+		return path:sub(1, 2) == '\\\\' and '\\' or os_separator
+	end
+
+	-- Joins paths with the OS aware path separator or UNC separator.
+	---@param p1 string
+	---@param p2 string
+	---@return string
+	function utils.join_path(p1, p2)
+		return p1 .. path_separator(p1) .. p2
+	end
+end
+
+-- Check if path is absolute.
 ---@param path string
+---@return boolean
+function is_absolute(path)
+	if path:sub(1, 2) == '\\\\' then return true
+	elseif state.os == 'windows' then return path:find('^%a+:') ~= nil
+	else return path:sub(1, 1) == '/' end
+end
+
+-- Ensure path is absolute.
+---@param path string
+---@return string
+function ensure_absolute(path)
+	if is_absolute(path) then return path end
+	return utils.join_path(state.cwd, path)
+end
+
+-- Remove trailing slashes/backslashes.
+---@param path string
+---@return string
+function trim_trailing_separator(path)
+	path = trim_end(path, path_separator(path))
+	if state.os == 'windows' then
+		-- Drive letters on windows need trailing backslash
+		if path:sub(#path) == ':' then return path .. '\\' end
+		return path
+	else
+		if path == '' then return '/' end
+		return path
+	end
+end
+
+-- Ensures path is absolute, remove trailing slashes/backslashes.
+-- Lightweight version of normalize_path for performance critical parts.
+---@param path string
+---@return string
+function normalize_path_lite(path)
+	if not path or is_protocol(path) then return path end
+	path = ensure_absolute(path)
+	return trim_trailing_separator(path)
+end
+
+-- Ensures path is absolute, remove trailing slashes/backslashes, normalization of path separators and deduplication.
+---@param path string
+---@return string
 function normalize_path(path)
 	if not path or is_protocol(path) then return path end
 
-	-- Ensure path is absolute
-	if not (path:match(state.os == 'windows' and '^%a+:' or '^/') or path:match('^\\\\')) then
-		path = utils.join_path(state.cwd, path)
-	end
+	path = ensure_absolute(path)
+	local is_unc = path:sub(1, 2) == '\\\\'
+	if state.os == 'windows' or is_unc then path = path:gsub('/', '\\') end
+	path = trim_trailing_separator(path)
 
-	-- Use proper slashes
-	if state.os == 'windows' then
-		path = trim_end(path, '\\')
-		-- Drive letters on windows need trailing backslash
-		if path:sub(#path) == ':' then
-			path = path .. '\\'
-		end
-		return path
-	else
-		return trim_end(path, '/')
-	end
+	--Deduplication of path separators
+	if is_unc then path = path:gsub('(.\\)\\+', '%1')
+	elseif state.os == 'windows' then path = path:gsub('\\\\+', '\\')
+	else path = path:gsub('//+', '/') end
+
+	return path
 end
 
 -- Check if path is a protocol, such as `http://...`.
 ---@param path string
 function is_protocol(path)
-	return type(path) == 'string' and (path:match('^%a[%a%d-_]+://') ~= nil or path:match('^%a[%a%d-_]+:\\?') ~= nil)
+	return type(path) == 'string' and (path:find('^%a[%a%d-_]+://') ~= nil or path:find('^%a[%a%d-_]+:\\?') ~= nil)
 end
 
 ---@param path string
@@ -197,9 +254,9 @@ end
 function serialize_path(path)
 	if not path or is_protocol(path) then return end
 
-	local normal_path = normalize_path(path)
+	local normal_path = normalize_path_lite(path)
 	local dirname, basename = utils.split_path(normal_path)
-	if basename == '' then dirname = nil end
+	if basename == '' then basename, dirname = dirname:sub(1, #dirname - 1), nil end
 	local dot_i = string_last_index_of(basename, '.')
 
 	return {
