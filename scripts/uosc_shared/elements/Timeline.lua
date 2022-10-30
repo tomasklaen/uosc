@@ -84,7 +84,11 @@ function Timeline:set_from_cursor(fast)
 		mp.commandv('seek', self:get_time_at_x(cursor.x), fast and 'absolute+keyframes' or 'absolute+exact')
 	end
 end
-function Timeline:clear_thumbnail() mp.commandv('script-message-to', 'thumbfast', 'clear') end
+function Timeline:clear_thumbnail()
+	mp.commandv('script-message-to', 'thumbfast', 'clear')
+	thumbnail_state.render.thumbnail = false
+	thumbnail_state.updated = true
+end
 
 function Timeline:on_mbtn_left_down()
 	self.pressed = true
@@ -321,8 +325,8 @@ function Timeline:render()
 			local thumb_y = round(tooltip_anchor.ay * scale_y - thumb_y_margin - thumb_height)
 			local ax, ay = (thumb_x - border) / scale_x, (thumb_y - border) / scale_y
 			local bx, by = (thumb_x + thumb_width + border) / scale_x, (thumb_y + thumb_height + border) / scale_y
-			ass:rect(ax, ay, bx, by, {color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = 2})
-			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
+			thumbnail_state = {updated = true, x = thumb_x, y = thumb_y, ax = ax, ay = ay, bx = bx, by = by, color = bg, border_color = fg, render = thumbnail_state.render}
+			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, "", "", script_name)
 			tooltip_anchor.ax, tooltip_anchor.bx, tooltip_anchor.ay = ax, bx, ay
 		end
 

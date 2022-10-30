@@ -517,6 +517,13 @@ function render()
 		end
 	end
 
+	thumbnail_render()
+
+	if thumbnail_ass then
+		ass:new_event()
+		ass:merge(thumbnail_ass)
+	end
+
 	-- submit
 	if osd.res_x == display.width and osd.res_y == display.height and osd.data == ass.text then
 		return

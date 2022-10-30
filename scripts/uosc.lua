@@ -328,6 +328,8 @@ state = {
 	hidpi_scale = 1,
 }
 thumbnail = {width = 0, height = 0, disabled = false}
+thumbnail_state = {updated = true, x = 0, y = 0, ax = 0, ay = 0, bx = 0, by = 0, color = '000000', border_color = 'ffffff', render = {}}
+script_name = mp.get_script_name()
 external = {} -- Properties set by external scripts
 Elements = require('uosc_shared/elements/Elements')
 Menu = require('uosc_shared/elements/Menu')
@@ -1045,6 +1047,23 @@ mp.register_script_message('update-menu', function(json)
 		else open_command_menu(data) end
 	end
 end)
+function thumbnail_render()
+	if not thumbnail_state.updated then return end
+	thumbnail_state.updated = false
+	thumbnail_ass = assdraw.ass_new()
+	if not thumbnail_state.render.thumbnail then
+		if thumbnail_state.render.overlay_id ~= nil then
+			mp.command_native(
+				{name = "overlay-remove", id=thumbnail_state.render.overlay_id}
+			)
+		end
+		return
+	end
+	thumbnail_ass:rect(thumbnail_state.ax, thumbnail_state.ay, thumbnail_state.bx, thumbnail_state.by, {color = thumbnail_state.color, border = 1, border_color = thumbnail_state.border_color, border_opacity = 0.08, radius = 2})
+	mp.command_native(
+		{name = "overlay-add", id=thumbnail_state.render.overlay_id, x=thumbnail_state.x, y=thumbnail_state.y, file=thumbnail_state.render.thumbnail..".bgra", offset=0, fmt="bgra", w=thumbnail_state.render.width, h=thumbnail_state.render.height, stride=(4*thumbnail_state.render.width)}
+	)
+end
 mp.register_script_message('thumbfast-info', function(json)
 	local data = utils.parse_json(json)
 	if type(data) ~= 'table' or not data.width or not data.height then
@@ -1053,6 +1072,16 @@ mp.register_script_message('thumbfast-info', function(json)
 	else
 		thumbnail = data
 		request_render()
+	end
+end)
+mp.register_script_message('thumbfast-render', function(json)
+	local data = utils.parse_json(json)
+	if type(data) ~= 'table' or not data.width or not data.height then
+		thumbnail.disabled = true
+		msg.error('thumbfast-render: received json didn\'t produce a table with thumbnail information')
+	else
+		thumbnail_state.render = data
+		thumbnail_render()
 	end
 end)
 mp.register_script_message('set', function(name, value)
