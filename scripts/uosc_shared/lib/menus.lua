@@ -186,7 +186,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 	local path_separator = path_separator(directory.path)
 	for _, dir in ipairs(directories) do
-		local serialized = serialize_path(utils.join_path(directory.path, dir))
+		local serialized = serialize_path(join_path(directory.path, dir))
 		if serialized then
 			serialized.is_directory = true
 			items[#items + 1] = {title = serialized.basename, value = serialized, hint = path_separator}
@@ -194,7 +194,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	end
 
 	for _, file in ipairs(files) do
-		local serialized = serialize_path(utils.join_path(directory.path, file))
+		local serialized = serialize_path(join_path(directory.path, file))
 		if serialized then
 			serialized.is_file = true
 			items[#items + 1] = {title = serialized.basename, value = serialized}

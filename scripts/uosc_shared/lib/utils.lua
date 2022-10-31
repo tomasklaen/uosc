@@ -145,23 +145,23 @@ function opacity_to_alpha(opacity)
 	return 255 - math.ceil(255 * opacity)
 end
 
-do
+path_separator = (function()
 	local os_separator = state.os == 'windows' and '\\' or '/'
 
 	-- Get appropriate path separator for the given path.
 	---@param path string
 	---@return string
-	function path_separator(path)
+	return function(path)
 		return path:sub(1, 2) == '\\\\' and '\\' or os_separator
 	end
+end)()
 
-	-- Joins paths with the OS aware path separator or UNC separator.
-	---@param p1 string
-	---@param p2 string
-	---@return string
-	function utils.join_path(p1, p2)
-		return p1 .. path_separator(p1) .. p2
-	end
+-- Joins paths with the OS aware path separator or UNC separator.
+---@param p1 string
+---@param p2 string
+---@return string
+function join_path(p1, p2)
+	return p1 .. path_separator(p1) .. p2
 end
 
 -- Check if path is absolute.
@@ -178,7 +178,7 @@ end
 ---@return string
 function ensure_absolute(path)
 	if is_absolute(path) then return path end
-	return utils.join_path(state.cwd, path)
+	return join_path(state.cwd, path)
 end
 
 -- Remove trailing slashes/backslashes.
@@ -286,7 +286,7 @@ function read_directory(path, allowed_types)
 
 	for _, item in ipairs(items) do
 		if item ~= '.' and item ~= '..' then
-			local info = utils.file_info(utils.join_path(path, item))
+			local info = utils.file_info(join_path(path, item))
 			if info then
 				if info.is_file then
 					if not allowed_types or has_any_extension(item, allowed_types) then
@@ -313,7 +313,7 @@ function get_adjacent_files(file_path, allowed_types)
 	local current_file_index
 	local paths = {}
 	for index, file in ipairs(files) do
-		paths[#paths + 1] = utils.join_path(current_file.dirname, file)
+		paths[#paths + 1] = join_path(current_file.dirname, file)
 		if current_file.basename == file then current_file_index = index end
 	end
 	if not current_file_index then return end
