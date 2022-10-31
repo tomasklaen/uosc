@@ -324,7 +324,7 @@ function text_width(text, opts)
 	if not text or text == '' then return 0 end
 
 	---@type boolean, boolean
-	local bold, italic = opts.bold or false, opts.italic or false
+	local bold, italic = opts.bold or options.font_bold, opts.italic or false
 
 	if options.text_width_estimation then
 		---@type {[string|number]: {[1]: number, [2]: integer}}
