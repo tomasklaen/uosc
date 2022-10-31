@@ -99,6 +99,7 @@ function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
 function Timeline:on_mouse_leave() self:clear_thumbnail() end
 function Timeline:on_global_mbtn_left_up()
+	if thumbnail.disabled then thumbnail.disabled = false end
 	if self.pressed then
 		mp.set_property_native('pause', self.pressed_pause)
 		self.pressed = false
@@ -114,6 +115,8 @@ Timeline.seek_timer = mp.add_timeout(0.05, function() Elements.timeline:set_from
 Timeline.seek_timer:kill()
 function Timeline:on_global_mouse_move()
 	if self.pressed then
+		thumbnail.disabled = true
+		self:clear_thumbnail()
 		if self.width / state.duration < 10 then
 			self:set_from_cursor(true)
 			self.seek_timer:kill()
