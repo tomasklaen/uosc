@@ -541,8 +541,16 @@ function update_mouse_pos(_, mouse, ignore_hover)
 end
 mp.observe_property('mouse-pos', 'native', update_mouse_pos)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
+
+function clear_thumbnail()
+	if not thumbnail_state.render.thumbnail then return end
+	mp.commandv('script-message-to', 'thumbfast', 'clear')
+	thumbnail_state.render.thumbnail = false
+	thumbnail_state.updated = true
+end
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
+	clear_thumbnail()
 end)
 mp.register_event('end-file', function(event)
 	if event.reason == 'eof' then

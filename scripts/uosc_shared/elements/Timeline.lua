@@ -84,11 +84,6 @@ function Timeline:set_from_cursor(fast)
 		mp.commandv('seek', self:get_time_at_x(cursor.x), fast and 'absolute+keyframes' or 'absolute+exact')
 	end
 end
-function Timeline:clear_thumbnail()
-	mp.commandv('script-message-to', 'thumbfast', 'clear')
-	thumbnail_state.render.thumbnail = false
-	thumbnail_state.updated = true
-end
 
 function Timeline:on_mbtn_left_down()
 	self.pressed = true
@@ -101,17 +96,14 @@ function Timeline:on_prop_time() self:decide_enabled() end
 function Timeline:on_prop_border() self:update_dimensions() end
 function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
-function Timeline:on_mouse_leave() self:clear_thumbnail() end
 function Timeline:on_global_mbtn_left_up()
 	if self.pressed then
 		mp.set_property_native('pause', self.pressed_pause)
 		self.pressed = false
 	end
-	self:clear_thumbnail()
 end
 function Timeline:on_global_mouse_leave()
 	self.pressed = false
-	self:clear_thumbnail()
 end
 
 Timeline.seek_timer = mp.add_timeout(0.05, function() Elements.timeline:set_from_cursor() end)
@@ -135,7 +127,10 @@ function Timeline:render()
 	local size = self:get_effective_size()
 	local visibility = self:get_visibility()
 
-	if size < 1 then return end
+	if size < 1 then
+		clear_thumbnail()
+		return
+	end
 
 	local ass = assdraw.ass_new()
 
@@ -340,6 +335,8 @@ function Timeline:render()
 				})
 			end
 		end
+	else
+		clear_thumbnail()
 	end
 
 	return ass
