@@ -161,7 +161,10 @@ end)()
 ---@param p2 string
 ---@return string
 function join_path(p1, p2)
-	return p1 .. path_separator(p1) .. p2
+	local p1, separator = trim_trailing_separator(p1)
+	-- Prevents joining drive letters with a redundant separator (`C:\\foo`),
+	-- as `trim_trailing_separator()` doesn't trim separators from drive letters.
+	return p1:sub(#p1) == separator and p1 .. p2 or p1 .. separator.. p2
 end
 
 -- Check if path is absolute.
@@ -183,17 +186,17 @@ end
 
 -- Remove trailing slashes/backslashes.
 ---@param path string
----@return string
+---@return string path, string trimmed_separator_type
 function trim_trailing_separator(path)
-	path = trim_end(path, path_separator(path))
+	local separator = path_separator(path)
+	path = trim_end(path, separator)
 	if state.os == 'windows' then
 		-- Drive letters on windows need trailing backslash
-		if path:sub(#path) == ':' then return path .. '\\' end
-		return path
+		if path:sub(#path) == ':' then path = path .. '\\' end
 	else
-		if path == '' then return '/' end
-		return path
+		if path == '' then path = '/' end
 	end
+	return path, separator
 end
 
 -- Ensures path is absolute, remove trailing slashes/backslashes.
@@ -202,8 +205,8 @@ end
 ---@return string
 function normalize_path_lite(path)
 	if not path or is_protocol(path) then return path end
-	path = ensure_absolute(path)
-	return trim_trailing_separator(path)
+	path = trim_trailing_separator(ensure_absolute(path))
+	return path
 end
 
 -- Ensures path is absolute, remove trailing slashes/backslashes, normalization of path separators and deduplication.

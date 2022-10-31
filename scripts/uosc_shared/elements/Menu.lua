@@ -351,7 +351,7 @@ end
 ---@param menu? MenuStack
 function Menu:select_value(value, menu)
 	menu = menu or self.current
-	local index = itable_find(menu.items, function(_, item) return item.value == value end)
+	local index = itable_find(menu.items, function(item) return item.value == value end)
 	self:select_index(index, 5)
 end
 
@@ -372,7 +372,7 @@ end
 
 ---@param index? integer
 ---@param menu? MenuStack
-function Menu:activate_unique_index(index, menu)
+function Menu:activate_one_index(index, menu)
 	self:deactivate_items(menu)
 	self:activate_index(index, menu)
 end
@@ -381,16 +381,16 @@ end
 ---@param menu? MenuStack
 function Menu:activate_value(value, menu)
 	menu = menu or self.current
-	local index = itable_find(menu.items, function(_, item) return item.value == value end)
+	local index = itable_find(menu.items, function(item) return item.value == value end)
 	self:activate_index(index, menu)
 end
 
 ---@param value? any
 ---@param menu? MenuStack
-function Menu:activate_unique_value(value, menu)
+function Menu:activate_one_value(value, menu)
 	menu = menu or self.current
-	local index = itable_find(menu.items, function(_, item) return item.value == value end)
-	self:activate_unique_index(index, menu)
+	local index = itable_find(menu.items, function(item) return item.value == value end)
+	self:activate_one_index(index, menu)
 end
 
 ---@param id string
@@ -420,7 +420,7 @@ end
 ---@param menu? MenuStack
 function Menu:delete_value(value, menu)
 	menu = menu or self.current
-	local index = itable_find(menu.items, function(_, item) return item.value == value end)
+	local index = itable_find(menu.items, function(item) return item.value == value end)
 	self:delete_index(index)
 end
 

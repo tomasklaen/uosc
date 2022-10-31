@@ -159,6 +159,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 	local files, directories = read_directory(directory.path, opts.allowed_types)
 	local is_root = not directory.dirname
+	local path_separator = path_separator(directory.path)
 
 	if not files or not directories then return end
 
@@ -171,77 +172,72 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 	if is_root then
 		if state.os == 'windows' then
-			items[#items + 1] = {
-				title = '..', hint = 'Drives', value = {is_drives = true, is_to_parent = true}, separator = true,
-			}
+			items[#items + 1] = {title = '..', hint = 'Drives', value = '{drives}', separator = true}
 		end
 	else
-		local serialized = serialize_path(directory.dirname)
-		serialized.is_directory = true
-		serialized.is_to_parent = true
-		items[#items + 1] = {title = '..', hint = 'parent dir', value = serialized, separator = true}
+		items[#items + 1] = {title = '..', hint = 'parent dir', value = directory.dirname, separator = true}
 	end
 
-	local items_start_index = #items + 1
+	local selected_index = #items + 1
 
-	local path_separator = path_separator(directory.path)
 	for _, dir in ipairs(directories) do
-		local serialized = serialize_path(join_path(directory.path, dir))
-		if serialized then
-			serialized.is_directory = true
-			items[#items + 1] = {title = serialized.basename, value = serialized, hint = path_separator}
-		end
+		items[#items + 1] = {title = dir, value = join_path(directory.path, dir), hint = path_separator}
 	end
 
 	for _, file in ipairs(files) do
-		local serialized = serialize_path(join_path(directory.path, file))
-		if serialized then
-			serialized.is_file = true
-			items[#items + 1] = {title = serialized.basename, value = serialized}
-		end
+		items[#items + 1] = {title = file, value = join_path(directory.path, file)}
 	end
 
 	for index, item in ipairs(items) do
-		if not item.value.is_to_parent then
-			if index == items_start_index then item.selected = true end
-
-			if opts.active_path == item.value.path then
-				item.active = true
-				if not opts.selected_path then item.selected = true end
-			end
-
-			if opts.selected_path == item.value.path then item.selected = true end
+		if not item.value.is_to_parent and opts.active_path == item.value then
+			item.active = true
+			if not opts.selected_path then selected_index = index end
 		end
+
+		if opts.selected_path == item.value then selected_index = index end
 	end
 
 	local menu_data = {
 		type = opts.type, title = opts.title or directory.basename .. path_separator, items = items,
-		on_open = opts.on_open, on_close = opts.on_close,
+		selected_index = selected_index,
 	}
+	local menu_options = {on_open = opts.on_open, on_close = opts.on_close}
 
 	return Menu:open(menu_data, function(path)
+		local is_drives = path == '{drives}'
+		local is_to_parent = is_drives or #path < #directory_path
 		local inheritable_options = {
 			type = opts.type, title = opts.title, allowed_types = opts.allowed_types, active_path = opts.active_path,
 		}
 
-		if path.is_drives then
+		if is_drives then
 			open_drives_menu(function(drive_path)
 				open_file_navigation_menu(drive_path, handle_select, inheritable_options)
-			end, {type = inheritable_options.type, title = inheritable_options.title, selected_path = directory.path})
+			end, {
+				type = inheritable_options.type, title = inheritable_options.title, selected_path = directory.path,
+				on_open = opts.on_open, on_close = opts.on_close,
+			})
 			return
 		end
 
-		if path.is_directory then
+		local info, error = utils.file_info(path)
+
+		if not info then
+			msg.error('Can\'t retrieve path info for "' .. path .. '". Error: ' .. (error or ''))
+			return
+		end
+
+		if info.is_dir then
 			--  Preselect directory we are coming from
-			if path.is_to_parent then
+			if is_to_parent then
 				inheritable_options.selected_path = directory.path
 			end
 
-			open_file_navigation_menu(path.path, handle_select, inheritable_options)
+			open_file_navigation_menu(path, handle_select, inheritable_options)
 		else
-			handle_select(path.path)
+			handle_select(path)
 		end
-	end)
+	end, menu_options)
 end
 
 -- Opens a file navigation menu with Windows drives as items.
@@ -255,7 +251,7 @@ function open_drives_menu(handle_select, opts)
 		playback_only = false,
 		args = {'wmic', 'logicaldisk', 'get', 'name', '/value'},
 	})
-	local items = {}
+	local items, selected_index = {}, 1
 
 	if process.status == 0 then
 		for _, value in ipairs(split(process.stdout, '\n')) do
@@ -263,15 +259,17 @@ function open_drives_menu(handle_select, opts)
 			if drive then
 				local drive_path = normalize_path(drive)
 				items[#items + 1] = {
-					title = drive, hint = 'Drive', value = drive_path,
-					selected = opts.selected_path == drive_path,
-					active = opts.active_path == drive_path,
+					title = drive, hint = 'drive', value = drive_path, active = opts.active_path == drive_path,
 				}
+				if opts.selected_path == drive_path then selected_index = #items end
 			end
 		end
 	else
 		msg.error(process.stderr)
 	end
 
-	return Menu:open({type = opts.type, title = opts.title or 'Drives', items = items}, handle_select)
+	return Menu:open(
+		{type = opts.type, title = opts.title or 'Drives', items = items, selected_index = selected_index},
+		handle_select
+	)
 end
