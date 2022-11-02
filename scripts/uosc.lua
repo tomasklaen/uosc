@@ -379,6 +379,8 @@ end
 
 -- Notifies other scripts such as console about where the unoccupied parts of the screen are.
 function update_margins()
+	if display.height == 0 then return end
+
 	-- margins are normalized to window size
 	local timeline, top_bar, controls = Elements.timeline, Elements.top_bar, Elements.controls
 	local bottom_y = controls and controls.enabled and controls.ay or timeline.ay
