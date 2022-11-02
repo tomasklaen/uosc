@@ -328,7 +328,7 @@ state = {
 	hidpi_scale = 1,
 }
 thumbnail = {width = 0, height = 0, disabled = false}
-thumbnail_state = {updated = true, x = 0, y = 0, ax = 0, ay = 0, bx = 0, by = 0, color = '000000', border_color = 'ffffff', render = {}}
+thumbnail_state = {updated = true, show=true, x = 0, y = 0, ax = 0, ay = 0, bx = 0, by = 0, color = '000000', border_color = 'ffffff', render = {}}
 script_name = mp.get_script_name()
 external = {} -- Properties set by external scripts
 Elements = require('uosc_shared/elements/Elements')
@@ -543,10 +543,13 @@ mp.observe_property('mouse-pos', 'native', update_mouse_pos)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 
 function clear_thumbnail()
-	if not thumbnail_state.render.thumbnail then return end
+	if not thumbnail_state.show then return end
 	mp.commandv('script-message-to', 'thumbfast', 'clear')
-	thumbnail_state.render.thumbnail = false
 	thumbnail_state.updated = true
+	if thumbnail.overlay_id ~= nil then
+        mp.command_native({"overlay-remove", thumbnail.overlay_id})
+    end
+	thumbnail_state.show = false
 end
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
@@ -1056,20 +1059,20 @@ mp.register_script_message('update-menu', function(json)
 	end
 end)
 function thumbnail_render()
-	if not thumbnail_state.updated then return end
+	if not thumbnail_state.updated or not thumbnail.thumbnail then return end
 	thumbnail_state.updated = false
 	thumbnail_ass = assdraw.ass_new()
-	if not thumbnail_state.render.thumbnail then
-		if thumbnail_state.render.overlay_id ~= nil then
+	if not thumbnail_state.show then
+		if thumbnail.overlay_id ~= nil then
 			mp.command_native(
-				{name = "overlay-remove", id=thumbnail_state.render.overlay_id}
+				{name = "overlay-remove", id=thumbnail.overlay_id}
 			)
 		end
 		return
 	end
 	thumbnail_ass:rect(thumbnail_state.ax, thumbnail_state.ay, thumbnail_state.bx, thumbnail_state.by, {color = thumbnail_state.color, border = 1, border_color = thumbnail_state.border_color, border_opacity = 0.08, radius = 2})
 	mp.command_native(
-		{name = "overlay-add", id=thumbnail_state.render.overlay_id, x=thumbnail_state.x, y=thumbnail_state.y, file=thumbnail_state.render.thumbnail..".bgra", offset=0, fmt="bgra", w=thumbnail_state.render.width, h=thumbnail_state.render.height, stride=(4*thumbnail_state.render.width)}
+		{name = "overlay-add", id=thumbnail.overlay_id, x=thumbnail_state.x, y=thumbnail_state.y, file=thumbnail.thumbnail..".bgra", offset=0, fmt="bgra", w=thumbnail.width, h=thumbnail.height, stride=(4*thumbnail.width)}
 	)
 end
 mp.register_script_message('thumbfast-info', function(json)
@@ -1080,16 +1083,6 @@ mp.register_script_message('thumbfast-info', function(json)
 	else
 		thumbnail = data
 		request_render()
-	end
-end)
-mp.register_script_message('thumbfast-render', function(json)
-	local data = utils.parse_json(json)
-	if type(data) ~= 'table' or not data.width or not data.height then
-		thumbnail.disabled = true
-		msg.error('thumbfast-render: received json didn\'t produce a table with thumbnail information')
-	else
-		thumbnail_state.render = data
-		thumbnail_render()
 	end
 end)
 mp.register_script_message('set', function(name, value)
