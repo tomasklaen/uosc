@@ -1001,7 +1001,7 @@ mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
 }))
 mp.add_key_binding(nil, 'open-config-directory', function()
 	local config_path = mp.command_native({'expand-path', '~~/mpv.conf'})
-	local config = serialize_path(config_path)
+	local config = serialize_path(normalize_path(config_path))
 
 	if config then
 		local args
