@@ -4,7 +4,7 @@ local Element = require('uosc_shared/elements/Element')
 ---@alias MenuData {type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer;}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean;}
----@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(), on_close?: fun()}
+---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(); on_close?: fun(); on_back?: fun()}
 
 -- Internal data structure created from `Menu`.
 ---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling}
@@ -98,7 +98,7 @@ function Menu:init(data, callback, opts)
 	self.by_id = {}
 	self.key_bindings = {}
 	self.is_being_replaced = false
-	self.is_closing = false
+	self.is_closing, self.is_closed = false, false
 	---@type {y: integer, time: number}[]
 	self.drag_data = nil
 	self.is_dragging = false
@@ -120,6 +120,7 @@ end
 function Menu:destroy()
 	Element.destroy(self)
 	self:disable_key_bindings()
+	self.is_closed = true
 	if not self.is_being_replaced then Elements.curtain:unregister('menu') end
 	if self.opts.on_close then self.opts.on_close() end
 end
@@ -439,16 +440,23 @@ function Menu:next(menu)
 end
 
 function Menu:back()
+	if self.opts.on_back then
+		self.opts.on_back()
+		if self.is_closed then return end
+	end
+
 	local menu = self.current
 	local parent = menu.parent_menu
 
-	if not parent then return self:close() end
-
-	menu.selected_index = nil
-	self.current = parent
-	self:update_dimensions()
-	self:tween(self.offset_x - menu.width / 2, 0, function(offset) self:set_offset_x(offset) end)
-	self.opacity = 1 -- in case tween above canceled fade in animation
+	if parent then
+		menu.selected_index = nil
+		self.current = parent
+		self:update_dimensions()
+		self:tween(self.offset_x - menu.width / 2, 0, function(offset) self:set_offset_x(offset) end)
+		self.opacity = 1 -- in case tween above canceled fade in animation
+	else
+		self:close()
+	end
 end
 
 ---@param opts? {keep_open?: boolean, preselect_submenu_item?: boolean}

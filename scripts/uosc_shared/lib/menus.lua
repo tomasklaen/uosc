@@ -178,6 +178,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		items[#items + 1] = {title = '..', hint = 'parent dir', value = directory.dirname, separator = true}
 	end
 
+	local back_path = items[#items] and items[#items].value
 	local selected_index = #items + 1
 
 	for _, dir in ipairs(directories) do
@@ -197,13 +198,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		if opts.selected_path == item.value then selected_index = index end
 	end
 
-	local menu_data = {
-		type = opts.type, title = opts.title or directory.basename .. path_separator, items = items,
-		selected_index = selected_index,
-	}
-	local menu_options = {on_open = opts.on_open, on_close = opts.on_close}
-
-	return Menu:open(menu_data, function(path)
+	local function open_path(path)
 		local is_drives = path == '{drives}'
 		local is_to_parent = is_drives or #path < #directory_path
 		local inheritable_options = {
@@ -237,7 +232,19 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		else
 			handle_select(path)
 		end
-	end, menu_options)
+	end
+
+	local function handle_back()
+		if back_path then open_path(back_path) end
+	end
+
+	local menu_data = {
+		type = opts.type, title = opts.title or directory.basename .. path_separator, items = items,
+		selected_index = selected_index,
+	}
+	local menu_options = {on_open = opts.on_open, on_close = opts.on_close, on_back = handle_back}
+
+	return Menu:open(menu_data, open_path, menu_options)
 end
 
 -- Opens a file navigation menu with Windows drives as items.
