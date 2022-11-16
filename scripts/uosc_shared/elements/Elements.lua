@@ -118,10 +118,14 @@ end
 -- Disabled elements don't receive these events.
 ---@param name string Event name.
 function Elements:proximity_trigger(name, ...)
-	for _, element in self:ipairs() do
+	local stop_normal, stop_global = false, false
+	for i = #self.itable, 1, -1 do
+		local element = self.itable[i]
 		if element.enabled then
-			if element.proximity_raw == 0 then element:trigger(name, ...) end
-			element:trigger('global_' .. name, ...)
+			if element.proximity_raw == 0 then
+				if element:trigger(name, ...) == 'stop_propagation' then break end
+			end
+			if element:trigger('global_' .. name, ...) == 'stop_propagation' then break end
 		end
 	end
 end

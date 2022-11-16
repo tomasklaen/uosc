@@ -129,8 +129,9 @@ end
 
 ---@param name string
 function Element:trigger(name, ...)
-	self:maybe('on_' .. name, ...)
+	local result = self:maybe('on_' .. name, ...)
 	request_render()
+	return result
 end
 
 -- Briefly flashes the element for `options.flash_duration` milliseconds.

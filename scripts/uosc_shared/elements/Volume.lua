@@ -210,7 +210,7 @@ function Volume:init()
 end
 
 function Volume:get_visibility()
-	return self.slider.pressed and 1 or Elements.timeline.proximity_raw == 0 and -1 or Element.get_visibility(self)
+	return self.slider.pressed and 1 or Elements.timeline:get_is_hovered() and -1 or Element.get_visibility(self)
 end
 
 function Volume:update_dimensions()
