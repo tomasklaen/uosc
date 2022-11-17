@@ -45,6 +45,8 @@ function Speed:speed_step(speed, up)
 end
 
 function Speed:on_mbtn_left_down()
+	-- Don't accept clicks while hidden.
+	if self:get_visibility() <= 0 then return end
 	self:tween_stop() -- Stop and cleanup possible ongoing animations
 	self.dragging = {
 		start_time = mp.get_time(),
