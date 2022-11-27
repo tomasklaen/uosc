@@ -268,7 +268,7 @@ end
 
 --[[ STATE ]]
 
-display = {width = 1280, height = 720, scale_x = 1, scale_y = 1}
+display = {width = 1280, height = 720, scale_x = 1, scale_y = 1, initialized = false}
 cursor = {hidden = true, x = 0, y = 0}
 state = {
 	os = (function()
@@ -347,6 +347,7 @@ function update_display_dimensions()
 	local scaled_width, scaled_height = round(real_width / scale), round(real_height / scale)
 	display.width, display.height = scaled_width, scaled_height
 	display.scale_x, display.scale_y = real_width / scaled_width, real_height / scaled_height
+	display.initialized = true
 
 	-- Tell elements about this
 	Elements:trigger('display')
