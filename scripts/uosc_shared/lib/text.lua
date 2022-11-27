@@ -56,7 +56,7 @@ end
 ---Creates an iterator for an utf-8 encoded string
 ---Iterates over utf-8 characters instead of bytes
 ---@param str string
----@return fun(): string
+---@return fun(): integer?, string?
 local function utf8_iter(str)
 	local byte_start = 1
 	return function()
