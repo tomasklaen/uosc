@@ -502,6 +502,7 @@ end
 --[[ RENDERING ]]
 
 function render()
+	if not display.initialized then return end
 	state.render_last_time = mp.get_time()
 
 	-- Actual rendering

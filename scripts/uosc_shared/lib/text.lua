@@ -56,7 +56,7 @@ end
 ---Creates an iterator for an utf-8 encoded string
 ---Iterates over utf-8 characters instead of bytes
 ---@param str string
----@return fun(): string
+---@return fun(): integer?, string?
 local function utf8_iter(str)
 	local byte_start = 1
 	return function()
@@ -115,18 +115,25 @@ local function unicode_to_utf8(unicode)
 	end
 end
 
+---Update osd resolution if valid
+---@param width integer
+---@param height integer
+local function update_osd_resolution(width, height)
+	if width > 0 and height > 0 then osd_width, osd_height = width, height end
+end
+
 local text_osd = mp.create_osd_overlay("ass-events")
 text_osd.compute_bounds, text_osd.hidden = true, true
 ---@type integer, integer
 local osd_width, osd_height = 100, 100
 mp.observe_property('osd-dimensions', 'native', function (_, dim)
-	if dim then osd_width, osd_height = dim.w, dim.h end
+	if dim then update_osd_resolution(dim.w, dim.h) end
 end)
 
 ---@param ass_text string
 ---@return integer, integer, integer, integer
 local function measure_bounds(ass_text)
-	osd_width, osd_height = mp.get_osd_size()
+	update_osd_resolution(mp.get_osd_size())
 	text_osd.res_x, text_osd.res_y = osd_width, osd_height
 	text_osd.data = ass_text
 	local res = text_osd:update()
