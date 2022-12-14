@@ -298,8 +298,8 @@ function Timeline:render()
 				end
 			end
 
-			if state.ab_loop_a and state.ab_loop_a > 0 then draw_chapter(state.ab_loop_a) end
-			if state.ab_loop_b and state.ab_loop_b > 0 then draw_chapter(state.ab_loop_b) end
+			if state.ab_loop_a and state.ab_loop_a > 0 then draw_chapter(state.ab_loop_a, diamond_radius) end
+			if state.ab_loop_b and state.ab_loop_b > 0 then draw_chapter(state.ab_loop_b, diamond_radius) end
 		end
 	end
 
