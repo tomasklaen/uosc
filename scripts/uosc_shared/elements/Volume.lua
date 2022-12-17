@@ -6,6 +6,7 @@ local Element = require('uosc_shared/elements/Element')
 local MuteButton = class(Element)
 ---@param props? ElementProps
 function MuteButton:new(props) return Class.new(self, 'volume_mute', props) --[[@as MuteButton]] end
+function MuteButton:get_visibility() return Elements.volume:get_visibility(self) end
 function MuteButton:on_mbtn_left_down() mp.commandv('cycle', 'mute') end
 function MuteButton:render()
 	local visibility = self:get_visibility()
@@ -34,6 +35,8 @@ function VolumeSlider:init(props)
 	self.spacing = 0
 	self.radius = 1
 end
+
+function VolumeSlider:get_visibility() return Elements.volume:get_visibility(self) end
 
 function VolumeSlider:set_volume(volume)
 	volume = round(volume / options.volume_step) * options.volume_step

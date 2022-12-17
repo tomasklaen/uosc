@@ -44,6 +44,8 @@ function Element:destroy()
 	Elements:remove(self)
 end
 
+function Element:reset_proximity() self.proximity, self.proximity_raw = 0, infinity end
+
 ---@param ax number
 ---@param ay number
 ---@param bx number
@@ -56,8 +58,7 @@ end
 
 function Element:update_proximity()
 	if cursor.hidden then
-		self.proximity_raw = infinity
-		self.proximity = 0
+		self:reset_proximity()
 	else
 		local range = options.proximity_out - options.proximity_in
 		self.proximity_raw = get_point_to_rectangle_proximity(cursor, self)

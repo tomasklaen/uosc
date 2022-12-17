@@ -47,8 +47,7 @@ function Elements:update_proximities()
 					capture_wheel = true
 					element:update_proximity()
 				else
-					element.proximity_raw = infinity
-					element.proximity = 0
+					element:reset_proximity()
 				end
 			else
 				element:update_proximity()
@@ -88,8 +87,15 @@ end
 -- Toggles passed elements' min visibilities between 0 and 1.
 ---@param ids string[] IDs of elements to peek.
 function Elements:toggle(ids)
-	local has_invisible = itable_find(ids, function(id) return Elements[id] and Elements[id].min_visibility ~= 1 end)
+	local has_invisible = itable_find(ids, function(id) return Elements[id] and Elements[id]:get_visibility() ~= 1 end)
 	self:set_min_visibility(has_invisible and 1 or 0, ids)
+	-- Reset proximities when toggling off. Has to happen after `set_min_visibility`,
+	-- as that is using proximity as a tween starting point.
+	if not has_invisible then
+		for _, id in ipairs(ids) do
+			if Elements[id] then Elements[id]:reset_proximity() end
+		end
+	end
 end
 
 -- Set (animate) elements' min visibilities to passed value.
@@ -98,7 +104,10 @@ end
 function Elements:set_min_visibility(visibility, ids)
 	for _, id in ipairs(ids) do
 		local element = Elements[id]
-		if element then element:tween_property('min_visibility', element.min_visibility, visibility) end
+		if element then
+			local from = math.max(0, element:get_visibility())
+			element:tween_property('min_visibility', from, visibility)
+		end
 	end
 end
 
