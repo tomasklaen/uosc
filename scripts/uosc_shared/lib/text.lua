@@ -127,7 +127,7 @@ text_osd.compute_bounds, text_osd.hidden = true, true
 ---@type integer, integer
 local osd_width, osd_height = 100, 100
 mp.observe_property('osd-dimensions', 'native', function (_, dim)
-	if dim then update_osd_resolution(dim.w, dim.h) end
+	if dim and dim.w > 0 and dim.h > 0 then osd_width, osd_height = dim.w, dim.h end
 end)
 
 ---@param ass_text string
