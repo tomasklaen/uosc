@@ -40,6 +40,11 @@ local same_width_blocks = {
 	{0x31350, 0x323AF}, -- CJK Unified Ideographs Extension H	 3 TIP	Han
 }
 
+local width_length_ratio = 0.5
+
+---@type integer, integer
+local osd_width, osd_height = 100, 100
+
 ---Get byte count of utf-8 character at index i in str
 ---@param str string
 ---@param i integer?
@@ -122,52 +127,57 @@ local function update_osd_resolution(width, height)
 	if width > 0 and height > 0 then osd_width, osd_height = width, height end
 end
 
-local text_osd = mp.create_osd_overlay("ass-events")
-text_osd.compute_bounds, text_osd.hidden = true, true
----@type integer, integer
-local osd_width, osd_height = 100, 100
 mp.observe_property('osd-dimensions', 'native', function (_, dim)
 	if dim then update_osd_resolution(dim.w, dim.h) end
 end)
 
----@param ass_text string
----@return integer, integer, integer, integer
-local function measure_bounds(ass_text)
-	update_osd_resolution(mp.get_osd_size())
-	text_osd.res_x, text_osd.res_y = osd_width, osd_height
-	text_osd.data = ass_text
-	local res = text_osd:update()
-	return res.x0, res.y0, res.x1, res.y1
+local measure_bounds
+do
+	local text_osd = mp.create_osd_overlay("ass-events")
+	text_osd.compute_bounds, text_osd.hidden = true, true
+
+	---@param ass_text string
+	---@return integer, integer, integer, integer
+	measure_bounds = function(ass_text)
+		update_osd_resolution(mp.get_osd_size())
+		text_osd.res_x, text_osd.res_y = osd_width, osd_height
+		text_osd.data = ass_text
+		local res = text_osd:update()
+		return res.x0, res.y0, res.x1, res.y1
+	end
 end
 
----@type {wrap: integer; bold: boolean; italic: boolean, rotate: number; size: number}
-local bounds_opts = {wrap = 2, bold = false, italic = false, rotate = 0, size = 0}
+local normalized_text_width
+do
+	---@type {wrap: integer; bold: boolean; italic: boolean, rotate: number; size: number}
+	local bounds_opts = {wrap = 2, bold = false, italic = false, rotate = 0, size = 0}
 
----Measure text width and normalize to a font size of 1
----text has to be ass safe
----@param text string
----@param size number
----@param bold boolean
----@param italic boolean
----@param horizontal boolean
----@return number, integer
-local function normalized_text_width(text, size, bold, italic, horizontal)
-	bounds_opts.bold, bounds_opts.italic, bounds_opts.rotate = bold, italic, horizontal and 0 or -90
-	local x1, y1 = nil, nil
-	size = size / 0.8
-	-- prevent endless loop
-	local repetitions_left = 5
-	repeat
-		size = size * 0.8
-		bounds_opts.size = size
-		local ass = assdraw.ass_new()
-		ass:txt(0, 0, horizontal and 7 or 1, text, bounds_opts)
-		_, _, x1, y1 = measure_bounds(ass.text)
-		repetitions_left = repetitions_left - 1
-		-- make sure nothing got clipped
-	until (x1 and x1 < osd_width and y1 < osd_height) or repetitions_left == 0
-	local width = (repetitions_left == 0 and not x1) and 0 or (horizontal and x1 or y1)
-	return width / size, horizontal and osd_width or osd_height
+	---Measure text width and normalize to a font size of 1
+	---text has to be ass safe
+	---@param text string
+	---@param size number
+	---@param bold boolean
+	---@param italic boolean
+	---@param horizontal boolean
+	---@return number, integer
+	normalized_text_width = function(text, size, bold, italic, horizontal)
+		bounds_opts.bold, bounds_opts.italic, bounds_opts.rotate = bold, italic, horizontal and 0 or -90
+		local x1, y1 = nil, nil
+		size = size / 0.8
+		-- prevent endless loop
+		local repetitions_left = 5
+		repeat
+			size = size * 0.8
+			bounds_opts.size = size
+			local ass = assdraw.ass_new()
+			ass:txt(0, 0, horizontal and 7 or 1, text, bounds_opts)
+			_, _, x1, y1 = measure_bounds(ass.text)
+			repetitions_left = repetitions_left - 1
+			-- make sure nothing got clipped
+		until (x1 and x1 < osd_width and y1 < osd_height) or repetitions_left == 0
+		local width = (repetitions_left == 0 and not x1) and 0 or (horizontal and x1 or y1)
+		return width / size, horizontal and osd_width or osd_height
+	end
 end
 
 ---Estimates character length based on utf8 byte count
@@ -189,10 +199,6 @@ local function text_length(text)
 	for _, char in utf8_iter(tostring(text)) do text_length = text_length + char_length(char) end
 	return text_length
 end
-
-local width_length_ratio = 0.5
----@type {[boolean]: {[string]: {[1]: number, [2]: integer}}}
-local char_width_cache = {}
 
 ---Finds the best orientation of text on screen and returns the estimated max size
 ---and if the text should be drawn horizontally
@@ -227,61 +233,67 @@ local function no_remeasure_required(px)
 	return px >= 800 or (px * 1.1 >= osd_width and px * 1.1 >= osd_height)
 end
 
----Get measured width of character
----@param char string
----@param bold boolean
----@return number, integer
-local function character_width(char, bold)
-	---@type {[string]: {[1]: number, [2]: integer}}
-	local char_widths = get_cache_stage(char_width_cache, bold)
-	local width_px = char_widths[char]
-	if width_px and no_remeasure_required(width_px[2]) then return width_px[1], width_px[2] end
+local character_width
+do
+	---@type {[boolean]: {[string]: {[1]: number, [2]: integer}}}
+	local char_width_cache = {}
 
-	local unicode = utf8_to_unicode(char, 1)
-	for _, block in ipairs(zero_width_blocks) do
-		if unicode >= block[1] and unicode <= block[2] then
-			char_widths[char] = {0, infinity}
-			return 0, infinity
-		end
-	end
+	---Get measured width of character
+	---@param char string
+	---@param bold boolean
+	---@return number, integer
+	character_width = function(char, bold)
+		---@type {[string]: {[1]: number, [2]: integer}}
+		local char_widths = get_cache_stage(char_width_cache, bold)
+		local width_px = char_widths[char]
+		if width_px and no_remeasure_required(width_px[2]) then return width_px[1], width_px[2] end
 
-	local measured_char = nil
-	for _, block in ipairs(same_width_blocks) do
-		if unicode >= block[1] and unicode <= block[2] then
-			measured_char = unicode_to_utf8(block[1])
-			width_px = char_widths[measured_char]
-			if width_px and no_remeasure_required(width_px[2]) then
-				char_widths[char] = width_px
-				return width_px[1], width_px[2]
+		local unicode = utf8_to_unicode(char, 1)
+		for _, block in ipairs(zero_width_blocks) do
+			if unicode >= block[1] and unicode <= block[2] then
+				char_widths[char] = {0, infinity}
+				return 0, infinity
 			end
-			break
 		end
+
+		local measured_char = nil
+		for _, block in ipairs(same_width_blocks) do
+			if unicode >= block[1] and unicode <= block[2] then
+				measured_char = unicode_to_utf8(block[1])
+				width_px = char_widths[measured_char]
+				if width_px and no_remeasure_required(width_px[2]) then
+					char_widths[char] = width_px
+					return width_px[1], width_px[2]
+				end
+				break
+			end
+		end
+
+		if not measured_char then measured_char = char end
+		-- half as many repetitions for wide characters
+		local char_count = 10 / char_length(char)
+		local max_size, horizontal = fit_on_screen(measured_char:rep(char_count))
+		local size = math.min(max_size * 0.9, 50)
+		char_count = math.min(math.floor(char_count * max_size / size * 0.8), 100)
+		local enclosing_char, enclosing_width, next_char_count = '|', 0, char_count
+		if measured_char == enclosing_char then enclosing_char = ''
+		else enclosing_width = 2 * character_width(enclosing_char, bold) end
+		local width_ratio, width, px = nil, nil, nil
+		repeat
+			char_count = next_char_count
+			local str = enclosing_char .. measured_char:rep(char_count) .. enclosing_char
+			width, px = normalized_text_width(str, size, bold, false, horizontal)
+			width = width - enclosing_width
+			width_ratio = width * size / (horizontal and osd_width or osd_height)
+			next_char_count = math.min(math.floor(char_count / width_ratio * 0.9), 100)
+		until width_ratio < 0.05 or width_ratio > 0.5 or char_count == next_char_count
+		width = width / char_count
+
+		width_px = {width, px}
+		if char ~= measured_char then char_widths[measured_char] = width_px end
+		char_widths[char] = width_px
+		return width, px
 	end
-
-	if not measured_char then measured_char = char end
-	-- half as many repetitions for wide characters
-	local char_count = 10 / char_length(char)
-	local max_size, horizontal = fit_on_screen(measured_char:rep(char_count))
-	local size = math.min(max_size * 0.9, 50)
-	char_count = math.min(math.floor(char_count * max_size / size * 0.8), 100)
-	local enclosing_char, enclosing_width, next_char_count = '|', 0, char_count
-	if measured_char == enclosing_char then enclosing_char = ''
-	else enclosing_width = 2 * character_width(enclosing_char, bold) end
-	local width_ratio, width, px = nil, nil, nil
-	repeat
-		char_count = next_char_count
-		local str = enclosing_char .. measured_char:rep(char_count) .. enclosing_char
-		width, px = normalized_text_width(str, size, bold, false, horizontal)
-		width = width - enclosing_width
-		width_ratio = width * size / (horizontal and osd_width or osd_height)
-		next_char_count = math.min(math.floor(char_count / width_ratio * 0.9), 100)
-	until width_ratio < 0.05 or width_ratio > 0.5 or char_count == next_char_count
-	width = width / char_count
-
-	width_px = {width, px}
-	if char ~= measured_char then char_widths[measured_char] = width_px end
-	char_widths[char] = width_px
-	return width, px
 end
 
 ---Calculate text width from individual measured characters
@@ -320,37 +332,39 @@ local function opts_scale_factor(opts)
 	return (opts.italic and 1.01 or 1) * opts.size
 end
 
----@type {[boolean]: {[boolean]: {[string|number]: {[1]: number, [2]: integer}}}} | {[boolean]: {[string|number]: {[1]: number, [2]: integer}}}
-local width_cache = {}
+do
+	---@type {[boolean]: {[boolean]: {[string|number]: {[1]: number, [2]: integer}}}} | {[boolean]: {[string|number]: {[1]: number, [2]: integer}}}
+	local width_cache = {}
 
----Calculate width of text with the given opts
----@param text string|number
----@return number
----@param opts {size: number; bold?: boolean; italic?: boolean}
-function text_width(text, opts)
-	if not text or text == '' then return 0 end
+	---Calculate width of text with the given opts
+	---@param text string|number
+	---@return number
+	---@param opts {size: number; bold?: boolean; italic?: boolean}
+	function text_width(text, opts)
+		if not text or text == '' then return 0 end
 
-	---@type boolean, boolean
-	local bold, italic = opts.bold or options.font_bold, opts.italic or false
+		---@type boolean, boolean
+		local bold, italic = opts.bold or options.font_bold, opts.italic or false
 
-	if options.text_width_estimation then
-		---@type {[string|number]: {[1]: number, [2]: integer}}
-		local text_width = get_cache_stage(width_cache, bold)
-		local width_px = text_width[text]
-		if width_px and no_remeasure_required(width_px[2]) then return width_px[1] * opts_scale_factor(opts) end
+		if options.text_width_estimation then
+			---@type {[string|number]: {[1]: number, [2]: integer}}
+			local text_width = get_cache_stage(width_cache, bold)
+			local width_px = text_width[text]
+			if width_px and no_remeasure_required(width_px[2]) then return width_px[1] * opts_scale_factor(opts) end
 
-		local width, px = character_based_width(text, bold)
-		width_cache[bold][text] = {width, px}
-		return width * opts_scale_factor(opts)
-	else
-		---@type {[string|number]: {[1]: number, [2]: integer}}
-		local text_width = get_cache_stage(get_cache_stage(width_cache, bold), italic)
-		local width_px = text_width[text]
-		if width_px and no_remeasure_required(width_px[2]) then return width_px[1] * opts.size end
+			local width, px = character_based_width(text, bold)
+			width_cache[bold][text] = {width, px}
+			return width * opts_scale_factor(opts)
+		else
+			---@type {[string|number]: {[1]: number, [2]: integer}}
+			local text_width = get_cache_stage(get_cache_stage(width_cache, bold), italic)
+			local width_px = text_width[text]
+			if width_px and no_remeasure_required(width_px[2]) then return width_px[1] * opts.size end
 
-		local width, px = whole_text_width(text, bold, italic)
-		width_cache[bold][italic][text] = {width, px}
-		return width * opts.size
+			local width, px = whole_text_width(text, bold, italic)
+			width_cache[bold][italic][text] = {width, px}
+			return width * opts.size
+		end
 	end
 end
 
