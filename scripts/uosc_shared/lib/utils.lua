@@ -380,7 +380,29 @@ end
 -- `status:number(<0=error), stdout, stderr, error_string, killed_by_us:boolean`
 ---@param path string
 function delete_file(path)
-	local args = state.os == 'windows' and {'cmd', '/C', 'del', path} or {'rm', path}
+	if state.os == 'windows' then
+		if options.use_trash then
+            local ps_code = [[
+				Add-Type -AssemblyName Microsoft.VisualBasic
+				[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile('__path__', 'OnlyErrorDialogs', 'SendToRecycleBin')
+			]]
+
+            local escaped_path = string.gsub(path, "'", "''")
+            escaped_path = string.gsub(escaped_path, "’", "’’")
+            escaped_path = string.gsub(escaped_path, "%%", "%%%%")
+            ps_code = string.gsub(ps_code, "__path__", escaped_path)
+		    args = { 'powershell', '-NoProfile', '-Command', ps_code }
+		else
+			args = { 'cmd', '/C', 'del', path }
+		end
+	else
+		if options.use_trash then
+			--On Linux and Macos the app trash-cli/trash must be installed first.
+		    args = { 'trash', path }
+	    else
+		    args = { 'rm', path }
+		end
+	end
 	return mp.command_native({
 		name = 'subprocess',
 		args = args,
