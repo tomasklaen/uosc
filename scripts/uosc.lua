@@ -99,6 +99,7 @@ defaults = {
 	media_types = '3g2,3gp,aac,aiff,ape,apng,asf,au,avi,avif,bmp,dsf,f4v,flac,flv,gif,h264,h265,j2k,jp2,jfif,jpeg,jpg,jxl,m2ts,m4a,m4v,mid,midi,mj2,mka,mkv,mov,mp3,mp4,mp4a,mp4v,mpeg,mpg,oga,ogg,ogm,ogv,opus,png,rm,rmvb,spx,svg,tak,tga,tta,tif,tiff,ts,vob,wav,weba,webm,webp,wma,wmv,wv,y4m',
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	default_directory = '~/',
+	use_trash = false,
 	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
 	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
 }
