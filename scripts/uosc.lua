@@ -1,5 +1,5 @@
---[[ uosc 4.5.0 - 2022-Dec-07 | https://github.com/tomasklaen/uosc ]]
-local uosc_version = '4.5.0'
+--[[ uosc 4.6.0 - 2022-Dec-25 | https://github.com/tomasklaen/uosc ]]
+local uosc_version = '4.6.0'
 
 assdraw = require('mp.assdraw')
 opt = require('mp.options')
@@ -88,7 +88,8 @@ defaults = {
 	foreground_text = '000000',
 	background = '000000',
 	background_text = 'ffffff',
-	total_time = false,
+	total_time = false, -- deprecated by below
+	destination_time = 'playtime-remaining',
 	time_precision = 0,
 	font_bold = false,
 	autohide = false,
@@ -369,9 +370,13 @@ function update_human_times()
 		state.time_human = format_time(state.time)
 		if state.duration then
 			local speed = state.speed or 1
-			state.duration_or_remaining_time_human = format_time(
-				options.total_time and state.duration or ((state.time - state.duration) / speed)
-			)
+      if options.total_time or options.destination_time == "total" then
+        state.duration_or_remaining_time_human = format_time(state.duration)
+      elseif options.destination_time == "time-remaining" then
+        state.duration_or_remaining_time_human = format_time(state.time - state.duration)
+      else
+        state.duration_or_remaining_time_human = format_time((state.time - state.duration) / speed)
+      end
 		else
 			state.duration_or_remaining_time_human = nil
 		end
