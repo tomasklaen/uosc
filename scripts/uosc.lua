@@ -374,13 +374,13 @@ function update_human_times()
 		state.time_human = format_time(state.time)
 		if state.duration then
 			local speed = state.speed or 1
-      if options.destination_time == 'playtime_remaining' then
-        state.destination_time_human = format_time((state.time - state.duration) / speed)
-      elseif options.destination_time == 'total' then
-        state.destination_time_human = format_time(state.duration)
-      else
-        state.destination_time_human = format_time(state.time - state.duration)
-      end
+			if options.destination_time == 'playtime_remaining' then
+				state.destination_time_human = format_time((state.time - state.duration) / speed)
+			elseif options.destination_time == 'total' then
+				state.destination_time_human = format_time(state.duration)
+			else
+				state.destination_time_human = format_time(state.time - state.duration)
+			end
 		else
 			state.destination_time_human = nil
 		end
