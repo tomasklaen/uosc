@@ -116,6 +116,8 @@ end
 if options.total_time and options.destination_time == 'playtime-remaining' then
 	msg.warn('`total_time` is deprecated. Use `destination_time` instead.')
 	options.destination_time = 'total'
+elseif not itable_index_of({'total', 'playtime-remaining', 'time-remaining'}, options.destination_time) then
+	options.destination_time = 'playtime-remaining'
 end
 -- Ensure required environment configuration
 if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
