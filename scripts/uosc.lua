@@ -113,6 +113,10 @@ if options.pause_on_click_shorter_than > 0 and options.click_threshold == 0 then
 	msg.warn('`pause_on_click_shorter_than` is deprecated. Use `click_threshold` and `click_command` instead.')
 	options.click_threshold = options.pause_on_click_shorter_than
 end
+if options.total_time and options.destination_time == 'playtime-remaining' then
+	msg.warn('`total_time` is deprecated. Use `destination_time` instead.')
+	options.destination_time = 'total'
+end
 -- Ensure required environment configuration
 if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
 -- Color shorthands
@@ -370,12 +374,12 @@ function update_human_times()
 		state.time_human = format_time(state.time)
 		if state.duration then
 			local speed = state.speed or 1
-      if options.total_time or options.destination_time == "total" then
-        state.duration_or_remaining_time_human = format_time(state.duration)
-      elseif options.destination_time == "time-remaining" then
-        state.duration_or_remaining_time_human = format_time(state.time - state.duration)
-      else
+      if options.destination_time == 'playtime_remaining' then
         state.duration_or_remaining_time_human = format_time((state.time - state.duration) / speed)
+      elseif options.destination_time == 'total' then
+        state.duration_or_remaining_time_human = format_time(state.duration)
+      else
+        state.duration_or_remaining_time_human = format_time(state.time - state.duration)
       end
 		else
 			state.duration_or_remaining_time_human = nil
