@@ -333,8 +333,8 @@ function Timeline:render()
 		end
 
 		-- End time
-		if state.duration_or_remaining_time_human then
-			draw_timeline_text(bbx - spacing, fcy, 6, state.duration_or_remaining_time_human, time_opts)
+		if state.destination_time_human then
+			draw_timeline_text(bbx - spacing, fcy, 6, state.destination_time_human, time_opts)
 		end
 	end
 

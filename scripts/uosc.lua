@@ -290,7 +290,7 @@ state = {
 	speed = 1,
 	duration = nil, -- current media duration
 	time_human = nil, -- current playback time in human format
-	duration_or_remaining_time_human = nil, -- depends on options.total_time
+	destination_time_human = nil, -- depends on options.destination_time
 	pause = mp.get_property_native('pause'),
 	chapters = {},
 	current_chapter = nil,
@@ -375,14 +375,14 @@ function update_human_times()
 		if state.duration then
 			local speed = state.speed or 1
       if options.destination_time == 'playtime_remaining' then
-        state.duration_or_remaining_time_human = format_time((state.time - state.duration) / speed)
+        state.destination_time_human = format_time((state.time - state.duration) / speed)
       elseif options.destination_time == 'total' then
-        state.duration_or_remaining_time_human = format_time(state.duration)
+        state.destination_time_human = format_time(state.duration)
       else
-        state.duration_or_remaining_time_human = format_time(state.time - state.duration)
+        state.destination_time_human = format_time(state.time - state.duration)
       end
 		else
-			state.duration_or_remaining_time_human = nil
+			state.destination_time_human = nil
 		end
 	else
 		state.time_human = nil
