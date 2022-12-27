@@ -88,7 +88,8 @@ defaults = {
 	foreground_text = '000000',
 	background = '000000',
 	background_text = 'ffffff',
-	total_time = false,
+	total_time = false, -- deprecated by below
+	destination_time = 'playtime-remaining',
 	time_precision = 0,
 	font_bold = false,
 	autohide = false,
@@ -111,6 +112,12 @@ if options.chapter_ranges:sub(1, 4) == '^op|' then options.chapter_ranges = defa
 if options.pause_on_click_shorter_than > 0 and options.click_threshold == 0 then
 	msg.warn('`pause_on_click_shorter_than` is deprecated. Use `click_threshold` and `click_command` instead.')
 	options.click_threshold = options.pause_on_click_shorter_than
+end
+if options.total_time and options.destination_time == 'playtime-remaining' then
+	msg.warn('`total_time` is deprecated. Use `destination_time` instead.')
+	options.destination_time = 'total'
+elseif not itable_index_of({'total', 'playtime-remaining', 'time-remaining'}, options.destination_time) then
+	options.destination_time = 'playtime-remaining'
 end
 -- Ensure required environment configuration
 if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
@@ -285,7 +292,7 @@ state = {
 	speed = 1,
 	duration = nil, -- current media duration
 	time_human = nil, -- current playback time in human format
-	duration_or_remaining_time_human = nil, -- depends on options.total_time
+	destination_time_human = nil, -- depends on options.destination_time
 	pause = mp.get_property_native('pause'),
 	chapters = {},
 	current_chapter = nil,
@@ -369,11 +376,15 @@ function update_human_times()
 		state.time_human = format_time(state.time)
 		if state.duration then
 			local speed = state.speed or 1
-			state.duration_or_remaining_time_human = format_time(
-				options.total_time and state.duration or ((state.time - state.duration) / speed)
-			)
+			if options.destination_time == 'playtime-remaining' then
+				state.destination_time_human = format_time((state.time - state.duration) / speed)
+			elseif options.destination_time == 'total' then
+				state.destination_time_human = format_time(state.duration)
+			else
+				state.destination_time_human = format_time(state.time - state.duration)
+			end
 		else
-			state.duration_or_remaining_time_human = nil
+			state.destination_time_human = nil
 		end
 	else
 		state.time_human = nil
