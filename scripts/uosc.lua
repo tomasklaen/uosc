@@ -10,7 +10,7 @@ infinity = 1e309
 quarter_pi_sin = math.sin(math.pi / 4)
 
 -- Enables relative requires from `scripts` directory
-package.path = package.path .. ';' .. mp.find_config_file('scripts') .. '/?.lua'
+package.path = mp.find_config_file('scripts') .. '/?.lua;' .. package.path
 
 require('uosc_shared/lib/std')
 
