@@ -277,7 +277,7 @@ end
 --[[ STATE ]]
 
 display = {width = 1280, height = 720, scale_x = 1, scale_y = 1, initialized = false}
-cursor = {hidden = true, x = 0, y = 0}
+cursor = {hidden = true, hover_raw = false, x = 0, y = 0}
 state = {
 	os = (function()
 		if os.getenv('windir') ~= nil then return 'windows' end
@@ -545,11 +545,14 @@ if options.click_threshold > 0 then
 	mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 end
 
-function update_mouse_pos(_, mouse, ignore_hover)
-	if ignore_hover or mouse.hover then
+function update_mouse_pos(_, mouse)
+	if cursor.hover_raw and not mouse.hover then
+		handle_mouse_leave()
+	else
 		if cursor.hidden then handle_mouse_enter(mouse.x, mouse.y) end
 		handle_mouse_move(mouse.x, mouse.y)
-	else handle_mouse_leave() end
+	end
+	cursor.hover_raw = mouse.hover
 end
 mp.observe_property('mouse-pos', 'native', update_mouse_pos)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)

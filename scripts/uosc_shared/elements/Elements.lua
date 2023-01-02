@@ -152,7 +152,7 @@ mp.set_key_bindings({
 		'mbtn_left',
 		Elements:create_proximity_dispatcher('mbtn_left_up'),
 		function(...)
-			update_mouse_pos(nil, mp.get_property_native('mouse-pos'), true)
+			update_mouse_pos(nil, mp.get_property_native('mouse-pos'))
 			Elements:proximity_trigger('mbtn_left_down', ...)
 		end,
 	},
