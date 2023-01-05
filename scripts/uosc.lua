@@ -546,6 +546,7 @@ if options.click_threshold > 0 then
 end
 
 function update_mouse_pos(_, mouse)
+	if not mouse then return end
 	if cursor.hover_raw and not mouse.hover then
 		handle_mouse_leave()
 	else
