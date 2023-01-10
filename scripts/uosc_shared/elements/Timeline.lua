@@ -319,7 +319,7 @@ function Timeline:render()
 		if buffered_time and options.buffered_time_threshold > 0 and buffered_time < options.buffered_time_threshold then
 			local x, align = fbx + 5, 4
 			local cache_opts = {size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = 1}
-			local human = round(math.max(buffered_time, 0)) .. 's'
+			local human = round(math.max(buffered_time / (state.speed or 1), 0)) .. 's'
 			local width = text_width(human, cache_opts)
 			local time_width = text_width('00:00:00', time_opts)
 			local min_x, max_x = bax + spacing + 5 + time_width, bbx - spacing - 5 - time_width
