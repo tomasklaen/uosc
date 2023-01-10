@@ -323,7 +323,9 @@ function Timeline:render()
 			local human = round(math.max(buffered_playtime, 0)) .. 's'
 			local width = text_width(human, cache_opts)
 			local time_width = text_width('00:00:00', time_opts)
-			local min_x, max_x = bax + spacing + 5 + time_width, bbx - spacing - 5 - time_width
+			local time_width_end = options.destination_time == 'total' and time_width
+				or text_width('-00:00:00', time_opts)
+			local min_x, max_x = bax + spacing + 5 + time_width, bbx - spacing - 5 - time_width_end
 			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
 			draw_timeline_text(x, fcy, align, human, cache_opts)
 		end
