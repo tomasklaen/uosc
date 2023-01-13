@@ -23,9 +23,9 @@ sort_filenames = (function()
 
 	-- Alphanumeric sorting for humans in Lua
 	-- http://notebook.kulchenko.com/algorithms/alphanumeric-natural-sorting-for-humans-in-lua
-	local function pad_number(d)
-		local dec, n = d:match('(%.?)0*(.+)')
-		return #dec > 0 and ('%.12f'):format(d) or ('%03d%s'):format(#n, n)
+	local function pad_number(n, d)
+		return #d > 0 and ("%03d%s%.12f"):format(#n, n, tonumber(d) / (10 ^ #d))
+			or ("%03d%s"):format(#n, n)
 	end
 
 	--- In place sorting of filenames
@@ -35,7 +35,7 @@ sort_filenames = (function()
 		for i, filename in ipairs(filenames) do
 			local first_char = filename:sub(1, 1)
 			local order = symbol_order[first_char] or default_order
-			local formatted = filename:lower():gsub('%.?%d+', pad_number)
+			local formatted = filename:lower():gsub('0*(%d+)%.?(%d*)', pad_number)
 			tuples[i] = {order, formatted, filename}
 		end
 		table.sort(tuples, function(a, b)
