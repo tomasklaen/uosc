@@ -40,6 +40,17 @@ Most notable features:
 
     _List of all the possible places where it can be located is documented here: https://mpv.io/manual/master/#files_
 
+    On Linux and macOS these terminal commands can be used to install or update uosc and thumbfast (if wget and unzip are installed):
+
+    ```sh
+    mkdir -pv ~/.config/mpv/script-opts/
+    rm -rf ~/.config/mpv/scripts/uosc_shared
+    wget -P /tmp/ https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip
+    unzip -od ~/.config/mpv/ /tmp/uosc.zip
+    rm -fv /tmp/uosc.zip
+    wget -NP ~/.config/mpv/scripts/ https://raw.githubusercontent.com/po5/thumbfast/master/thumbfast.lua
+    ```
+
 2. **uosc** is a replacement for the built in osc, so that has to be disabled first.
 
     In your `mpv.conf` (file that should already exist in your mpv directory, if not, create it):
@@ -171,7 +182,7 @@ Menus to select a track of a requested type.
 
 Displays a file explorer with directory navigation to load a requested track type.
 
-For subtitles, explorer only displays file types defined in `subtitle_types` option.
+For subtitles, the explorer only displays file types defined in `subtitle_types` option. For audio and video, the ones defined in `media_types` are displayed.
 
 #### `playlist`
 
@@ -191,7 +202,7 @@ Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv p
 
 #### `open-file`
 
-Open file menu. Browsing starts in current file directory, or user directory when file not available.
+Open file menu. Browsing starts in current file directory, or user directory when file not available. The explorer only displays file types defined in the `media_types` option.
 
 #### `items`
 
@@ -212,6 +223,12 @@ Open next/prev file in current directory. Enable `loop-playlist` to loop around
 #### `first-file`, `last-file`
 
 Open first/last file in current directory.
+
+#### `shuffle`
+
+Toggle uosc's playlist/directory shuffle mode on or off.
+
+This simply makes the next selected playlist or directory item be random, like the shuffle function of most other players. This does not modify the actual playlist in any way, in contrast to the mpv built-in command `playlist-shuffle`.
 
 #### `delete-file-next`
 
@@ -252,7 +269,7 @@ To display a submenu, send a `show-submenu` message to **uosc** with first param
 R    script-message-to uosc show-submenu "Utils > Aspect ratio"
 ```
 
-**\*menu** button is the key between **win** and **right_ctrl** buttons that none uses (might not be on your keyboard).\*
+Note: The **menu** key is the one nobody uses between the **win** and **right_ctrl** keys (it might not be on your keyboard).
 
 ### Adding items to menu
 
