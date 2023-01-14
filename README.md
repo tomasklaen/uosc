@@ -187,7 +187,9 @@ Editions menu. Editions are different video cuts available in some mkv files.
 
 #### `stream-quality`
 
-Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv property from predefined options (configurable with `stream_quality_options`) and video reload, there is no fetching of available formats going on.
+Switch stream quality.
+
+This is just a basic re-assignment of `ytdl-format` mpv property from predefined options (configurable with `stream_quality_options`) and video reload. There is no fetching of available formats going on. However, if the special value `stream_quality_options=script` is set, uosc will try to open the menu of quality-menu.lua instead, which fetches the available formats. For installation see [mpv-quality-menu](https://github.com/christoph-heinrich/mpv-quality-menu).
 
 #### `open-file`
 

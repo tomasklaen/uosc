@@ -855,6 +855,12 @@ end)
 mp.add_key_binding(nil, 'stream-quality', function()
 	if Menu:is_open('stream-quality') then Menu:close() return end
 
+	-- If set in config, delegate the stream quality menu to external script 
+	if options.stream_quality_options == 'script' then
+		mp.command('script-binding quality_menu/video_formats_toggle')
+	    return
+	end
+
 	local ytdl_format = mp.get_property_native('ytdl-format')
 	local items = {}
 
