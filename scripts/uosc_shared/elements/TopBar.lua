@@ -170,14 +170,15 @@ function TopBar:render()
 		if state.alt_title and options.top_bar_alt_title_place == 'below' and state.alt_title ~= state.title then
 			local font_size = self.font_size * 0.9
 			local height = font_size * 1.3
+			local text = '└ ' .. state.alt_title
 			local by = title_ay + height
 			local opts = {size = font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility}
-			local bx = math.min(max_bx, title_ax + text_width(state.alt_title, opts) + padding * 2)
+			local bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)
 			opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
 			ass:rect(title_ax, title_ay, bx, by, {
 				color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 			})
-			ass:txt(title_ax + padding, title_ay + height / 2, 4, state.alt_title, opts)
+			ass:txt(title_ax + padding, title_ay + height / 2, 4, text, opts)
 			title_ay = by + 1
 		end
 
