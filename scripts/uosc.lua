@@ -337,6 +337,7 @@ state = {
 }
 thumbnail = {width = 0, height = 0, disabled = false}
 external = {} -- Properties set by external scripts
+key_binding_overwrites = {} -- Table of key_binding:mpv_command
 Elements = require('uosc_shared/elements/Elements')
 Menu = require('uosc_shared/elements/Menu')
 
@@ -718,14 +719,25 @@ mp.observe_property('core-idle', 'native', create_state_setter('core_idle'))
 
 --[[ KEY BINDS ]]
 
-mp.add_key_binding(nil, 'toggle-ui', function() Elements:toggle({'timeline', 'controls', 'volume', 'top_bar'}) end)
-mp.add_key_binding(nil, 'flash-ui', function() Elements:flash({'timeline', 'controls', 'volume', 'top_bar'}) end)
-mp.add_key_binding(nil, 'flash-timeline', function() Elements:flash({'timeline'}) end)
-mp.add_key_binding(nil, 'flash-top-bar', function() Elements:flash({'top_bar'}) end)
-mp.add_key_binding(nil, 'flash-volume', function() Elements:flash({'volume'}) end)
-mp.add_key_binding(nil, 'flash-speed', function() Elements:flash({'speed'}) end)
-mp.add_key_binding(nil, 'flash-pause-indicator', function() Elements:flash({'pause_indicator'}) end)
-mp.add_key_binding(nil, 'toggle-progress', function()
+-- Adds a key binding that respects rerouting set by `key_binding_overwrites` table.
+---@param name string
+---@param callback fun(event: table)
+---@param flags nil|string
+function bind_command(name, callback, flags)
+	mp.add_key_binding(nil, name, function(...)
+		if key_binding_overwrites[name] then mp.command(key_binding_overwrites[name])
+		else callback(...) end
+	end, flags)
+end
+
+bind_command('toggle-ui', function() Elements:toggle({'timeline', 'controls', 'volume', 'top_bar'}) end)
+bind_command('flash-ui', function() Elements:flash({'timeline', 'controls', 'volume', 'top_bar'}) end)
+bind_command('flash-timeline', function() Elements:flash({'timeline'}) end)
+bind_command('flash-top-bar', function() Elements:flash({'top_bar'}) end)
+bind_command('flash-volume', function() Elements:flash({'volume'}) end)
+bind_command('flash-speed', function() Elements:flash({'speed'}) end)
+bind_command('flash-pause-indicator', function() Elements:flash({'pause_indicator'}) end)
+bind_command('toggle-progress', function()
 	local timeline = Elements.timeline
 	if timeline.size_min_override then
 		timeline:tween_property('size_min_override', timeline.size_min_override, timeline.size_min, function()
@@ -735,9 +747,9 @@ mp.add_key_binding(nil, 'toggle-progress', function()
 		timeline:tween_property('size_min_override', timeline.size_min, 0)
 	end
 end)
-mp.add_key_binding(nil, 'decide-pause-indicator', function() Elements.pause_indicator:decide() end)
-mp.add_key_binding(nil, 'menu', function() toggle_menu_with_items() end)
-mp.add_key_binding(nil, 'menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
+bind_command('decide-pause-indicator', function() Elements.pause_indicator:decide() end)
+bind_command('menu', function() toggle_menu_with_items() end)
+bind_command('menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
 local track_loaders = {
 	{name = 'subtitles', prop = 'sub', allowed_types = config.subtitle_types},
 	{name = 'audio', prop = 'audio', allowed_types = config.media_types},
@@ -745,7 +757,7 @@ local track_loaders = {
 }
 for _, loader in ipairs(track_loaders) do
 	local menu_type = 'load-' .. loader.name
-	mp.add_key_binding(nil, menu_type, function()
+	bind_command(menu_type, function()
 		if Menu:is_open(menu_type) then Menu:close() return end
 
 		local path = state.path
@@ -767,16 +779,16 @@ for _, loader in ipairs(track_loaders) do
 		)
 	end)
 end
-mp.add_key_binding(nil, 'subtitles', create_select_tracklist_type_menu_opener(
+bind_command('subtitles', create_select_tracklist_type_menu_opener(
 	'Subtitles', 'sub', 'sid', 'script-binding uosc/load-subtitles'
 ))
-mp.add_key_binding(nil, 'audio', create_select_tracklist_type_menu_opener(
+bind_command('audio', create_select_tracklist_type_menu_opener(
 	'Audio', 'audio', 'aid', 'script-binding uosc/load-audio'
 ))
-mp.add_key_binding(nil, 'video', create_select_tracklist_type_menu_opener(
+bind_command('video', create_select_tracklist_type_menu_opener(
 	'Video', 'video', 'vid', 'script-binding uosc/load-video'
 ))
-mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
+bind_command('playlist', create_self_updating_menu_opener({
 	title = 'Playlist',
 	type = 'playlist',
 	list_prop = 'playlist',
@@ -796,7 +808,7 @@ mp.add_key_binding(nil, 'playlist', create_self_updating_menu_opener({
 	end,
 	on_select = function(index) mp.commandv('set', 'playlist-pos-1', tostring(index)) end,
 }))
-mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
+bind_command('chapters', create_self_updating_menu_opener({
 	title = 'Chapters',
 	type = 'chapters',
 	list_prop = 'chapter-list',
@@ -816,7 +828,7 @@ mp.add_key_binding(nil, 'chapters', create_self_updating_menu_opener({
 	end,
 	on_select = function(index) mp.commandv('set', 'chapter', tostring(index - 1)) end,
 }))
-mp.add_key_binding(nil, 'editions', create_self_updating_menu_opener({
+bind_command('editions', create_self_updating_menu_opener({
 	title = 'Editions',
 	type = 'editions',
 	list_prop = 'edition-list',
@@ -835,7 +847,7 @@ mp.add_key_binding(nil, 'editions', create_self_updating_menu_opener({
 	end,
 	on_select = function(id) mp.commandv('set', 'edition', id) end,
 }))
-mp.add_key_binding(nil, 'show-in-directory', function()
+bind_command('show-in-directory', function()
 	-- Ignore URLs
 	if not state.path or is_protocol(state.path) then return end
 
@@ -852,7 +864,7 @@ mp.add_key_binding(nil, 'show-in-directory', function()
 		end
 	end
 end)
-mp.add_key_binding(nil, 'stream-quality', function()
+bind_command('stream-quality', function()
 	if Menu:is_open('stream-quality') then Menu:close() return end
 
 	local ytdl_format = mp.get_property_native('ytdl-format')
@@ -890,7 +902,7 @@ mp.add_key_binding(nil, 'stream-quality', function()
 		end
 	end)
 end)
-mp.add_key_binding(nil, 'open-file', function()
+bind_command('open-file', function()
 	if Menu:is_open('open-file') then Menu:close() return end
 
 	local directory
@@ -934,35 +946,35 @@ mp.add_key_binding(nil, 'open-file', function()
 		}
 	)
 end)
-mp.add_key_binding(nil, 'shuffle', function() set_state('shuffle', not state.shuffle) end)
-mp.add_key_binding(nil, 'items', function()
+bind_command('shuffle', function() set_state('shuffle', not state.shuffle) end)
+bind_command('items', function()
 	if state.has_playlist then
 		mp.command('script-binding uosc/playlist')
 	else
 		mp.command('script-binding uosc/open-file')
 	end
 end)
-mp.add_key_binding(nil, 'next', function() navigate_item(1) end)
-mp.add_key_binding(nil, 'prev', function() navigate_item(-1) end)
-mp.add_key_binding(nil, 'next-file', function() navigate_directory(1) end)
-mp.add_key_binding(nil, 'prev-file', function() navigate_directory(-1) end)
-mp.add_key_binding(nil, 'first', function()
+bind_command('next', function() navigate_item(1) end)
+bind_command('prev', function() navigate_item(-1) end)
+bind_command('next-file', function() navigate_directory(1) end)
+bind_command('prev-file', function() navigate_directory(-1) end)
+bind_command('first', function()
 	if state.has_playlist then
 		mp.commandv('set', 'playlist-pos-1', '1')
 	else
 		load_file_index_in_current_directory(1)
 	end
 end)
-mp.add_key_binding(nil, 'last', function()
+bind_command('last', function()
 	if state.has_playlist then
 		mp.commandv('set', 'playlist-pos-1', tostring(state.playlist_count))
 	else
 		load_file_index_in_current_directory(-1)
 	end
 end)
-mp.add_key_binding(nil, 'first-file', function() load_file_index_in_current_directory(1) end)
-mp.add_key_binding(nil, 'last-file', function() load_file_index_in_current_directory(-1) end)
-mp.add_key_binding(nil, 'delete-file-next', function()
+bind_command('first-file', function() load_file_index_in_current_directory(1) end)
+bind_command('last-file', function() load_file_index_in_current_directory(-1) end)
+bind_command('delete-file-next', function()
 	local next_file = nil
 	local is_local_file = state.path and not is_protocol(state.path)
 
@@ -987,12 +999,12 @@ mp.add_key_binding(nil, 'delete-file-next', function()
 
 	if is_local_file then delete_file(state.path) end
 end)
-mp.add_key_binding(nil, 'delete-file-quit', function()
+bind_command('delete-file-quit', function()
 	mp.command('stop')
 	if state.path and not is_protocol(state.path) then delete_file(state.path) end
 	mp.command('quit')
 end)
-mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
+bind_command('audio-device', create_self_updating_menu_opener({
 	title = 'Audio devices',
 	type = 'audio-device-list',
 	list_prop = 'audio-device-list',
@@ -1017,7 +1029,7 @@ mp.add_key_binding(nil, 'audio-device', create_self_updating_menu_opener({
 	end,
 	on_select = function(name) mp.commandv('set', 'audio-device', name) end,
 }))
-mp.add_key_binding(nil, 'open-config-directory', function()
+bind_command('open-config-directory', function()
 	local config_path = mp.command_native({'expand-path', '~~/mpv.conf'})
 	local config = serialize_path(normalize_path(config_path))
 
@@ -1084,6 +1096,7 @@ mp.register_script_message('set-min-visibility', function(visibility, elements)
 	if fraction then Elements:set_min_visibility(clamp(0, fraction, 1), ids) end
 end)
 mp.register_script_message('flash-elements', function(elements) Elements:flash(split(elements, ' *, *')) end)
+mp.register_script_message('overwrite-binding', function(name, command) key_binding_overwrites[name] = command end)
 
 --[[ ELEMENTS ]]
 

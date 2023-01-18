@@ -564,6 +564,18 @@ External properties can also be used as control button badges:
 controls=command:icon_name:command_name#foo@script_name?My foo button
 ```
 
+### `overwrite-binding <name> <command>`
+
+Allows a overwriting handling of uosc built in bindings. Useful for 3rd party scripts that specialize in a specific domain to replace built in menus or behaviors provided by existing bindings.
+
+Example that reroutes uosc's basic stream quality menu to [christoph-heinrich/mpv-quality-menu](https://github.com/christoph-heinrich/mpv-quality-menu):
+
+```lua
+mp.commandv('script-message-to', 'uosc', 'overwrite-binding', 'stream-quality', 'script-binding quality_menu/video_formats_toggle')
+```
+
+To cancel the overwrite and return to default behavior, just omit the `<command>` parameter.
+
 ## Why _uosc_?
 
 It stood for micro osc as it used to render just a couple rectangles before it grew to what it is today. And now it means a minimalist UI design direction where everything is out of your way until needed.
