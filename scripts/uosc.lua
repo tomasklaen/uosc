@@ -563,6 +563,7 @@ mp.observe_property('mouse-pos', 'native', update_mouse_pos)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
+	Elements:flash({'top_bar'})
 end)
 mp.register_event('end-file', function(event)
 	if event.reason == 'eof' then
