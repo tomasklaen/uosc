@@ -132,6 +132,12 @@ Under the hood, `toggle-ui` is using `toggle-elements`, and that is in turn usin
 
 Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
 
+#### `toggle-title`
+
+Toggles the top bar title between main and alternative title's. This can also be done by clicking on the top bar.
+
+Only relevant if top bar is enabled, `top_bar_alt_title` is configured, and `top_bar_alt_title_place` is `toggle`.
+
 #### `flash-ui`
 
 Command(s) to briefly flash the whole UI. Elements are revealed for a second and then fade away.

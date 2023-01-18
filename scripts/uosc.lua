@@ -65,7 +65,9 @@ defaults = {
 	top_bar_size_fullscreen = 46,
 	top_bar_persistency = '',
 	top_bar_controls = true,
-	top_bar_title = true,
+	top_bar_title = 'yes',
+	top_bar_alt_title = '',
+	top_bar_alt_title_place = 'below',
 	top_bar_title_opacity = 0.8,
 
 	window_border_size = 1,
@@ -288,6 +290,7 @@ state = {
 	cwd = mp.get_property('working-directory'),
 	path = nil, -- current file path or URL
 	title = nil,
+	alt_title = nil,
 	time = nil, -- current media playback time
 	speed = 1,
 	duration = nil, -- current media duration
@@ -567,23 +570,50 @@ mp.register_event('end-file', function(event)
 		handle_file_end()
 	end
 end)
+-- Top bar titles
 do
-	local template = nil
-	function update_title()
-		if template:sub(-6) == ' - mpv' then template = template:sub(1, -7) end
+	local function update_state_with_template(prop, template)
 		-- escape ASS, and strip newlines and trailing slashes and trim whitespace
-		local t = mp.command_native({'expand-text', template}):gsub('\\n', ' '):gsub('[\\%s]+$', ''):gsub('^%s+', '')
-		set_state('title', ass_escape(t))
+		local tmp = mp.command_native({'expand-text', template}):gsub('\\n', ' '):gsub('[\\%s]+$', ''):gsub('^%s+', '')
+		set_state(prop, ass_escape(tmp))
 	end
-	mp.observe_property('title', 'string', function(_, title)
-		mp.unobserve_property(update_title)
-		template = title
-		local props = get_expansion_props(title)
+
+	local function add_template_listener(template, callback)
+		local props = get_expansion_props(template)
 		for prop, _ in pairs(props) do
-			mp.observe_property(prop, 'native', update_title)
+			mp.observe_property(prop, 'native', callback)
 		end
-		if not next(props) then update_title() end
-	end)
+		if not next(props) then callback() end
+	end
+
+	local function remove_template_listener(callback) mp.unobserve_property(callback) end
+
+	-- Main title
+	if #options.top_bar_title > 0 and options.top_bar_title ~= 'no' then
+		if options.top_bar_title == 'yes' then
+			local template = nil
+			local function update_title() update_state_with_template('title', template) end
+			mp.observe_property('title', 'string', function(_, title)
+				remove_template_listener(update_title)
+				template = title
+				if template then
+					if template:sub(-6) == ' - mpv' then template = template:sub(1, -7) end
+					add_template_listener(template, update_title)
+				end
+			end)
+		elseif type(options.top_bar_title) == 'string' then
+			add_template_listener(options.top_bar_title, function()
+				update_state_with_template('title', options.top_bar_title)
+			end)
+		end
+	end
+
+	-- Alt title
+	if #options.top_bar_alt_title > 0 and options.top_bar_alt_title ~= 'no' then
+		add_template_listener(options.top_bar_alt_title, function()
+			update_state_with_template('alt_title', options.top_bar_alt_title)
+		end)
+	end
 end
 mp.observe_property('playback-time', 'number', create_state_setter('time', function()
 	-- Create a file-end event that triggers right before file ends
@@ -747,6 +777,7 @@ bind_command('toggle-progress', function()
 		timeline:tween_property('size_min_override', timeline.size_min, 0)
 	end
 end)
+bind_command('toggle-title', function() Elements.top_bar:toggle_title() end)
 bind_command('decide-pause-indicator', function() Elements.pause_indicator:decide() end)
 bind_command('menu', function() toggle_menu_with_items() end)
 bind_command('menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)

@@ -47,11 +47,11 @@ local TopBar = class(Element)
 function TopBar:new() return Class.new(self) --[[@as TopBar]] end
 function TopBar:init()
 	Element.init(self, 'top_bar')
-	self.pressed = false
 	self.size, self.size_max, self.size_min = 0, 0, 0
 	self.icon_size, self.spacing, self.font_size, self.title_bx = 1, 1, 1, 1
 	self.size_min_override = options.timeline_start_hidden and 0 or nil
 	self.top_border = options.timeline_border
+	self.show_alt_title = false
 
 	local function decide_maximized_command()
 		return state.border
@@ -99,6 +99,11 @@ function TopBar:update_dimensions()
 	end
 end
 
+function TopBar:toggle_title()
+	if options.top_bar_alt_title_place ~= 'toggle' then return end
+	self.show_alt_title = not self.show_alt_title
+end
+
 function TopBar:on_prop_border()
 	self:decide_enabled()
 	self:update_dimensions()
@@ -112,6 +117,10 @@ end
 function TopBar:on_prop_maximized()
 	self:decide_enabled()
 	self:update_dimensions()
+end
+
+function TopBar:on_mbtn_left_down()
+	if cursor.x < self.title_bx then self:toggle_title() end
 end
 
 function TopBar:on_display() self:update_dimensions() end
@@ -142,7 +151,7 @@ function TopBar:render()
 		end
 
 		-- Title
-		local text = state.title
+		local text = self.show_alt_title and state.alt_title or state.title
 		if max_bx - title_ax > self.font_size * 3 and text and text ~= '' then
 			local opts = {
 				size = self.font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility,
@@ -157,10 +166,25 @@ function TopBar:render()
 			title_ay = by + 1
 		end
 
+		-- Alt title
+		if state.alt_title and options.top_bar_alt_title_place == 'below' and state.alt_title ~= state.title then
+			local font_size = self.font_size * 0.9
+			local height = font_size * 1.3
+			local by = title_ay + height
+			local opts = {size = font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility}
+			local bx = math.min(max_bx, title_ax + text_width(state.alt_title, opts) + padding * 2)
+			opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
+			ass:rect(title_ax, title_ay, bx, by, {
+				color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+			})
+			ass:txt(title_ax + padding, title_ay + height / 2, 4, state.alt_title, opts)
+			title_ay = by + 1
+		end
+
 		-- Subtitle: current chapter
 		if state.current_chapter and max_bx - title_ax > self.font_size * 3 then
 			local font_size = self.font_size * 0.8
-			local height = font_size * 1.5
+			local height = font_size * 1.3
 			local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
 			local by = title_ay + height
 			local opts = {
