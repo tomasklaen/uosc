@@ -29,10 +29,10 @@ function Element:init(id, props)
 
 	-- Flash timer
 	self._flash_out_timer = mp.add_timeout(options.flash_duration / 1000, function()
-		local getTo = function() return self.proximity end
-		self:tween_property('forced_visibility', 1, getTo, function()
-			self.forced_visibility = nil
-		end)
+		local function getTo() return self.proximity end
+		local function onTweenEnd() self.forced_visibility = nil end
+		if self.enabled then self:tween_property('forced_visibility', 1, getTo, onTweenEnd)
+		else onTweenEnd() end
 	end)
 	self._flash_out_timer:kill()
 
@@ -138,7 +138,7 @@ end
 -- Briefly flashes the element for `options.flash_duration` milliseconds.
 -- Useful to visualize changes of volume and timeline when changed via hotkeys.
 function Element:flash()
-	if options.flash_duration > 0 and (self.proximity < 1 or self._flash_out_timer:is_enabled()) then
+	if self.enabled and options.flash_duration > 0 and (self.proximity < 1 or self._flash_out_timer:is_enabled()) then
 		self:tween_stop()
 		self.forced_visibility = 1
 		request_render()
