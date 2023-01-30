@@ -174,6 +174,7 @@ config = {
 		video = split(options.video_types, ' *, *'),
 		audio = split(options.audio_types, ' *, *'),
 		image = split(options.image_types, ' *, *'),
+		subtitle = split(options.subtitle_types, ' *, *'),
 		media = split(options.video_types .. ',' .. options.audio_types .. ',' .. options.image_types, ' *, *'),
 		autoload = (function()
 			---@type string[]
@@ -184,7 +185,6 @@ config = {
 			end
 			return split(table.concat(option_values, ','), ' *, *')
 		end)(),
-		subtitle = split(options.subtitle_types, ' *, *'),
 	},
 	stream_quality_options = split(options.stream_quality_options, ' *, *'),
 	menu_items = (function()
@@ -802,8 +802,8 @@ bind_command('decide-pause-indicator', function() Elements.pause_indicator:decid
 bind_command('menu', function() toggle_menu_with_items() end)
 bind_command('menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
 local track_loaders = {
-	{name = 'subtitles', prop = 'sub', allowed_types = config.types.subtitle},
-	{name = 'audio', prop = 'audio', allowed_types = config.types.audio},
+	{name = 'subtitles', prop = 'sub', allowed_types = itable_join(config.types.video, config.types.subtitle)},
+	{name = 'audio', prop = 'audio', allowed_types = itable_join(config.types.video, config.types.audio)},
 	{name = 'video', prop = 'video', allowed_types = config.types.video},
 }
 for _, loader in ipairs(track_loaders) do
