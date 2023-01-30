@@ -517,7 +517,7 @@ end
 function Menu:on_global_mbtn_left_up()
 	if self.proximity_raw == 0 and self.drag_data and not self.is_dragging then
 		self:select_item_below_cursor()
-		self:open_selected_item({preselect_submenu_item = false})
+		self:open_selected_item({preselect_submenu_item = false, keep_open = self.modifiers and self.modifiers.shift})
 	end
 	if self.is_dragging then
 		local distance = self:fling_distance()
@@ -587,8 +587,10 @@ function Menu:enable_key_bindings()
 	self:add_key_binding('down', 'menu-next1', self:create_key_action('next'), 'repeatable')
 	self:add_key_binding('left', 'menu-back1', self:create_key_action('back'))
 	self:add_key_binding('right', 'menu-select1', self:create_key_action('open_selected_item_preselect'))
-	self:add_key_binding('shift+right', 'menu-select-soft1', self:create_key_action('open_selected_item_soft'))
-	self:add_key_binding('shift+mbtn_left', 'menu-select-soft', self:create_key_action('open_selected_item_soft'))
+	self:add_key_binding('shift+right', 'menu-select-soft1',
+		self:create_key_action('open_selected_item_soft', {shift = true}))
+	self:add_key_binding('shift+mbtn_left', 'menu-select3', self:create_modified_mbtn_left_handler({shift = true}))
+	self:add_key_binding('ctrl+mbtn_left', 'menu-select4', self:create_modified_mbtn_left_handler({ctrl = true}))
 	self:add_key_binding('mbtn_back', 'menu-back-alt3', self:create_key_action('back'))
 	self:add_key_binding('bs', 'menu-back-alt4', self:create_key_action('back'))
 	self:add_key_binding('enter', 'menu-select-alt3', self:create_key_action('open_selected_item_preselect'))
@@ -597,8 +599,10 @@ function Menu:enable_key_bindings()
 		self:create_key_action('open_selected_item_preselect', {ctrl = true}))
 	self:add_key_binding('ctrl+kp_enter', 'menu-select-ctrl2',
 		self:create_key_action('open_selected_item_preselect', {ctrl = true}))
-	self:add_key_binding('shift+enter', 'menu-select-alt5', self:create_key_action('open_selected_item_soft'))
-	self:add_key_binding('shift+kp_enter', 'menu-select-alt6', self:create_key_action('open_selected_item_soft'))
+	self:add_key_binding('shift+enter', 'menu-select-alt5',
+		self:create_key_action('open_selected_item_soft', {shift = true}))
+	self:add_key_binding('shift+kp_enter', 'menu-select-alt6',
+		self:create_key_action('open_selected_item_soft', {shift = true}))
 	self:add_key_binding('esc', 'menu-close', self:create_key_action('close'))
 	self:add_key_binding('pgup', 'menu-page-up', self:create_key_action('on_pgup'), 'repeatable')
 	self:add_key_binding('pgdwn', 'menu-page-down', self:create_key_action('on_pgdwn'), 'repeatable')
@@ -609,6 +613,17 @@ end
 function Menu:disable_key_bindings()
 	for _, name in ipairs(self.key_bindings) do mp.remove_key_binding(name) end
 	self.key_bindings = {}
+end
+
+---@param modifiers Modifiers
+function Menu:create_modified_mbtn_left_handler(modifiers)
+	return function()
+		self.mouse_nav = true
+		self.modifiers = modifiers
+		self:on_global_mbtn_left_down()
+		self:on_global_mbtn_left_up()
+		self.modifiers = nil
+	end
 end
 
 ---@param name string
