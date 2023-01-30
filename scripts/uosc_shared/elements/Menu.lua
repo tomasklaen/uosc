@@ -499,7 +499,7 @@ function Menu:on_global_mbtn_left_down()
 		self.drag_data = {{y = cursor.y, time = mp.get_time()}}
 		self.current.fling = nil
 	else
-		if cursor.x < self.ax then self:back()
+		if cursor.x < self.ax and self.current.parent_menu then self:back()
 		else self:close() end
 	end
 end
