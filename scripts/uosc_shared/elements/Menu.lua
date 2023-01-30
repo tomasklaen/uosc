@@ -135,7 +135,7 @@ function Menu:update(data)
 	local menus_to_serialize = {{new_root, data}}
 	local old_current_id = self.current and self.current.id
 
-	table_assign(new_root, data, {'title', 'hint', 'keep_open'})
+	table_assign(new_root, data, {'type', 'title', 'hint', 'keep_open'})
 
 	local i = 0
 	while i < #menus_to_serialize do
