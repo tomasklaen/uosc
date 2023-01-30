@@ -74,6 +74,7 @@ defaults = {
 	window_border_opacity = 0.8,
 
 	autoload = false,
+	autoload_types = 'video,audio,image',
 	shuffle = false,
 
 	ui_scale = 1,
@@ -174,6 +175,15 @@ config = {
 		audio = split(options.audio_types, ' *, *'),
 		image = split(options.image_types, ' *, *'),
 		media = split(options.video_types .. ',' .. options.audio_types .. ',' .. options.image_types, ' *, *'),
+		autoload = (function()
+			---@type string[]
+			local option_values = {}
+			for _, name in ipairs(split(options.autoload_types, ' *, *')) do
+				local value = options[name .. '_types']
+				if type(value) == 'string' then option_values[#option_values + 1] = value end
+			end
+			return split(table.concat(option_values, ','), ' *, *')
+		end)(),
 		subtitle = split(options.subtitle_types, ' *, *'),
 	},
 	stream_quality_options = split(options.stream_quality_options, ' *, *'),
@@ -500,7 +510,7 @@ function load_file_index_in_current_directory(index)
 
 	local serialized = serialize_path(state.path)
 	if serialized and serialized.dirname then
-		local files = read_directory(serialized.dirname, config.types.media)
+		local files = read_directory(serialized.dirname, config.types.autoload)
 
 		if not files then return end
 		sort_filenames(files)
@@ -1025,7 +1035,7 @@ bind_command('delete-file-next', function()
 		mp.commandv('playlist-remove', 'current')
 	else
 		if is_local_file then
-			local paths, current_index = get_adjacent_files(state.path, config.types.media)
+			local paths, current_index = get_adjacent_files(state.path, config.types.autoload)
 			if paths and current_index then
 				local index, path = decide_navigation_in_list(paths, current_index, 1)
 				if path then next_file = path end

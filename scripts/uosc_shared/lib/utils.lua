@@ -312,21 +312,25 @@ function read_directory(path, allowed_types)
 	return files, directories
 end
 
--- Returns full absolute paths of files in the same directory as file_path,
+-- Returns full absolute paths of files in the same directory as `file_path`,
 -- and index of the current file in the table.
+-- Returned table will always contain `file_path`, regardless of `allowed_types`.
 ---@param file_path string
----@param allowed_types? string[]
+---@param allowed_types? string[] Filter adjacent file types. Does NOT filter out the `file_path`.
 function get_adjacent_files(file_path, allowed_types)
-	local current_file = serialize_path(file_path)
-	if not current_file then return end
-	local files = read_directory(current_file.dirname, allowed_types)
+	local current_meta = serialize_path(file_path)
+	if not current_meta then return end
+	local files = read_directory(current_meta.dirname)
 	if not files then return end
 	sort_filenames(files)
 	local current_file_index
 	local paths = {}
-	for index, file in ipairs(files) do
-		paths[#paths + 1] = join_path(current_file.dirname, file)
-		if current_file.basename == file then current_file_index = index end
+	for _, file in ipairs(files) do
+		local is_current_file = current_meta.basename == file
+		if is_current_file or not allowed_types or has_any_extension(file, allowed_types) then
+			paths[#paths + 1] = join_path(current_meta.dirname, file)
+			if is_current_file then current_file_index = #paths end
+		end
 	end
 	if not current_file_index then return end
 	return paths, current_file_index
@@ -361,7 +365,7 @@ end
 ---@param delta number
 function navigate_directory(delta)
 	if not state.path or is_protocol(state.path) then return false end
-	local paths, current_index = get_adjacent_files(state.path, config.types.media)
+	local paths, current_index = get_adjacent_files(state.path, config.types.autoload)
 	if paths and current_index then
 		local _, path = decide_navigation_in_list(paths, current_index, delta)
 		if path then mp.commandv('loadfile', path) return true end
