@@ -1085,6 +1085,9 @@ end)
 --[[ MESSAGE HANDLERS ]]
 
 mp.register_script_message('show-submenu', function(id) toggle_menu_with_items({submenu = id}) end)
+mp.register_script_message('show-submenu-blurred', function(id)
+	toggle_menu_with_items({submenu = id, mouse_nav = true})
+end)
 mp.register_script_message('get-version', function(script)
 	mp.commandv('script-message-to', script, 'uosc-version', config.version)
 end)

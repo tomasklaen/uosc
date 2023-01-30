@@ -381,9 +381,9 @@ end)
 mp.commandv('script-message-to', 'uosc', 'get-version', mp.get_script_name())
 ```
 
-### `show-submenu <menu_id>`
+### `show-submenu <menu_id>`, `show-submenu-blurred <menu_id>`
 
-Opens one of the submenus defined in `input.conf` (read on how to build those in the Menu documentation above).
+Opens one of the submenus defined in `input.conf` (read on how to build those in the Menu documentation above). To prevent 1st item being preselected, use `show-submenu-blurred` instead.
 
 Parameters
 
