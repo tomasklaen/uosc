@@ -210,6 +210,8 @@ Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv p
 
 Open file menu. Browsing starts in current file directory, or user directory when file not available. The explorer only displays file types defined in the `video_types`, `audio_types`, and `image_types` options.
 
+When directory is selected in the menu, you can use `ctrl+enter` to load the whole directory in mpv instead of navigating its contents.
+
 #### `items`
 
 Opens `playlist` menu when playlist exists, or `open-file` menu otherwise.

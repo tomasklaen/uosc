@@ -12,11 +12,15 @@ local Element = require('uosc_shared/elements/Element')
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
 
+---@alias Modifiers {shift?: boolean, ctrl?: boolean, alt?: boolean}
+---@alias MenuCallbackMeta {modifiers: Modifiers}
+---@alias MenuCallback fun(value: any, meta: MenuCallbackMeta)
+
 ---@class Menu : Element
 local Menu = class(Element)
 
 ---@param data MenuData
----@param callback fun(value: any)
+---@param callback MenuCallback
 ---@param opts? MenuOptions
 function Menu:open(data, callback, opts)
 	local open_menu = self:is_open()
@@ -64,12 +68,12 @@ function Menu:close(immediate, callback)
 end
 
 ---@param data MenuData
----@param callback fun(value: any)
+---@param callback MenuCallback
 ---@param opts? MenuOptions
 ---@return Menu
 function Menu:new(data, callback, opts) return Class.new(self, data, callback, opts) --[[@as Menu]] end
 ---@param data MenuData
----@param callback fun(value: any)
+---@param callback MenuCallback
 ---@param opts? MenuOptions
 function Menu:init(data, callback, opts)
 	Element.init(self, 'menu', {ignores_menu = true})
@@ -79,6 +83,8 @@ function Menu:init(data, callback, opts)
 	self.opts = opts or {}
 	self.offset_x = 0 -- Used for submenu transition animation.
 	self.mouse_nav = self.opts.mouse_nav -- Stops pre-selecting items
+	---@type Modifiers|nil
+	self.modifiers = nil
 	self.item_height = nil
 	self.item_spacing = 1
 	self.item_padding = nil
@@ -475,7 +481,7 @@ function Menu:open_selected_item(opts)
 			self:tween(self.offset_x + menu.width / 2, 0, function(offset) self:set_offset_x(offset) end)
 			self.opacity = 1 -- in case tween above canceled fade in animation
 		else
-			self.callback(item.value)
+			self.callback(item.value, {modifiers = self.modifiers or {}})
 			if not item.keep_open and not opts.keep_open then self:close() end
 		end
 	end
@@ -587,6 +593,10 @@ function Menu:enable_key_bindings()
 	self:add_key_binding('bs', 'menu-back-alt4', self:create_key_action('back'))
 	self:add_key_binding('enter', 'menu-select-alt3', self:create_key_action('open_selected_item_preselect'))
 	self:add_key_binding('kp_enter', 'menu-select-alt4', self:create_key_action('open_selected_item_preselect'))
+	self:add_key_binding('ctrl+enter', 'menu-select-ctrl1',
+		self:create_key_action('open_selected_item_preselect', {ctrl = true}))
+	self:add_key_binding('ctrl+kp_enter', 'menu-select-ctrl2',
+		self:create_key_action('open_selected_item_preselect', {ctrl = true}))
 	self:add_key_binding('shift+enter', 'menu-select-alt5', self:create_key_action('open_selected_item_soft'))
 	self:add_key_binding('shift+kp_enter', 'menu-select-alt6', self:create_key_action('open_selected_item_soft'))
 	self:add_key_binding('esc', 'menu-close', self:create_key_action('close'))
@@ -601,10 +611,14 @@ function Menu:disable_key_bindings()
 	self.key_bindings = {}
 end
 
-function Menu:create_key_action(name)
-	return function(...)
+---@param name string
+---@param modifiers? Modifiers
+function Menu:create_key_action(name, modifiers)
+	return function()
 		self.mouse_nav = false
-		self:maybe(name, ...)
+		self.modifiers = modifiers
+		self:maybe(name)
+		self.modifiers = nil
 	end
 end
 

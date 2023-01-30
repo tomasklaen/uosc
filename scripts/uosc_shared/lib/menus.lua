@@ -198,7 +198,8 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		if opts.selected_path == item.value then selected_index = index end
 	end
 
-	local function open_path(path)
+	---@type MenuCallback
+	local function open_path(path, meta)
 		local is_drives = path == '{drives}'
 		local is_to_parent = is_drives or #path < #directory_path
 		local inheritable_options = {
@@ -222,7 +223,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 			return
 		end
 
-		if info.is_dir then
+		if info.is_dir and not meta.modifiers.ctrl then
 			--  Preselect directory we are coming from
 			if is_to_parent then
 				inheritable_options.selected_path = directory.path
@@ -235,7 +236,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	end
 
 	local function handle_back()
-		if back_path then open_path(back_path) end
+		if back_path then open_path(back_path, {}) end
 	end
 
 	local menu_data = {
