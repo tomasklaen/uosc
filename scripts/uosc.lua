@@ -377,15 +377,15 @@ end
 
 function update_human_times()
 	if state.time then
-		state.time_human = format_time(state.time)
+		state.time_human = format_time(state.time, state.duration)
 		if state.duration then
 			local speed = state.speed or 1
 			if options.destination_time == 'playtime-remaining' then
-				state.destination_time_human = format_time((state.time - state.duration) / speed)
+				state.destination_time_human = format_time((state.time - state.duration) / speed, state.duration)
 			elseif options.destination_time == 'total' then
-				state.destination_time_human = format_time(state.duration)
+				state.destination_time_human = format_time(state.duration, state.duration)
 			else
-				state.destination_time_human = format_time(state.time - state.duration)
+				state.destination_time_human = format_time(state.time - state.duration, state.duration)
 			end
 		else
 			state.destination_time_human = nil
@@ -851,7 +851,7 @@ bind_command('chapters', create_self_updating_menu_opener({
 		for index, chapter in ipairs(chapters) do
 			items[index] = {
 				title = chapter.title or '',
-				hint = mp.format_time(chapter.time),
+				hint = format_time(chapter.time, state.duration),
 				value = index,
 				active = index - 1 == current_chapter,
 			}

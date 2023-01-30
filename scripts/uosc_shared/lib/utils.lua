@@ -130,12 +130,21 @@ function ass_escape(str)
 end
 
 ---@param seconds number
+---@param max_seconds number|nil Trims unnecessary `00:` if time is not expected to reach it.
 ---@return string
-function format_time(seconds)
+function format_time(seconds, max_seconds)
 	local human = mp.format_time(seconds)
 	if options.time_precision > 0 then
 		local formatted = string.format('%.' .. options.time_precision .. 'f', math.abs(seconds) % 1)
 		human = human .. '.' .. string.sub(formatted, 3)
+	end
+	if max_seconds then
+		local trim_length = (max_seconds < 60 and 7 or (max_seconds < 3600 and 4 or 0))
+		if trim_length > 0 then
+			local has_minus = seconds < 0
+			human = string.sub(human, trim_length + (has_minus and 1 or 0))
+			if has_minus then human = '-' .. human end
+		end
 	end
 	return human
 end
@@ -382,12 +391,12 @@ end
 function delete_file(path)
 	if state.os == 'windows' then
 		if options.use_trash then
-            local ps_code = [[
+			local ps_code = [[
 				Add-Type -AssemblyName Microsoft.VisualBasic
 				[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile('__path__', 'OnlyErrorDialogs', 'SendToRecycleBin')
 			]]
 
-            local escaped_path = string.gsub(path, "'", "''")
+			local escaped_path = string.gsub(path, "'", "''")
             escaped_path = string.gsub(escaped_path, "’", "’’")
             escaped_path = string.gsub(escaped_path, "%%", "%%%%")
             ps_code = string.gsub(ps_code, "__path__", escaped_path)
@@ -399,7 +408,7 @@ function delete_file(path)
 		if options.use_trash then
 			--On Linux and Macos the app trash-cli/trash must be installed first.
 		    args = { 'trash', path }
-	    else
+		else
 		    args = { 'rm', path }
 		end
 	end

@@ -357,8 +357,9 @@ function Timeline:render()
 		-- Timestamp
 		local offset = #state.chapters > 0 and 10 or 4
 		local opts = {size = self.font_size, offset = offset}
-		opts.width_overwrite = text_width('00:00:00', opts)
-		ass:tooltip(tooltip_anchor, format_time(hovered_seconds), opts)
+		local hovered_time_human = format_time(hovered_seconds, state.duration)
+		opts.width_overwrite = text_width(hovered_time_human, opts)
+		ass:tooltip(tooltip_anchor, hovered_time_human, opts)
 		tooltip_anchor.ay = tooltip_anchor.ay - self.font_size - offset
 
 		-- Thumbnail
