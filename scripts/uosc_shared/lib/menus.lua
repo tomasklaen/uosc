@@ -236,7 +236,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	end
 
 	local function handle_back()
-		if back_path then open_path(back_path, {}) end
+		if back_path then open_path(back_path, {modifiers = {}}) end
 	end
 
 	local menu_data = {
