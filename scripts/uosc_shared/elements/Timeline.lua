@@ -322,9 +322,8 @@ function Timeline:render()
 			local cache_opts = {size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = 1}
 			local human = round(math.max(buffered_playtime, 0)) .. 's'
 			local width = text_width(human, cache_opts)
-			local time_width = text_width('00:00:00', time_opts)
-			local time_width_end = options.destination_time == 'total' and time_width
-				or text_width('-00:00:00', time_opts)
+			local time_width = timestamp_width(state.time_human, time_opts)
+			local time_width_end = timestamp_width(state.destination_time_human, time_opts)
 			local min_x, max_x = bax + spacing + 5 + time_width, bbx - spacing - 5 - time_width_end
 			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
 			draw_timeline_text(x, fcy, align, human, cache_opts)
@@ -358,7 +357,7 @@ function Timeline:render()
 		local offset = #state.chapters > 0 and 10 or 4
 		local opts = {size = self.font_size, offset = offset}
 		local hovered_time_human = format_time(hovered_seconds, state.duration)
-		opts.width_overwrite = text_width(hovered_time_human, opts)
+		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
 		ass:tooltip(tooltip_anchor, hovered_time_human, opts)
 		tooltip_anchor.ay = tooltip_anchor.ay - self.font_size - offset
 

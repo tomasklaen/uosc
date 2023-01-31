@@ -368,6 +368,24 @@ do
 	end
 end
 
+do
+	---@type {[string]: string}
+	local cache = {}
+
+	---Get width of formatted timestamp as if all the digits were replaced with 0
+	---@param timestamp string
+	---@param opts {size: number; bold?: boolean; italic?: boolean}
+	---@return number
+	function timestamp_width(timestamp, opts)
+		local substitute = cache[#timestamp]
+		if not substitute then
+			substitute = timestamp:gsub('%d', '0')
+			cache[#timestamp] = substitute
+		end
+		return text_width(substitute, opts)
+	end
+end
+
 ---Wrap the text at the closest opportunity to target_line_length
 ---@param text string
 ---@param opts {size: number; bold?: boolean; italic?: boolean}
