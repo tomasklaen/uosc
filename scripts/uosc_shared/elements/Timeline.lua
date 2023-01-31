@@ -298,8 +298,30 @@ function Timeline:render()
 				end
 			end
 
-			if state.ab_loop_a and state.ab_loop_a > 0 then draw_chapter(state.ab_loop_a, diamond_radius) end
-			if state.ab_loop_b and state.ab_loop_b > 0 then draw_chapter(state.ab_loop_b, diamond_radius) end
+			-- A-B loop indicators
+			local has_a, has_b = state.ab_loop_a and state.ab_loop_a >= 0, state.ab_loop_b and state.ab_loop_b > 0
+			local ab_radius = round(math.min(math.max(8, foreground_size * 0.25), foreground_size))
+
+			---@param time number
+			---@param kind 'a'|'b'
+			local function draw_ab_indicator(time, kind)
+				local x = t2x(time)
+				ass:new_event()
+				ass:append(string.format(
+					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
+					diamond_border, fg, bg, bg, opacity_to_alpha(options.timeline_opacity * options.timeline_chapters_opacity)
+				))
+				ass:draw_start()
+				ass:move_to(x, fby - ab_radius)
+				if kind == 'b' then ass:line_to(x + 3, fby - ab_radius) end
+				ass:line_to(x + (kind == 'a' and 0 or ab_radius), fby)
+				ass:line_to(x - (kind == 'b' and 0 or ab_radius), fby)
+				if kind == 'a' then ass:line_to(x - 3, fby - ab_radius) end
+				ass:draw_stop()
+			end
+
+			if has_a then draw_ab_indicator(state.ab_loop_a, 'a') end
+			if has_b then draw_ab_indicator(state.ab_loop_b, 'b') end
 		end
 	end
 
