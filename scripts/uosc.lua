@@ -1116,7 +1116,7 @@ mp.register_script_message('open-menu', function(json, submenu_id)
 		msg.error('open-menu: received json didn\'t produce a table with menu configuration')
 	else
 		if data.type and Menu:is_open(data.type) then Menu:close()
-		else open_command_menu(data, {submenu_id = submenu_id}) end
+		else open_command_menu(data, {submenu = submenu_id, on_close = data.on_close}) end
 	end
 end)
 mp.register_script_message('update-menu', function(json)

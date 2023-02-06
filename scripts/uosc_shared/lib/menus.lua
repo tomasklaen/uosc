@@ -1,19 +1,26 @@
 ---@param data MenuData
----@param opts? {submenu?: string; mouse_nav?: boolean}
+---@param opts? {submenu?: string; mouse_nav?: boolean; on_close?: string | string[]}
 function open_command_menu(data, opts)
-	local menu = Menu:open(data, function(value)
-		if type(value) == 'string' then
-			mp.command(value)
+	local function run_command(command)
+		if type(command) == 'string' then
+			mp.command(command)
 		else
 			---@diagnostic disable-next-line: deprecated
-			mp.commandv(unpack(value))
+			mp.commandv(unpack(command))
 		end
-	end, opts)
+	end
+	---@type MenuOptions
+	local menu_opts = {}
+	if opts then
+		menu_opts.submenu, menu_opts.mouse_nav = opts.submenu, opts.mouse_nav
+		if opts.on_close then menu_opts.on_close = function() run_command(opts.on_close) end end
+	end
+	local menu = Menu:open(data, run_command, menu_opts)
 	if opts and opts.submenu then menu:activate_submenu(opts.submenu) end
 	return menu
 end
 
----@param opts? {submenu?: string; mouse_nav?: boolean}
+---@param opts? {submenu?: string; mouse_nav?: boolean; on_close?: string | string[]}
 function toggle_menu_with_items(opts)
 	if Menu:is_open('menu') then Menu:close()
 	else open_command_menu({type = 'menu', items = config.menu_items}, opts) end
