@@ -52,8 +52,9 @@ function TopBar:init()
 	self.size_min_override = options.timeline_start_hidden and 0 or nil
 	self.top_border = options.timeline_border
 	self.show_alt_title = false
+	self.main_title, self.alt_title = nil, nil
 
-	local function decide_maximized_command()
+	local function get_maximized_command()
 		return state.border
 			and (state.fullscreen and 'set fullscreen no;cycle window-maximized' or 'cycle window-maximized')
 			or 'set window-maximized no;cycle fullscreen'
@@ -62,9 +63,11 @@ function TopBar:init()
 	-- Order aligns from right to left
 	self.buttons = {
 		TopBarButton:new('tb_close', {icon = 'close', background = '2311e8', command = 'quit'}),
-		TopBarButton:new('tb_max', {icon = 'crop_square', background = '222222', command = decide_maximized_command}),
+		TopBarButton:new('tb_max', {icon = 'crop_square', background = '222222', command = get_maximized_command}),
 		TopBarButton:new('tb_min', {icon = 'minimize', background = '222222', command = 'cycle window-minimized'}),
 	}
+
+	self:decide_titles()
 end
 
 function TopBar:decide_enabled()
@@ -76,6 +79,31 @@ function TopBar:decide_enabled()
 	self.enabled = self.enabled and (options.top_bar_controls or options.top_bar_title)
 	for _, element in ipairs(self.buttons) do
 		element.enabled = self.enabled and options.top_bar_controls
+	end
+end
+
+function TopBar:decide_titles()
+	self.alt_title = state.alt_title ~= '' and state.alt_title or nil
+	self.main_title = state.title ~= '' and state.title or nil
+
+	-- Fall back to alt title if main is empty
+	if not self.main_title then
+		self.main_title, self.alt_title = self.alt_title, nil
+	end
+
+	-- Deduplicate the main and alt titles by checking if one completely
+	-- contains the other, and using only the longer one.
+	if self.main_title and self.alt_title and not self.show_alt_title then
+		local longer_title, shorter_title
+		if #self.main_title < #self.alt_title then
+			longer_title, shorter_title = self.alt_title, self.main_title
+		else
+			longer_title, shorter_title = self.main_title, self.alt_title
+		end
+
+		if string.match(longer_title --[[@as string]], shorter_title --[[@as string]]) then
+			self.main_title, self.alt_title = longer_title, nil
+		end
 	end
 end
 
@@ -103,6 +131,9 @@ function TopBar:toggle_title()
 	if options.top_bar_alt_title_place ~= 'toggle' then return end
 	self.show_alt_title = not self.show_alt_title
 end
+
+function TopBar:on_prop_title() self:decide_titles() end
+function TopBar:on_prop_alt_title() self:decide_titles() end
 
 function TopBar:on_prop_border()
 	self:decide_enabled()
@@ -150,53 +181,58 @@ function TopBar:render()
 			title_ax = bx + bg_margin
 		end
 
-		-- Title
-		local text = self.show_alt_title and state.alt_title or state.title
-		if max_bx - title_ax > self.font_size * 3 and text and text ~= '' then
-			local opts = {
-				size = self.font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility,
-				clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
-			}
-			local bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)
-			local by = self.by - bg_margin
-			ass:rect(title_ax, title_ay, bx, by, {
-				color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
-			})
-			ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, text, opts)
-			title_ay = by + 1
-		end
+		-- Skip rendering titles if there's not enough horizontal space
+		if max_bx - title_ax > self.font_size * 3 then
+			-- Main title
+			local main_title = self.show_alt_title and self.alt_title or self.main_title
+			if main_title then
+				local opts = {
+					size = self.font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility,
+					clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
+				}
+				local bx = math.min(max_bx, title_ax + text_width(main_title, opts) + padding * 2)
+				local by = self.by - bg_margin
+				ass:rect(title_ax, title_ay, bx, by, {
+					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+				})
+				ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, main_title, opts)
+				title_ay = by + 1
+			end
 
-		-- Alt title
-		if state.alt_title and options.top_bar_alt_title_place == 'below' and state.alt_title ~= state.title then
-			local font_size = self.font_size * 0.9
-			local height = font_size * 1.3
-			local by = title_ay + height
-			local opts = {size = font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility}
-			local bx = math.min(max_bx, title_ax + text_width(state.alt_title, opts) + padding * 2)
-			opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
-			ass:rect(title_ax, title_ay, bx, by, {
-				color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
-			})
-			ass:txt(title_ax + padding, title_ay + height / 2, 4, state.alt_title, opts)
-			title_ay = by + 1
-		end
+			-- Alt title
+			if self.alt_title and options.top_bar_alt_title_place == 'below' then
+				local font_size = self.font_size * 0.9
+				local height = font_size * 1.3
+				local by = title_ay + height
+				local opts = {
+					size = font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility
+				}
+				local bx = math.min(max_bx, title_ax + text_width(self.alt_title, opts) + padding * 2)
+				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
+				ass:rect(title_ax, title_ay, bx, by, {
+					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+				})
+				ass:txt(title_ax + padding, title_ay + height / 2, 4, self.alt_title, opts)
+				title_ay = by + 1
+			end
 
-		-- Subtitle: current chapter
-		if state.current_chapter and max_bx - title_ax > self.font_size * 3 then
-			local font_size = self.font_size * 0.8
-			local height = font_size * 1.3
-			local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
-			local by = title_ay + height
-			local opts = {
-				size = font_size, italic = true, wrap = 2, color = bgt,
-				border = 1, border_color = bg, opacity = visibility * 0.8,
-			}
-			local bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)
-			opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
-			ass:rect(title_ax, title_ay, bx, by, {
-				color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
-			})
-			ass:txt(title_ax + padding, title_ay + height / 2, 4, text, opts)
+			-- Subtitle: current chapter
+			if state.current_chapter then
+				local font_size = self.font_size * 0.8
+				local height = font_size * 1.3
+				local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
+				local by = title_ay + height
+				local opts = {
+					size = font_size, italic = true, wrap = 2, color = bgt,
+					border = 1, border_color = bg, opacity = visibility * 0.8,
+				}
+				local bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)
+				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
+				ass:rect(title_ax, title_ay, bx, by, {
+					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+				})
+				ass:txt(title_ax + padding, title_ay + height / 2, 4, text, opts)
+			end
 		end
 	end
 
