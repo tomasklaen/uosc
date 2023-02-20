@@ -86,23 +86,26 @@ All of the available **uosc** options with their default values and documentatio
 
 To change the font, **uosc** respects the mpv's `osd-font` configuration.
 
-## Keybindings
+## Navigation
 
-The only keybinds **uosc** defines by default are menu navigation keys that are active only when one of the menus (context menu, load/select subtitles,...) is active. They are:
+These bindings are active when any **uosc** menu is open (main menu, playlist, load/select subtitles,...):
 
--   `↑`, `↓`, `←`, `→` - up, down, previous menu or close, select item
--   `enter` - select item
+-   `up`, `down` - select previous/next item
+-   `left`, `right` - back to parent menu or close, activate item
+-   `enter` - activate item
 -   `esc` - close menu
 -   `wheel_up`, `wheel_down` - scroll menu
 -   `pgup`, `pgdwn`, `home`, `end` - self explanatory
+-   `ctrl+up/down` - move selected item in menus that support it (playlist)
+-   `del` - delete selected item in menus that support it (playlist)
+-   `shift+enter`, `shift+right` - activate item without closing the menu
+-   `ctrl+enter`, `ctrl+click` - force activate an item, even if it's a submenu. In practical terms: activates a directory instead of navigation to its contents.
 
 Click on a faded parent menu to go back to it.
 
-Hold `shift` to activate menu item without closing the menu.
-
-**uosc** also provides various commands with useful features to bind your preferred keys to. See [Commands](#commands) section below.
-
 ## Commands
+
+**uosc** provides various commands with useful features to bind your preferred keys to. These are all unbound by default.
 
 To add a keybind to one of this commands, open your `input.conf` file and add one on a new line. The command syntax is `script-binding uosc/{command-name}`.
 

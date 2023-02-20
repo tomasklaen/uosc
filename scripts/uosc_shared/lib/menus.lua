@@ -26,7 +26,7 @@ function toggle_menu_with_items(opts)
 	else open_command_menu({type = 'menu', items = config.menu_items}, opts) end
 end
 
----@param options {type: string; title: string; list_prop: string; active_prop?: string; serializer: fun(list: any, active: any): MenuDataItem[]; on_select: fun(value: any)}
+---@param options {type: string; title: string; list_prop: string; active_prop?: string; serializer: fun(list: any, active: any): MenuDataItem[]; on_select: fun(value: any); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 function create_self_updating_menu_opener(options)
 	return function()
 		if Menu:is_open(options.type) then Menu:close() return end
@@ -65,6 +65,8 @@ function create_self_updating_menu_opener(options)
 				mp.unobserve_property(handle_list_prop_change)
 				mp.unobserve_property(handle_active_prop_change)
 			end,
+			on_move_item = options.on_move_item,
+			on_delete_item = options.on_delete_item,
 		})
 	end
 end

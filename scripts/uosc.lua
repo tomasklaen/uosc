@@ -858,6 +858,10 @@ bind_command('playlist', create_self_updating_menu_opener({
 		return items
 	end,
 	on_select = function(index) mp.commandv('set', 'playlist-pos-1', tostring(index)) end,
+	on_move_item = function(from, to)
+		mp.commandv('playlist-move', tostring(math.max(from, to) - 1), tostring(math.min(from, to) - 1))
+	end,
+	on_delete_item = function(index) mp.commandv('playlist-remove', tostring(index - 1)) end,
 }))
 bind_command('chapters', create_self_updating_menu_opener({
 	title = 'Chapters',
