@@ -390,6 +390,7 @@ function update_fullormaxed()
 	state.fullormaxed = state.fullscreen or state.maximized
 	update_display_dimensions()
 	Elements:trigger('prop_fullormaxed', state.fullormaxed)
+	handle_mouse_move(INFINITY, INFINITY)
 end
 
 function update_human_times()
