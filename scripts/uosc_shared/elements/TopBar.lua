@@ -53,6 +53,7 @@ function TopBar:init()
 	self.top_border = options.timeline_border
 	self.show_alt_title = false
 	self.main_title, self.alt_title = nil, nil
+	self.playlist_bx = 0
 
 	local function get_maximized_command()
 		return state.border
@@ -120,6 +121,14 @@ function TopBar:update_dimensions()
 	self.title_bx = self.bx - (options.top_bar_controls and (self.button_width * 3) or 0)
 	self.ax = options.top_bar_title and Elements.window_border.size or self.title_bx
 
+	if state.has_playlist then
+		local text = state.playlist_pos .. '' .. state.playlist_count
+		local bg_margin = math.floor((self.size - self.font_size) / 4)
+		local title_ax = self.ax + bg_margin
+		local padding = self.font_size / 2
+		self.playlist_bx = round(title_ax + text_width(text, {size = self.font_size, wrap = 2}) + padding * 2)
+	end
+
 	local button_bx = self.bx
 	for _, element in pairs(self.buttons) do
 		element.ax, element.bx = button_bx - self.button_width, button_bx
@@ -151,8 +160,18 @@ function TopBar:on_prop_maximized()
 	self:update_dimensions()
 end
 
+function TopBar:on_prop_playlist_pos()
+	self:update_dimensions()
+end
+
+function TopBar:on_prop_playlist_count()
+	self:update_dimensions()
+end
+
 function TopBar:on_mbtn_left_down()
-	if cursor.x < self.title_bx then self:toggle_title() end
+	if state.has_playlist and cursor.x < self.playlist_bx then
+		mp.command('script-binding uosc/playlist')
+	elseif cursor.x < self.title_bx then self:toggle_title() end
 end
 
 function TopBar:on_display() self:update_dimensions() end
@@ -172,11 +191,10 @@ function TopBar:render()
 
 		-- Playlist position
 		if state.has_playlist then
-			local text = state.playlist_pos .. '' .. state.playlist_count
 			local formatted_text = '{\\b1}' .. state.playlist_pos .. '{\\b0\\fs' .. self.font_size * 0.9 .. '}/'
 				.. state.playlist_count
 			local opts = {size = self.font_size, wrap = 2, color = fgt, opacity = visibility}
-			local bx = round(title_ax + text_width(text, opts) + padding * 2)
+			local bx = self.playlist_bx
 			ass:rect(title_ax, title_ay, bx, self.by - bg_margin, {color = fg, opacity = visibility, radius = 2})
 			ass:txt(title_ax + (bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, opts)
 			title_ax = bx + bg_margin
