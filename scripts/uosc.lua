@@ -6,8 +6,8 @@ opt = require('mp.options')
 utils = require('mp.utils')
 msg = require('mp.msg')
 osd = mp.create_osd_overlay('ass-events')
-infinity = 1e309
-quarter_pi_sin = math.sin(math.pi / 4)
+INFINITY = 1e309
+QUARTER_PI_SIN = math.sin(math.pi / 4)
 
 -- Enables relative requires from `scripts` directory
 package.path = package.path .. ';' .. mp.find_config_file('scripts') .. '/?.lua'
@@ -452,7 +452,7 @@ function update_cursor_position(x, y)
 	-- we receive a first real mouse move event with coordinates other than 0,0.
 	if not state.first_real_mouse_move_received then
 		if x > 0 and y > 0 then state.first_real_mouse_move_received = true
-		else x, y = infinity, infinity end
+		else x, y = INFINITY, INFINITY end
 	end
 
 	-- add 0.5 to be in the middle of the pixel

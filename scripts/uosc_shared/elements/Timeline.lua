@@ -274,7 +274,7 @@ function Timeline:render()
 
 			if #state.chapters > 0 then
 				-- Find hovered chapter indicator
-				local hovered_chapter, closest_delta = nil, infinity
+				local hovered_chapter, closest_delta = nil, INFINITY
 
 				if self.proximity_raw < diamond_radius_hovered then
 					for i, chapter in ipairs(state.chapters) do

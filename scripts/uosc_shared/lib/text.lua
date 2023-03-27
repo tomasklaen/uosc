@@ -251,8 +251,8 @@ do
 		local unicode = utf8_to_unicode(char, 1)
 		for _, block in ipairs(zero_width_blocks) do
 			if unicode >= block[1] and unicode <= block[2] then
-				char_widths[char] = {0, infinity}
-				return 0, infinity
+				char_widths[char] = {0, INFINITY}
+				return 0, INFINITY
 			end
 		end
 
@@ -302,7 +302,7 @@ end
 ---@return number, integer
 local function character_based_width(text, bold)
 	local max_width = 0
-	local min_px = infinity
+	local min_px = INFINITY
 	for line in tostring(text):gmatch("([^\n]*)\n?") do
 		local total_width = 0
 		for _, char in utf8_iter(line) do

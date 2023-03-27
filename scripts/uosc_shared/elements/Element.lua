@@ -15,7 +15,7 @@ function Element:init(id, props)
 	-- Relative proximity from `0` - mouse outside `proximity_max` range, to `1` - mouse within `proximity_min` range.
 	self.proximity = 0
 	-- Raw proximity in pixels.
-	self.proximity_raw = infinity
+	self.proximity_raw = INFINITY
 	---@type number `0-1` factor to force min visibility. Used for toggling element's permanent visibility.
 	self.min_visibility = 0
 	---@type number `0-1` factor to force a visibility value. Used for flashing, fading out, and other animations
@@ -44,7 +44,7 @@ function Element:destroy()
 	Elements:remove(self)
 end
 
-function Element:reset_proximity() self.proximity, self.proximity_raw = 0, infinity end
+function Element:reset_proximity() self.proximity, self.proximity_raw = 0, INFINITY end
 
 ---@param ax number
 ---@param ay number

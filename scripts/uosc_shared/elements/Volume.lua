@@ -78,7 +78,7 @@ function VolumeSlider:render()
 	if width <= 0 or height <= 0 or visibility <= 0 then return end
 
 	local ass = assdraw.ass_new()
-	local nudge_y, nudge_size = self.draw_nudge and self.nudge_y or -infinity, self.nudge_size
+	local nudge_y, nudge_size = self.draw_nudge and self.nudge_y or -INFINITY, self.nudge_size
 	local volume_y = self.ay + options.volume_border +
 		((height - (options.volume_border * 2)) * (1 - math.min(state.volume / state.volume_max, 1)))
 
@@ -90,7 +90,7 @@ function VolumeSlider:render()
 		local ax, bx, by = ax + p, bx - p, by - p
 		local r = math.max(1, self.radius - p)
 		local d, rh = r * 2, r / 2
-		local nudge_size = ((quarter_pi_sin * (nudge_size - p)) + p) / quarter_pi_sin
+		local nudge_size = ((QUARTER_PI_SIN * (nudge_size - p)) + p) / QUARTER_PI_SIN
 		local path = assdraw.ass_new()
 		path:move_to(bx - r, by)
 		path:line_to(ax + r, by)
