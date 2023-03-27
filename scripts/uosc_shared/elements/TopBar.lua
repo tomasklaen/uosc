@@ -16,7 +16,7 @@ function TopBarButton:init(id, props)
 	self.command = props.command
 end
 
-function TopBarButton:on_mbtn_left_down()
+function TopBarButton:handle_cursor_down()
 	mp.command(type(self.command) == 'function' and self.command() or self.command)
 end
 
@@ -28,6 +28,7 @@ function TopBarButton:render()
 	-- Background on hover
 	if self.proximity_raw == 0 then
 		ass:rect(self.ax, self.ay, self.bx, self.by, {color = self.background, opacity = visibility})
+		cursor.on_primary_down = function() self:handle_cursor_down() end
 	end
 
 	local width, height = self.bx - self.ax, self.by - self.ay
@@ -151,10 +152,6 @@ function TopBar:on_prop_maximized()
 	self:update_dimensions()
 end
 
-function TopBar:on_mbtn_left_down()
-	if cursor.x < self.title_bx then self:toggle_title() end
-end
-
 function TopBar:on_display() self:update_dimensions() end
 
 function TopBar:render()
@@ -193,6 +190,12 @@ function TopBar:render()
 				}
 				local bx = math.min(max_bx, title_ax + text_width(main_title, opts) + padding * 2)
 				local by = self.by - bg_margin
+				local rect = {ax = title_ax, ay = self.ay, bx = bx, by = self.by}
+
+				if get_point_to_rectangle_proximity(cursor, rect) == 0 then
+					cursor.on_primary_down = function() self:toggle_title() end
+				end
+
 				ass:rect(title_ax, title_ay, bx, by, {
 					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 				})
