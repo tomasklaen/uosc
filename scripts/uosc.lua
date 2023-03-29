@@ -322,10 +322,15 @@ cursor = {
 	end
 }
 state = {
-	os = (function()
-		if os.getenv('windir') ~= nil then return 'windows' end
-		local homedir = os.getenv('HOME')
-		if homedir ~= nil and string.sub(homedir, 1, 6) == '/Users' then return 'macos' end
+	platform = (function()
+		local platform = mp.get_property_native('platform')
+		if platform then
+			if itable_index_of({'windows', 'darwin'}, platform) then return platform end
+		else
+			if os.getenv('windir') ~= nil then return 'windows' end
+			local homedir = os.getenv('HOME')
+			if homedir ~= nil and string.sub(homedir, 1, 6) == '/Users' then return 'darwin' end
+		end
 		return 'linux'
 	end)(),
 	cwd = mp.get_property('working-directory'),
@@ -949,11 +954,11 @@ bind_command('show-in-directory', function()
 	-- Ignore URLs
 	if not state.path or is_protocol(state.path) then return end
 
-	if state.os == 'windows' then
+	if state.platform == 'windows' then
 		utils.subprocess_detached({args = {'explorer', '/select,', state.path}, cancellable = false})
-	elseif state.os == 'macos' then
+	elseif state.platform == 'macos' then
 		utils.subprocess_detached({args = {'open', '-R', state.path}, cancellable = false})
-	elseif state.os == 'linux' then
+	elseif state.platform == 'linux' then
 		local result = utils.subprocess({args = {'nautilus', state.path}, cancellable = false})
 
 		-- Fallback opens the folder with xdg-open instead
@@ -1134,11 +1139,11 @@ bind_command('open-config-directory', function()
 	if config then
 		local args
 
-		if state.os == 'windows' then
+		if state.platform == 'windows' then
 			args = {'explorer', '/select,', config.path}
-		elseif state.os == 'macos' then
+		elseif state.platform == 'macos' then
 			args = {'open', '-R', config.path}
-		elseif state.os == 'linux' then
+		elseif state.platform == 'linux' then
 			args = {'xdg-open', config.dirname}
 		end
 

@@ -5,7 +5,7 @@ sort_filenames = (function()
 	local symbol_order
 	local default_order
 
-	if state.os == 'windows' then
+	if state.platform == 'windows' then
 		symbol_order = {
 			['!'] = 1, ['#'] = 2, ['$'] = 3, ['%'] = 4, ['&'] = 5, ['('] = 6, [')'] = 6, [','] = 7,
 			['.'] = 8, ["'"] = 9, ['-'] = 10, [';'] = 11, ['@'] = 12, ['['] = 13, [']'] = 13, ['^'] = 14,
@@ -160,7 +160,7 @@ function opacity_to_alpha(opacity)
 end
 
 path_separator = (function()
-	local os_separator = state.os == 'windows' and '\\' or '/'
+	local os_separator = state.platform == 'windows' and '\\' or '/'
 
 	-- Get appropriate path separator for the given path.
 	---@param path string
@@ -186,7 +186,7 @@ end
 ---@return boolean
 function is_absolute(path)
 	if path:sub(1, 2) == '\\\\' then return true
-	elseif state.os == 'windows' then return path:find('^%a+:') ~= nil
+	elseif state.platform == 'windows' then return path:find('^%a+:') ~= nil
 	else return path:sub(1, 1) == '/' end
 end
 
@@ -204,7 +204,7 @@ end
 function trim_trailing_separator(path)
 	local separator = path_separator(path)
 	path = trim_end(path, separator)
-	if state.os == 'windows' then
+	if state.platform == 'windows' then
 		-- Drive letters on windows need trailing backslash
 		if path:sub(#path) == ':' then path = path .. '\\' end
 	else
@@ -231,12 +231,12 @@ function normalize_path(path)
 
 	path = ensure_absolute(path)
 	local is_unc = path:sub(1, 2) == '\\\\'
-	if state.os == 'windows' or is_unc then path = path:gsub('/', '\\') end
+	if state.platform == 'windows' or is_unc then path = path:gsub('/', '\\') end
 	path = trim_trailing_separator(path)
 
 	--Deduplication of path separators
 	if is_unc then path = path:gsub('(.\\)\\+', '%1')
-	elseif state.os == 'windows' then path = path:gsub('\\\\+', '\\')
+	elseif state.platform == 'windows' then path = path:gsub('\\\\+', '\\')
 	else path = path:gsub('//+', '/') end
 
 	return path
@@ -398,7 +398,7 @@ end
 -- `status:number(<0=error), stdout, stderr, error_string, killed_by_us:boolean`
 ---@param path string
 function delete_file(path)
-	if state.os == 'windows' then
+	if state.platform == 'windows' then
 		if options.use_trash then
 			local ps_code = [[
 				Add-Type -AssemblyName Microsoft.VisualBasic

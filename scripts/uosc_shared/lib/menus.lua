@@ -180,7 +180,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	local items = {}
 
 	if is_root then
-		if state.os == 'windows' then
+		if state.platform == 'windows' then
 			items[#items + 1] = {title = '..', hint = 'Drives', value = '{drives}', separator = true}
 		end
 	else
