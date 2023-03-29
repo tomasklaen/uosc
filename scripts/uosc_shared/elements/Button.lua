@@ -23,19 +23,20 @@ function Button:init(id, props)
 end
 
 function Button:on_coordinates() self.font_size = round((self.by - self.ay) * 0.7) end
-function Button:on_mbtn_left_down()
-	-- Don't accept clicks while hidden.
-	if self:get_visibility() <= 0 then return end
+function Button:handle_cursor_down()
 	-- We delay the callback to next tick, otherwise we are risking race
 	-- conditions as we are in the middle of event dispatching.
 	-- For example, handler might add a menu to the end of the element stack, and that
-	-- than picks up this click even we are in right now, and instantly closes itself.
+	-- than picks up this click event we are in right now, and instantly closes itself.
 	mp.add_timeout(0.01, self.on_click)
 end
 
 function Button:render()
 	local visibility = self:get_visibility()
 	if visibility <= 0 then return end
+	if self.proximity_raw == 0 then
+		cursor.on_primary_down = function() self:handle_cursor_down() end
+	end
 
 	local ass = assdraw.ass_new()
 	local is_hover = self.proximity_raw == 0
@@ -53,7 +54,6 @@ function Button:render()
 
 	-- Tooltip on hover
 	if is_hover and self.tooltip then ass:tooltip(self, self.tooltip) end
-
 
 	-- Badge
 	local icon_clip

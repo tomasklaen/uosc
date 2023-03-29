@@ -44,9 +44,7 @@ function Speed:speed_step(speed, up)
 	end
 end
 
-function Speed:on_mbtn_left_down()
-	-- Don't accept clicks while hidden.
-	if self:get_visibility() <= 0 then return end
+function Speed:handle_cursor_down()
 	self:tween_stop() -- Stop and cleanup possible ongoing animations
 	self.dragging = {
 		start_time = mp.get_time(),
@@ -87,14 +85,13 @@ function Speed:on_global_mouse_move()
 	end
 end
 
-function Speed:on_mbtn_left_up()
-	-- Reset speed on short clicks
-	if self.dragging and math.abs(self.dragging.distance) < 6 and mp.get_time() - self.dragging.start_time < 0.15 then
-		mp.set_property_native('speed', 1)
+function Speed:handle_cursor_up()
+	if self.proximity_raw == 0 then
+		-- Reset speed on short clicks
+		if self.dragging and math.abs(self.dragging.distance) < 6 and mp.get_time() - self.dragging.start_time < 0.15 then
+			mp.set_property_native('speed', 1)
+		end
 	end
-end
-
-function Speed:on_global_mbtn_left_up()
 	self.dragging = nil
 	request_render()
 end
@@ -104,14 +101,26 @@ function Speed:on_global_mouse_leave()
 	request_render()
 end
 
-function Speed:on_wheel_up() mp.set_property_native('speed', self:speed_step(state.speed, true)) end
-function Speed:on_wheel_down() mp.set_property_native('speed', self:speed_step(state.speed, false)) end
+function Speed:handle_wheel_up() mp.set_property_native('speed', self:speed_step(state.speed, true)) end
+function Speed:handle_wheel_down() mp.set_property_native('speed', self:speed_step(state.speed, false)) end
 
 function Speed:render()
 	local visibility = self:get_visibility()
 	local opacity = self.dragging and 1 or visibility
 
 	if opacity <= 0 then return end
+
+	if self.proximity_raw == 0 then
+		cursor.on_primary_down = function()
+			self:handle_cursor_down()
+			cursor.on_primary_up = function() self:handle_cursor_up() end
+		end
+		cursor.on_wheel_down = function() self:handle_wheel_down() end
+		cursor.on_wheel_up = function() self:handle_wheel_up() end
+	end
+	if self.dragging then
+		cursor.on_primary_up = function() self:handle_cursor_up() end
+	end
 
 	local ass = assdraw.ass_new()
 

@@ -296,7 +296,31 @@ end
 --[[ STATE ]]
 
 display = {width = 1280, height = 720, scale_x = 1, scale_y = 1, initialized = false}
-cursor = {hidden = true, hover_raw = false, x = 0, y = 0}
+cursor = {
+	x = 0,
+	y = 0,
+	hidden = true,
+	hover_raw = false,
+	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
+	-- - element activations (clicks) go to `mbtn_left_down` handler
+	-- - `mbtn_button_up` is only for clearing dragging/swiping
+	on_primary_down = nil,
+	on_primary_up = nil,
+	on_wheel_down = nil,
+	on_wheel_up = nil,
+	-- Called at the beginning of each render
+	reset_handlers = function()
+		cursor.on_primary_down, cursor.on_primary_up = nil, nil
+		cursor.on_wheel_down, cursor.on_wheel_up = nil, nil
+	end,
+	-- Enables pointer key group captures needed by handlers (called at the end of each render)
+	decide_keybinds = function()
+		local mbtn_left_decision = (cursor.on_primary_down or cursor.on_primary_up) and 'enable' or 'disable'
+		local wheel_decision = (cursor.on_wheel_down or cursor.on_wheel_up) and 'enable' or 'disable'
+		mp[mbtn_left_decision .. '_key_bindings']('mbtn_left')
+		mp[wheel_decision .. '_key_bindings']('wheel')
+	end
+}
 state = {
 	os = (function()
 		if os.getenv('windir') ~= nil then return 'windows' end
@@ -770,6 +794,23 @@ mp.observe_property('eof-reached', 'native', create_state_setter('eof_reached'))
 mp.observe_property('core-idle', 'native', create_state_setter('core_idle'))
 
 --[[ KEY BINDS ]]
+
+-- Pointer related binding groups
+mp.set_key_bindings({
+	{
+		'mbtn_left',
+		function(...) call_maybe(cursor.on_primary_up, ...) end,
+		function(...)
+			update_mouse_pos(nil, mp.get_property_native('mouse-pos'))
+			call_maybe(cursor.on_primary_down, ...)
+		end,
+	},
+	{'mbtn_left_dbl', 'ignore'},
+}, 'mbtn_left', 'force')
+mp.set_key_bindings({
+	{'wheel_up', function(...) call_maybe(cursor.on_wheel_up, ...) end},
+	{'wheel_down', function(...) call_maybe(cursor.on_wheel_down, ...) end},
+}, 'wheel', 'force')
 
 -- Adds a key binding that respects rerouting set by `key_binding_overwrites` table.
 ---@param name string

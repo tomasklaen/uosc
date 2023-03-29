@@ -93,6 +93,11 @@ function get_point_to_rectangle_proximity(point, rect)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
+-- Call function with args if it exists
+function call_maybe(fn, ...)
+	if type(fn) == 'function' then fn(...) end
+end
+
 -- Extracts the properties used by property expansion of that string.
 ---@param str string
 ---@param res { [string] : boolean } | nil
@@ -553,6 +558,8 @@ function render()
 	if not display.initialized then return end
 	state.render_last_time = mp.get_time()
 
+	cursor.reset_handlers()
+
 	-- Actual rendering
 	local ass = assdraw.ass_new()
 
@@ -565,6 +572,8 @@ function render()
 			end
 		end
 	end
+
+	cursor.decide_keybinds()
 
 	-- submit
 	if osd.res_x == display.width and osd.res_y == display.height and osd.data == ass.text then
