@@ -687,16 +687,15 @@ mp.observe_property('duration', 'number', create_state_setter('duration', update
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
 mp.observe_property('track-list', 'native', function(name, value)
 	-- checks the file dispositions
-	local is_image = false
-	local types = {sub = 0, audio = 0, video = 0}
+	local types = {sub = 0, image = 0, audio = 0, video = 0}
 	for _, track in ipairs(value) do
 		if track.type == 'video' then
-			is_image = track.image
-			if not is_image and not track.albumart then types.video = types.video + 1 end
+			if track.image or track.albumart then types.image = types.image + 1
+			else types.video = types.video + 1 end
 		elseif types[track.type] then types[track.type] = types[track.type] + 1 end
 	end
 	set_state('is_audio', types.video == 0 and types.audio > 0)
-	set_state('is_image', is_image)
+	set_state('is_image', types.image > 0 and types.video == 0 and types.audio == 0)
 	set_state('has_audio', types.audio > 0)
 	set_state('has_many_audio', types.audio > 1)
 	set_state('has_sub', types.sub > 0)
