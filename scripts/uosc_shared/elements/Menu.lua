@@ -234,8 +234,8 @@ end
 
 function Menu:update_dimensions()
 	-- Coordinates and sizes are of the scrollable area to make
-	-- consuming values in rendering and collisions easier. Title drawn above this, so
-	-- we need to account for that in max_height and ay position.
+	-- consuming values in rendering and collisions easier. Title is rendered
+	-- above it, so we need to account for that in max_height and ay position.
 	local min_width = state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width
 
 	for _, menu in ipairs(self.all) do
@@ -250,6 +250,11 @@ function Menu:update_dimensions()
 		self:scroll_to(menu.scroll_y, menu) -- clamps scroll_y to scroll limits
 	end
 
+	self:update_coordinates()
+end
+
+-- Updates element coordinates to match currently open (sub)menu.
+function Menu:update_coordinates()
 	local ax = round((display.width - self.current.width) / 2) + self.offset_x
 	self:set_coordinates(ax, self.current.top, ax + self.current.width, self.current.top + self.current.height)
 end
@@ -357,7 +362,7 @@ end
 function Menu:select_value(value, menu)
 	menu = menu or self.current
 	local index = itable_find(menu.items, function(item) return item.value == value end)
-	self:select_index(index, 5)
+	self:select_index(index)
 end
 
 ---@param menu? MenuStack
@@ -398,16 +403,23 @@ function Menu:activate_one_value(value, menu)
 	self:activate_one_index(index, menu)
 end
 
+---@param menu MenuStack One of menus in `self.all`.
+function Menu:activate_menu(menu)
+	if itable_index_of(self.all, menu) then
+		self.current = menu
+		self:update_coordinates()
+		self:reset_navigation()
+		request_render()
+	else
+		msg.error('Attempt to open a menu not in `self.all` list.')
+	end
+end
+
 ---@param id string
 function Menu:activate_submenu(id)
 	local submenu = self.by_id[id]
-	if submenu then
-		self.current = submenu
-		request_render()
-	else
-		msg.error(string.format('Requested submenu id "%s" doesn\'t exist', id))
-	end
-	self:reset_navigation()
+	if submenu then self:activate_menu(submenu)
+	else msg.error(string.format('Requested submenu id "%s" doesn\'t exist', id)) end
 end
 
 ---@param index? integer
@@ -454,8 +466,7 @@ function Menu:back()
 
 	if parent then
 		menu.selected_index = nil
-		self.current = parent
-		self:update_dimensions()
+		self:activate_menu(parent)
 		self:tween(self.offset_x - menu.width / 2, 0, function(offset) self:set_offset_x(offset) end)
 		self.opacity = 1 -- in case tween above canceled fade in animation
 	else
@@ -471,11 +482,10 @@ function Menu:open_selected_item(opts)
 		local item = menu.items[menu.selected_index]
 		-- Is submenu
 		if item.items then
-			self.current = item
 			if opts.preselect_submenu_item then
 				item.selected_index = #item.items > 0 and 1 or nil
 			end
-			self:update_dimensions()
+			self:activate_menu(item)
 			self:tween(self.offset_x + menu.width / 2, 0, function(offset) self:set_offset_x(offset) end)
 			self.opacity = 1 -- in case tween above canceled fade in animation
 		else

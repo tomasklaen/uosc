@@ -12,7 +12,7 @@ function open_command_menu(data, opts)
 	---@type MenuOptions
 	local menu_opts = {}
 	if opts then
-		menu_opts.submenu, menu_opts.mouse_nav = opts.submenu, opts.mouse_nav
+		menu_opts.mouse_nav = opts.mouse_nav
 		if opts.on_close then menu_opts.on_close = function() run_command(opts.on_close) end end
 	end
 	local menu = Menu:open(data, run_command, menu_opts)
