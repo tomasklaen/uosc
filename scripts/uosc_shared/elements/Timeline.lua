@@ -6,7 +6,7 @@ local Timeline = class(Element)
 function Timeline:new() return Class.new(self) --[[@as Timeline]] end
 function Timeline:init()
 	Element.init(self, 'timeline')
-	---@type false|{pause: boolean}
+	---@type false|{pause: boolean, distance: number, last: {x: number, y: number}}
 	self.pressed = false
 	self.obstructed = false
 	self.size_max = 0
@@ -91,14 +91,17 @@ function Timeline:set_from_cursor(fast)
 		mp.commandv('seek', self:get_time_at_x(cursor.x), fast and 'absolute+keyframes' or 'absolute+exact')
 	end
 end
-function Timeline:clear_thumbnail() mp.commandv('script-message-to', 'thumbfast', 'clear') end
+
+function Timeline:clear_thumbnail()
+	mp.commandv('script-message-to', 'thumbfast', 'clear')
+	self.has_thumbnail = false
+end
 
 function Timeline:handle_cursor_down()
-	self.pressed = {pause = state.pause}
+	self.pressed = {pause = state.pause, distance = 0, last = {x = cursor.x, y = cursor.y}}
 	mp.set_property_native('pause', true)
 	self:set_from_cursor()
 	cursor.on_primary_up = function() self:handle_cursor_up() end
-	self:clear_thumbnail()
 end
 function Timeline:on_prop_duration() self:decide_enabled() end
 function Timeline:on_prop_time() self:decide_enabled() end
@@ -110,24 +113,22 @@ function Timeline:handle_cursor_up()
 		mp.set_property_native('pause', self.pressed.pause)
 		self.pressed = false
 	end
-	self:clear_thumbnail()
 end
 function Timeline:on_global_mouse_leave()
 	self.pressed = false
-	self:clear_thumbnail()
 end
 
 Timeline.seek_timer = mp.add_timeout(0.05, function() Elements.timeline:set_from_cursor() end)
 Timeline.seek_timer:kill()
 function Timeline:on_global_mouse_move()
 	if self.pressed then
+		self.pressed.distance = self.pressed.distance + get_point_to_point_proximity(self.pressed.last, cursor)
+		self.pressed.last.x, self.pressed.last.y = cursor.x, cursor.y
 		if self.width / state.duration < 10 then
 			self:set_from_cursor(true)
 			self.seek_timer:kill()
 			self.seek_timer:resume()
 		else self:set_from_cursor() end
-	elseif self.has_thumbnail and self.proximity_raw > 0 then
-		self:clear_thumbnail()
 	end
 end
 function Timeline:handle_wheel_up() mp.commandv('seek', options.timeline_step) end
@@ -141,13 +142,18 @@ function Timeline:render()
 	local visibility = self:get_visibility()
 	self.is_hovered = false
 
-	if size < 1 then return end
+	if size < 1 then
+		if self.has_thumbnail then self:clear_thumbnail() end
+		return
+	end
+
 	if self.proximity_raw == 0 then
 		self.is_hovered = true
 		cursor.on_primary_down = function() self:handle_cursor_down() end
 		cursor.on_wheel_down = function() self:handle_wheel_down() end
 		cursor.on_wheel_up = function() self:handle_wheel_up() end
 	end
+
 	if self.pressed then
 		cursor.on_primary_up = function() self:handle_cursor_up() end
 	end
@@ -356,6 +362,7 @@ function Timeline:render()
 	end
 
 	-- Hovered time and chapter
+	local rendered_thumbnail = false
 	if (self.proximity_raw == 0 or self.pressed or hovered_chapter) and
 		not (Elements.speed and Elements.speed.dragging) then
 		local cursor_x = hovered_chapter and t2x(hovered_chapter.time) or cursor.x
@@ -377,7 +384,11 @@ function Timeline:render()
 		tooltip_anchor.ay = tooltip_anchor.ay - self.font_size - offset
 
 		-- Thumbnail
-		if not thumbnail.disabled and not self.pressed and thumbnail.width ~= 0 and thumbnail.height ~= 0 then
+		if not thumbnail.disabled
+			and (not self.pressed or self.pressed.distance < 5)
+			and thumbnail.width ~= 0
+			and thumbnail.height ~= 0
+		then
 			local scale_x, scale_y = display.scale_x, display.scale_y
 			local border, margin_x, margin_y = math.ceil(2 * scale_x), round(10 * scale_x), round(5 * scale_y)
 			local thumb_x_margin, thumb_y_margin = border + margin_x, border + margin_y
@@ -390,10 +401,8 @@ function Timeline:render()
 			local ax, ay = (thumb_x - border) / scale_x, (thumb_y - border) / scale_y
 			local bx, by = (thumb_x + thumb_width + border) / scale_x, (thumb_y + thumb_height + border) / scale_y
 			ass:rect(ax, ay, bx, by, {color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = 2})
-			if not self.pressed then
-				mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
-				self.has_thumbnail = true
-			end
+			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
+			self.has_thumbnail, rendered_thumbnail = true, true
 			tooltip_anchor.ax, tooltip_anchor.bx, tooltip_anchor.ay = ax, bx, ay
 		end
 
@@ -408,6 +417,9 @@ function Timeline:render()
 			end
 		end
 	end
+
+	-- Clear thumbnail
+	if not rendered_thumbnail and self.has_thumbnail then self:clear_thumbnail() end
 
 	return ass
 end

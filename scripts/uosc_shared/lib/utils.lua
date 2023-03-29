@@ -93,6 +93,13 @@ function get_point_to_rectangle_proximity(point, rect)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
+---@param point_a {x: number; y: number}
+---@param point_b {x: number; y: number}
+function get_point_to_point_proximity(point_a, point_b)
+	local dx, dy = point_a.x - point_b.x, point_a.y - point_b.y
+	return math.sqrt(dx * dx + dy * dy)
+end
+
 -- Call function with args if it exists
 function call_maybe(fn, ...)
 	if type(fn) == 'function' then fn(...) end
