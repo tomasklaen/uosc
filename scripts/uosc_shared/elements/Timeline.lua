@@ -98,6 +98,7 @@ function Timeline:handle_cursor_down()
 	mp.set_property_native('pause', true)
 	self:set_from_cursor()
 	cursor.on_primary_up = function() self:handle_cursor_up() end
+	self:clear_thumbnail()
 end
 function Timeline:on_prop_duration() self:decide_enabled() end
 function Timeline:on_prop_time() self:decide_enabled() end
@@ -376,7 +377,7 @@ function Timeline:render()
 		tooltip_anchor.ay = tooltip_anchor.ay - self.font_size - offset
 
 		-- Thumbnail
-		if not thumbnail.disabled and thumbnail.width ~= 0 and thumbnail.height ~= 0 then
+		if not thumbnail.disabled and not self.pressed and thumbnail.width ~= 0 and thumbnail.height ~= 0 then
 			local scale_x, scale_y = display.scale_x, display.scale_y
 			local border, margin_x, margin_y = math.ceil(2 * scale_x), round(10 * scale_x), round(5 * scale_y)
 			local thumb_x_margin, thumb_y_margin = border + margin_x, border + margin_y
