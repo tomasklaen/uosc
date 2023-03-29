@@ -177,6 +177,11 @@ function TopBar:render()
 			ass:rect(title_ax, title_ay, bx, self.by - bg_margin, {color = fg, opacity = visibility, radius = 2})
 			ass:txt(title_ax + (bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, opts)
 			title_ax = bx + bg_margin
+			local rect = {ax = self.ax, ay = self.ay, bx = bx, by = self.by}
+
+			if get_point_to_rectangle_proximity(cursor, rect) == 0 then
+				cursor.on_primary_down = function() mp.command('script-binding uosc/playlist') end
+			end
 		end
 
 		-- Skip rendering titles if there's not enough horizontal space
@@ -190,7 +195,7 @@ function TopBar:render()
 				}
 				local bx = math.min(max_bx, title_ax + text_width(main_title, opts) + padding * 2)
 				local by = self.by - bg_margin
-				local rect = {ax = title_ax, ay = self.ay, bx = bx, by = self.by}
+				local rect = {ax = title_ax, ay = self.ay, bx = self.title_bx, by = self.by}
 
 				if get_point_to_rectangle_proximity(cursor, rect) == 0 then
 					cursor.on_primary_down = function() self:toggle_title() end
