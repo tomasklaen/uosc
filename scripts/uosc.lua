@@ -314,11 +314,19 @@ cursor = {
 		cursor.on_wheel_down, cursor.on_wheel_up = nil, nil
 	end,
 	-- Enables pointer key group captures needed by handlers (called at the end of each render)
+	mbtn_left_enabled = nil,
+	wheel_enabled = nil,
 	decide_keybinds = function()
-		local mbtn_left_decision = (cursor.on_primary_down or cursor.on_primary_up) and 'enable' or 'disable'
-		local wheel_decision = (cursor.on_wheel_down or cursor.on_wheel_up) and 'enable' or 'disable'
-		mp[mbtn_left_decision .. '_key_bindings']('mbtn_left')
-		mp[wheel_decision .. '_key_bindings']('wheel')
+		local enable_mbtn_left = (cursor.on_primary_down or cursor.on_primary_up) ~= nil
+		local enable_wheel = (cursor.on_wheel_down or cursor.on_wheel_up) ~= nil
+		if enable_mbtn_left ~= cursor.mbtn_left_enabled then
+			mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left')
+			cursor.mbtn_left_enabled = enable_mbtn_left
+		end
+		if enable_wheel ~= cursor.wheel_enabled then
+			mp[(enable_wheel and 'enable' or 'disable') .. '_key_bindings']('wheel')
+			cursor.wheel_enabled = enable_wheel
+		end
 	end
 }
 state = {
