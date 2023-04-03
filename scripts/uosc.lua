@@ -327,6 +327,19 @@ cursor = {
 			mp[(enable_wheel and 'enable' or 'disable') .. '_key_bindings']('wheel')
 			cursor.wheel_enabled = enable_wheel
 		end
+	end,
+	-- Cursor auto-hiding after period of inactivity
+	autohide = function()
+		if not Menu:is_open() then handle_mouse_leave() end
+	end,
+	autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
+		cursor.autohide()
+	end),
+	queue_autohide = function()
+		if options.autohide then
+			cursor.autohide_timer:kill()
+			cursor.autohide_timer:resume()
+		end
 	end
 }
 state = {
@@ -373,10 +386,6 @@ state = {
 	has_chapter = false,
 	has_playlist = false,
 	shuffle = options.shuffle,
-	cursor_autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
-		if not options.autohide then return end
-		handle_mouse_leave()
-	end),
 	mouse_bindings_enabled = false,
 	uncached_ranges = nil,
 	cache = nil,
@@ -526,12 +535,7 @@ function handle_mouse_move(x, y)
 	update_cursor_position(x, y)
 	Elements:proximity_trigger('mouse_move')
 	request_render()
-
-	-- Restart timer that hides UI when mouse is autohidden
-	if options.autohide then
-		state.cursor_autohide_timer:kill()
-		state.cursor_autohide_timer:resume()
-	end
+	cursor.queue_autohide()
 end
 
 function handle_file_end()

@@ -56,6 +56,7 @@ function Menu:close(immediate, callback)
 			menu.is_closing, menu.stack, menu.current, menu.all, menu.by_id = false, nil, nil, {}, {}
 			menu:disable_key_bindings()
 			Elements:update_proximities()
+			cursor.queue_autohide()
 			if callback then callback() end
 			request_render()
 		end
