@@ -812,20 +812,26 @@ mp.observe_property('core-idle', 'native', create_state_setter('core_idle'))
 --[[ KEY BINDS ]]
 
 -- Pointer related binding groups
+function make_cursor_handler(event, cb)
+	return function(...)
+		call_maybe(cursor[event], ...)
+		call_maybe(cb, ...)
+		cursor.queue_autohide() -- refresh cursor autohide timer
+	end
+end
 mp.set_key_bindings({
 	{
 		'mbtn_left',
-		function(...) call_maybe(cursor.on_primary_up, ...) end,
-		function(...)
+		make_cursor_handler('on_primary_up'),
+		make_cursor_handler('on_primary_down', function(...)
 			update_mouse_pos(nil, mp.get_property_native('mouse-pos'))
-			call_maybe(cursor.on_primary_down, ...)
-		end,
+		end),
 	},
 	{'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left', 'force')
 mp.set_key_bindings({
-	{'wheel_up', function(...) call_maybe(cursor.on_wheel_up, ...) end},
-	{'wheel_down', function(...) call_maybe(cursor.on_wheel_down, ...) end},
+	{'wheel_up', make_cursor_handler('on_wheel_up')},
+	{'wheel_down', make_cursor_handler('on_wheel_down')},
 }, 'wheel', 'force')
 
 -- Adds a key binding that respects rerouting set by `key_binding_overwrites` table.
