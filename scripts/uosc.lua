@@ -302,8 +302,8 @@ cursor = {
 	hidden = true,
 	hover_raw = false,
 	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
-	-- - element activations (clicks) go to `mbtn_left_down` handler
-	-- - `mbtn_button_up` is only for clearing dragging/swiping
+	-- - element activations (clicks) go to `on_primary_down` handler
+	-- - `on_primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
 	on_primary_down = nil,
 	on_primary_up = nil,
 	on_wheel_down = nil,
@@ -330,13 +330,13 @@ cursor = {
 	end,
 	-- Cursor auto-hiding after period of inactivity
 	autohide = function()
-		if not Menu:is_open() then handle_mouse_leave() end
+		if not cursor.on_primary_up and not Menu:is_open() then handle_mouse_leave() end
 	end,
 	autohide_timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function()
 		cursor.autohide()
 	end),
 	queue_autohide = function()
-		if options.autohide then
+		if options.autohide and not cursor.on_primary_up then
 			cursor.autohide_timer:kill()
 			cursor.autohide_timer:resume()
 		end
@@ -436,7 +436,7 @@ function update_fullormaxed()
 	state.fullormaxed = state.fullscreen or state.maximized
 	update_display_dimensions()
 	Elements:trigger('prop_fullormaxed', state.fullormaxed)
-	handle_mouse_move(INFINITY, INFINITY)
+	update_cursor_position(INFINITY, INFINITY)
 end
 
 function update_human_times()
@@ -494,6 +494,8 @@ function set_state(name, value)
 end
 
 function update_cursor_position(x, y)
+	local old_x, old_y = cursor.x, cursor.y
+
 	-- mpv reports initial mouse position on linux as (0, 0), which always
 	-- displays the top bar, so we hardcode cursor position as infinity until
 	-- we receive a first real mouse move event with coordinates other than 0,0.
@@ -505,7 +507,21 @@ function update_cursor_position(x, y)
 	-- add 0.5 to be in the middle of the pixel
 	cursor.x, cursor.y = (x + 0.5) / display.scale_x, (y + 0.5) / display.scale_y
 
-	Elements:update_proximities()
+	if old_x ~= cursor.x or old_y ~= cursor.y then
+		Elements:update_proximities()
+
+		if cursor.x == INFINITY or cursor.y == INFINITY then
+			cursor.hidden = true
+			Elements:trigger('global_mouse_leave')
+		elseif cursor.hidden then
+			cursor.hidden = false
+			Elements:trigger('global_mouse_enter')
+		end
+
+		Elements:proximity_trigger('mouse_move')
+		cursor.queue_autohide()
+	end
+
 	request_render()
 end
 
@@ -520,22 +536,7 @@ function handle_mouse_leave()
 		end
 	end
 
-	cursor.hidden = true
-	Elements:update_proximities()
-	Elements:trigger('global_mouse_leave')
-end
-
-function handle_mouse_enter(x, y)
-	cursor.hidden = false
-	update_cursor_position(x, y)
-	Elements:trigger('global_mouse_enter')
-end
-
-function handle_mouse_move(x, y)
-	update_cursor_position(x, y)
-	Elements:proximity_trigger('mouse_move')
-	request_render()
-	cursor.queue_autohide()
+	update_cursor_position(INFINITY, INFINITY)
 end
 
 function handle_file_end()
@@ -611,17 +612,16 @@ if options.click_threshold > 0 then
 	mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 end
 
-function update_mouse_pos(_, mouse)
+function handle_mouse_pos(_, mouse, options)
 	if not mouse then return end
 	if cursor.hover_raw and not mouse.hover then
 		handle_mouse_leave()
 	else
-		if cursor.hidden then handle_mouse_enter(mouse.x, mouse.y) end
-		handle_mouse_move(mouse.x, mouse.y)
+		update_cursor_position(mouse.x, mouse.y)
 	end
 	cursor.hover_raw = mouse.hover
 end
-mp.observe_property('mouse-pos', 'native', update_mouse_pos)
+mp.observe_property('mouse-pos', 'native', handle_mouse_pos)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 mp.register_event('file-loaded', function()
 	set_state('path', normalize_path(mp.get_property_native('path')))
@@ -824,7 +824,7 @@ mp.set_key_bindings({
 		'mbtn_left',
 		make_cursor_handler('on_primary_up'),
 		make_cursor_handler('on_primary_down', function(...)
-			update_mouse_pos(nil, mp.get_property_native('mouse-pos'))
+			handle_mouse_pos(nil, mp.get_property_native('mouse-pos'))
 		end),
 	},
 	{'mbtn_left_dbl', 'ignore'},

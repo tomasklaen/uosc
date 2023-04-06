@@ -70,6 +70,10 @@ function Timeline:update_dimensions()
 	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
 	self.obstructed = available_space < self.size_max + 10
 	self:decide_enabled()
+
+	-- Delayed seeking timer
+	self.seek_timer = mp.add_timeout(0.05, function() self:set_from_cursor() end)
+	self.seek_timer:kill()
 end
 
 function Timeline:get_time_at_x(x)
@@ -109,6 +113,7 @@ function Timeline:on_prop_border() self:update_dimensions() end
 function Timeline:on_prop_fullormaxed() self:update_dimensions() end
 function Timeline:on_display() self:update_dimensions() end
 function Timeline:handle_cursor_up()
+	self.seek_timer:kill()
 	if self.pressed then
 		mp.set_property_native('pause', self.pressed.pause)
 		self.pressed = false
@@ -118,8 +123,6 @@ function Timeline:on_global_mouse_leave()
 	self.pressed = false
 end
 
-Timeline.seek_timer = mp.add_timeout(0.05, function() Elements.timeline:set_from_cursor() end)
-Timeline.seek_timer:kill()
 function Timeline:on_global_mouse_move()
 	if self.pressed then
 		self.pressed.distance = self.pressed.distance + get_point_to_point_proximity(self.pressed.last, cursor)
