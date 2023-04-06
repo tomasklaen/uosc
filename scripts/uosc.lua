@@ -474,8 +474,8 @@ function update_margins()
 	local bottom_y = controls and controls.enabled and controls.ay or timeline.ay
 	local left, right, top, bottom = 0, 0, 0, (display.height - bottom_y) / display.height
 
-	if top_bar.enabled and top_bar:get_visibility() > 0 then
-		top = (top_bar.size or 0) / display.height
+	if top_bar.enabled and top_bar:is_persistent() then
+		top = top_bar.title_by / display.height
 	end
 
 	if volume and volume.enabled and volume:is_persistent() then
