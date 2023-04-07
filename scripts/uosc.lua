@@ -612,7 +612,7 @@ if options.click_threshold > 0 then
 	mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 end
 
-function handle_mouse_pos(_, mouse, options)
+function handle_mouse_pos(_, mouse)
 	if not mouse then return end
 	if cursor.hover_raw and not mouse.hover then
 		handle_mouse_leave()
