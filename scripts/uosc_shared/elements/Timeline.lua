@@ -17,6 +17,10 @@ function Timeline:init()
 	self.is_hovered = false
 	self.has_thumbnail = false
 
+	-- Delayed seeking timer
+	self.seek_timer = mp.add_timeout(0.05, function() self:set_from_cursor() end)
+	self.seek_timer:kill()
+
 	-- Release any dragging when file gets unloaded
 	mp.register_event('end-file', function() self.pressed = false end)
 end
@@ -70,10 +74,6 @@ function Timeline:update_dimensions()
 	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
 	self.obstructed = available_space < self.size_max + 10
 	self:decide_enabled()
-
-	-- Delayed seeking timer
-	self.seek_timer = mp.add_timeout(0.05, function() self:set_from_cursor() end)
-	self.seek_timer:kill()
 end
 
 function Timeline:get_time_at_x(x)
