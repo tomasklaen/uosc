@@ -70,7 +70,7 @@ function Element:is_persistent()
 	local persist = config[self.id .. '_persistency']
 	return persist and (
 		(persist.audio and state.is_audio)
-		or (persist.paused and state.pause)
+		or (persist.paused and state.pause and (not Elements.timeline.pressed or Elements.timeline.pressed.pause))
 		or (persist.video and state.is_video)
 		or (persist.image and state.is_image)
 		or (persist.idle and state.is_idle)
