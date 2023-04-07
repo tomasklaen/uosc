@@ -106,6 +106,7 @@ defaults = {
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	default_directory = '~/',
 	use_trash = false,
+	adjust_osd_margins = true,
 	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
 	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
 }
@@ -495,6 +496,7 @@ function update_margins()
 	utils.shared_script_property_set('osc-margins', string.format('%f,%f,%f,%f', 0, 0, top, bottom))
 	mp.set_property_native('user-data/osc/margins', { l = left, r = right, t = top, b = bottom })
 
+	if not options.adjust_osd_margins then return end
 	local osd_margin_y, osd_margin_x, osd_factor_x = 0, 0, display.width / display.height * 720
 	if config.osd_alignment_y == 'bottom' then osd_margin_y = round(bottom * 720)
 	elseif config.osd_alignment_y == 'top' then osd_margin_y = round(top * 720) end
