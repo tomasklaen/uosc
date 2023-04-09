@@ -66,6 +66,17 @@ function Element:update_proximity()
 	end
 end
 
+function Element:is_persistent()
+	local persist = config[self.id .. '_persistency']
+	return persist and (
+		(persist.audio and state.is_audio)
+		or (persist.paused and state.pause and (not Elements.timeline.pressed or Elements.timeline.pressed.pause))
+		or (persist.video and state.is_video)
+		or (persist.image and state.is_image)
+		or (persist.idle and state.is_idle)
+	)
+end
+
 -- Decide elements visibility based on proximity and various other factors
 function Element:get_visibility()
 	-- Hide when menu is open, unless this is a menu
@@ -73,14 +84,7 @@ function Element:get_visibility()
 	if not self.ignores_menu and Menu and Menu:is_open() then return 0 end
 
 	-- Persistency
-	local persist = config[self.id .. '_persistency']
-	if persist and (
-		(persist.audio and state.is_audio)
-			or (persist.paused and state.pause)
-			or (persist.video and state.is_video)
-			or (persist.image and state.is_image)
-			or (persist.idle and state.is_idle)
-		) then return 1 end
+	if self:is_persistent() then return 1 end
 
 	-- Forced visibility
 	if self.forced_visibility then return math.max(self.forced_visibility, self.min_visibility) end

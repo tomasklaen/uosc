@@ -106,6 +106,7 @@ defaults = {
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	default_directory = '~/',
 	use_trash = false,
+	adjust_osd_margins = true,
 	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
 	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
 }
@@ -170,6 +171,10 @@ config = {
 	-- native rendering frequency could not be detected
 	render_delay = 1 / 60,
 	font = mp.get_property('options/osd-font'),
+	osd_margin_x = mp.get_property('osd-margin-x'),
+	osd_margin_y = mp.get_property('osd-margin-y'),
+	osd_alignment_x = mp.get_property('osd-align-x'),
+	osd_alignment_y = mp.get_property('osd-align-y'),
 	types = {
 		video = split(options.video_types, ' *, *'),
 		audio = split(options.audio_types, ' *, *'),
@@ -399,6 +404,8 @@ state = {
 	playlist_pos = 0,
 	margin_top = 0,
 	margin_bottom = 0,
+	margin_left = 0,
+	margin_right = 0,
 	hidpi_scale = 1,
 }
 thumbnail = {width = 0, height = 0, disabled = false}
@@ -463,22 +470,40 @@ end
 function update_margins()
 	if display.height == 0 then return end
 
+	local function is_persistent(element) return element and element.enabled and element:is_persistent() end
+	local timeline, top_bar, controls, volume = Elements.timeline, Elements.top_bar, Elements.controls, Elements.volume
 	-- margins are normalized to window size
-	local timeline, top_bar, controls = Elements.timeline, Elements.top_bar, Elements.controls
-	local bottom_y = controls and controls.enabled and controls.ay or timeline.ay
-	local top, bottom = 0, (display.height - bottom_y) / display.height
+	local left, right, top, bottom = 0, 0, 0, 0
 
-	if top_bar.enabled and top_bar:get_visibility() > 0 then
-		top = (top_bar.size or 0) / display.height
+	if is_persistent(controls) then bottom = (display.height - controls.ay) / display.height
+	elseif is_persistent(timeline) then bottom = (display.height - timeline.ay) / display.height end
+
+	if is_persistent(top_bar) then top = top_bar.title_by / display.height end
+
+	if is_persistent(volume) then
+		if options.volume == 'left' then left = volume.bx / display.width
+		elseif options.volume == 'right' then right = volume.ax / display.width end
 	end
 
-	if top == state.margin_top and bottom == state.margin_bottom then return end
+	if top == state.margin_top and bottom == state.margin_bottom and
+		left == state.margin_left and right == state.margin_right then return end
 
 	state.margin_top = top
 	state.margin_bottom = bottom
+	state.margin_left = left
+	state.margin_right = right
 
 	utils.shared_script_property_set('osc-margins', string.format('%f,%f,%f,%f', 0, 0, top, bottom))
-	mp.set_property_native("user-data/osc/margins", { l = 0, r = 0, t = top, b = bottom })
+	mp.set_property_native('user-data/osc/margins', { l = left, r = right, t = top, b = bottom })
+
+	if not options.adjust_osd_margins then return end
+	local osd_margin_y, osd_margin_x, osd_factor_x = 0, 0, display.width / display.height * 720
+	if config.osd_alignment_y == 'bottom' then osd_margin_y = round(bottom * 720)
+	elseif config.osd_alignment_y == 'top' then osd_margin_y = round(top * 720) end
+	if config.osd_alignment_x == 'left' then osd_margin_x = round(left * osd_factor_x)
+	elseif config.osd_alignment_x == 'right' then osd_margin_x = round(right * osd_factor_x) end
+	mp.set_property_native('osd-margin-y', osd_margin_y + config.osd_margin_y)
+	mp.set_property_native('osd-margin-x', osd_margin_x + config.osd_margin_x)
 end
 function create_state_setter(name, callback)
 	return function(_, value)
