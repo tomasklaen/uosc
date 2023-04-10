@@ -653,6 +653,7 @@ mp.register_event('file-loaded', function()
 	Elements:flash({'top_bar'})
 end)
 mp.register_event('end-file', function(event)
+	set_state('path', nil)
 	if event.reason == 'eof' then
 		file_end_timer:kill()
 		handle_file_end()
