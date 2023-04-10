@@ -108,7 +108,6 @@ end
 -- Disabled elements don't receive these events.
 ---@param name string Event name.
 function Elements:proximity_trigger(name, ...)
-	local stop_normal, stop_global = false, false
 	for i = #self.itable, 1, -1 do
 		local element = self.itable[i]
 		if element.enabled then
