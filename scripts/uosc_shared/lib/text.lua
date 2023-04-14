@@ -326,10 +326,19 @@ local function whole_text_width(text, bold, italic)
 	return normalized_text_width(ass_escape(text), size * 0.9, bold, italic, horizontal)
 end
 
----Get scale factor calculated from font size, bold and italic
----@param opts {size: number; bold?: boolean; italic?: boolean}
-local function opts_scale_factor(opts)
-	return (opts.italic and 1.01 or 1) * opts.size
+---Scale normalized width to real width based on font size and italic
+---@param opts {size: number; italic?: boolean}
+---@return number, number
+local function opts_factor_offset(opts)
+	return opts.size, opts.italic and opts.size * 0.2 or 0
+end
+
+---Scale normalized width to real width based on font size and italic
+---@param opts {size: number; italic?: boolean}
+---@return number
+local function normalized_to_real(width, opts)
+	local factor, offset = opts_factor_offset(opts)
+	return factor * width + offset
 end
 
 do
@@ -350,11 +359,11 @@ do
 			---@type {[string|number]: {[1]: number, [2]: integer}}
 			local text_width = get_cache_stage(width_cache, bold)
 			local width_px = text_width[text]
-			if width_px and no_remeasure_required(width_px[2]) then return width_px[1] * opts_scale_factor(opts) end
+			if width_px and no_remeasure_required(width_px[2]) then return normalized_to_real(width_px[1], opts) end
 
 			local width, px = character_based_width(text, bold)
 			width_cache[bold][text] = {width, px}
-			return width * opts_scale_factor(opts)
+			return normalized_to_real(width, opts)
 		else
 			---@type {[string|number]: {[1]: number, [2]: integer}}
 			local text_width = get_cache_stage(get_cache_stage(width_cache, bold), italic)
@@ -393,15 +402,15 @@ end
 ---@return string
 function wrap_text(text, opts, target_line_length)
 	local target_line_width = target_line_length * width_length_ratio * opts.size
-	local bold, scale_factor = opts.bold or false, opts_scale_factor(opts)
+	local bold, scale_factor, scale_offset = opts.bold or false, opts_factor_offset(opts)
 	local wrap_at_chars = {' ', '　', '-', '–'}
 	local remove_when_wrap = {' ', '　'}
 	local lines = {}
 	for text_line in text:gmatch("([^\n]*)\n?") do
-		local line_width = 0
+		local line_width = scale_offset
 		local line_start = 1
 		local before_end = nil
-		local before_width = 0
+		local before_width = scale_offset
 		local before_line_start = 0
 		local before_removed_width = 0
 		for char_start, char in utf8_iter(text_line) do
@@ -434,15 +443,14 @@ function wrap_text(text, opts, target_line_length)
 						(line_width_after_remove - target_line_width) then
 						lines[#lines + 1] = text_line:sub(line_start, before_end)
 						line_start = before_line_start
-						line_width = line_width - before_width - before_removed_width
+						line_width = line_width - before_width - before_removed_width + scale_offset
 					else
 						lines[#lines + 1] = text_line:sub(line_start, remove and char_start - 1 or char_end)
 						line_start = char_end + 1
-						line_width = remove and line_width - char_width or line_width
-						line_width = 0
+						line_width = scale_offset
 					end
 					before_end = line_start
-					before_width = 0
+					before_width = scale_offset
 				end
 			end
 		end
