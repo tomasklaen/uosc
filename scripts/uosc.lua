@@ -472,17 +472,19 @@ end
 function update_margins()
 	if display.height == 0 then return end
 
-	local function is_persistent(element) return element and element.enabled and element:is_persistent() end
+	local function causes_margin(element)
+		return element and element.enabled and (element:is_persistent() or element.min_visibility > 0.5)
+	end
 	local timeline, top_bar, controls, volume = Elements.timeline, Elements.top_bar, Elements.controls, Elements.volume
 	-- margins are normalized to window size
 	local left, right, top, bottom = 0, 0, 0, 0
 
-	if is_persistent(controls) then bottom = (display.height - controls.ay) / display.height
-	elseif is_persistent(timeline) then bottom = (display.height - timeline.ay) / display.height end
+	if causes_margin(controls) then bottom = (display.height - controls.ay) / display.height
+	elseif causes_margin(timeline) then bottom = (display.height - timeline.ay) / display.height end
 
-	if is_persistent(top_bar) then top = top_bar.title_by / display.height end
+	if causes_margin(top_bar) then top = top_bar.title_by / display.height end
 
-	if is_persistent(volume) then
+	if causes_margin(volume) then
 		if options.volume == 'left' then left = volume.bx / display.width
 		elseif options.volume == 'right' then right = volume.ax / display.width end
 	end
