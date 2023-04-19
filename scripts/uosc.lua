@@ -1003,7 +1003,7 @@ bind_command('show-in-directory', function()
 
 	if state.platform == 'windows' then
 		utils.subprocess_detached({args = {'explorer', '/select,', state.path}, cancellable = false})
-	elseif state.platform == 'macos' then
+	elseif state.platform == 'darwin' then
 		utils.subprocess_detached({args = {'open', '-R', state.path}, cancellable = false})
 	elseif state.platform == 'linux' then
 		local result = utils.subprocess({args = {'nautilus', state.path}, cancellable = false})
@@ -1188,7 +1188,7 @@ bind_command('open-config-directory', function()
 
 		if state.platform == 'windows' then
 			args = {'explorer', '/select,', config.path}
-		elseif state.platform == 'macos' then
+		elseif state.platform == 'darwin' then
 			args = {'open', '-R', config.path}
 		elseif state.platform == 'linux' then
 			args = {'xdg-open', config.dirname}
