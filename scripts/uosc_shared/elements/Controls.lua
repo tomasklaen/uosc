@@ -65,7 +65,7 @@ function Controls:init()
 	for i, item in ipairs(items) do
 		local config = shorthands[item.config] and shorthands[item.config] or item.config
 		local config_tooltip = split(config, ' *%? *')
-		local tooltip = config_tooltip[2]
+		local tooltip = t(config_tooltip[2])
 		config = shorthands[config_tooltip[1]]
 			and split(shorthands[config_tooltip[1]], ' *%? *')[1] or config_tooltip[1]
 		local config_badge = split(config, ' *# *')
