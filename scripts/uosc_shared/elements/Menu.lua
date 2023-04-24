@@ -799,7 +799,7 @@ function Menu:render()
 		if draw_title then
 			local title_ay = ay - self.item_height
 			local title_height = self.item_height - 3
-			menu.ass_safe_title = menu.ass_safe_title or ass_escape(menu.title)
+			menu.ass_safe_title = t(menu.ass_safe_title or ass_escape(menu.title))
 
 			-- Background
 			ass:rect(ax + 2, title_ay, bx - 2, title_ay + title_height, {

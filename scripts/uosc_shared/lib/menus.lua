@@ -77,7 +77,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 
 		if load_command then
 			items[#items + 1] = {
-				title = 'Load', bold = true, italic = true, hint = 'open file', value = '{load}', separator = true,
+				title = t('Load'), bold = true, italic = true, hint = t('open file'), value = '{load}', separator = true,
 			}
 		end
 
@@ -91,7 +91,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		-- If I'm mistaken and there is an active need for this, feel free to
 		-- open an issue.
 		if track_type == 'sub' then
-			disabled_item = {title = 'Disabled', italic = true, muted = true, hint = '—', value = nil, active = true}
+			disabled_item = {title = t('Disabled'), italic = true, muted = true, hint = '—', value = nil, active = true}
 			items[#items + 1] = disabled_item
 		end
 
@@ -108,12 +108,12 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				h(track.codec)
 				if track['audio-channels'] then h(track['audio-channels'] .. ' channels') end
 				if track['demux-samplerate'] then h(string.format('%.3gkHz', track['demux-samplerate'] / 1000)) end
-				if track.forced then h('forced') end
-				if track.default then h('default') end
-				if track.external then h('external') end
+				if track.forced then h(t('forced')) end
+				if track.default then h(t('default')) end
+				if track.external then h(t('external')) end
 
 				items[#items + 1] = {
-					title = (track.title and track.title or 'Track ' .. track.id),
+					title = (track.title and track.title or t('Track') .. ' ' .. track.id),
 					hint = table.concat(hint_values, ', '),
 					value = track.id,
 					active = track.selected,
@@ -181,10 +181,10 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 	if is_root then
 		if state.platform == 'windows' then
-			items[#items + 1] = {title = '..', hint = 'Drives', value = '{drives}', separator = true}
+			items[#items + 1] = {title = '..', hint = t('Drives'), value = '{drives}', separator = true}
 		end
 	else
-		items[#items + 1] = {title = '..', hint = 'parent dir', value = directory.dirname, separator = true}
+		items[#items + 1] = {title = '..', hint = t('parent dir'), value = directory.dirname, separator = true}
 	end
 
 	local back_path = items[#items] and items[#items].value
@@ -276,7 +276,7 @@ function open_drives_menu(handle_select, opts)
 			if drive then
 				local drive_path = normalize_path(drive)
 				items[#items + 1] = {
-					title = drive, hint = 'drive', value = drive_path, active = opts.active_path == drive_path,
+					title = drive, hint = t('drive'), value = drive_path, active = opts.active_path == drive_path,
 				}
 				if opts.selected_path == drive_path then selected_index = #items end
 			end
@@ -286,7 +286,7 @@ function open_drives_menu(handle_select, opts)
 	end
 
 	return Menu:open(
-		{type = opts.type, title = opts.title or 'Drives', items = items, selected_index = selected_index},
+		{type = opts.type, title = opts.title or t('Drives'), items = items, selected_index = selected_index},
 		handle_select
 	)
 end
