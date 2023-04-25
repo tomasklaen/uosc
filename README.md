@@ -588,6 +588,14 @@ mp.commandv('script-message-to', 'uosc', 'overwrite-binding', 'stream-quality', 
 
 To cancel the overwrite and return to default behavior, just omit the `<command>` parameter.
 
+### `add-intl-directory <path>`
+
+Adds a new internationalization directory where uosc will look for localization files to be merged into current locale.
+
+See `scripts/uosc_shared/intl` for directory structure example.
+
+Example path: `~~/scripts/my_script/intl`
+
 ## Why _uosc_?
 
 It stood for micro osc as it used to render just a couple rectangles before it grew to what it is today. And now it means a minimalist UI design direction where everything is out of your way until needed.

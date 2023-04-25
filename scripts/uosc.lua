@@ -133,7 +133,8 @@ fg, bg = serialize_rgba(options.foreground).color, serialize_rgba(options.backgr
 fgt, bgt = serialize_rgba(options.foreground_text).color, serialize_rgba(options.background_text).color
 
 --[[ INTERNATIONALIZATION ]]
-t = require('uosc_shared/lib/intl')
+local intl = require('uosc_shared/lib/intl')
+t = intl.t
 
 --[[ CONFIG ]]
 
@@ -1255,6 +1256,7 @@ mp.register_script_message('set-min-visibility', function(visibility, elements)
 end)
 mp.register_script_message('flash-elements', function(elements) Elements:flash(split(elements, ' *, *')) end)
 mp.register_script_message('overwrite-binding', function(name, command) key_binding_overwrites[name] = command end)
+mp.register_script_message('add-intl-directory', function(path) intl.add_directory(path) end)
 
 --[[ ELEMENTS ]]
 
