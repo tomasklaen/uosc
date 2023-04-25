@@ -39,8 +39,9 @@ end
 
 function make_locale()
 	local translations = {}
-	for _, lang in ipairs(get_languages()) do
-
+	local languages = get_languages()
+	for i = #languages, 1, -1 do
+		lang = languages[i]
 		if (lang:match('.json$')) then
 			table_assign(translations, get_locale_from_json(lang))
 		else
