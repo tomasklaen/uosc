@@ -1,4 +1,5 @@
 local locale = {}
+local cache = {}
 
 -- https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/supported-languages?pivots=store-installer-msix#list-of-supported-languages
 function get_languages()
@@ -55,8 +56,11 @@ function make_locale()
 end
 
 ---@param text string
-function t(text)
-	return locale[text] or text
+function t(text, ...)
+	if not text then return '' end
+	if cache[text] then return cache[text] end
+	cache[text] = string.format(locale[text] or text, ...)
+	return cache[text]
 end
 
 locale = make_locale()
