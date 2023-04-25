@@ -75,11 +75,13 @@ function add_directory(path)
 end
 
 ---@param text string
-function t(text, ...)
+function t(text, a)
 	if not text then return '' end
-	if cache[text] then return cache[text] end
-	cache[text] = string.format(locale[text] or text, ...)
-	return cache[text]
+	local key = text
+	if a then key = key .. '|' .. a end
+	if cache[key] then return cache[key] end
+	cache[key] = string.format(locale[text] or text, a or '')
+	return cache[key]
 end
 
 reload()
