@@ -43,6 +43,8 @@ function make_locale()
 
 		if (lang:match('.json$')) then
 			table_assign(translations, get_locale_from_json(lang))
+		elseif (lang == 'en') then
+			translations = {}
 		else
 			table_assign(translations, get_locale_from_json('~~/scripts/uosc_shared/intl/' .. lang:lower() .. '.json'))
 		end
