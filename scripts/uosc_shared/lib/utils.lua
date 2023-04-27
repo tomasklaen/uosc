@@ -539,6 +539,10 @@ function normalize_chapters(chapters)
 	table.sort(chapters, function(a, b) return a.time < b.time end)
 	-- Ensure titles
 	for index, chapter in ipairs(chapters) do
+		local chapter_number = chapter.title and string.match(chapter.title, '^Chapter (%d+)$')
+		if chapter_number then
+			chapter.title = t('Chapter %s', tonumber(chapter_number))
+		end
 		chapter.title = chapter.title ~= '(unnamed)' and chapter.title ~= '' and chapter.title or t('Chapter %s', index)
 		chapter.lowercase_title = chapter.title:lower()
 	end
