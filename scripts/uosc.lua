@@ -65,6 +65,7 @@ defaults = {
 	top_bar_size_fullscreen = 46,
 	top_bar_persistency = '',
 	top_bar_controls = true,
+	top_bar_position = true,
 	top_bar_title = 'yes',
 	top_bar_alt_title = '',
 	top_bar_alt_title_place = 'below',
