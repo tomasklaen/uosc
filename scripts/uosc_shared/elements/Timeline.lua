@@ -196,6 +196,14 @@ function Timeline:render()
 	local foreground_size = fby - fay
 	local foreground_coordinates = round(fax) .. ',' .. fay .. ',' .. round(fbx) .. ',' .. fby -- for clipping
 
+	local chapter_width = options.timeline_chapters_width
+	local chapter_height = math.min(self.size_max / 3, size)
+	local chapter_half_width = chapter_width / 2
+	local chapter_half_height = round(math.max(chapter_height / 2, 1))
+	local chapter_lines_clip = ''
+	local chapter_gap_top = options.timeline_chapters == 'lines-bottom' or options.timeline_chapters == 'lines-middle'
+	local chapter_gap_bottom = options.timeline_chapters == 'lines-top' or options.timeline_chapters == 'lines-middle'
+
 	-- time starts 0.5 pixels in
 	local time_ax = bax + 0.5
 	local time_width = self.width - line_width - 1
@@ -220,24 +228,59 @@ function Timeline:render()
 	-- Progress
 	ass:rect(fax, fay, fbx, fby, {opacity = options.timeline_opacity})
 
-	-- Uncached ranges
+    -- Bounding boxes
+	local ass_erase_ranges = assdraw.ass_new()
+	if #state.chapters > 0 and chapter_width ~= 0 and options.timeline_chapters ~= 'never' and options.timeline_chapters ~= 'diamonds' then
+		local ass_chapter_lines = assdraw.ass_new()
+		for i, chapter in ipairs(state.chapters) do
+			local x = t2x(chapter.time)
+			local ax, bx = round(x - chapter_half_width), round(x + chapter_half_width)
+			local ay, by = fay, fay + size
+			if chapter_gap_top then
+				ay = by - chapter_half_height
+			end
+			if chapter_gap_bottom then
+				by = fay + chapter_half_height
+			end
+			-- ensure lines-middle is visible
+			if ay == by then
+				ay = ay - 1
+			elseif ay > by then
+				ay, by = by, ay
+			end
+			ass_chapter_lines:rect_cw(ax, ay, bx, by, opts)
+			ass_erase_ranges:rect_cw(ax-1, ay-1, bx+1, by+1, opts)
+		end
+		chapter_lines_clip = '\\clip(4,' .. ass_chapter_lines.text .. ')'
+	end
+	if is_line then
+		ass_erase_ranges:rect_cw(fax, fay, fbx, fby)
+	end
+
+	-- Cached ranges
 	local buffered_playtime = nil
-	if state.uncached_ranges then
+	if state.cached_ranges then
 		local opts = {size = 80, anchor_y = fby}
 		local texture_char = visibility > 0 and 'b' or 'a'
 		local offset = opts.size / (visibility > 0 and 24 or 28)
-		for _, range in ipairs(state.uncached_ranges) do
-			if not buffered_playtime and (range[1] > state.time or range[2] > state.time) then
-				buffered_playtime = (range[1] - state.time) / (state.speed or 1)
+		local cache_clip = assdraw.ass_new()
+		for _, range in ipairs(state.cached_ranges) do
+			if not buffered_playtime and range[2] > state.time then
+				buffered_playtime = (range[2] - state.time) / (state.speed or 1)
 			end
 			if options.timeline_cache then
 				local ax = range[1] < 0.5 and bax or math.floor(t2x(range[1]))
 				local bx = range[2] > state.duration - 0.5 and bbx or math.ceil(t2x(range[2]))
-				opts.color, opts.opacity, opts.anchor_x = 'ffffff', 0.4 - (0.2 * visibility), bax
-				ass:texture(ax, fay, bx, fby, texture_char, opts)
-				opts.color, opts.opacity, opts.anchor_x = '000000', 0.6 - (0.2 * visibility), bax + offset
-				ass:texture(ax, fay, bx, fby, texture_char, opts)
+				cache_clip:rect_cw(ax, fay, bx, fby)
 			end
+		end
+		if options.timeline_cache then
+			cache_clip:rect_cw(0, 0, display.width, fay)
+			opts.clip = '\\iclip(4,' .. ass_erase_ranges.text .. ' ' .. cache_clip.text .. ')'
+			opts.color, opts.opacity, opts.anchor_x = 'ffffff', 0.4 - (0.2 * visibility), bax
+			ass:texture(bax, fay, bbx, fby, texture_char, opts)
+			opts.color, opts.opacity, opts.anchor_x = '000000', 0.6 - (0.2 * visibility), bax + offset
+			ass:texture(bax, fay, bbx, fby, texture_char, opts)
 		end
 	end
 
@@ -246,7 +289,7 @@ function Timeline:render()
 		local rax = chapter_range.start < 0.1 and bax or t2x(chapter_range.start)
 		local rbx = chapter_range['end'] > state.duration - 0.1 and bbx
 			or t2x(math.min(chapter_range['end'], state.duration))
-		ass:rect(rax, fay, rbx, fby, {color = chapter_range.color, opacity = chapter_range.opacity})
+		ass:rect(rax, fay, rbx, fby, {color = chapter_range.color, opacity = chapter_range.opacity, clip = '\\iclip(4,' .. ass_erase_ranges.text .. ')'})
 	end
 
 	-- Chapters
@@ -274,7 +317,18 @@ function Timeline:render()
 				ass:draw_stop()
 			end
 
+			local function draw_line_chapters()
+				local opts = {color = options.foreground, opacity = options.timeline_chapters_opacity, clip = chapter_lines_clip}
+
+				ass:rect(fbx, 0, bbx - 1, display.height, opts)
+                if not is_line then
+					opts.color = options.background
+				end
+				ass:rect(0, 0, fbx, display.height, opts)
+			end
+
 			if #state.chapters > 0 then
+				if options.timeline_chapters == 'diamonds' then
 				-- Find hovered chapter indicator
 				local closest_delta = INFINITY
 
@@ -298,6 +352,9 @@ function Timeline:render()
 
 				-- Render hovered chapter above others
 				if hovered_chapter then draw_chapter(hovered_chapter.time, diamond_radius_hovered) end
+				elseif options.timeline_chapters ~= 'never' then
+					draw_line_chapters()
+				end
 			end
 
 			-- A-B loop indicators

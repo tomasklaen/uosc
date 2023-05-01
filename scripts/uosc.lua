@@ -30,7 +30,9 @@ defaults = {
 	timeline_opacity = 0.9,
 	timeline_border = 1,
 	timeline_step = 5,
+	timeline_chapters = 'diamonds',
 	timeline_chapters_opacity = 0.8,
+	timeline_chapters_width = 4,
 	timeline_cache = true,
 
 	controls = 'menu,gap,subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
@@ -400,7 +402,7 @@ state = {
 	has_playlist = false,
 	shuffle = options.shuffle,
 	mouse_bindings_enabled = false,
-	uncached_ranges = nil,
+	cached_ranges = nil,
 	cache = nil,
 	cache_buffering = 100,
 	cache_underrun = false,
@@ -796,7 +798,7 @@ mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_str
 	Elements:trigger('dispositions')
 end))
 mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
-	local cached_ranges, bof, eof, uncached_ranges = nil, nil, nil, nil
+	local cached_ranges, bof, eof = nil, nil, nil
 	if cache_state then
 		cached_ranges, bof, eof = cache_state['seekable-ranges'], cache_state['bof-cached'], cache_state['eof-cached']
 		set_state('cache_underrun', cache_state['underrun'])
@@ -804,7 +806,7 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 
 	if not (state.duration and (#cached_ranges > 0 or state.cache == 'yes' or
 		(state.cache == 'auto' and state.is_stream))) then
-		if state.uncached_ranges then set_state('uncached_ranges', nil) end
+		if state.cached_ranges then set_state('cached_ranges', nil) end
 		return
 	end
 
@@ -819,26 +821,8 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	table.sort(ranges, function(a, b) return a[1] < b[1] end)
 	if bof then ranges[1][1] = 0 end
 	if eof then ranges[#ranges][2] = state.duration end
-	-- Invert cached ranges into uncached ranges, as that's what we're rendering
-	local inverted_ranges = {{0, state.duration}}
-	for _, cached in pairs(ranges) do
-		inverted_ranges[#inverted_ranges][2] = cached[1]
-		inverted_ranges[#inverted_ranges + 1] = {cached[2], state.duration}
-	end
-	uncached_ranges = {}
-	local last_range = nil
-	for _, range in ipairs(inverted_ranges) do
-		if last_range and last_range[2] + 0.5 > range[1] then -- fuse ranges
-			last_range[2] = range[2]
-		else
-			if range[2] - range[1] > 0.5 then -- skip short ranges
-				uncached_ranges[#uncached_ranges + 1] = range
-				last_range = range
-			end
-		end
-	end
 
-	set_state('uncached_ranges', uncached_ranges)
+	set_state('cached_ranges', ranges)
 end)
 mp.observe_property('display-fps', 'native', observe_display_fps)
 mp.observe_property('estimated-display-fps', 'native', update_render_delay)
