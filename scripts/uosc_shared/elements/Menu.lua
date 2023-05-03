@@ -156,7 +156,7 @@ function Menu:update(data)
 
 		-- Update items
 		local first_active_index = nil
-		menu.items = {}
+		menu.items = {{title = t('Empty'), value = 'ignore', italic = 'true', muted = 'true'}}
 
 		for i, item_data in ipairs(menu_data.items or {}) do
 			if item_data.active and not first_active_index then first_active_index = i end
