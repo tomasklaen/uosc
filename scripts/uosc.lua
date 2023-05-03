@@ -821,8 +821,18 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	table.sort(ranges, function(a, b) return a[1] < b[1] end)
 	if bof then ranges[1][1] = 0 end
 	if eof then ranges[#ranges][2] = state.duration end
+	filtered_cached_ranges = {}
+	local last_range = nil
+	for _, range in ipairs(ranges) do
+		if last_range and last_range[2] + 0.5 > range[1] then -- fuse ranges
+			last_range[2] = range[2]
+		elseif range[2] - range[1] > 0.5 then -- skip short ranges
+			filtered_cached_ranges[#filtered_cached_ranges + 1] = range
+			last_range = range
+		end
+	end
 
-	set_state('cached_ranges', ranges)
+	set_state('cached_ranges', filtered_cached_ranges)
 end)
 mp.observe_property('display-fps', 'native', observe_display_fps)
 mp.observe_property('estimated-display-fps', 'native', update_render_delay)

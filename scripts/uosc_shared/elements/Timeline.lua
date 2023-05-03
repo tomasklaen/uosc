@@ -234,7 +234,7 @@ function Timeline:render()
 		local ass_chapter_lines = assdraw.ass_new()
 		for i, chapter in ipairs(state.chapters) do
 			local x = t2x(chapter.time)
-			local ax, bx = round(x - chapter_half_width), round(x + chapter_half_width)
+			local ax, bx = round(x - chapter_half_width), math.min(round(x + chapter_half_width), bbx)
 			local ay, by = fay, fay + size
 			if chapter_gap_top then
 				ay = by - chapter_half_height
@@ -249,9 +249,9 @@ function Timeline:render()
 				ay, by = by, ay
 			end
 			ass_chapter_lines:rect_cw(ax, ay, bx, by, opts)
-			ass_erase_ranges:rect_cw(ax-1, ay-1, bx+1, by+1, opts)
+			ass_erase_ranges:rect_cw(ax - 1, ay - 1, bx + 1, by + 1, opts)
 		end
-		chapter_lines_clip = '\\clip(4,' .. ass_chapter_lines.text .. ')'
+		chapter_lines_clip = '\\clip(' .. ass_chapter_lines.scale .. ',' .. ass_chapter_lines.text .. ')'
 	end
 	if is_line then
 		ass_erase_ranges:rect_cw(fax, fay, fbx, fby)
@@ -275,8 +275,10 @@ function Timeline:render()
 			end
 		end
 		if options.timeline_cache then
-			cache_clip:rect_cw(0, 0, display.width, fay)
-			opts.clip = '\\iclip(4,' .. ass_erase_ranges.text .. ' ' .. cache_clip.text .. ')'
+			cache_clip:rect_cw(bax, 0, bbx, fay)       --hide top excess
+			cache_clip:rect_cw(0, 0, bax, fby)         --hide left excess
+			cache_clip:rect_cw(bbx, 0, bbx + bax, fby) --hide right excess
+			opts.clip = '\\iclip(' .. ass_erase_ranges.scale .. ',' .. ass_erase_ranges.text .. ' ' .. cache_clip.text .. ')'
 			opts.color, opts.opacity, opts.anchor_x = 'ffffff', 0.4 - (0.2 * visibility), bax
 			ass:texture(bax, fay, bbx, fby, texture_char, opts)
 			opts.color, opts.opacity, opts.anchor_x = '000000', 0.6 - (0.2 * visibility), bax + offset
@@ -289,7 +291,7 @@ function Timeline:render()
 		local rax = chapter_range.start < 0.1 and bax or t2x(chapter_range.start)
 		local rbx = chapter_range['end'] > state.duration - 0.1 and bbx
 			or t2x(math.min(chapter_range['end'], state.duration))
-		ass:rect(rax, fay, rbx, fby, {color = chapter_range.color, opacity = chapter_range.opacity, clip = '\\iclip(4,' .. ass_erase_ranges.text .. ')'})
+		ass:rect(rax, fay, rbx, fby, {color = chapter_range.color, opacity = chapter_range.opacity, clip = '\\iclip(' .. ass_erase_ranges.scale .. ',' .. ass_erase_ranges.text .. ')'})
 	end
 
 	-- Chapters
