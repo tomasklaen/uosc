@@ -394,7 +394,7 @@ function Timeline:render()
 		then
 			local scale_x, scale_y = display.scale_x, display.scale_y
 			local border, margin_x, margin_y = math.ceil(2 * scale_x), round(10 * scale_x), round(5 * scale_y)
-			local thumb_x_margin, thumb_y_margin = border + margin_x, border + margin_y
+			local thumb_x_margin, thumb_y_margin = border + margin_x + bax, border + margin_y
 			local thumb_width, thumb_height = thumbnail.width, thumbnail.height
 			local thumb_x = round(clamp(
 				thumb_x_margin, cursor_x * scale_x - thumb_width / 2,
