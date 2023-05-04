@@ -85,7 +85,7 @@ function ass_mt:tooltip(element, value, opts)
 	local align_top = opts.responsive == false or element.ay - offset > opts.size * 2
 	local x = element.ax + (element.bx - element.ax) / 2
 	local y = align_top and element.ay - offset or element.by + offset
-	local margin = (opts.width_overwrite or text_width(value, opts)) / 2 + 10
+	local margin = (opts.width_overwrite or text_width(value, opts)) / 2 + 10 + Elements.window_border.size
 	self:txt(clamp(margin, x, display.width - margin), y, align_top and 2 or 8, value, opts)
 end
 
