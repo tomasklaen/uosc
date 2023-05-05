@@ -506,7 +506,7 @@ function Menu:move_selected_item_to(index)
 	if callback and from and from ~= index and index >= 1 and index <= #self.current.items then
 		callback(from, index, self.current.submenu_path)
 		self.current.selected_index = index
-		request_render()
+		self:set_scroll_by((index - from) * self.scroll_step)
 	end
 end
 
