@@ -271,7 +271,8 @@ function Menu:reset_navigation()
 	if self.mouse_nav then
 		self:select_item_below_cursor()
 	elseif menu.items and #menu.items > 0 then
-		self:select_index(itable_find(menu.items, function(item) return item.selectable ~= false end), menu)
+		local from = clamp(1, menu.selected_index or 1, #menu.items)
+		self:select_index(itable_find(menu.items, function(item) return item.selectable ~= false end, from), menu)
 	else
 		self:select_index(nil)
 	end
