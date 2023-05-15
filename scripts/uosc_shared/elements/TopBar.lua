@@ -197,13 +197,15 @@ function TopBar:render()
 				}
 				local bx = math.min(max_bx, title_ax + text_width(main_title, opts) + padding * 2)
 				local by = self.by - bg_margin
-				local rect = {ax = title_ax, ay = self.ay, bx = self.title_bx, by = self.by}
+				local title_rect = {ax = title_ax, ay = title_ay, bx = bx, by = by}
 
-				if get_point_to_rectangle_proximity(cursor, rect) == 0 then
+				if options.top_bar_alt_title_place == 'toggle'
+					and get_point_to_rectangle_proximity(cursor, title_rect) == 0 then
 					cursor.on_primary_down = function() self:toggle_title() end
+					cursor.allow_dragging = true
 				end
 
-				ass:rect(title_ax, title_ay, bx, by, {
+				ass:rect(title_rect.ax, title_rect.ay, title_rect.bx, title_rect.by, {
 					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 				})
 				ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, main_title, opts)

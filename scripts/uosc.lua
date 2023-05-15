@@ -318,10 +318,12 @@ cursor = {
 	on_primary_up = nil,
 	on_wheel_down = nil,
 	on_wheel_up = nil,
+	allow_dragging = false,
 	-- Called at the beginning of each render
 	reset_handlers = function()
 		cursor.on_primary_down, cursor.on_primary_up = nil, nil
 		cursor.on_wheel_down, cursor.on_wheel_up = nil, nil
+		cursor.allow_dragging = false
 	end,
 	-- Enables pointer key group captures needed by handlers (called at the end of each render)
 	mbtn_left_enabled = nil,
@@ -330,7 +332,8 @@ cursor = {
 		local enable_mbtn_left = (cursor.on_primary_down or cursor.on_primary_up) ~= nil
 		local enable_wheel = (cursor.on_wheel_down or cursor.on_wheel_up) ~= nil
 		if enable_mbtn_left ~= cursor.mbtn_left_enabled then
-			mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left')
+			local flags = cursor.allow_dragging and 'allow-vo-dragging' or nil
+			mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left', flags)
 			cursor.mbtn_left_enabled = enable_mbtn_left
 		end
 		if enable_wheel ~= cursor.wheel_enabled then
