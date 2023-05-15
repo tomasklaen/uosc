@@ -83,9 +83,7 @@ end
 ---@return any|nil value
 function itable_find(itable, compare, from, to)
 	from, to = from or 1, to or #itable
-	if from == 0 or from > #itable or to == 0 or to > #itable then return end
-	local step = from < to and 1 or -1
-	for index = from, to, step do
+	for index = from, to, from < to and 1 or -1 do
 		if index > 0 and index <= #itable and compare(itable[index], index) then
 			return index, itable[index]
 		end
