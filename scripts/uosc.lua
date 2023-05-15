@@ -617,7 +617,7 @@ end
 function select_current_chapter()
 	local current_chapter
 	if state.time and state.chapters then
-		_, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, true)
+		_, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, #state.chapters, 1)
 	end
 	set_state('current_chapter', current_chapter)
 end

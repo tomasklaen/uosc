@@ -3,13 +3,13 @@ local Element = require('uosc_shared/elements/Element')
 -- Menu data structure accepted by `Menu:open(menu)`.
 ---@alias MenuData {type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer;}
 ---@alias MenuDataItem MenuDataValue|MenuData
----@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean;}
+---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'}
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(); on_close?: fun(); on_back?: fun(); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 
 -- Internal data structure created from `Menu`.
 ---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling}
 ---@alias MenuStackItem MenuStackValue|MenuStack
----@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; title_width: number; hint_width: number}
+---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
 
 ---@alias Modifiers {shift?: boolean, ctrl?: boolean, alt?: boolean}
@@ -156,7 +156,9 @@ function Menu:update(data)
 
 		-- Update items
 		local first_active_index = nil
-		menu.items = {{title = t('Empty'), value = 'ignore', italic = 'true', muted = 'true'}}
+		menu.items = {
+			{title = t('Empty'), value = 'ignore', italic = 'true', muted = 'true', selectable = false, align = 'center'}
+		}
 
 		for i, item_data in ipairs(menu_data.items or {}) do
 			if item_data.active and not first_active_index then first_active_index = i end
@@ -164,6 +166,7 @@ function Menu:update(data)
 			local item = {}
 			table_assign(item, item_data, {
 				'title', 'icon', 'hint', 'active', 'bold', 'italic', 'muted', 'value', 'keep_open', 'separator',
+				'selectable', 'align'
 			})
 			if item.keep_open == nil then item.keep_open = menu.keep_open end
 
@@ -267,8 +270,10 @@ function Menu:reset_navigation()
 	self:scroll_to(menu.scroll_y) -- clamps scroll_y to scroll limits
 	if self.mouse_nav then
 		self:select_item_below_cursor()
+	elseif menu.items and #menu.items > 0 then
+		self:select_index(itable_find(menu.items, function(item) return item.selectable ~= false end))
 	else
-		self:select_index((menu.items and #menu.items > 0) and clamp(1, menu.selected_index or 1, #menu.items) or nil)
+		self:select_index(nil)
 	end
 
 	-- Walk up the parent menu chain and activate items that lead to current menu
@@ -445,15 +450,21 @@ end
 ---@param menu? MenuStack
 function Menu:prev(menu)
 	menu = menu or self.current
-	menu.selected_index = math.max(menu.selected_index and menu.selected_index - 1 or #menu.items, 1)
-	self:scroll_to_index(menu.selected_index, menu, true)
+	local initial_index = menu.selected_index and menu.selected_index - 1 or #menu.items
+	if initial_index > 0 then
+		menu.selected_index = itable_find(menu.items, function(item) return item.selectable ~= false end, initial_index, 1)
+		self:scroll_to_index(menu.selected_index, menu, true)
+	end
 end
 
 ---@param menu? MenuStack
 function Menu:next(menu)
 	menu = menu or self.current
-	menu.selected_index = math.min(menu.selected_index and menu.selected_index + 1 or 1, #menu.items)
-	self:scroll_to_index(menu.selected_index, menu, true)
+	local initial_index = menu.selected_index and menu.selected_index + 1 or 1
+	if initial_index <= #menu.items then
+		menu.selected_index = itable_find(menu.items, function(item) return item.selectable ~= false end, initial_index)
+		self:scroll_to_index(menu.selected_index, menu, true)
+	end
 end
 
 function Menu:back()
@@ -498,7 +509,10 @@ end
 
 function Menu:open_selected_item_soft() self:open_selected_item({keep_open = true}) end
 function Menu:open_selected_item_preselect() self:open_selected_item({preselect_submenu_item = true}) end
-function Menu:select_item_below_cursor() self.current.selected_index = self:get_item_index_below_cursor() end
+function Menu:select_item_below_cursor()
+	local index = self:get_item_index_below_cursor()
+	self.current.selected_index = index and self.current.items[index].selectable ~= false and index or nil
+end
 
 ---@param index integer
 function Menu:move_selected_item_to(index)
@@ -787,7 +801,13 @@ function Menu:render()
 				item.ass_safe_title = item.ass_safe_title or ass_escape(item.title)
 				local clip = '\\clip(' .. ax .. ',' .. math.max(item_ay, ay) .. ','
 					.. title_cut_x .. ',' .. math.min(item_by, by) .. ')'
-				ass:txt(content_ax, item_center_y, 4, item.ass_safe_title, {
+				local title_x, align = content_ax, 4
+				if item.align == 'right' then
+					title_x, align = title_cut_x, 6
+				elseif item.align == 'center' then
+					title_x, align = content_ax + (title_cut_x - content_ax) / 2, 5
+				end
+				ass:txt(title_x, item_center_y, align, item.ass_safe_title, {
 					size = self.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
 					opacity = text_opacity * (item.muted and 0.5 or 1), clip = clip,
 					shadow = 1, shadow_color = shadow_color,

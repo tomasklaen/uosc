@@ -77,13 +77,18 @@ end
 
 ---@param itable table
 ---@param compare fun(value: any, index: number)
----@param from_end? boolean Search from the end of the table.
+---@param from? number Where to start search, defaults to `1`.
+---@param to? number Where to end search, defaults to `#itable`.
 ---@return number|nil index
 ---@return any|nil value
-function itable_find(itable, compare, from_end)
-	local from, to, step = from_end and #itable or 1, from_end and 1 or #itable, from_end and -1 or 1
+function itable_find(itable, compare, from, to)
+	from, to = from or 1, to or #itable
+	if from == 0 or from > #itable or to == 0 or to > #itable then return end
+	local step = from < to and 1 or -1
 	for index = from, to, step do
-		if compare(itable[index], index) then return index, itable[index] end
+		if index > 0 and index <= #itable and compare(itable[index], index) then
+			return index, itable[index]
+		end
 	end
 end
 

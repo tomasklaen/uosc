@@ -428,6 +428,8 @@ Command {
   value: string | string[];
   bold?: boolean;
   italic?: boolean;
+  align?: 'left'|'center'|'right';
+  selectable?: boolean;
   muted?: boolean;
   active?: integer;
   keep_open?: boolean;

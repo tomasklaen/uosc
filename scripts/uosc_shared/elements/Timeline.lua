@@ -411,7 +411,7 @@ function Timeline:render()
 
 		-- Chapter title
 		if #state.chapters > 0 then
-			local _, chapter = itable_find(state.chapters, function(c) return hovered_seconds >= c.time end, true)
+			local _, chapter = itable_find(state.chapters, function(c) return hovered_seconds >= c.time end, #state.chapters, 1)
 			if chapter and not chapter.is_end_only then
 				ass:tooltip(tooltip_anchor, chapter.title_wrapped, {
 					size = self.font_size, offset = 10, responsive = false, bold = true,
