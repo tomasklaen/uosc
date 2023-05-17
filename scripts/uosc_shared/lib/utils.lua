@@ -100,6 +100,73 @@ function get_point_to_point_proximity(point_a, point_b)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
+---@param lax number
+---@param lay number
+---@param lbx number
+---@param lby number
+---@param max number
+---@param may number
+---@param mbx number
+---@param mby number
+function get_line_to_line_intersection(lax, lay, lbx, lby, max, may, mbx, mby)
+	-- Calculate the direction of the lines
+	local uA = ((mbx-max)*(lay-may) - (mby-may)*(lax-max)) / ((mby-may)*(lbx-lax) - (mbx-max)*(lby-lay))
+	local uB = ((lbx-lax)*(lay-may) - (lby-lay)*(lax-max)) / ((mby-may)*(lbx-lax) - (mbx-max)*(lby-lay))
+
+	-- If uA and uB are between 0-1, lines are colliding
+	if uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1 then
+		return lax + (uA * (lbx-lax)), lay + (uA * (lby-lay))
+	end
+
+	return nil, nil
+end
+
+-- Returns distance from the start of a finite ray assumed to be at (rax, ray)
+-- coordinates to a line.
+---@param rax number
+---@param ray number
+---@param rbx number
+---@param rby number
+---@param lax number
+---@param lay number
+---@param lbx number
+---@param lby number
+function get_ray_to_line_distance(rax, ray, rbx, rby, lax, lay, lbx, lby)
+	local x, y = get_line_to_line_intersection(rax, ray, rbx, rby, lax, lay, lbx, lby)
+	if x then
+		return math.sqrt((rax - x) ^ 2 + (ray - y) ^ 2)
+	end
+	return nil
+end
+
+-- Returns distance from the start of a finite ray assumed to be at (ax, ay)
+-- coordinates to a rectangle. Returns `0` if ray originates inside rectangle.
+---@param  ax number
+---@param  ay number
+---@param  bx number
+---@param  by number
+---@param  rect {ax: number; ay: number; bx: number; by: number}
+---@return number|nil
+function get_ray_to_rectangle_distance(ax, ay, bx, by, rect)
+	-- Is inside
+	if ax >= rect.ax and ax <= rect.bx and ay >= rect.ay and ay <= rect.by then
+		return 0
+	end
+
+	local closest = nil
+
+	function updateDistance(distance)
+		if distance and (not closest or distance < closest) then closest = distance end
+	end
+
+	updateDistance(get_ray_to_line_distance(ax, ay, bx, by, rect.ax, rect.ay, rect.bx, rect.ay))
+	updateDistance(get_ray_to_line_distance(ax, ay, bx, by, rect.bx, rect.ay, rect.bx, rect.by))
+	updateDistance(get_ray_to_line_distance(ax, ay, bx, by, rect.ax, rect.by, rect.bx, rect.by))
+	updateDistance(get_ray_to_line_distance(ax, ay, bx, by, rect.ax, rect.ay, rect.ax, rect.by))
+
+	return closest
+end
+
 -- Call function with args if it exists
 function call_maybe(fn, ...)
 	if type(fn) == 'function' then fn(...) end
