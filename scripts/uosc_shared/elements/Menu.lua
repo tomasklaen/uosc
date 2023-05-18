@@ -706,7 +706,7 @@ function Menu:render()
 	---@param menu MenuStack
 	---@param x number
 	---@param pos number Horizontal position index. 0 = current menu, <0 parent menus, >1 submenu.
-	function draw_menu(menu, x, pos)
+	local function draw_menu(menu, x, pos)
 		local is_current, is_parent, is_submenu = pos == 0, pos < 0, pos > 0
 		local menu_opacity = pos == 0 and opacity or opacity * (options.menu_parent_opacity ^ math.abs(pos))
 		local ax, ay, bx, by = x, menu.top, x + menu.width, menu.top + menu.height

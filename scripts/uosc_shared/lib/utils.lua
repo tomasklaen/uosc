@@ -155,7 +155,7 @@ function get_ray_to_rectangle_distance(ax, ay, bx, by, rect)
 
 	local closest = nil
 
-	function updateDistance(distance)
+	local function updateDistance(distance)
 		if distance and (not closest or distance < closest) then closest = distance end
 	end
 
