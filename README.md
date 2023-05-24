@@ -50,6 +50,18 @@ Most notable features:
     rm -fv /tmp/uosc.zip
     wget -NP ~/.config/mpv/scripts/ https://raw.githubusercontent.com/po5/thumbfast/master/thumbfast.lua
     ```
+    On Windows these equivalent PowerShell commands can be used:
+    ```PowerShell
+    New-Item -ItemType Directory -Force -Path "$env:APPDATA/mpv/script-opts/"
+    $Folder = "$env:APPDATA/mpv/scripts/uosc_shared"
+    if (Test-Path $Folder) {
+      Remove-Item -LiteralPath $Folder -Force -Recurse
+    }
+    Invoke-WebRequest -OutFile "$env:APPDATA/mpv/uosc_tmp.zip" -Uri https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip
+    Expand-Archive "$env:APPDATA/mpv/uosc_tmp.zip" -DestinationPath "$env:APPDATA/mpv" -Force
+    Remove-Item "$env:APPDATA/mpv/uosc_tmp.zip"
+    Invoke-WebRequest -OutFile "$env:APPDATA/mpv/scripts/thumbfast.lua" -Uri https://raw.githubusercontent.com/po5/thumbfast/master/thumbfast.lua
+    ```
 
 2. **uosc** is a replacement for the built in osc, so that has to be disabled first.
 
