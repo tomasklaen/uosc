@@ -76,6 +76,13 @@ function itable_index_of(itable, value)
 end
 
 ---@param itable table
+---@param value any
+---@return boolean
+function itable_has(itable, value)
+	return itable_index_of(itable, value) ~= nil
+end
+
+---@param itable table
 ---@param compare fun(value: any, index: number)
 ---@param from? number Where to start search, defaults to `1`.
 ---@param to? number Where to end search, defaults to `#itable`.
@@ -102,8 +109,21 @@ end
 
 ---@param itable table
 ---@param value any
-function itable_remove(itable, value)
-	return itable_filter(itable, function(item) return item ~= value end)
+function itable_delete_value(itable, value)
+	for index = 1, #itable, 1 do
+		if itable[index] == value then table.remove(itable, index) end
+	end
+	return itable
+end
+
+---@param itable table
+---@param transformer fun(value: any, index: number) : any
+function itable_map(itable, transformer)
+	local result = {}
+	for index, value in ipairs(itable) do
+		result[index] = transformer(value, index)
+	end
+	return result
 end
 
 ---@param itable table

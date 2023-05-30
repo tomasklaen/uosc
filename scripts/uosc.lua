@@ -384,6 +384,7 @@ state = {
 	end)(),
 	cwd = mp.get_property('working-directory'),
 	path = nil, -- current file path or URL
+	history = {}, -- history of last played files stored as full paths
 	title = nil,
 	alt_title = nil,
 	time = nil, -- current media playback time
@@ -680,7 +681,10 @@ end
 mp.observe_property('mouse-pos', 'native', handle_mouse_pos)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 mp.register_event('file-loaded', function()
-	set_state('path', normalize_path(mp.get_property_native('path')))
+	local path = normalize_path(mp.get_property_native('path'))
+	itable_delete_value(state.history, path)
+	state.history[#state.history + 1] = path
+	set_state('path', path)
 	Elements:flash({'top_bar'})
 end)
 mp.register_event('end-file', function(event)

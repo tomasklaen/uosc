@@ -22,7 +22,7 @@ function Elements:remove(idOrElement)
 	if element then
 		if not element.destroyed then element:destroy() end
 		element.enabled = false
-		self.itable = itable_remove(self.itable, self[id])
+		self.itable = itable_delete_value(self.itable, self[id])
 		self[id] = nil
 		request_render()
 	end

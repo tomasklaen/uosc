@@ -417,28 +417,39 @@ end
 
 -- Navigates in a list, using delta or, when `state.shuffle` is enabled,
 -- randomness to determine the next item. Loops around if `loop-playlist` is enabled.
----@param list table
+---@param paths table
 ---@param current_index number
 ---@param delta number
-function decide_navigation_in_list(list, current_index, delta)
-	if #list < 2 then return #list, list[#list] end
+function decide_navigation_in_list(paths, current_index, delta)
+	if #paths < 2 then return #paths, paths[#paths] end
 
+	-- Shuffle looks at the played files history trimmed to 80% length of the paths
+	-- and removes all paths in it from the potential shuffle pool. This guarantees
+	-- no path repetition until at least 80% of the playlist has been exhausted.
 	if state.shuffle then
-		local new_index = current_index
+		local trimmed_history = itable_slice(state.history, -math.floor(#paths * 0.8))
+		local shuffle_pool = {}
+
+		for index, value in ipairs(paths) do
+			if not itable_has(trimmed_history, value) then
+				shuffle_pool[#shuffle_pool + 1] = index
+			end
+		end
+
 		math.randomseed(os.time())
-		while current_index == new_index do new_index = math.random(#list) end
-		return new_index, list[new_index]
+		local next_index = shuffle_pool[math.random(#shuffle_pool)]
+		return next_index, paths[next_index]
 	end
 
 	local new_index = current_index + delta
 	if mp.get_property_native('loop-playlist') then
-		if new_index > #list then new_index = new_index % #list
-		elseif new_index < 1 then new_index = #list - new_index end
-	elseif new_index < 1 or new_index > #list then
+		if new_index > #paths then new_index = new_index % #paths
+		elseif new_index < 1 then new_index = #paths - new_index end
+	elseif new_index < 1 or new_index > #paths then
 		return
 	end
 
-	return new_index, list[new_index]
+	return new_index, paths[new_index]
 end
 
 ---@param delta number
@@ -456,7 +467,8 @@ end
 function navigate_playlist(delta)
 	local playlist, pos = mp.get_property_native('playlist'), mp.get_property_native('playlist-pos-1')
 	if playlist and #playlist > 1 and pos then
-		local index = decide_navigation_in_list(playlist, pos, delta)
+		local paths = itable_map(playlist, function(item) return normalize_path(item.filename) end)
+		local index = decide_navigation_in_list(paths, pos, delta)
 		if index then mp.commandv('playlist-play-index', index - 1) return true end
 	end
 	return false
