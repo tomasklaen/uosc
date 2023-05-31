@@ -109,7 +109,12 @@ defaults = {
 	languages = 'slang,en',
 }
 options = table_shallow_copy(defaults)
-opt.read_options(options, 'uosc')
+opt.read_options(options, 'uosc', function(_)
+	update_human_times()
+	Elements:trigger('options')
+	Elements:update_proximities()
+	request_render()
+end)
 -- Normalize values
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
 if options.chapter_ranges:sub(1, 4) == '^op|' then options.chapter_ranges = defaults.chapter_ranges end

@@ -156,6 +156,11 @@ end
 
 function TopBar:on_display() self:update_dimensions() end
 
+function TopBar:on_options()
+	self:decide_enabled()
+	self:update_dimensions()
+end
+
 function TopBar:render()
 	local visibility = self:get_visibility()
 	if visibility <= 0 then return end

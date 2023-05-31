@@ -248,5 +248,6 @@ end
 function Volume:on_display() self:update_dimensions() end
 function Volume:on_prop_border() self:update_dimensions() end
 function Volume:on_controls_reflow() self:update_dimensions() end
+function Volume:on_options() self:update_dimensions() end
 
 return Volume

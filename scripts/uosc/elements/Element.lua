@@ -146,6 +146,7 @@ function Element:flash()
 		self:tween_stop()
 		self.forced_visibility = 1
 		request_render()
+		self._flash_out_timer.timeout = options.flash_duration / 1000
 		self._flash_out_timer:kill()
 		self._flash_out_timer:resume()
 	end

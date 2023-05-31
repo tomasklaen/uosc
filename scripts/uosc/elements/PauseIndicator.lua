@@ -7,22 +7,16 @@ function PauseIndicator:new() return Class.new(self) --[[@as PauseIndicator]] en
 function PauseIndicator:init()
 	Element.init(self, 'pause_indicator')
 	self.ignores_menu = true
-	self.base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8
 	self.paused = state.pause
-	self.type = options.pause_indicator
-	self.is_manual = options.pause_indicator == 'manual'
 	self.fadeout_requested = false
 	self.opacity = 0
+	self:init_options()
+end
 
-	mp.observe_property('pause', 'bool', function(_, paused)
-		if Elements.timeline.pressed then return end
-		if options.pause_indicator == 'flash' then
-			if self.paused == paused then return end
-			self:flash()
-		elseif options.pause_indicator == 'static' then
-			self:decide()
-		end
-	end)
+function PauseIndicator:init_options()
+	self.base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8
+	self.type = options.pause_indicator
+	self.is_manual = options.pause_indicator == 'manual'
 end
 
 function PauseIndicator:flash()
@@ -47,6 +41,22 @@ function PauseIndicator:decide()
 	-- Workaround for an mpv race condition bug during pause on windows builds, which causes osd updates to be ignored.
 	-- .03 was still loosing renders, .04 was fine, but to be safe I added 10ms more
 	mp.add_timeout(.05, function() osd:update() end)
+end
+
+function PauseIndicator:on_prop_pause()
+	if Elements.timeline.pressed then return end
+	if options.pause_indicator == 'flash' then
+		if self.paused == state.pause then return end
+		self:flash()
+	elseif options.pause_indicator == 'static' then
+		self:decide()
+	end
+end
+
+function PauseIndicator:on_options()
+	self:init_options()
+	self:on_prop_pause()
+	if self.type == 'flash' then self.opacity = 0 end
 end
 
 function PauseIndicator:render()

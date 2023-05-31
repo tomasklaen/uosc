@@ -27,6 +27,7 @@ function Speed:on_coordinates()
 	self.notch_spacing = self.width / (self.notches + 1)
 	self.font_size = round(self.height * 0.48 * options.font_scale)
 end
+function Speed:on_options() self:on_coordinates() end
 
 function Speed:speed_step(speed, up)
 	if options.speed_step_is_factor then

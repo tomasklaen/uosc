@@ -541,6 +541,7 @@ end
 
 function Menu:on_display() self:update_dimensions() end
 function Menu:on_prop_fullormaxed() self:update_content_dimensions() end
+function Menu:on_options() self:update_content_dimensions() end
 
 function Menu:handle_cursor_down()
 	if self.proximity_raw == 0 then
