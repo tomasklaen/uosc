@@ -51,11 +51,12 @@ local osd_width, osd_height = 100, 100
 ---@return integer
 local function utf8_char_bytes(str, i)
 	local char_byte = str:byte(i)
-	if char_byte < 0xC0 then return 1
-	elseif char_byte < 0xE0 then return 2
-	elseif char_byte < 0xF0 then return 3
-	elseif char_byte < 0xF8 then return 4
-	else return 1 end
+	local max_bytes = #str - i + 1
+	if char_byte < 0xC0 then return math.min(max_bytes, 1)
+	elseif char_byte < 0xE0 then return math.min(max_bytes, 2)
+	elseif char_byte < 0xF0 then return math.min(max_bytes, 3)
+	elseif char_byte < 0xF8 then return math.min(max_bytes, 4)
+	else return math.min(max_bytes, 1) end
 end
 
 ---Creates an iterator for an utf-8 encoded string
