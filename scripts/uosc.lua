@@ -959,6 +959,11 @@ end
 bind_command('subtitles', create_select_tracklist_type_menu_opener(
 	t('Subtitles'), 'sub', 'sid', 'script-binding uosc/load-subtitles'
 ))
+
+bind_command('subtitles-2', create_select_tracklist_type_menu_opener(
+	'Secondary Subtitles', 'sub', 'secondary-sid', 'script-binding uosc/load-subtitles'
+))
+
 bind_command('audio', create_select_tracklist_type_menu_opener(
 	t('Audio'), 'audio', 'aid', 'script-binding uosc/load-audio'
 ))
