@@ -1,4 +1,4 @@
-local Element = require('uosc_shared/elements/Element')
+local Element = require('elements/Element')
 
 ---@alias TopBarButtonProps {icon: string; background: string; anchor_id?: string; command: string|fun()}
 

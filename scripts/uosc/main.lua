@@ -9,10 +9,7 @@ osd = mp.create_osd_overlay('ass-events')
 INFINITY = 1e309
 QUARTER_PI_SIN = math.sin(math.pi / 4)
 
--- Enables relative requires from `scripts` directory
-package.path = package.path .. ';' .. mp.find_config_file('scripts') .. '/?.lua'
-
-require('uosc_shared/lib/std')
+require('lib/std')
 
 --[[ OPTIONS ]]
 
@@ -133,7 +130,7 @@ fg, bg = serialize_rgba(options.foreground).color, serialize_rgba(options.backgr
 fgt, bgt = serialize_rgba(options.foreground_text).color, serialize_rgba(options.background_text).color
 
 --[[ INTERNATIONALIZATION ]]
-local intl = require('uosc_shared/lib/intl')
+local intl = require('lib/intl')
 t = intl.t
 
 --[[ CONFIG ]]
@@ -435,14 +432,14 @@ state = {
 thumbnail = {width = 0, height = 0, disabled = false}
 external = {} -- Properties set by external scripts
 key_binding_overwrites = {} -- Table of key_binding:mpv_command
-Elements = require('uosc_shared/elements/Elements')
-Menu = require('uosc_shared/elements/Menu')
+Elements = require('elements/Elements')
+Menu = require('elements/Menu')
 
 -- State dependent utilities
-require('uosc_shared/lib/utils')
-require('uosc_shared/lib/text')
-require('uosc_shared/lib/ass')
-require('uosc_shared/lib/menus')
+require('lib/utils')
+require('lib/text')
+require('lib/ass')
+require('lib/menus')
 
 --[[ STATE UPDATERS ]]
 
@@ -1285,11 +1282,11 @@ mp.register_script_message('overwrite-binding', function(name, command) key_bind
 
 --[[ ELEMENTS ]]
 
-require('uosc_shared/elements/WindowBorder'):new()
-require('uosc_shared/elements/BufferingIndicator'):new()
-require('uosc_shared/elements/PauseIndicator'):new()
-require('uosc_shared/elements/TopBar'):new()
-require('uosc_shared/elements/Timeline'):new()
-if options.controls and options.controls ~= 'never' then require('uosc_shared/elements/Controls'):new() end
-if itable_index_of({'left', 'right'}, options.volume) then require('uosc_shared/elements/Volume'):new() end
-require('uosc_shared/elements/Curtain'):new()
+require('elements/WindowBorder'):new()
+require('elements/BufferingIndicator'):new()
+require('elements/PauseIndicator'):new()
+require('elements/TopBar'):new()
+require('elements/Timeline'):new()
+if options.controls and options.controls ~= 'never' then require('elements/Controls'):new() end
+if itable_index_of({'left', 'right'}, options.volume) then require('elements/Volume'):new() end
+require('elements/Curtain'):new()

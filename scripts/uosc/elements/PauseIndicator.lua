@@ -1,4 +1,4 @@
-local Element = require('uosc_shared/elements/Element')
+local Element = require('elements/Element')
 
 ---@class PauseIndicator : Element
 local PauseIndicator = class(Element)

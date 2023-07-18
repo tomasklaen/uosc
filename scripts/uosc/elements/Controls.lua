@@ -1,7 +1,7 @@
-local Element = require('uosc_shared/elements/Element')
-local Button = require('uosc_shared/elements/Button')
-local CycleButton = require('uosc_shared/elements/CycleButton')
-local Speed = require('uosc_shared/elements/Speed')
+local Element = require('elements/Element')
+local Button = require('elements/Button')
+local CycleButton = require('elements/CycleButton')
+local Speed = require('elements/Speed')
 
 -- `scale` - `options.controls_size` scale factor.
 -- `ratio` - Width/height ratio of a static or dynamic element.

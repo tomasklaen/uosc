@@ -40,7 +40,7 @@ Most notable features:
 
     _List of all the possible places where it can be located is documented here: https://mpv.io/manual/master/#files_
 
-    On Linux and macOS these terminal commands can be used to install or update uosc and thumbfast (if wget and unzip are installed):
+    On Linux and macOS these terminal commands can be used to install or update uosc (if wget and unzip are installed):
 
     ```sh
     mkdir -pv ~/.config/mpv/script-opts/
@@ -49,7 +49,7 @@ Most notable features:
     unzip -od ~/.config/mpv/ /tmp/uosc.zip
     rm -fv /tmp/uosc.zip
     ```
-    
+
     On Windows these equivalent PowerShell commands can be used:
     ```PowerShell
     New-Item -ItemType Directory -Force -Path "$env:APPDATA/mpv/script-opts/"

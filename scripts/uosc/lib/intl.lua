@@ -1,4 +1,4 @@
-local intl_dir = '~~/scripts/uosc_shared/intl/'
+local intl_dir = '~~/scripts/uosc/intl/'
 local locale = {}
 local cache = {}
 
