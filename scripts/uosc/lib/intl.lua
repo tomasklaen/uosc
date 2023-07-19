@@ -1,4 +1,4 @@
-local intl_dir = '~~/scripts/uosc/intl/'
+local intl_dir = mp.get_script_directory() .. '/intl/'
 local locale = {}
 local cache = {}
 
