@@ -1,50 +1,25 @@
 --[[ UI specific utilities that might or might not depend on its state or options ]]
 
--- Sorting comparator close to (but not exactly) how file explorers sort files.
-sort_filenames = (function()
-	local symbol_order
-	local default_order
-
-	if state.platform == 'windows' then
-		symbol_order = {
-			['!'] = 1, ['#'] = 2, ['$'] = 3, ['%'] = 4, ['&'] = 5, ['('] = 6, [')'] = 6, [','] = 7,
-			['.'] = 8, ["'"] = 9, ['-'] = 10, [';'] = 11, ['@'] = 12, ['['] = 13, [']'] = 13, ['^'] = 14,
-			['_'] = 15, ['`'] = 16, ['{'] = 17, ['}'] = 17, ['~'] = 18, ['+'] = 19, ['='] = 20,
-		}
-		default_order = 21
-	else
-		symbol_order = {
-			['`'] = 1, ['^'] = 2, ['~'] = 3, ['='] = 4, ['_'] = 5, ['-'] = 6, [','] = 7, [';'] = 8,
-			['!'] = 9, ["'"] = 10, ['('] = 11, [')'] = 11, ['['] = 12, [']'] = 12, ['{'] = 13, ['}'] = 14,
-			['@'] = 15, ['$'] = 16, ['*'] = 17, ['&'] = 18, ['%'] = 19, ['+'] = 20, ['.'] = 22, ['#'] = 23,
-		}
-		default_order = 21
-	end
-
-	-- Alphanumeric sorting for humans in Lua
+--- In place sorting of filenames
+---@param filenames string[]
+function sort_filenames(filenames)
+	-- alphanum sorting for humans in Lua
 	-- http://notebook.kulchenko.com/algorithms/alphanumeric-natural-sorting-for-humans-in-lua
-	local function pad_number(n, d)
-		return #d > 0 and ("%03d%s%.12f"):format(#n, n, tonumber(d) / (10 ^ #d))
-			or ("%03d%s"):format(#n, n)
+	local function padnum(n, d)
+		return #d > 0 and ('%03d%s%.12f'):format(#n, n, tonumber(d) / (10 ^ #d))
+			or ('%03d%s'):format(#n, n)
 	end
 
-	--- In place sorting of filenames
-	---@param filenames string[]
-	return function(filenames)
-		local tuples = {}
-		for i, filename in ipairs(filenames) do
-			local first_char = filename:sub(1, 1)
-			local order = symbol_order[first_char] or default_order
-			local formatted = filename:lower():gsub('0*(%d+)%.?(%d*)', pad_number)
-			tuples[i] = {order, formatted, filename}
-		end
-		table.sort(tuples, function(a, b)
-			if a[1] ~= b[1] then return a[1] < b[1] end
-			return a[2] == b[2] and #b[3] < #a[3] or a[2] < b[2]
-		end)
-		for i, tuple in ipairs(tuples) do filenames[i] = tuple[3] end
+	local tuples = {}
+	for i, f in ipairs(filenames) do
+		tuples[i] = { f:lower():gsub('0*(%d+)%.?(%d*)', padnum), f }
 	end
-end)()
+	table.sort(tuples, function(a, b)
+		return a[1] == b[1] and #b[2] < #a[2] or a[1] < b[1]
+	end)
+	for i, tuple in ipairs(tuples) do filenames[i] = tuple[2] end
+	return filenames
+end
 
 -- Creates in-between frames to animate value from `from` to `to` numbers.
 ---@param from number
