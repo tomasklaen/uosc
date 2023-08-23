@@ -316,8 +316,10 @@ cursor = {
 	on_wheel_down = nil,
 	on_wheel_up = nil,
 	allow_dragging = false,
-	history = {}, -- {x, y}[] history
+	---@type {x: number, y: number, time: number}[]
+	history = {},
 	history_size = 10,
+	velocity = {x = 0, y = 0},
 	-- Called at the beginning of each render
 	reset_handlers = function()
 		cursor.on_primary_down, cursor.on_primary_up = nil, nil
@@ -340,9 +342,73 @@ cursor = {
 			cursor.wheel_enabled = enable_wheel
 		end
 	end,
+	move = function(x, y)
+		local old_x, old_y = cursor.x, cursor.y
+
+		-- mpv reports initial mouse position on linux as (0, 0), which always
+		-- displays the top bar, so we hardcode cursor position as infinity until
+		-- we receive a first real mouse move event with coordinates other than 0,0.
+		if not state.first_real_mouse_move_received then
+			if x > 0 and y > 0 then state.first_real_mouse_move_received = true
+			else x, y = INFINITY, INFINITY end
+		end
+
+		-- Add 0.5 to be in the middle of the pixel
+		cursor.x, cursor.y = (x + 0.5) / display.scale_x, (y + 0.5) / display.scale_y
+
+		if old_x ~= cursor.x or old_y ~= cursor.y then
+			Elements:update_proximities()
+
+			if cursor.x == INFINITY or cursor.y == INFINITY then
+				cursor.hidden, cursor.history = true, {}
+				cursor.velocity.x, cursor.velocity.y = 0, 0
+
+				-- Slowly fadeout elements that are currently visible
+				for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
+					local element = Elements[element_name]
+					if element and element.proximity > 0 then
+						element:tween_property('forced_visibility', element:get_visibility(), 0, function()
+							element.forced_visibility = nil
+						end)
+					end
+				end
+
+				Elements:trigger('global_mouse_leave')
+			elseif cursor.hidden then
+				cursor.hidden, cursor.history = false, {}
+				cursor.velocity.x, cursor.velocity.y = 0, 0
+				Elements:trigger('global_mouse_enter')
+			else
+				-- Update history
+				local new_index = #cursor.history + 1
+				local last = {x = x, y = y, time = mp.get_time()}
+				if #cursor.history >= cursor.history_size then
+					new_index = #cursor.history
+					for i = 1, #cursor.history, 1 do cursor.history[i] = cursor.history[i + 1] end
+				end
+				cursor.history[new_index] = last
+
+				-- Update velocity
+				if #cursor.history > 5 then
+					local first = cursor.history[1]
+					local time_delta = (last.time - first.time)
+					cursor.velocity.x = (last.x - first.x) / time_delta
+					cursor.velocity.y = (last.y - first.y) / time_delta
+				else
+					cursor.velocity.x, cursor.velocity.y = 0, 0
+				end
+			end
+
+			Elements:proximity_trigger('mouse_move')
+			cursor.queue_autohide()
+		end
+
+		request_render()
+	end,
+	leave = function () cursor.move(INFINITY, INFINITY) end,
 	-- Cursor auto-hiding after period of inactivity
 	autohide = function()
-		if not cursor.on_primary_up and not Menu:is_open() then handle_mouse_leave() end
+		if not cursor.on_primary_up and not Menu:is_open() then cursor.leave() end
 	end,
 	autohide_timer = (function()
 		local timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function() cursor.autohide() end)
@@ -355,15 +421,15 @@ cursor = {
 			cursor.autohide_timer:resume()
 		end
 	end,
-	-- Calculates distance in which cursor reaches rectangle if it continues moving in the same path.
+	-- Calculates distance in which cursor reaches rectangle if it continues moving on the same path.
 	-- Returns `nil` if cursor is not moving towards the rectangle.
 	direction_to_rectangle_distance = function(rect)
-		if cursor.hidden or not cursor.history[1] then
+		if cursor.hidden or #cursor.history < 10 then
 			return false
 		end
 
-		local prev_x, prev_y = cursor.history[1][1], cursor.history[1][2]
-		local end_x, end_y = cursor.x + (cursor.x - prev_x) * 1e10, cursor.y + (cursor.y - prev_y) * 1e10
+		local prev = cursor.history[#cursor.history - 10]
+		local end_x, end_y = cursor.x + (cursor.x - prev.x) * 1e10, cursor.y + (cursor.y - prev.y) * 1e10
 		return get_ray_to_rectangle_distance(cursor.x, cursor.y, end_x, end_y, rect)
 	end
 }
@@ -464,7 +530,7 @@ function update_fullormaxed()
 	state.fullormaxed = state.fullscreen or state.maximized
 	update_display_dimensions()
 	Elements:trigger('prop_fullormaxed', state.fullormaxed)
-	update_cursor_position(INFINITY, INFINITY)
+	cursor.leave()
 end
 
 function update_human_times()
@@ -539,58 +605,6 @@ end
 function set_state(name, value)
 	state[name] = value
 	Elements:trigger('prop_' .. name, value)
-end
-
-function update_cursor_position(x, y)
-	local old_x, old_y = cursor.x, cursor.y
-
-	-- mpv reports initial mouse position on linux as (0, 0), which always
-	-- displays the top bar, so we hardcode cursor position as infinity until
-	-- we receive a first real mouse move event with coordinates other than 0,0.
-	if not state.first_real_mouse_move_received then
-		if x > 0 and y > 0 then state.first_real_mouse_move_received = true
-		else x, y = INFINITY, INFINITY end
-	end
-
-	-- Add 0.5 to be in the middle of the pixel
-	cursor.x, cursor.y = (x + 0.5) / display.scale_x, (y + 0.5) / display.scale_y
-
-	if old_x ~= cursor.x or old_y ~= cursor.y then
-		Elements:update_proximities()
-
-		if cursor.x == INFINITY or cursor.y == INFINITY then
-			cursor.hidden, cursor.history = true, {}
-			Elements:trigger('global_mouse_leave')
-		elseif cursor.hidden then
-			cursor.hidden, cursor.history = false, {}
-			Elements:trigger('global_mouse_enter')
-		else
-			-- Update cursor history
-			for i = 1, cursor.history_size - 1, 1 do
-				cursor.history[i] = cursor.history[i + 1]
-			end
-			cursor.history[cursor.history_size] = {x, y}
-		end
-
-		Elements:proximity_trigger('mouse_move')
-		cursor.queue_autohide()
-	end
-
-	request_render()
-end
-
-function handle_mouse_leave()
-	-- Slowly fadeout elements that are currently visible
-	for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
-		local element = Elements[element_name]
-		if element and element.proximity > 0 then
-			element:tween_property('forced_visibility', element:get_visibility(), 0, function()
-				element.forced_visibility = nil
-			end)
-		end
-	end
-
-	update_cursor_position(INFINITY, INFINITY)
 end
 
 function handle_file_end()
@@ -669,9 +683,9 @@ end
 function handle_mouse_pos(_, mouse)
 	if not mouse then return end
 	if cursor.hover_raw and not mouse.hover then
-		handle_mouse_leave()
+		cursor.leave()
 	else
-		update_cursor_position(mouse.x, mouse.y)
+		cursor.move(mouse.x, mouse.y)
 	end
 	cursor.hover_raw = mouse.hover
 end

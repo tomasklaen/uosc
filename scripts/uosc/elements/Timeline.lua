@@ -127,7 +127,7 @@ function Timeline:on_global_mouse_move()
 	if self.pressed then
 		self.pressed.distance = self.pressed.distance + get_point_to_point_proximity(self.pressed.last, cursor)
 		self.pressed.last.x, self.pressed.last.y = cursor.x, cursor.y
-		if self.width / state.duration < 10 then
+		if math.abs(cursor.velocity.x) > 80 then
 			self:set_from_cursor(true)
 			self.seek_timer:kill()
 			self.seek_timer:resume()
