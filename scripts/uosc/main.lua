@@ -428,7 +428,7 @@ cursor = {
 			return false
 		end
 
-		local prev = cursor.history[#cursor.history - 10]
+		local prev = cursor.history[#cursor.history - 9]
 		local end_x, end_y = cursor.x + (cursor.x - prev.x) * 1e10, cursor.y + (cursor.y - prev.y) * 1e10
 		return get_ray_to_rectangle_distance(cursor.x, cursor.y, end_x, end_y, rect)
 	end
