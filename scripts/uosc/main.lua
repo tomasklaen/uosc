@@ -455,6 +455,7 @@ state = {
 	duration = nil, -- current media duration
 	time_human = nil, -- current playback time in human format
 	destination_time_human = nil, -- depends on options.destination_time
+	framerate = 1,
 	pause = mp.get_property_native('pause'),
 	chapters = {},
 	current_chapter = nil,
@@ -828,6 +829,7 @@ end)
 mp.observe_property('display-hidpi-scale', 'native', create_state_setter('hidpi_scale', update_display_dimensions))
 mp.observe_property('cache', 'string', create_state_setter('cache'))
 mp.observe_property('cache-buffering-state', 'number', create_state_setter('cache_buffering'))
+mp.observe_property('demuxer-rawvideo-fps', 'number', create_state_setter('framerate'))
 mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_stream', function()
 	Elements:trigger('dispositions')
 end))

@@ -16,6 +16,7 @@ function Timeline:init()
 	self.top_border = options.timeline_border
 	self.is_hovered = false
 	self.has_thumbnail = false
+	self.pixels_per_frame = 1
 
 	-- Delayed seeking timer
 	self.seek_timer = mp.add_timeout(0.05, function() self:set_from_cursor() end)
@@ -52,6 +53,13 @@ end
 
 function Timeline:get_is_hovered() return self.enabled and self.is_hovered end
 
+function Timeline:update_pixels_per_frame()
+	if state.is_video and state.framerate and state.duration then
+		self.pixels_per_frame = self.width / (state.duration * state.framerate)
+	else
+		self.pixels_per_frame = 1
+	end
+end
 function Timeline:update_dimensions()
 	if state.fullormaxed then
 		self.size_min = options.timeline_size_min_fullscreen
@@ -74,6 +82,7 @@ function Timeline:update_dimensions()
 	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
 	self.obstructed = available_space < self.size_max + 10
 	self:decide_enabled()
+	self:update_pixels_per_frame()
 end
 
 function Timeline:get_time_at_x(x)
@@ -107,7 +116,8 @@ function Timeline:handle_cursor_down()
 	self:set_from_cursor()
 	cursor.on_primary_up = function() self:handle_cursor_up() end
 end
-function Timeline:on_prop_duration() self:decide_enabled() end
+function Timeline:on_prop_duration() self:decide_enabled() self:update_pixels_per_frame() end
+function Timeline:on_prop_framerate() self:update_pixels_per_frame() end
 function Timeline:on_prop_time() self:decide_enabled() end
 function Timeline:on_prop_border() self:update_dimensions() end
 function Timeline:on_prop_fullormaxed() self:update_dimensions() end
@@ -127,7 +137,7 @@ function Timeline:on_global_mouse_move()
 	if self.pressed then
 		self.pressed.distance = self.pressed.distance + get_point_to_point_proximity(self.pressed.last, cursor)
 		self.pressed.last.x, self.pressed.last.y = cursor.x, cursor.y
-		if math.abs(cursor.velocity.x) > 80 then
+		if not state.is_video or math.abs(cursor.velocity.x) > 80 * math.max(1, self.pixels_per_frame) then
 			self:set_from_cursor(true)
 			self.seek_timer:kill()
 			self.seek_timer:resume()
