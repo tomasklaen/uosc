@@ -662,26 +662,34 @@ function Menu:disable_key_bindings()
 	self.key_bindings = {}
 end
 
+-- Wraps a function so that it won't run if menu is closing or closed.
+---@param fn function()
+function Menu:create_action(fn)
+	return function()
+		if not self.is_closing and not self.is_closed then fn() end
+	end
+end
+
 ---@param modifiers Modifiers
 function Menu:create_modified_mbtn_left_handler(modifiers)
-	return function()
+	return self:create_action(function()
 		self.mouse_nav = true
 		self.modifiers = modifiers
 		self:handle_cursor_down()
 		self:handle_cursor_up()
 		self.modifiers = nil
-	end
+	end)
 end
 
 ---@param name string
 ---@param modifiers? Modifiers
 function Menu:create_key_action(name, modifiers)
-	return function()
+	return self:create_action(function()
 		self.mouse_nav = false
 		self.modifiers = modifiers
 		self:maybe(name)
 		self.modifiers = nil
-	end
+	end)
 end
 
 function Menu:render()
@@ -694,11 +702,11 @@ function Menu:render()
 		end
 	end
 
-	cursor.on_primary_down = function() self:handle_cursor_down() end
-	cursor.on_primary_up = function() self:handle_cursor_up() end
+	cursor.on_primary_down = self:create_action(function() self:handle_cursor_down() end)
+	cursor.on_primary_up = self:create_action(function() self:handle_cursor_up() end)
 	if self.proximity_raw == 0 then
-		cursor.on_wheel_down = function() self:handle_wheel_down() end
-		cursor.on_wheel_up = function() self:handle_wheel_up() end
+		cursor.on_wheel_down = self:create_action(function() self:handle_wheel_down() end)
+		cursor.on_wheel_up = self:create_action(function() self:handle_wheel_up() end)
 	end
 
 	local ass = assdraw.ass_new()
@@ -727,7 +735,7 @@ function Menu:render()
 		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {color = bg, opacity = menu_opacity, radius = 4})
 
 		if is_parent and get_point_to_rectangle_proximity(cursor, menu_rect) == 0 then
-			cursor.on_primary_down = function() self:slide_in_menu(menu, x) end
+			cursor.on_primary_down = self:create_action(function() self:slide_in_menu(menu, x) end)
 		end
 
 		-- Draw submenu if selected
@@ -737,7 +745,9 @@ function Menu:render()
 			submenu_rect = draw_menu(current_item, menu_rect.bx + menu_gap, 1)
 			submenu_is_hovered = get_point_to_rectangle_proximity(cursor, submenu_rect) == 0
 			if submenu_is_hovered then
-				cursor.on_primary_down = function() self:open_selected_item({preselect_first_item = false}) end
+				cursor.on_primary_down = self:create_action(function()
+					self:open_selected_item({preselect_first_item = false})
+				end)
 			end
 		end
 
