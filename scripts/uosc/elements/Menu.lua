@@ -106,8 +106,7 @@ function Menu:init(data, callback, opts)
 	self.key_bindings = {}
 	self.is_being_replaced = false
 	self.is_closing, self.is_closed = false, false
-	---@type {y: integer, time: number}[]
-	self.drag_data = nil
+	self.drag_last_y = nil
 	self.is_dragging = false
 
 	self:update(data)
@@ -545,47 +544,37 @@ function Menu:on_prop_fullormaxed() self:update_content_dimensions() end
 
 function Menu:handle_cursor_down()
 	if self.proximity_raw == 0 then
-		self.drag_data = {{y = cursor.y, time = mp.get_time()}}
+		self.drag_last_y = cursor.y
 		self.current.fling = nil
 	else
 		self:close()
 	end
 end
 
-function Menu:fling_distance()
-	local first, last = self.drag_data[1], self.drag_data[#self.drag_data]
-	if mp.get_time() - last.time > 0.05 then return 0 end
-	for i = #self.drag_data - 1, 1, -1 do
-		local drag = self.drag_data[i]
-		if last.time - drag.time > 0.03 then return ((drag.y - last.y) / ((last.time - drag.time) / 0.03)) * 10 end
-	end
-	return #self.drag_data < 2 and 0 or ((first.y - last.y) / ((first.time - last.time) / 0.03)) * 10
-end
-
 function Menu:handle_cursor_up()
-	if self.proximity_raw == 0 and self.drag_data and not self.is_dragging then
+	if self.proximity_raw == 0 and self.drag_last_y and not self.is_dragging then
 		self:open_selected_item({preselect_first_item = false, keep_open = self.modifiers and self.modifiers.shift})
 	end
 	if self.is_dragging then
-		local distance = self:fling_distance()
+		local distance = cursor.get_velocity().y / -3
 		if math.abs(distance) > 50 then
 			self.current.fling = {
-				y = self.current.scroll_y, distance = distance, time = self.drag_data[#self.drag_data].time,
+				y = self.current.scroll_y, distance = distance, time = cursor.history:head().time,
 				easing = ease_out_quart, duration = 0.5, update_cursor = true,
 			}
 		end
 	end
 	self.is_dragging = false
-	self.drag_data = nil
+	self.drag_last_y = nil
 end
 
 function Menu:on_global_mouse_move()
 	self.mouse_nav = true
-	if self.drag_data then
-		self.is_dragging = self.is_dragging or math.abs(cursor.y - self.drag_data[1].y) >= 10
-		local distance = self.drag_data[#self.drag_data].y - cursor.y
+	if self.drag_last_y then
+		self.is_dragging = self.is_dragging or math.abs(cursor.y - self.drag_last_y) >= 10
+		local distance = self.drag_last_y - cursor.y
 		if distance ~= 0 then self:set_scroll_by(distance) end
-		self.drag_data[#self.drag_data + 1] = {y = cursor.y, time = mp.get_time()}
+		if self.is_dragging then self.drag_last_y = cursor.y end
 	end
 	request_render()
 end
