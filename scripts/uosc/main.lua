@@ -316,10 +316,7 @@ cursor = {
 	on_wheel_down = nil,
 	on_wheel_up = nil,
 	allow_dragging = false,
-	---@type {x: number, y: number, time: number}[]
-	history = {},
-	history_size = 10,
-	velocity = {x = 0, y = 0},
+	history = CircularBuffer:new(10),
 	-- Called at the beginning of each render
 	reset_handlers = function()
 		cursor.on_primary_down, cursor.on_primary_up = nil, nil
@@ -342,6 +339,26 @@ cursor = {
 			cursor.wheel_enabled = enable_wheel
 		end
 	end,
+	find_history_sample = function()
+		local time = mp.get_time()
+		for _, e in cursor.history:iter_rev() do
+			if time - e.time > 0.1 then
+				return e
+			end
+		end
+		return cursor.history:tail()
+	end,
+	get_velocity = function()
+		local snap = cursor.find_history_sample()
+		if snap then
+			local x, y, time = cursor.x - snap.x, cursor.y - snap.y, mp.get_time()
+			local time_diff = time - snap.time
+			if time_diff > 0.001 then
+				return { x = x / time_diff, y = y / time_diff }
+			end
+		end
+		return { x = 0, y = 0 }
+	end,
 	move = function(x, y)
 		local old_x, old_y = cursor.x, cursor.y
 
@@ -360,8 +377,8 @@ cursor = {
 			Elements:update_proximities()
 
 			if cursor.x == INFINITY or cursor.y == INFINITY then
-				cursor.hidden, cursor.history = true, {}
-				cursor.velocity.x, cursor.velocity.y = 0, 0
+				cursor.hidden = true
+				cursor.history:clear()
 
 				-- Slowly fadeout elements that are currently visible
 				for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
@@ -375,28 +392,12 @@ cursor = {
 
 				Elements:trigger('global_mouse_leave')
 			elseif cursor.hidden then
-				cursor.hidden, cursor.history = false, {}
-				cursor.velocity.x, cursor.velocity.y = 0, 0
+				cursor.hidden = false
+				cursor.history:clear()
 				Elements:trigger('global_mouse_enter')
 			else
 				-- Update history
-				local new_index = #cursor.history + 1
-				local last = {x = x, y = y, time = mp.get_time()}
-				if #cursor.history >= cursor.history_size then
-					new_index = #cursor.history
-					for i = 1, #cursor.history, 1 do cursor.history[i] = cursor.history[i + 1] end
-				end
-				cursor.history[new_index] = last
-
-				-- Update velocity
-				if #cursor.history > 5 then
-					local first = cursor.history[1]
-					local time_delta = (last.time - first.time)
-					cursor.velocity.x = (last.x - first.x) / time_delta
-					cursor.velocity.y = (last.y - first.y) / time_delta
-				else
-					cursor.velocity.x, cursor.velocity.y = 0, 0
-				end
+				cursor.history:insert({x = cursor.x, y = cursor.y, time = mp.get_time()})
 			end
 
 			Elements:proximity_trigger('mouse_move')
@@ -424,11 +425,8 @@ cursor = {
 	-- Calculates distance in which cursor reaches rectangle if it continues moving on the same path.
 	-- Returns `nil` if cursor is not moving towards the rectangle.
 	direction_to_rectangle_distance = function(rect)
-		if cursor.hidden or #cursor.history < 10 then
-			return false
-		end
-
-		local prev = cursor.history[#cursor.history - 9]
+		local prev = cursor.find_history_sample()
+		if not prev then return false end
 		local end_x, end_y = cursor.x + (cursor.x - prev.x) * 1e10, cursor.y + (cursor.y - prev.y) * 1e10
 		return get_ray_to_rectangle_distance(cursor.x, cursor.y, end_x, end_y, rect)
 	end
@@ -455,7 +453,6 @@ state = {
 	duration = nil, -- current media duration
 	time_human = nil, -- current playback time in human format
 	destination_time_human = nil, -- depends on options.destination_time
-	framerate = 1,
 	pause = mp.get_property_native('pause'),
 	chapters = {},
 	current_chapter = nil,
@@ -829,7 +826,6 @@ end)
 mp.observe_property('display-hidpi-scale', 'native', create_state_setter('hidpi_scale', update_display_dimensions))
 mp.observe_property('cache', 'string', create_state_setter('cache'))
 mp.observe_property('cache-buffering-state', 'number', create_state_setter('cache_buffering'))
-mp.observe_property('demuxer-rawvideo-fps', 'number', create_state_setter('framerate'))
 mp.observe_property('demuxer-via-network', 'native', create_state_setter('is_stream', function()
 	Elements:trigger('dispositions')
 end))
