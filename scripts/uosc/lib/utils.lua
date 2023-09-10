@@ -610,7 +610,7 @@ function serialize_chapters(chapters)
 	local opts = {size = 1, bold = true}
 	for index, chapter in ipairs(chapters) do
 		chapter.index = index
-		chapter.title_wrapped = wrap_text(chapter.title, opts, 25)
+		chapter.title_wrapped, chapter.title_lines = wrap_text(chapter.title, opts, 25)
 		chapter.title_wrapped_width = text_width(chapter.title_wrapped, opts)
 		chapter.title_wrapped = ass_escape(chapter.title_wrapped)
 	end

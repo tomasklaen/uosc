@@ -400,14 +400,14 @@ end
 ---@param text string
 ---@param opts {size: number; bold?: boolean; italic?: boolean}
 ---@param target_line_length number
----@return string
+---@return string, integer
 function wrap_text(text, opts, target_line_length)
 	local target_line_width = target_line_length * width_length_ratio * opts.size
 	local bold, scale_factor, scale_offset = opts.bold or false, opts_factor_offset(opts)
 	local wrap_at_chars = {' ', '　', '-', '–'}
 	local remove_when_wrap = {' ', '　'}
 	local lines = {}
-	for text_line in text:gmatch("([^\n]*)\n?") do
+	for _, text_line in ipairs(split(text, '\n')) do
 		local line_width = scale_offset
 		local line_start = 1
 		local before_end = nil
@@ -458,5 +458,5 @@ function wrap_text(text, opts, target_line_length)
 		if #text_line >= line_start then lines[#lines + 1] = text_line:sub(line_start)
 		elseif text_line == '' then lines[#lines + 1] = '' end
 	end
-	return table.concat(lines, '\n')
+	return table.concat(lines, '\n'), #lines
 end

@@ -161,6 +161,10 @@ function Timeline:render()
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = clamp(0, size - hide_text_below, hide_text_ramp) / hide_text_ramp
 
+	local tooltip_gap = 2
+	local tooltip_margin = 10
+	local timestamp_gap = tooltip_gap
+
 	local spacing = math.max(math.floor((self.size_max - self.font_size) / 2.5), 4)
 	local progress = state.time / state.duration
 	local is_line = options.timeline_style == 'line'
@@ -290,7 +294,12 @@ function Timeline:render()
 				end
 
 				-- Render hovered chapter above others
-				if hovered_chapter then draw_chapter(hovered_chapter.time, diamond_radius_hovered) end
+				if hovered_chapter then
+					draw_chapter(hovered_chapter.time, diamond_radius_hovered)
+					timestamp_gap = tooltip_gap + round(diamond_radius_hovered)
+				else
+					timestamp_gap = tooltip_gap + round(diamond_radius)
+				end
 			end
 
 			-- A-B loop indicators
@@ -372,12 +381,10 @@ function Timeline:render()
 		local tooltip_anchor = {ax = ax, ay = ay, bx = bx, by = by}
 
 		-- Timestamp
-		local offset = #state.chapters > 0 and 10 or 4
-		local opts = {size = self.font_size, offset = offset}
+		local opts = {size = self.font_size, offset = timestamp_gap, margin = tooltip_margin}
 		local hovered_time_human = format_time(hovered_seconds, state.duration)
 		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
-		ass:tooltip(tooltip_anchor, hovered_time_human, opts)
-		tooltip_anchor.ay = tooltip_anchor.ay - self.font_size - offset
+		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts)
 
 		-- Thumbnail
 		if not thumbnail.disabled
@@ -386,7 +393,8 @@ function Timeline:render()
 			and thumbnail.height ~= 0
 		then
 			local scale_x, scale_y = display.scale_x, display.scale_y
-			local border, margin_x, margin_y = math.ceil(2 * scale_x), round(10 * scale_x), round(5 * scale_y)
+			local border = math.ceil(2 * scale_x)
+			local margin_x, margin_y = round(tooltip_margin * scale_x), round(tooltip_gap * scale_y)
 			local thumb_x_margin, thumb_y_margin = border + margin_x + bax, border + margin_y
 			local thumb_width, thumb_height = thumbnail.width, thumbnail.height
 			local thumb_x = round(clamp(
@@ -399,7 +407,7 @@ function Timeline:render()
 			ass:rect(ax, ay, bx, by, {color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = 2})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
 			self.has_thumbnail, rendered_thumbnail = true, true
-			tooltip_anchor.ax, tooltip_anchor.bx, tooltip_anchor.ay = ax, bx, ay
+			tooltip_anchor.ay = ay
 		end
 
 		-- Chapter title
@@ -407,8 +415,9 @@ function Timeline:render()
 			local _, chapter = itable_find(state.chapters, function(c) return hovered_seconds >= c.time end, #state.chapters, 1)
 			if chapter and not chapter.is_end_only then
 				ass:tooltip(tooltip_anchor, chapter.title_wrapped, {
-					size = self.font_size, offset = 10, responsive = false, bold = true,
+					size = self.font_size, offset = tooltip_gap, responsive = false, bold = true,
 					width_overwrite = chapter.title_wrapped_width * self.font_size,
+					lines = chapter.title_lines, margin = tooltip_margin,
 				})
 			end
 		end
