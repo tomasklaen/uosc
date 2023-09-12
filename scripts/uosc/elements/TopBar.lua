@@ -182,7 +182,7 @@ function TopBar:render()
 				by = self.by - bg_margin
 			}
 			ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {color = fg, opacity = visibility, radius = 2})
-			ass:txt(rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (self.size / 2), 5, formatted_text, opts)
+			ass:txt(rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2, 5, formatted_text, opts)
 			title_ax = rect.bx + bg_margin
 
 			-- Click action
