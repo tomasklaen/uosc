@@ -75,18 +75,32 @@ end
 -- Tooltip.
 ---@param element {ax: number; ay: number; bx: number; by: number}
 ---@param value string|number
----@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, responsive?: boolean}
+---@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, margin?: number, responsive?: boolean, opacity?: number, lines?: integer}
 function ass_mt:tooltip(element, value, opts)
+	if value == '' then return end
 	opts = opts or {}
 	opts.size = opts.size or 16
 	opts.border = options.text_border
 	opts.border_color = bg
-	local offset = opts.offset or opts.size / 2
+	opts.margin = opts.margin or 10
+	opts.opacity = opts.opacity or options.timeline_opacity
+	opts.lines = opts.lines or 1
+	local padding_y = round(opts.size / 6)
+	local padding_x = round(opts.size / 3)
+	local offset = opts.offset or 2
 	local align_top = opts.responsive == false or element.ay - offset > opts.size * 2
 	local x = element.ax + (element.bx - element.ax) / 2
 	local y = align_top and element.ay - offset or element.by + offset
-	local margin = (opts.width_overwrite or text_width(value, opts)) / 2 + 10 + Elements.window_border.size
-	self:txt(clamp(margin, x, display.width - margin), y, align_top and 2 or 8, value, opts)
+	local width_half = (opts.width_overwrite or text_width(value, opts)) / 2 + padding_x
+	local min_edge_distance = width_half + opts.margin + Elements.window_border.size
+	x = clamp(min_edge_distance, x, display.width - min_edge_distance)
+	local ax, bx = x - width_half, x + width_half
+	local ay = (align_top and y - opts.size * opts.lines - 2 * padding_y or y)
+	local by = (align_top and y or y + opts.size * opts.lines + 2 * padding_y)
+	self:rect(ax, ay, bx, by, {color = bg, opacity = opts.opacity, radius = 2})
+	opts.opacity = nil
+	self:txt(x, align_top and y - padding_y or y + padding_y, align_top and 2 or 8, value, opts)
+	return { ax = element.ax, ay = ay, bx = element.bx, by = by }
 end
 
 -- Rectangle.
