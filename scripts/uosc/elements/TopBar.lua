@@ -175,12 +175,17 @@ function TopBar:render()
 			local formatted_text = '{\\b1}' .. state.playlist_pos .. '{\\b0\\fs' .. self.font_size * 0.9 .. '}/'
 				.. state.playlist_count
 			local opts = {size = self.font_size, wrap = 2, color = fgt, opacity = visibility}
-			local bx = round(title_ax + text_width(text, opts) + padding * 2)
-			ass:rect(title_ax, title_ay, bx, self.by - bg_margin, {color = fg, opacity = visibility, radius = 2})
-			ass:txt(title_ax + (bx - title_ax) / 2, self.ay + (self.size / 2), 5, formatted_text, opts)
-			title_ax = bx + bg_margin
-			local rect = {ax = self.ax, ay = self.ay, bx = bx, by = self.by}
+			local rect = {
+				ax = title_ax,
+				ay = title_ay,
+				bx = round(title_ax + text_width(text, opts) + padding * 2),
+				by = self.by - bg_margin
+			}
+			ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {color = fg, opacity = visibility, radius = 2})
+			ass:txt(rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (self.size / 2), 5, formatted_text, opts)
+			title_ax = rect.bx + bg_margin
 
+			-- Click action
 			if get_point_to_rectangle_proximity(cursor, rect) == 0 then
 				cursor.on_primary_down = function() mp.command('script-binding uosc/playlist') end
 			end
@@ -234,18 +239,27 @@ function TopBar:render()
 				local font_size = self.font_size * 0.8
 				local height = font_size * 1.3
 				local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
-				local by = title_ay + height
 				local opts = {
 					size = font_size, italic = true, wrap = 2, color = bgt,
 					border = 1, border_color = bg, opacity = visibility * 0.8,
 				}
-				local bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)
-				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
-				ass:rect(title_ax, title_ay, bx, by, {
+				local rect = {
+					ax = title_ax,
+					ay = title_ay,
+					bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2),
+					by = title_ay + height
+				}
+				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, rect.bx, rect.by)
+				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
 					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
 				})
-				ass:txt(title_ax + padding, title_ay + height / 2, 4, text, opts)
-				title_ay = by + 1
+				ass:txt(rect.ax + padding, rect.ay + height / 2, 4, text, opts)
+				title_ay = rect.by + 1
+
+				-- Click action
+				if get_point_to_rectangle_proximity(cursor, rect) == 0 then
+					cursor.on_primary_down = function() mp.command('script-binding uosc/chapters') end
+				end
 			end
 		end
 		self.title_by = title_ay - 1
