@@ -1,16 +1,17 @@
 local Element = require('elements/Element')
 
 -- Menu data structure accepted by `Menu:open(menu)`.
----@alias MenuData {type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer;}
+---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'}
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(); on_close?: fun(); on_back?: fun(); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search}
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
+---@alias Search {query: string; timeout: unknown; source: {scroll_y: number; selected_index?: integer; items?: MenuDataItem[]}}
 
 ---@alias Modifiers {shift?: boolean, ctrl?: boolean, alt?: boolean}
 ---@alias MenuCallbackMeta {modifiers: Modifiers}
@@ -148,10 +149,23 @@ function Menu:update(data)
 		i = i + 1
 		local menu, menu_data = menus_to_serialize[i][1], menus_to_serialize[i][2]
 		local parent_id = menu.parent_menu and not menu.parent_menu.is_root and menu.parent_menu.id
-		if not menu.is_root then
+		if menu_data.id then
+			menu.id = menu_data.id
+		elseif not menu.is_root then
 			menu.id = (parent_id and parent_id .. ' > ' or '') .. (menu_data.title or i)
+		else
+			menu.id = 'main'
 		end
 		menu.icon = 'chevron_right'
+
+		menu.on_search = menu_data.on_search
+		if type(menu_data.search_debounce) == 'number' then
+			menu.search_debounce = math.max(0, menu_data.search_debounce)
+		elseif menu.search_debounce == 'submit' then
+			menu.search_debounce = 'submit'
+		else
+			menu.search_debounce = menu.on_search and 300 or 0
+		end
 
 		-- Update items
 		local first_active_index = nil
@@ -182,13 +196,13 @@ function Menu:update(data)
 		if menu.is_root then menu.selected_index = menu_data.selected_index or first_active_index end
 
 		-- Retain old state
-		local old_menu = self.by_id[menu.is_root and '__root__' or menu.id]
-		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling'}) end
+		local old_menu = self.by_id[menu.id]
+		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'}) end
 
 		if menu.selected_index then self:select_by_offset(0, menu) end
 
 		new_all[#new_all + 1] = menu
-		new_by_id[menu.is_root and '__root__' or menu.id] = menu
+		new_by_id[menu.id] = menu
 	end
 
 	self.root, self.all, self.by_id = new_root, new_all, new_by_id
@@ -610,6 +624,157 @@ function Menu:on_end()
 	self:navigate_by_offset(INFINITY)
 end
 
+function Menu:search_update_items()
+	local menus_to_serialize = {self.root}
+
+	for _, menu in ipairs(menus_to_serialize) do
+		for _, item in ipairs(menu.items or {}) do
+			if item.items then menus_to_serialize[#menus_to_serialize + 1] = item end
+		end
+
+		if menu.selected_index then self:select_by_offset(0, menu) end
+	end
+
+	self:update_content_dimensions()
+	self:reset_navigation()
+end
+
+---@param menu MenuStack
+function Menu:search_internal(menu)
+	local query = menu.search.query
+	menu.items = query ~= '' and itable_filter(menu.search.source.items, function(item)
+		return item.title and item.title:lower():find(query, 1, true) or
+			item.hint and item.hint:lower():find(query, 1, true)
+	end) or menu.search.source.items
+	self:search_update_items()
+end
+
+---@param menu? MenuStack
+function Menu:search_submit(menu)
+	menu = menu or self.current
+	if not menu.search then return end
+	if menu.on_search then
+		if menu.search_debounce ~= 0 then
+			menu.items = {
+				{
+					title = 'Loading...',
+					icon = 'spinner',
+					italic = true,
+					align = 'center',
+					selectable = false,
+					muted = true
+				}
+			}
+			self:update_items(self.root.items)
+		end
+		local search_type = type(menu.on_search)
+		if search_type == 'string' then
+			mp.command(menu.on_search .. ' ' .. menu.search.query)
+		elseif search_type == 'table' then
+			local command = table_shallow_copy(menu.on_search)
+			command[#command + 1] = menu.search.query
+			mp.command_native(command)
+		else
+			menu.on_search(menu.search.query)
+		end
+	else self:search_internal(menu) end
+end
+
+---@param query string
+function Menu:search_query_update(query)
+	local menu = self.current
+	menu.search.query = query
+	if menu.search_debounce ~= 'submit' then
+		if menu.search.timeout then
+			menu.search.timeout:kill()
+			menu.search.timeout:resume()
+		else
+			self:search_submit(menu)
+		end
+	end
+	request_render()
+end
+
+function Menu:search_backspace()
+	local pos, search_text = #self.current.search.query - 1, self.current.search.query
+	while pos > 1 and search_text:byte(pos) >= 0x80 and search_text:byte(pos) <= 0xbf do
+		pos = pos - 1
+	end
+	if pos == 0 then self:search_stop()
+	else self:search_query_update(search_text:sub(1, pos)) end
+end
+
+function Menu:search_text_input(info)
+	if info.event ~= 'up' then
+		local key_text = info.key_text
+		if not key_text then
+			-- might be KP0 to KP9 or KP_DEC
+			key_text = info.key_name:match('KP_?(.+)')
+			if not key_text then return end
+			if key_text == 'DEC' then key_text = '.' end
+		end
+		local menu = self.current
+		if not menu.search then self:search_start() end
+		self:search_query_update(menu.search.query .. key_text)
+	end
+end
+
+function Menu:search_stop()
+	self:search_query_update('')
+	local menu, search_source = self.current, self.current.search.source
+	menu.selected_index = search_source.selected_index
+	menu.scroll_y = search_source.scroll_y
+	menu.search = nil
+	self:update_dimensions()
+	self:reset_navigation()
+end
+
+function Menu:search_start()
+	local menu = self.current
+	if menu.search then return end
+	local timeout
+	if menu.search_debounce ~= 'Submit' and menu.search_debounce > 0 then
+		timeout = mp.add_timeout(menu.search_debounce / 1000, self:create_action(function()
+			self:search_submit(menu)
+		end))
+	end
+	menu.search = {
+		query = '', timeout = timeout,
+		source = {
+			scroll_y = menu.scroll_y, selected_index = menu.selected_index,
+			items = not menu.on_search and menu.items or nil
+		},
+	}
+	self:update_dimensions()
+end
+
+function Menu:key_esc()
+	if self.current.search then self:search_stop()
+	else self:close() end
+end
+
+function Menu:key_bs(info)
+	if info.event ~= 'up' then
+		if self.current.search then self:search_backspace()
+		elseif info.event ~= 'repeat' then self:back() end
+	end
+end
+
+function Menu:key_ctrl_enter()
+	if self.current.search then self:search_submit()
+	else self:open_selected_item_preselect() end
+end
+
+function Menu:key_left()
+	if self.current.search then -- control cursor when it's implemented
+	else self:back() end
+end
+
+function Menu:key_right()
+	if self.current.search then -- control cursor when it's implemented
+	else self:open_selected_item_preselect() end
+end
+
 function Menu:add_key_binding(key, name, fn, flags)
 	self.key_bindings[#self.key_bindings + 1] = name
 	mp.add_forced_key_binding(key, name, fn, flags)
@@ -622,30 +787,36 @@ function Menu:enable_key_bindings()
 	self:add_key_binding('down', 'menu-next1', self:create_key_action('next'), 'repeatable')
 	self:add_key_binding('ctrl+up', 'menu-move-up', self:create_key_action('move_selected_item_up'), 'repeatable')
 	self:add_key_binding('ctrl+down', 'menu-move-down', self:create_key_action('move_selected_item_down'), 'repeatable')
-	self:add_key_binding('left', 'menu-back1', self:create_key_action('back'))
-	self:add_key_binding('right', 'menu-select1', self:create_key_action('open_selected_item_preselect'))
+	self:add_key_binding('left', 'menu-back1', self:create_key_action('key_left'))
+	self:add_key_binding('right', 'menu-select1', self:create_key_action('key_right'))
 	self:add_key_binding('shift+right', 'menu-select-soft1',
 		self:create_key_action('open_selected_item_soft', {shift = true}))
 	self:add_key_binding('shift+mbtn_left', 'menu-select3', self:create_modified_mbtn_left_handler({shift = true}))
 	self:add_key_binding('ctrl+mbtn_left', 'menu-select4', self:create_modified_mbtn_left_handler({ctrl = true}))
 	self:add_key_binding('mbtn_back', 'menu-back-alt3', self:create_key_action('back'))
-	self:add_key_binding('bs', 'menu-back-alt4', self:create_key_action('back'))
+	self:add_key_binding('bs', 'menu-back-alt4', self:create_key_action('key_bs'), {repeatable = true, complex = true})
 	self:add_key_binding('enter', 'menu-select-alt3', self:create_key_action('open_selected_item_preselect'))
 	self:add_key_binding('kp_enter', 'menu-select-alt4', self:create_key_action('open_selected_item_preselect'))
 	self:add_key_binding('ctrl+enter', 'menu-select-ctrl1',
-		self:create_key_action('open_selected_item_preselect', {ctrl = true}))
+		self:create_key_action('key_ctrl_enter', {ctrl = true}))
 	self:add_key_binding('ctrl+kp_enter', 'menu-select-ctrl2',
 		self:create_key_action('open_selected_item_preselect', {ctrl = true}))
 	self:add_key_binding('shift+enter', 'menu-select-alt5',
 		self:create_key_action('open_selected_item_soft', {shift = true}))
 	self:add_key_binding('shift+kp_enter', 'menu-select-alt6',
 		self:create_key_action('open_selected_item_soft', {shift = true}))
-	self:add_key_binding('esc', 'menu-close', self:create_key_action('close'))
+	self:add_key_binding('esc', 'menu-close', self:create_key_action('key_esc'))
 	self:add_key_binding('pgup', 'menu-page-up', self:create_key_action('on_pgup'), 'repeatable')
 	self:add_key_binding('pgdwn', 'menu-page-down', self:create_key_action('on_pgdwn'), 'repeatable')
 	self:add_key_binding('home', 'menu-home', self:create_key_action('on_home'))
 	self:add_key_binding('end', 'menu-end', self:create_key_action('on_end'))
 	self:add_key_binding('del', 'menu-delete-item', self:create_key_action('delete_selected_item'))
+	self:add_key_binding('any_unicode', 'menu-search', self:create_key_action('search_text_input'), {repeatable = true, complex = true})
+	-- KP0 to KP9 and KP_DEC are not included in any_unicode and despite typically producing characters, they don't have a info.key_text
+	self:add_key_binding('kp_dec', 'menu-search-kp-dec', self:create_key_action('search_text_input'), {repeatable = true, complex = true})
+	for i = 0, 9 do
+		self:add_key_binding('kp' .. i, 'menu-search-kp' .. i, self:create_key_action('search_text_input'), {repeatable = true, complex = true})
+	end
 end
 
 function Menu:disable_key_bindings()
@@ -656,8 +827,8 @@ end
 -- Wraps a function so that it won't run if menu is closing or closed.
 ---@param fn function()
 function Menu:create_action(fn)
-	return function()
-		if not self.is_closing and not self.is_closed then fn() end
+	return function(...)
+		if not self.is_closing and not self.is_closed then fn(...) end
 	end
 end
 
@@ -675,10 +846,10 @@ end
 ---@param name string
 ---@param modifiers? Modifiers
 function Menu:create_key_action(name, modifiers)
-	return self:create_action(function()
+	return self:create_action(function(...)
 		self.mouse_nav = false
 		self.modifiers = modifiers
-		self:maybe(name)
+		self:maybe(name, ...)
 		self.modifiers = nil
 	end)
 end
@@ -865,10 +1036,17 @@ function Menu:render()
 			})
 
 			-- Title
-			ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.ass_safe_title, {
-				size = self.font_size, bold = true, color = bg, wrap = 2, opacity = menu_opacity,
-				clip = '\\clip(' .. ax .. ',' .. title_ay .. ',' .. bx .. ',' .. ay .. ')',
-			})
+			if menu.search then
+				ass:txt(bx - 4, title_ay + (title_height / 2), 6, ass_escape(menu.search.query), {
+					size = self.font_size, color = bg, wrap = 2, opacity = menu_opacity,
+					clip = '\\clip(' .. ax + 2 .. ',' .. title_ay .. ',' .. bx - 2 .. ',' .. ay .. ')',
+				})
+			else
+				ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.ass_safe_title, {
+					size = self.font_size, bold = true, color = bg, wrap = 2, opacity = menu_opacity,
+					clip = '\\clip(' .. ax + 2 .. ',' .. title_ay .. ',' .. bx - 2 .. ',' .. ay .. ')',
+				})
+			end
 		end
 
 		-- Scrollbar
