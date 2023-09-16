@@ -753,7 +753,7 @@ function Menu:render()
 			local is_selected = menu.selected_index == index or item.active
 
 			-- Select hovered item
-			if is_current and self.mouse_nav then
+			if is_current and self.mouse_nav and item.selectable ~= false then
 				if submenu_rect and cursor.direction_to_rectangle_distance(submenu_rect) then
 					blur_selected_index = false
 				else
