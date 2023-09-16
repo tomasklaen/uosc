@@ -185,18 +185,7 @@ function Menu:update(data)
 		local old_menu = self.by_id[menu.is_root and '__root__' or menu.id]
 		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling'}) end
 
-		if menu.selected_index then
-			local index = clamp(1, menu.selected_index, #menu.items)
-			local prev_index =
-				itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1)
-			local next_index =
-				itable_find(menu.items, function(item) return item.selectable ~= false end, index)
-			if prev_index and next_index then
-				menu.selected_index = index - prev_index <= next_index - index and prev_index or next_index
-			else
-				menu.selected_index = prev_index or next_index
-			end
-		end
+		if menu.selected_index then self:select_by_offset(0, menu) end
 
 		new_all[#new_all + 1] = menu
 		new_by_id[menu.is_root and '__root__' or menu.id] = menu
@@ -455,24 +444,12 @@ function Menu:delete_value(value, menu)
 	self:delete_index(index)
 end
 
----@param menu? MenuStack
-function Menu:prev(menu)
-	menu = menu or self.current
-	local initial_index = menu.selected_index and menu.selected_index - 1 or #menu.items
-	if initial_index > 0 then
-		menu.selected_index = itable_find(menu.items, function(item) return item.selectable ~= false end, initial_index, 1)
-		self:scroll_to_index(menu.selected_index, menu, true)
-	end
+function Menu:prev()
+	self:navigate_by_offset(-1)
 end
 
----@param menu? MenuStack
-function Menu:next(menu)
-	menu = menu or self.current
-	local initial_index = menu.selected_index and menu.selected_index + 1 or 1
-	if initial_index <= #menu.items then
-		menu.selected_index = itable_find(menu.items, function(item) return item.selectable ~= false end, initial_index)
-		self:scroll_to_index(menu.selected_index, menu, true)
-	end
+function Menu:next()
+	self:navigate_by_offset(1)
 end
 
 ---@param menu MenuStack One of menus in `self.all`.
@@ -591,36 +568,44 @@ end
 function Menu:handle_wheel_up() self:scroll_by(self.scroll_step * -3, nil, {update_cursor = true}) end
 function Menu:handle_wheel_down() self:scroll_by(self.scroll_step * 3, nil, {update_cursor = true}) end
 
+---@param offset integer
+---@param menu? MenuStack
+function Menu:select_by_offset(offset, menu)
+	menu = menu or self.current
+	local index = clamp(1, (menu.selected_index or offset >= 0 and 0 or #menu.items + 1) + offset, #menu.items)
+	local prev_index = itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1)
+	local next_index = itable_find(menu.items, function(item) return item.selectable ~= false end, index)
+	if prev_index and next_index then
+		if offset == 0 then menu.selected_index = index - prev_index <= next_index - index and prev_index or next_index
+		elseif offset > 0 then menu.selected_index = next_index
+		else menu.selected_index = prev_index end
+	else
+		menu.selected_index = prev_index or next_index or nil
+	end
+end
+
+---@param offset integer
+function Menu:navigate_by_offset(offset)
+	self:select_by_offset(offset)
+	if self.current.selected_index then self:scroll_to_index(self.current.selected_index) end
+end
+
 function Menu:on_pgup()
-	local menu = self.current
-	local items_per_page = round((menu.height / self.scroll_step) * 0.4)
-	local paged_index = (menu.selected_index and menu.selected_index or #menu.items) - items_per_page
-	local index = clamp(1, paged_index, #menu.items)
-	index = itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1)
-	if not index then index = itable_find(menu.items, function(item) return item.selectable ~= false end, index) end
-	menu.selected_index = index
-	if menu.selected_index then self:scroll_to_index(menu.selected_index) end
+	local items_per_page = round((self.current.height / self.scroll_step) * 0.4)
+	self:navigate_by_offset(-items_per_page)
 end
 
 function Menu:on_pgdwn()
-	local menu = self.current
-	local items_per_page = round((menu.height / self.scroll_step) * 0.4)
-	local paged_index = (menu.selected_index and menu.selected_index or 1) + items_per_page
-	local index = clamp(1, paged_index, #menu.items)
-	index = itable_find(menu.items, function(item) return item.selectable ~= false end, index)
-	if not index then index = itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1) end
-	menu.selected_index = index
-	if index then self:scroll_to_index(menu.selected_index) end
+	local items_per_page = round((self.current.height / self.scroll_step) * 0.4)
+	self:navigate_by_offset(items_per_page)
 end
 
 function Menu:on_home()
-	self.current.selected_index = math.min(1, #self.current.items)
-	if self.current.selected_index > 0 then self:scroll_to_index(self.current.selected_index) end
+	self:navigate_by_offset(-INFINITY)
 end
 
 function Menu:on_end()
-	self.current.selected_index = #self.current.items
-	if self.current.selected_index > 0 then self:scroll_to_index(self.current.selected_index) end
+	self:navigate_by_offset(INFINITY)
 end
 
 function Menu:add_key_binding(key, name, fn, flags)
