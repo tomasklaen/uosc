@@ -186,7 +186,16 @@ function Menu:update(data)
 		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling'}) end
 
 		if menu.selected_index then
-			menu.selected_index = #menu.items > 0 and clamp(1, menu.selected_index, #menu.items) or nil
+			local index = clamp(1, menu.selected_index, #menu.items)
+			local prev_index =
+				itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1)
+			local next_index =
+				itable_find(menu.items, function(item) return item.selectable ~= false end, index)
+			if prev_index and next_index then
+				menu.selected_index = index - prev_index <= next_index - index and prev_index or next_index
+			else
+				menu.selected_index = prev_index or next_index
+			end
 		end
 
 		new_all[#new_all + 1] = menu
@@ -586,16 +595,22 @@ function Menu:on_pgup()
 	local menu = self.current
 	local items_per_page = round((menu.height / self.scroll_step) * 0.4)
 	local paged_index = (menu.selected_index and menu.selected_index or #menu.items) - items_per_page
-	menu.selected_index = clamp(1, paged_index, #menu.items)
-	if menu.selected_index > 0 then self:scroll_to_index(menu.selected_index) end
+	local index = clamp(1, paged_index, #menu.items)
+	index = itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1)
+	if not index then index = itable_find(menu.items, function(item) return item.selectable ~= false end, index) end
+	menu.selected_index = index
+	if menu.selected_index then self:scroll_to_index(menu.selected_index) end
 end
 
 function Menu:on_pgdwn()
 	local menu = self.current
 	local items_per_page = round((menu.height / self.scroll_step) * 0.4)
 	local paged_index = (menu.selected_index and menu.selected_index or 1) + items_per_page
-	menu.selected_index = clamp(1, paged_index, #menu.items)
-	if menu.selected_index > 0 then self:scroll_to_index(menu.selected_index) end
+	local index = clamp(1, paged_index, #menu.items)
+	index = itable_find(menu.items, function(item) return item.selectable ~= false end, index)
+	if not index then index = itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1) end
+	menu.selected_index = index
+	if index then self:scroll_to_index(menu.selected_index) end
 end
 
 function Menu:on_home()
