@@ -75,7 +75,7 @@ function TopBar:decide_enabled()
 	else
 		self.enabled = options.top_bar == 'always'
 	end
-	self.enabled = self.enabled and (options.top_bar_controls or options.top_bar_title)
+	self.enabled = self.enabled and (options.top_bar_controls or options.top_bar_title ~= 'no' or state.has_playlist)
 	for _, element in ipairs(self.buttons) do
 		element.enabled = self.enabled and options.top_bar_controls
 	end
@@ -121,7 +121,7 @@ function TopBar:update_dimensions()
 	self.bx = display.width - Elements.window_border.size
 	self.by = self.size + Elements.window_border.size
 	self.title_bx = self.bx - (options.top_bar_controls and (self.button_width * 3) or 0)
-	self.ax = options.top_bar_title and Elements.window_border.size or self.title_bx
+	self.ax = (options.top_bar_title ~= 'no' or state.has_playlist) and Elements.window_border.size or self.title_bx
 
 	local button_bx = self.bx
 	for _, element in pairs(self.buttons) do
@@ -154,6 +154,11 @@ function TopBar:on_prop_maximized()
 	self:update_dimensions()
 end
 
+function TopBar:on_prop_has_playlist()
+	self:decide_enabled()
+	self:update_dimensions()
+end
+
 function TopBar:on_display() self:update_dimensions() end
 
 function TopBar:render()
@@ -162,7 +167,7 @@ function TopBar:render()
 	local ass = assdraw.ass_new()
 
 	-- Window title
-	if options.top_bar_title and (state.title or state.has_playlist) then
+	if state.title or state.has_playlist then
 		local bg_margin = math.floor((self.size - self.font_size) / 4)
 		local padding = self.font_size / 2
 		local title_ax = self.ax + bg_margin
@@ -192,7 +197,7 @@ function TopBar:render()
 		end
 
 		-- Skip rendering titles if there's not enough horizontal space
-		if max_bx - title_ax > self.font_size * 3 then
+		if max_bx - title_ax > self.font_size * 3 and options.top_bar_title ~= 'no' then
 			-- Main title
 			local main_title = self.show_alt_title and self.alt_title or self.main_title
 			if main_title then
