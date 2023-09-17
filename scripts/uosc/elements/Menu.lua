@@ -261,7 +261,7 @@ function Menu:update_dimensions()
 	for _, menu in ipairs(self.all) do
 		local width = math.max(menu.search and menu.search.width or 0, menu.max_width)
 		menu.width = round(clamp(min_width, width, display.width * 0.9))
-		local title_height = (menu.is_root and menu.title) and self.scroll_step or 0
+		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step or 0
 		local max_height = round(height_available * 0.9 - title_height)
 		local content_height = self.scroll_step * #menu.items
 		menu.height = math.min(content_height - self.item_spacing, max_height)
@@ -886,7 +886,7 @@ function Menu:render()
 		local is_current, is_parent, is_submenu = pos == 0, pos < 0, pos > 0
 		local menu_opacity = pos == 0 and opacity or opacity * (options.menu_parent_opacity ^ math.abs(pos))
 		local ax, ay, bx, by = x, menu.top, x + menu.width, menu.top + menu.height
-		local draw_title = menu.is_root and menu.title
+		local draw_title = menu.is_root and menu.title or menu.search
 		local scroll_clip = '\\clip(0,' .. ay .. ',' .. display.width .. ',' .. by .. ')'
 		local start_index = math.floor(menu.scroll_y / self.scroll_step) + 1
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
@@ -1027,7 +1027,6 @@ function Menu:render()
 		if draw_title then
 			local title_ay = ay - self.item_height
 			local title_height = self.item_height - 3
-			menu.ass_safe_title = menu.ass_safe_title or ass_escape(menu.title)
 
 			-- Background
 			ass:rect(ax + 2, title_ay, bx - 2, title_ay + title_height, {
@@ -1044,6 +1043,7 @@ function Menu:render()
 					clip = '\\clip(' .. ax + 2 .. ',' .. title_ay .. ',' .. bx - 2 .. ',' .. ay .. ')',
 				})
 			else
+				menu.ass_safe_title = menu.ass_safe_title or ass_escape(menu.title)
 				ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.ass_safe_title, {
 					size = self.font_size, bold = true, color = bg, wrap = 2, opacity = menu_opacity,
 					clip = '\\clip(' .. ax + 2 .. ',' .. title_ay .. ',' .. bx - 2 .. ',' .. ay .. ')',
