@@ -242,14 +242,15 @@ function Menu:update_dimensions()
 	-- consuming values in rendering and collisions easier. Title is rendered
 	-- above it, so we need to account for that in max_height and ay position.
 	local min_width = state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width
+	local height_available = display.height - Elements.timeline.size_min
 
 	for _, menu in ipairs(self.all) do
 		menu.width = round(clamp(min_width, menu.max_width, display.width * 0.9))
 		local title_height = (menu.is_root and menu.title) and self.scroll_step or 0
-		local max_height = round((display.height - title_height) * 0.9)
+		local max_height = round(height_available * 0.9 - title_height)
 		local content_height = self.scroll_step * #menu.items
 		menu.height = math.min(content_height - self.item_spacing, max_height)
-		menu.top = round(math.max((display.height - menu.height) / 2, title_height * 1.5))
+		menu.top = round((height_available - menu.height + title_height) / 2)
 		menu.scroll_height = math.max(content_height - menu.height - self.item_spacing, 0)
 		menu.scroll_y = menu.scroll_y or 0
 		self:scroll_to(menu.scroll_y, menu) -- clamps scroll_y to scroll limits
