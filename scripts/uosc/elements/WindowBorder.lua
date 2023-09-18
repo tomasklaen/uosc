@@ -17,6 +17,7 @@ end
 
 function WindowBorder:on_prop_border() self:decide_enabled() end
 function WindowBorder:on_prop_fullormaxed() self:decide_enabled() end
+function WindowBorder:on_options() self:decide_enabled() end
 
 function WindowBorder:render()
 	if self.size > 0 then

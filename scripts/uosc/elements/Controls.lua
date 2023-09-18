@@ -19,6 +19,10 @@ function Controls:init()
 	---@type ControlItem[] Only controls that match current dispositions.
 	self.layout = {}
 
+	self:init_options()
+end
+
+function Controls:init_options()
 	-- Serialize control elements
 	local shorthands = {
 		menu = 'command:menu:script-binding uosc/menu-blurred?Menu',
@@ -325,5 +329,12 @@ function Controls:on_display() self:update_dimensions() end
 function Controls:on_prop_border() self:update_dimensions() end
 function Controls:on_prop_fullormaxed() self:update_dimensions() end
 function Controls:on_timeline_enabled() self:update_dimensions() end
+
+function Controls:on_options()
+	for _, control in ipairs(self.controls) do
+		if control.element then control.element:destroy() end
+	end
+	self:init_options()
+end
 
 return Controls
