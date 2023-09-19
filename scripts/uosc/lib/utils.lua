@@ -402,6 +402,13 @@ function decide_navigation_in_list(paths, current_index, delta)
 	-- and removes all paths in it from the potential shuffle pool. This guarantees
 	-- no path repetition until at least 80% of the playlist has been exhausted.
 	if state.shuffle then
+		-- Going backward recalls from history.
+		if delta < 0 then
+			local path = state.history[#state.history + delta]
+			local index = itable_index_of(paths, path)
+			if path and index then return index, path end
+		end
+
 		local trimmed_history = itable_slice(state.history, -math.floor(#paths * 0.8))
 		local shuffle_pool = {}
 
