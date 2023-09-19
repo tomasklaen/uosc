@@ -148,8 +148,9 @@ function Controls:init_options()
 		elseif kind == 'speed' then
 			if not Elements.speed then
 				local element = Speed:new({anchor_id = 'controls'})
+				local scale = tonumber(params[1]) or 1.3
 				table_assign(control, {
-					element = element, sizing = 'dynamic', scale = params[1] or 1.3, ratio = 3.5, ratio_min = 2,
+					element = element, sizing = 'dynamic', scale = scale, ratio = 3.5, ratio_min = 2,
 				})
 			else
 				msg.error('there can only be 1 speed slider')
