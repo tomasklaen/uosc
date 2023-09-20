@@ -407,13 +407,15 @@ function decide_navigation_in_list(paths, current_index, delta)
 			paths = itable_slice(state.history)
 		}
 		state.shuffle_history.pos = state.shuffle_history.pos + delta
-		if state.shuffle_history.pos < 1 or state.shuffle_history.pos > #state.shuffle_history.paths + 1 then
-			state.shuffle_history.pos = clamp(1, state.shuffle_history.pos, #state.shuffle_history.paths + 1)
+		local history_path = state.shuffle_history.paths[state.shuffle_history.pos]
+		local next_index = history_path and itable_index_of(paths, history_path)
+		if next_index then
+			return next_index, history_path
+		end
+		if delta < 0 then
+			state.shuffle_history.pos = state.shuffle_history.pos - delta
 		else
-			local history_path = state.shuffle_history.paths[state.shuffle_history.pos]
-			if history_path then
-				return itable_index_of(paths, history_path), history_path
-			end
+			state.shuffle_history.pos = math.min(state.shuffle_history.pos, #state.shuffle_history.paths + 1)
 		end
 
 		local trimmed_history = itable_slice(state.history, -math.floor(#paths * 0.8))
