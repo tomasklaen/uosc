@@ -105,6 +105,8 @@ function Menu:init(data, callback, opts)
 	---@type table<string, MenuStack> Map of submenus by their ids, such as `'Tools > Aspect ratio'`.
 	self.by_id = {}
 	self.key_bindings = {}
+	self.key_bindings_search = {} -- temporary key bindings for search
+	self.type_to_search = options.menu_type_to_search
 	self.is_being_replaced = false
 	self.is_closing, self.is_closed = false, false
 	self.drag_last_y = nil
@@ -210,6 +212,7 @@ function Menu:update(data)
 
 	self:update_content_dimensions()
 	self:reset_navigation()
+	self:search_ensure_key_bindings()
 end
 
 ---@param items MenuDataItem[]
@@ -429,6 +432,7 @@ function Menu:activate_menu(menu)
 		self.current = menu
 		self:update_coordinates()
 		self:reset_navigation()
+		self:search_ensure_key_bindings()
 		request_render()
 	else
 		msg.error('Attempt to open a menu not in `self.all` list.')
@@ -702,7 +706,7 @@ function Menu:search_backspace()
 	while pos > 1 and search_text:byte(pos) >= 0x80 and search_text:byte(pos) <= 0xbf do
 		pos = pos - 1
 	end
-	if pos == 0 then self:search_stop()
+	if pos <= 0 then self:search_stop()
 	else self:search_query_update(search_text:sub(1, pos)) end
 end
 
@@ -727,6 +731,7 @@ function Menu:search_stop()
 	menu.selected_index = search_source.selected_index
 	menu.scroll_y = search_source.scroll_y
 	menu.search = nil
+	self:search_ensure_key_bindings()
 	self:update_dimensions()
 	self:reset_navigation()
 end
@@ -747,6 +752,7 @@ function Menu:search_start()
 			items = not menu.on_search and menu.items or nil
 		},
 	}
+	self:search_ensure_key_bindings()
 	self:update_dimensions()
 end
 
@@ -775,6 +781,35 @@ end
 function Menu:key_right()
 	if self.current.search then -- control cursor when it's implemented
 	else self:open_selected_item_preselect() end
+end
+
+function Menu:search_enable_key_bindings()
+	if #self.key_bindings_search ~= 0 then return end
+	local flags = {repeatable = true, complex = true}
+	local add_key_binding = self.type_to_search and self.add_key_binding or self.search_add_key_binding
+	add_key_binding(self, 'any_unicode', 'menu-search', self:create_key_action('search_text_input'), flags)
+	-- KP0 to KP9 and KP_DEC are not included in any_unicode
+	-- despite typically producing characters, they don't have a info.key_text
+	add_key_binding(self, 'kp_dec', 'menu-search-kp-dec', self:create_key_action('search_text_input'), flags)
+	for i = 0, 9 do
+		add_key_binding(self, 'kp' .. i, 'menu-search-kp' .. i, self:create_key_action('search_text_input'), flags)
+	end
+end
+
+function Menu:search_ensure_key_bindings()
+	if self.type_to_search then return end
+	if self.current.search then self:search_enable_key_bindings()
+	else self:search_disable_key_bindings() end
+end
+
+function Menu:search_disable_key_bindings()
+	for _, name in ipairs(self.key_bindings_search) do mp.remove_key_binding(name) end
+	self.key_bindings_search = {}
+end
+
+function Menu:search_add_key_binding(key, name, fn, flags)
+	self.key_bindings_search[#self.key_bindings_search + 1] = name
+	mp.add_forced_key_binding(key, name, fn, flags)
 end
 
 function Menu:add_key_binding(key, name, fn, flags)
@@ -813,15 +848,16 @@ function Menu:enable_key_bindings()
 	self:add_key_binding('home', 'menu-home', self:create_key_action('on_home'))
 	self:add_key_binding('end', 'menu-end', self:create_key_action('on_end'))
 	self:add_key_binding('del', 'menu-delete-item', self:create_key_action('delete_selected_item'))
-	self:add_key_binding('any_unicode', 'menu-search', self:create_key_action('search_text_input'), {repeatable = true, complex = true})
-	-- KP0 to KP9 and KP_DEC are not included in any_unicode and despite typically producing characters, they don't have a info.key_text
-	self:add_key_binding('kp_dec', 'menu-search-kp-dec', self:create_key_action('search_text_input'), {repeatable = true, complex = true})
-	for i = 0, 9 do
-		self:add_key_binding('kp' .. i, 'menu-search-kp' .. i, self:create_key_action('search_text_input'), {repeatable = true, complex = true})
+	if self.type_to_search then
+		self:search_enable_key_bindings()
+	else
+		self:add_key_binding('/', 'menu-search1', self:create_key_action('search_start'))
+		self:add_key_binding('ctrl+f', 'menu-search2', self:create_key_action('search_start'))
 	end
 end
 
 function Menu:disable_key_bindings()
+	self:search_disable_key_bindings()
 	for _, name in ipairs(self.key_bindings) do mp.remove_key_binding(name) end
 	self.key_bindings = {}
 end

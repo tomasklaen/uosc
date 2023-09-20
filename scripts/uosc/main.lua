@@ -56,6 +56,7 @@ defaults = {
 	menu_min_width_fullscreen = 360,
 	menu_opacity = 1,
 	menu_parent_opacity = 0.4,
+	menu_type_to_search = true,
 
 	top_bar = 'no-border',
 	top_bar_size = 40,
