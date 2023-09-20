@@ -462,12 +462,9 @@ function navigate_playlist(delta)
 	local playlist, pos = mp.get_property_native('playlist'), mp.get_property_native('playlist-pos-1')
 	if playlist and #playlist > 1 and pos then
 		local paths = itable_map(playlist, function(item) return normalize_path(item.filename) end)
-		local index, path = decide_navigation_in_list(paths, pos, delta)
+		local index = decide_navigation_in_list(paths, pos, delta)
 		if index then
 			mp.commandv('playlist-play-index', index - 1)
-			return true
-		elseif path then
-			mp.commandv('loadfile', path)
 			return true
 		end
 	end
