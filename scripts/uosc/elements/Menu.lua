@@ -1065,19 +1065,36 @@ function Menu:render()
 			local title_height = self.item_height - 3
 
 			-- Background
-			ass:rect(ax + 2, title_ay, bx - 2, title_ay + title_height, {
-				color = fg, opacity = menu_opacity * 0.8, radius = 2,
-			})
-			ass:texture(ax + 2, title_ay, bx - 2, title_ay + title_height, 'n', {
-				size = 80, color = bg, opacity = menu_opacity * 0.1,
-			})
+			if menu.search then
+				ass:rect(ax + 3, title_ay + 1, bx - 3, title_ay + title_height - 1, {
+					color = fg .. '\\1a&HFF', opacity = menu_opacity * 0.1, radius = 2,
+					border = 1, border_color = fg, border_opacity = menu_opacity * 0.8
+				})
+				ass:texture(ax + 3, title_ay + 1, bx - 3, title_ay + title_height - 1, 'n', {
+					size = 80, color = bg, opacity = menu_opacity * 0.1, anchor_x = ax + 2, anchor_y = title_ay,
+				})
+			else
+				ass:rect(ax + 2, title_ay, bx - 2, title_ay + title_height, {
+					color = fg, opacity = menu_opacity * 0.8, radius = 2,
+				})
+				ass:texture(ax + 2, title_ay, bx - 2, title_ay + title_height, 'n', {
+					size = 80, color = bg, opacity = menu_opacity * 0.1,
+				})
+			end
 
 			-- Title
 			if menu.search then
-				ass:txt(bx - 4, title_ay + (title_height / 2), 6, ass_escape(menu.search.query), {
-					size = self.font_size, color = bg, wrap = 2, opacity = menu_opacity,
-					clip = '\\clip(' .. ax + 2 .. ',' .. title_ay .. ',' .. bx - 2 .. ',' .. ay .. ')',
-				})
+				if menu.search.query ~= '' then
+					ass:txt(bx - spacing, title_ay + (title_height / 2), 6, ass_escape(menu.search.query), {
+						size = self.font_size, color = bgt, wrap = 2, opacity = menu_opacity,
+						clip = '\\clip(' .. ax + spacing .. ',' .. title_ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
+					})
+				else
+					ass:txt(bx - spacing, title_ay + (title_height / 2), 6, 'search for...', {
+						size = self.font_size, italic = true, color = bgt, wrap = 2, opacity = menu_opacity * 0.5,
+						clip = '\\clip(' .. ax + spacing .. ',' .. title_ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
+					})
+				end
 			else
 				menu.ass_safe_title = menu.ass_safe_title or ass_escape(menu.title)
 				ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.ass_safe_title, {
