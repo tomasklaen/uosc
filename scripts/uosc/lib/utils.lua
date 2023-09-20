@@ -402,11 +402,18 @@ function decide_navigation_in_list(paths, current_index, delta)
 	-- and removes all paths in it from the potential shuffle pool. This guarantees
 	-- no path repetition until at least 80% of the playlist has been exhausted.
 	if state.shuffle then
-		-- Going backward recalls from history.
-		if delta < 0 then
-			local path = state.history[#state.history + delta]
-			local index = itable_index_of(paths, path)
-			if path and index then return index, path end
+		state.shuffle_history = state.shuffle_history or {
+			pos = #state.history,
+			paths = itable_slice(state.history)
+		}
+		state.shuffle_history.pos = state.shuffle_history.pos + delta
+		if state.shuffle_history.pos < 1 or state.shuffle_history.pos > #state.shuffle_history.paths + 1 then
+			state.shuffle_history.pos = clamp(1, state.shuffle_history.pos, #state.shuffle_history.paths + 1)
+		else
+			local history_path = state.shuffle_history.paths[state.shuffle_history.pos]
+			if history_path then
+				return itable_index_of(paths, history_path), history_path
+			end
 		end
 
 		local trimmed_history = itable_slice(state.history, -math.floor(#paths * 0.8))
@@ -420,7 +427,9 @@ function decide_navigation_in_list(paths, current_index, delta)
 
 		math.randomseed(os.time())
 		local next_index = shuffle_pool[math.random(#shuffle_pool)]
-		return next_index, paths[next_index]
+		local next_path = paths[next_index]
+		table.insert(state.shuffle_history.paths, state.shuffle_history.pos, next_path)
+		return next_index, next_path
 	end
 
 	local new_index = current_index + delta
@@ -450,8 +459,14 @@ function navigate_playlist(delta)
 	local playlist, pos = mp.get_property_native('playlist'), mp.get_property_native('playlist-pos-1')
 	if playlist and #playlist > 1 and pos then
 		local paths = itable_map(playlist, function(item) return normalize_path(item.filename) end)
-		local index = decide_navigation_in_list(paths, pos, delta)
-		if index then mp.commandv('playlist-play-index', index - 1) return true end
+		local index, path = decide_navigation_in_list(paths, pos, delta)
+		if index then
+			mp.commandv('playlist-play-index', index - 1)
+			return true
+		elseif path then
+			mp.commandv('loadfile', path)
+			return true
+		end
 	end
 	return false
 end

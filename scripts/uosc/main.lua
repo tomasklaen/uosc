@@ -481,6 +481,9 @@ state = {
 	has_chapter = false,
 	has_playlist = false,
 	shuffle = options.shuffle,
+	---@type nil|{pos: number; paths: string[]}
+	shuffle_history = nil,
+	on_shuffle = function() state.shuffle_history = nil end,
 	mouse_bindings_enabled = false,
 	uncached_ranges = nil,
 	cache = nil,
@@ -607,6 +610,7 @@ end
 
 function set_state(name, value)
 	state[name] = value
+	call_maybe(state['on_' .. name], value)
 	Elements:trigger('prop_' .. name, value)
 end
 
