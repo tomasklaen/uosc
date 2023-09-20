@@ -272,9 +272,8 @@ function Menu:reset_navigation()
 	self:scroll_to(menu.scroll_y) -- clamps scroll_y to scroll limits
 	if menu.items and #menu.items > 0 then
 		-- Normalize existing selected_index always, and force it only in keyboard navigation
-		if not self.mouse_nav and not menu.selected_index then
-			local from = clamp(1, menu.selected_index or 1, #menu.items)
-			self:select_index(itable_find(menu.items, function(item) return item.selectable ~= false end, from), menu)
+		if not self.mouse_nav then
+			self:select_by_offset(0)
 		end
 	else
 		self:select_index(nil)
@@ -584,6 +583,7 @@ function Menu:select_by_offset(offset, menu)
 	else
 		menu.selected_index = prev_index or next_index or nil
 	end
+	request_render()
 end
 
 ---@param offset integer
