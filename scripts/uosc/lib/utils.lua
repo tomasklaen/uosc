@@ -394,9 +394,10 @@ end
 -- randomness to determine the next item. Loops around if `loop-playlist` is enabled.
 ---@param paths table
 ---@param current_index number
----@param delta number
+---@param delta number 1 or -1 for forward or backward
 function decide_navigation_in_list(paths, current_index, delta)
 	if #paths < 2 then return #paths, paths[#paths] end
+	delta = delta < 0 and -1 or 1
 
 	-- Shuffle looks at the played files history trimmed to 80% length of the paths
 	-- and removes all paths in it from the potential shuffle pool. This guarantees
