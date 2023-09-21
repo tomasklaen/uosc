@@ -647,7 +647,7 @@ end
 
 ---@param menu MenuStack
 function Menu:search_internal(menu)
-	local query = menu.search.query
+	local query = menu.search.query:lower()
 	menu.items = query ~= '' and itable_filter(menu.search.source.items, function(item)
 		return item.title and item.title:lower():find(query, 1, true) or
 			item.hint and item.hint:lower():find(query, 1, true)
