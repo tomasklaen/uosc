@@ -589,7 +589,9 @@ function update_margins()
 	state.margin_left = left
 	state.margin_right = right
 
-	utils.shared_script_property_set('osc-margins', string.format('%f,%f,%f,%f', 0, 0, top, bottom))
+	if utils.shared_script_property_set then
+		utils.shared_script_property_set('osc-margins', string.format('%f,%f,%f,%f', 0, 0, top, bottom))
+	end
 	mp.set_property_native('user-data/osc/margins', { l = left, r = right, t = top, b = bottom })
 
 	if not options.adjust_osd_margins then return end
