@@ -163,7 +163,7 @@ function Menu:update(data)
 		menu.on_search = menu_data.on_search
 		if type(menu_data.search_debounce) == 'number' then
 			menu.search_debounce = math.max(0, menu_data.search_debounce)
-		elseif menu.search_debounce == 'submit' then
+		elseif menu_data.search_debounce == 'submit' then
 			menu.search_debounce = 'submit'
 		else
 			menu.search_debounce = menu.on_search and 300 or 0
@@ -740,10 +740,11 @@ function Menu:search_start()
 	local menu = self.current
 	if menu.search then return end
 	local timeout
-	if menu.search_debounce ~= 'Submit' and menu.search_debounce > 0 then
+	if menu.search_debounce ~= 'submit' and menu.search_debounce > 0 then
 		timeout = mp.add_timeout(menu.search_debounce / 1000, self:create_action(function()
 			self:search_submit(menu)
 		end))
+		timeout:kill()
 	end
 	menu.search = {
 		query = '', timeout = timeout, width = menu.width, top = menu.top,
