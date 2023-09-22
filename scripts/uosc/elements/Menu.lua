@@ -645,16 +645,62 @@ function Menu:search_update_items()
 	self:reset_navigation()
 end
 
+---Calculates the lowest hamming distance of any substring of length pattern_char_count in text.
+---Returns INFINITY if the text is shorter then the pattern.
+---@param text string
+---@param pattern_chars string[]
+---@param pattern_char_count integer
+---@return integer
+local function substring_hamming_distance(text, pattern_chars, pattern_char_count)
+	local best_score, text_chars, text_char_count = pattern_char_count, utf8_chars(text)
+	if text_char_count < pattern_char_count then return INFINITY end
+	for i = 1, text_char_count - pattern_char_count + 1 do
+		local score = 0
+		for j = 1, pattern_char_count do
+			if text_chars[i + j - 1] ~= pattern_chars[j] then
+				score = score + 1
+			end
+		end
+		if score < best_score then
+			best_score = score
+		end
+	end
+	return best_score
+end
+
+---Sort and filter items based on the hamming distance
+---@param items MenuStackItem[]
+---@param query string
+---@return MenuStackItem[]
+local function fuzzy_search(items, query)
+	local t, n, query_chars, query_char_count = {}, 1, utf8_chars(query)
+	for _, item in ipairs(items) do
+		local title = item.title and item.title:lower()
+		local hint = item.hint and item.hint:lower()
+		local td, tcd, hd, hcd = INFINITY, INFINITY, INFINITY, INFINITY
+		if title then
+			td = substring_hamming_distance(title, query_chars, query_char_count)
+			tcd = substring_hamming_distance(table.concat(initials(title)), query_chars, query_char_count)
+		end
+		if hint then
+			hd = substring_hamming_distance(hint, query_chars, query_char_count)
+			hcd = substring_hamming_distance(table.concat(initials(hint)), query_chars, query_char_count)
+		end
+		local distance = math.min(td, hd, tcd, hcd)
+		if distance ~= INFINITY then
+			t[n] = { distance, n, item }
+			n = n + 1
+		end
+	end
+	table.sort(t, function(a, b) return a[1] == b[1] and a[2] < b[2] or a[1] < b[1] end)
+	for i, tuple in ipairs(t) do t[i] = tuple[3] end
+	return t
+end
+
 ---@param menu MenuStack
 function Menu:search_internal(menu)
 	local query = menu.search.query:lower()
-	menu.items = query ~= '' and itable_filter(menu.search.source.items, function(item)
-		local title = item.title and item.title:lower()
-		local hint = item.hint and item.hint:lower()
-		return title and title:find(query, 1, true) or hint and hint:find(query, 1, true) or
-			title and table.concat(initials(title)):find(query, 1, true) or
-			hint and table.concat(initials(hint)):find(query, 1, true)
-	end) or menu.search.source.items
+	menu.items = query ~= '' and fuzzy_search(menu.search.source.items, query) or menu.search.source.items
 	self:search_update_items()
 end
 

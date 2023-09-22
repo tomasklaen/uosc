@@ -74,6 +74,18 @@ local function utf8_iter(str)
 	end
 end
 
+---Get indivitual characters of the given strings
+---@param str string
+---@return string[], integer
+function utf8_chars(str)
+	local t, i = {}, 0
+	for _, c in utf8_iter(str) do
+		i = i + 1
+		t[i] = c
+	end
+	return t, i
+end
+
 ---Extract Unicode code point from utf-8 character at index i in str
 ---@param str string
 ---@param i integer
