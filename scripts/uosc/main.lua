@@ -1084,12 +1084,10 @@ bind_command('stream-quality', function()
 		-- Reload the video to apply new format
 		-- This is taken from https://github.com/jgreco/mpv-youtube-quality
 		-- which is in turn taken from https://github.com/4e6/mpv-reload/
-		-- Dunno if playlist_pos shenanigans below are necessary.
-		local playlist_pos = mp.get_property_number('playlist-pos')
 		local duration = mp.get_property_native('duration')
 		local time_pos = mp.get_property('time-pos')
 
-		mp.set_property_number('playlist-pos', playlist_pos)
+		mp.command('playlist-play-index current')
 
 		-- Tries to determine live stream vs. pre-recorded VOD. VOD has non-zero
 		-- duration property. When reloading VOD, to keep the current time position
