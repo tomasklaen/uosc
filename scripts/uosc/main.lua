@@ -464,6 +464,7 @@ state = {
 	current_chapter = nil,
 	chapter_ranges = {},
 	border = mp.get_property_native('border'),
+	title_bar = mp.get_property_native('title-bar'),
 	fullscreen = mp.get_property_native('fullscreen'),
 	maximized = mp.get_property_native('window-maximized'),
 	fullormaxed = mp.get_property_native('fullscreen') or mp.get_property_native('window-maximized'),
@@ -812,6 +813,7 @@ mp.observe_property('chapter-list', 'native', function(_, chapters)
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('border', 'bool', create_state_setter('border'))
+mp.observe_property('title-bar', 'bool', create_state_setter('title_bar'))
 mp.observe_property('loop-file', 'native', create_state_setter('loop_file'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))

@@ -328,6 +328,7 @@ end
 function Controls:on_dispositions() self:reflow() end
 function Controls:on_display() self:update_dimensions() end
 function Controls:on_prop_border() self:update_dimensions() end
+function Controls:on_prop_title_bar() self:update_dimensions() end
 function Controls:on_prop_fullormaxed() self:update_dimensions() end
 function Controls:on_timeline_enabled() self:update_dimensions() end
 
