@@ -416,23 +416,10 @@ function wrap_text(text, opts, target_line_length)
 		local before_removed_width = 0
 		for char_start, char in utf8_iter(text_line) do
 			local char_end = char_start + #char - 1
-			local can_wrap = false
-			for _, c in ipairs(wrap_at_chars) do
-				if char == c then
-					can_wrap = true
-					break
-				end
-			end
 			local char_width = character_width(char, bold) * scale_factor
 			line_width = line_width + char_width
-			if can_wrap or (char_end == #text_line) then
-				local remove = false
-				for _, c in ipairs(remove_when_wrap) do
-					if char == c then
-						remove = true
-						break
-					end
-				end
+			if (char_end == #text_line) or itable_has(wrap_at_chars, char) then
+				local remove = itable_has(remove_when_wrap, char)
 				local line_width_after_remove = line_width - (remove and char_width or 0)
 				if line_width_after_remove < target_line_width then
 					before_end = remove and char_start - 1 or char_end
