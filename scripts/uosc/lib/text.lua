@@ -396,54 +396,58 @@ do
 	end
 end
 
----Wrap the text at the closest opportunity to target_line_length
----@param text string
----@param opts {size: number; bold?: boolean; italic?: boolean}
----@param target_line_length number
----@return string, integer
-function wrap_text(text, opts, target_line_length)
-	local target_line_width = target_line_length * width_length_ratio * opts.size
-	local bold, scale_factor, scale_offset = opts.bold or false, opts_factor_offset(opts)
-	local wrap_at_chars = {' ', '　', '-', '–'}
-	local remove_when_wrap = {' ', '　'}
-	local lines = {}
-	for _, text_line in ipairs(split(text, '\n')) do
-		local line_width = scale_offset
-		local line_start = 1
-		local before_end = nil
-		local before_width = scale_offset
-		local before_line_start = 0
-		local before_removed_width = 0
-		for char_start, char in utf8_iter(text_line) do
-			local char_end = char_start + #char - 1
-			local char_width = character_width(char, bold) * scale_factor
-			line_width = line_width + char_width
-			if (char_end == #text_line) or itable_has(wrap_at_chars, char) then
-				local remove = itable_has(remove_when_wrap, char)
-				local line_width_after_remove = line_width - (remove and char_width or 0)
-				if line_width_after_remove < target_line_width then
-					before_end = remove and char_start - 1 or char_end
-					before_width = line_width_after_remove
-					before_line_start = char_end + 1
-					before_removed_width = remove and char_width or 0
-				else
-					if (target_line_width - before_width) <
-						(line_width_after_remove - target_line_width) then
-						lines[#lines + 1] = text_line:sub(line_start, before_end)
-						line_start = before_line_start
-						line_width = line_width - before_width - before_removed_width + scale_offset
+do
+	local wrap_at_chars = { ' ', '　', '-', '–' }
+	local remove_when_wrap = { ' ', '　' }
+
+	---Wrap the text at the closest opportunity to target_line_length
+	---@param text string
+	---@param opts {size: number; bold?: boolean; italic?: boolean}
+	---@param target_line_length number
+	---@return string, integer
+	function wrap_text(text, opts, target_line_length)
+		local target_line_width = target_line_length * width_length_ratio * opts.size
+		local bold, scale_factor, scale_offset = opts.bold or false, opts_factor_offset(opts)
+		local wrap_at_chars, remove_when_wrap = wrap_at_chars, remove_when_wrap
+		local lines = {}
+		for _, text_line in ipairs(split(text, '\n')) do
+			local line_width = scale_offset
+			local line_start = 1
+			local before_end = nil
+			local before_width = scale_offset
+			local before_line_start = 0
+			local before_removed_width = 0
+			for char_start, char in utf8_iter(text_line) do
+				local char_end = char_start + #char - 1
+				local char_width = character_width(char, bold) * scale_factor
+				line_width = line_width + char_width
+				if (char_end == #text_line) or itable_has(wrap_at_chars, char) then
+					local remove = itable_has(remove_when_wrap, char)
+					local line_width_after_remove = line_width - (remove and char_width or 0)
+					if line_width_after_remove < target_line_width then
+						before_end = remove and char_start - 1 or char_end
+						before_width = line_width_after_remove
+						before_line_start = char_end + 1
+						before_removed_width = remove and char_width or 0
 					else
-						lines[#lines + 1] = text_line:sub(line_start, remove and char_start - 1 or char_end)
-						line_start = char_end + 1
-						line_width = scale_offset
+						if (target_line_width - before_width) <
+							(line_width_after_remove - target_line_width) then
+							lines[#lines + 1] = text_line:sub(line_start, before_end)
+							line_start = before_line_start
+							line_width = line_width - before_width - before_removed_width + scale_offset
+						else
+							lines[#lines + 1] = text_line:sub(line_start, remove and char_start - 1 or char_end)
+							line_start = char_end + 1
+							line_width = scale_offset
+						end
+						before_end = line_start
+						before_width = scale_offset
 					end
-					before_end = line_start
-					before_width = scale_offset
 				end
 			end
+			if #text_line >= line_start then lines[#lines + 1] = text_line:sub(line_start)
+			elseif text_line == '' then lines[#lines + 1] = '' end
 		end
-		if #text_line >= line_start then lines[#lines + 1] = text_line:sub(line_start)
-		elseif text_line == '' then lines[#lines + 1] = '' end
+		return table.concat(lines, '\n'), #lines
 	end
-	return table.concat(lines, '\n'), #lines
 end
