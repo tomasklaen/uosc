@@ -460,3 +460,25 @@ function wrap_text(text, opts, target_line_length)
 	end
 	return table.concat(lines, '\n'), #lines
 end
+
+do
+	local word_separators = {
+		' ', '　', '\t', '-', '–', '_', ',', '.', '+', '&', '(', ')', '[', ']', '{', '}', '<', '>', '/', '\\',
+	}
+
+	---Get the first character of each words
+	---@param str string
+	---@return string[]
+	function first_word_chars(str)
+		local first_chars, is_word_start, word_separators = {}, true, word_separators
+		for _, char in utf8_iter(str) do
+			if itable_has(word_separators, char) then
+				is_word_start = true
+			elseif is_word_start then
+				first_chars[#first_chars + 1] = char
+				is_word_start = false
+			end
+		end
+		return first_chars
+	end
+end
