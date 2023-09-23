@@ -71,7 +71,7 @@ end
 
 function TopBar:decide_enabled()
 	if options.top_bar == 'no-border' then
-		self.enabled = not state.border or state.fullscreen
+		self.enabled = not state.border or state.title_bar == false or state.fullscreen
 	else
 		self.enabled = options.top_bar == 'always'
 	end
@@ -140,6 +140,11 @@ function TopBar:on_prop_title() self:decide_titles() end
 function TopBar:on_prop_alt_title() self:decide_titles() end
 
 function TopBar:on_prop_border()
+	self:decide_enabled()
+	self:update_dimensions()
+end
+
+function TopBar:on_prop_title_bar()
 	self:decide_enabled()
 	self:update_dimensions()
 end

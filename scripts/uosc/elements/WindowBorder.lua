@@ -12,10 +12,12 @@ end
 
 function WindowBorder:decide_enabled()
 	self.enabled = options.window_border_size > 0 and not state.fullormaxed and not state.border
+	    and state.title_bar == false
 	self.size = self.enabled and options.window_border_size or 0
 end
 
 function WindowBorder:on_prop_border() self:decide_enabled() end
+function WindowBorder:on_prop_title_bar() self:decide_enabled() end
 function WindowBorder:on_prop_fullormaxed() self:decide_enabled() end
 function WindowBorder:on_options() self:decide_enabled() end
 
