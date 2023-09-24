@@ -67,6 +67,7 @@ defaults = {
 	top_bar_alt_title = '',
 	top_bar_alt_title_place = 'below',
 	top_bar_title_opacity = 0.8,
+	top_bar_flash_on = 'video,audio',
 
 	window_border_size = 1,
 	window_border_opacity = 0.8,
@@ -200,6 +201,7 @@ config = {
 		end)(),
 	},
 	stream_quality_options = split(options.stream_quality_options, ' *, *'),
+	top_bar_flash_on = split(options.top_bar_flash_on, ' *, *'),
 	menu_items = (function()
 		local input_conf_property = mp.get_property_native('input-conf')
 		local input_conf_path = mp.command_native({
@@ -707,7 +709,14 @@ mp.register_event('file-loaded', function()
 	itable_delete_value(state.history, path)
 	state.history[#state.history + 1] = path
 	set_state('path', path)
-	Elements:flash({'top_bar'})
+
+	-- Flash top bar on requested file types
+	for _, type in ipairs(config.top_bar_flash_on) do
+		if state['is_'..type] then
+			Elements:flash({'top_bar'})
+			break
+		end
+	end
 end)
 mp.register_event('end-file', function(event)
 	set_state('path', nil)
