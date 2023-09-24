@@ -166,7 +166,10 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		return
 	end
 
-	local files, directories = read_directory(directory.path, opts.allowed_types)
+	local files, directories = read_directory(directory.path, {
+		types = opts.allowed_types,
+		hidden = options.show_hidden_files
+	})
 	local is_root = not directory.dirname
 	local path_separator = path_separator(directory.path)
 

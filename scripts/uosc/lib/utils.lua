@@ -337,10 +337,11 @@ end
 
 -- Reads items in directory and splits it into directories and files tables.
 ---@param path string
----@param allowed_types? string[] Filter `files` table to contain only files with these extensions.
+---@param opts? {types?: string[], hidden?: boolean}
 ---@return string[]|nil files
 ---@return string[]|nil directories
-function read_directory(path, allowed_types)
+function read_directory(path, opts)
+	opts = opts or {}
 	local items, error = utils.readdir(path, 'all')
 
 	if not items then
@@ -351,11 +352,11 @@ function read_directory(path, allowed_types)
 	local files, directories = {}, {}
 
 	for _, item in ipairs(items) do
-		if item ~= '.' and item ~= '..' then
+		if item ~= '.' and item ~= '..' and (opts.hidden or item:sub(1, 1) ~= ".") then
 			local info = utils.file_info(join_path(path, item))
 			if info then
 				if info.is_file then
-					if not allowed_types or has_any_extension(item, allowed_types) then
+					if not opts.types or has_any_extension(item, opts.types) then
 						files[#files + 1] = item
 					end
 				else directories[#directories + 1] = item end
@@ -370,18 +371,19 @@ end
 -- and index of the current file in the table.
 -- Returned table will always contain `file_path`, regardless of `allowed_types`.
 ---@param file_path string
----@param allowed_types? string[] Filter adjacent file types. Does NOT filter out the `file_path`.
-function get_adjacent_files(file_path, allowed_types)
+---@param opts? {types?: string[], hidden?: boolean}
+function get_adjacent_files(file_path, opts)
+	opts = opts or {}
 	local current_meta = serialize_path(file_path)
 	if not current_meta then return end
-	local files = read_directory(current_meta.dirname)
+	local files = read_directory(current_meta.dirname, {hidden = opts.hidden})
 	if not files then return end
 	sort_filenames(files)
 	local current_file_index
 	local paths = {}
 	for _, file in ipairs(files) do
 		local is_current_file = current_meta.basename == file
-		if is_current_file or not allowed_types or has_any_extension(file, allowed_types) then
+		if is_current_file or not opts.types or has_any_extension(file, opts.types) then
 			paths[#paths + 1] = join_path(current_meta.dirname, file)
 			if is_current_file then current_file_index = #paths end
 		end
@@ -449,7 +451,10 @@ end
 ---@param delta number
 function navigate_directory(delta)
 	if not state.path or is_protocol(state.path) then return false end
-	local paths, current_index = get_adjacent_files(state.path, config.types.autoload)
+	local paths, current_index = get_adjacent_files(state.path, {
+		types = config.types.autoload,
+		hidden = options.show_hidden_files
+	})
 	if paths and current_index then
 		local _, path = decide_navigation_in_list(paths, current_index, delta)
 		if path then mp.commandv('loadfile', path) return true end

@@ -104,6 +104,7 @@ defaults = {
 	image_types= 'apng,avif,bmp,gif,j2k,jp2,jfif,jpeg,jpg,jxl,mj2,png,svg,tga,tif,tiff,webp',
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	default_directory = '~/',
+	show_hidden_files = false,
 	use_trash = false,
 	adjust_osd_margins = true,
 	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
@@ -637,7 +638,10 @@ function load_file_index_in_current_directory(index)
 
 	local serialized = serialize_path(state.path)
 	if serialized and serialized.dirname then
-		local files = read_directory(serialized.dirname, config.types.autoload)
+		local files = read_directory(serialized.dirname, {
+			types = config.types.autoload,
+			hidden = options.show_hidden_files
+		})
 
 		if not files then return end
 		sort_filenames(files)
@@ -1198,7 +1202,10 @@ bind_command('delete-file-next', function()
 		mp.commandv('playlist-remove', 'current')
 	else
 		if is_local_file then
-			local paths, current_index = get_adjacent_files(state.path, config.types.autoload)
+			local paths, current_index = get_adjacent_files(state.path, {
+				types = config.types.autoload,
+				hidden = options.show_hidden_files
+			})
 			if paths and current_index then
 				local index, path = decide_navigation_in_list(paths, current_index, 1)
 				if path then next_file = path end
