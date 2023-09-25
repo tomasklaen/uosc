@@ -645,22 +645,45 @@ function Menu:search_update_items()
 	self:reset_navigation()
 end
 
----Calculates the lowest hamming distance of any substring of length pattern_char_count in text.
----Returns INFINITY if the text is shorter then the pattern.
+-- Calculates the levenstein_distance between a substring of s1 and s2
+---@param s1_chars string[]
+---@param from integer
+---@param to integer
+---@param s2_chars string[]
+---@param s2_char_count integer
+---@param matrix integer[][]
+---@return integer
+local function levenshtein_distance(s1_chars, from, to, s2_chars, s2_char_count, matrix)
+	local cols = s2_char_count + 1
+	local rows = to - from + 2
+	if cols == 1 then return rows - 1 end
+	if rows == 1 then return cols - 1 end
+	for r = 1, rows do if not matrix[r] then matrix[r] = { r - 1 } else matrix[r][1] = r - 1 end end
+	for c = 1, cols do matrix[1][c] = c - 1 end
+	for r = 2, rows do
+		for c = 2, cols do
+			if s1_chars[from + r - 2] == s2_chars[c - 1] then
+				matrix[r][c] = matrix[r - 1][c - 1]
+			else
+				-- min(substitution, insertion, deletion)
+				matrix[r][c] = 1 + math.min(matrix[r - 1][c - 1], matrix[r][c - 1], matrix[r - 1][c])
+			end
+		end
+	end
+	return matrix[rows][cols]
+end
+
+---Calculates the lowest levenshtein distance of any substring of length pattern_char_count in text.
 ---@param text string
 ---@param pattern_chars string[]
 ---@param pattern_char_count integer
+---@param matrix integer[][]
 ---@return integer
-local function substring_hamming_distance(text, pattern_chars, pattern_char_count)
+local function substring_levenshtein_distance(text, pattern_chars, pattern_char_count, matrix)
 	local best_score, text_chars, text_char_count = pattern_char_count, utf8_chars(text)
-	if text_char_count < pattern_char_count then return INFINITY end
-	for i = 1, text_char_count - pattern_char_count + 1 do
-		local score = 0
-		for j = 1, pattern_char_count do
-			if text_chars[i + j - 1] ~= pattern_chars[j] then
-				score = score + 1
-			end
-		end
+	for i = -pattern_char_count + 2, text_char_count do
+		local from, to = math.max(1, i), math.min(i + pattern_char_count - 1, text_char_count)
+		local score = levenshtein_distance(text_chars, from, to, pattern_chars, pattern_char_count, matrix)
 		if score < best_score then
 			best_score = score
 		end
@@ -673,18 +696,18 @@ end
 ---@param query string
 ---@return MenuStackItem[]
 local function fuzzy_search(items, query)
-	local t, n, query_chars, query_char_count = {}, 1, utf8_chars(query)
+	local t, n, matrix, query_chars, query_char_count = {}, 1, {}, utf8_chars(query)
 	for _, item in ipairs(items) do
 		local title = item.title and item.title:lower()
 		local hint = item.hint and item.hint:lower()
 		local td, tcd, hd, hcd = INFINITY, INFINITY, INFINITY, INFINITY
 		if title then
-			td = substring_hamming_distance(title, query_chars, query_char_count)
-			tcd = substring_hamming_distance(table.concat(initials(title)), query_chars, query_char_count)
+			td = substring_levenshtein_distance(title, query_chars, query_char_count, matrix)
+			tcd = substring_levenshtein_distance(table.concat(initials(title)), query_chars, query_char_count, matrix)
 		end
 		if hint then
-			hd = substring_hamming_distance(hint, query_chars, query_char_count)
-			hcd = substring_hamming_distance(table.concat(initials(hint)), query_chars, query_char_count)
+			hd = substring_levenshtein_distance(hint, query_chars, query_char_count, matrix)
+			hcd = substring_levenshtein_distance(table.concat(initials(hint)), query_chars, query_char_count, matrix)
 		end
 		local distance = math.min(td, hd, tcd, hcd)
 		if distance ~= INFINITY then
