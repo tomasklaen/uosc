@@ -755,6 +755,8 @@ function Menu:search_internal(menu)
 	local query = menu.search.query:lower()
 	menu.items = query ~= '' and fuzzy_search(menu.search.source, query) or menu.search.source.items
 	self:search_update_items()
+	self:select_index(1, menu)
+	self:scroll_to_index(1, menu)
 end
 
 ---@param menu? MenuStack
