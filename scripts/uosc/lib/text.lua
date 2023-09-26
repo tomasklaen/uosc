@@ -457,19 +457,19 @@ do
 		' ', '　', '\t', '-', '–', '_', ',', '.', '+', '&', '(', ')', '[', ']', '{', '}', '<', '>', '/', '\\',
 	}
 
-	---Get the first character of each words
+	---Get the first character of each word
 	---@param str string
 	---@return string[]
-	function first_word_chars(str)
-		local first_chars, is_word_start, word_separators = {}, true, word_separators
+	function initials(str)
+		local initials, is_word_start, word_separators = {}, true, word_separators
 		for _, char in utf8_iter(str) do
 			if itable_has(word_separators, char) then
 				is_word_start = true
 			elseif is_word_start then
-				first_chars[#first_chars + 1] = char
+				initials[#initials + 1] = char
 				is_word_start = false
 			end
 		end
-		return first_chars
+		return initials
 	end
 end

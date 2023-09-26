@@ -652,8 +652,8 @@ function Menu:search_internal(menu)
 		local title = item.title and item.title:lower()
 		local hint = item.hint and item.hint:lower()
 		return title and title:find(query, 1, true) or hint and hint:find(query, 1, true) or
-			title and table.concat(first_word_chars(title)):find(query, 1, true) or
-			hint and table.concat(first_word_chars(hint)):find(query, 1, true)
+			title and table.concat(initials(title)):find(query, 1, true) or
+			hint and table.concat(initials(hint)):find(query, 1, true)
 	end) or menu.search.source.items
 	self:search_update_items()
 end
