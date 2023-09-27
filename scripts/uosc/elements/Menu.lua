@@ -7,7 +7,7 @@ local Element = require('elements/Element')
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(); on_close?: fun(); on_back?: fun(); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
@@ -1065,48 +1065,62 @@ function Menu:render()
 
 		-- Menu title
 		if draw_title then
-			local title_ay = ay - self.item_height
-			local title_height = self.item_height - 3
+			local requires_submit = menu.search_debounce == 'submit'
+			local rect = {ax = ax, ay = ay - self.item_height, bx = bx, by = ay - 2}
+			rect.cx, rect.cy = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2 -- centers
 
-			-- Background
-			if menu.search then
-				ass:rect(ax + 3, title_ay + 1, bx - 3, title_ay + title_height - 1, {
-					color = fg .. '\\1a&HFF', opacity = menu_opacity * 0.1, radius = 2,
-					border = 1, border_color = fg, border_opacity = menu_opacity * 0.8
-				})
-				ass:texture(ax + 3, title_ay + 1, bx - 3, title_ay + title_height - 1, 'n', {
-					size = 80, color = bg, opacity = menu_opacity * 0.1, anchor_x = ax + 2, anchor_y = title_ay,
-				})
-			else
-				ass:rect(ax + 2, title_ay, bx - 2, title_ay + title_height, {
-					color = fg, opacity = menu_opacity * 0.8, radius = 2,
-				})
-				ass:texture(ax + 2, title_ay, bx - 2, title_ay + title_height, 'n', {
-					size = 80, color = bg, opacity = menu_opacity * 0.1,
-				})
-			end
+			-- Bottom border
+			ass:rect(rect.ax, rect.by - 1, rect.bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
 
 			-- Title
 			if menu.search then
+				-- Icon
+				local icon_size, icon_opacity = self.font_size * 1.3, requires_submit and text_opacity * 0.5 or 1
+				local clip_ax = ax + icon_size + spacing * 1.5
+				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = clip_ax, by = ay}
+
+				if is_current and requires_submit and get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
+					cursor.on_primary_down = function() self:search_submit() end
+					icon_opacity = text_opacity
+				end
+
+				ass:icon(rect.ax + spacing + icon_size / 2, rect.cy, icon_size, 'search', {
+					color = fg, opacity = icon_opacity, shadow = 1, shadow_color = bg,
+				})
+
+				-- Query/Placeholder
 				if menu.search.query ~= '' then
-					-- Add a ZWNBSP suffix to prevent libass from trimming any trailing spaces
+					-- Add a ZWNBSP suffix to prevent libass from trimming trailing spaces
 					local query = ass_escape(menu.search.query) .. '\239\187\191'
-					ass:txt(bx - spacing, title_ay + (title_height / 2), 6, query, {
+					ass:txt(rect.bx - spacing, rect.cy, 6, query, {
 						size = self.font_size, color = bgt, wrap = 2, opacity = menu_opacity,
-						clip = '\\clip(' .. ax + spacing .. ',' .. title_ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
+						clip = '\\clip(' .. clip_ax .. ',' .. rect.ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
 					})
 				else
-					ass:txt(bx - spacing, title_ay + (title_height / 2), 6, 'search for...', {
-						size = self.font_size, italic = true, color = bgt, wrap = 2, opacity = menu_opacity * 0.5,
-						clip = '\\clip(' .. ax + spacing .. ',' .. title_ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
+					local placeholder = requires_submit and t('type & ctrl+enter to search') or t('type to search')
+					ass:txt(rect.bx - spacing, rect.cy, 6, placeholder, {
+						size = self.font_size, italic = true, color = bgt, wrap = 2, opacity = menu_opacity * 0.4,
+						clip = '\\clip(' .. ax + spacing .. ',' .. rect.ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
 					})
 				end
+
+				-- Cursor
+				local font_size_half = round(self.font_size / 2)
+				local cursor_ax, cursor_thickness = rect.bx - spacing + 1, round(self.font_size / 14)
+				ass:rect(cursor_ax, rect.cy - font_size_half, cursor_ax + cursor_thickness, rect.cy + font_size_half, {
+					color = fg, opacity = menu_opacity * 0.5
+				})
 			else
 				menu.ass_safe_title = menu.ass_safe_title or ass_escape(menu.title)
-				ass:txt(ax + menu.width / 2, title_ay + (title_height / 2), 5, menu.ass_safe_title, {
-					size = self.font_size, bold = true, color = bg, wrap = 2, opacity = menu_opacity,
-					clip = '\\clip(' .. ax + 2 .. ',' .. title_ay .. ',' .. bx - 2 .. ',' .. ay .. ')',
+				ass:txt(rect.cx, rect.cy, 5, menu.ass_safe_title, {
+					size = self.font_size, bold = true, color = bgt, wrap = 2, opacity = menu_opacity,
+					clip = '\\clip(' .. rect.ax + 2 .. ',' .. rect.ay .. ',' .. rect.bx - 2 .. ',' .. rect.by .. ')',
 				})
+			end
+
+			-- Do nothing when user clicks title
+			if is_current and not cursor.on_primary_down and get_point_to_rectangle_proximity(cursor, rect) then
+				cursor.on_primary_down = function() end
 			end
 		end
 
