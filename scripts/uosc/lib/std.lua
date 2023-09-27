@@ -83,7 +83,7 @@ function itable_has(itable, value)
 end
 
 ---@param itable table
----@param compare fun(value: any, index: number)
+---@param compare fun(value: any, index: number): boolean|integer|string|nil
 ---@param from? number Where to start search, defaults to `1`.
 ---@param to? number Where to end search, defaults to `#itable`.
 ---@return number|nil index
@@ -98,7 +98,7 @@ function itable_find(itable, compare, from, to)
 end
 
 ---@param itable table
----@param decider fun(value: any, index: number)
+---@param decider fun(value: any, index: number): boolean|integer|string|nil
 function itable_filter(itable, decider)
 	local filtered = {}
 	for index, value in ipairs(itable) do

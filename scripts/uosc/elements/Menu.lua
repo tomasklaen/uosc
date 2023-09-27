@@ -288,7 +288,7 @@ function Menu:reset_navigation()
 	local menu = self.current
 
 	-- Reset indexes and scroll
-	self:scroll_to(menu.scroll_y) -- clamps scroll_y to scroll limits
+	self:set_scroll_to(menu.scroll_y) -- clamps scroll_y to scroll limits
 	if menu.items and #menu.items > 0 then
 		-- Normalize existing selected_index always, and force it only in keyboard navigation
 		if not self.mouse_nav then
@@ -638,6 +638,7 @@ function Menu:search_internal(menu)
 		for key, value in pairs(menu.search.source) do menu[key] = value end
 	else
 		menu.items =  itable_filter(menu.search.source.items, function(item)
+			if item.selectable == false then return false end
 			local title = item.title and item.title:lower()
 			local hint = item.hint and item.hint:lower()
 			return title and title:find(query, 1, true) or hint and hint:find(query, 1, true) or
@@ -645,11 +646,10 @@ function Menu:search_internal(menu)
 				hint and table.concat(initials(hint)):find(query, 1, true)
 		end)
 		-- Select 1st item in search results
-		menu.selected_index = 1
-		self:select_by_offset(0, menu)
+		menu.scroll_y = 0
+		self:select_index(1, menu)
 	end
 	self:update_content_dimensions()
-	self:reset_navigation()
 end
 
 ---@param menu? MenuStack
