@@ -645,17 +645,118 @@ function Menu:search_update_items()
 	self:reset_navigation()
 end
 
+-- Calculates the levenstein_distance between a substring of s1 and s2
+---@param s1_chars string[]
+---@param from integer
+---@param to integer
+---@param s2_chars string[]
+---@param s2_char_count integer
+---@param matrix integer[][]
+---@return integer
+local function levenshtein_distance(s1_chars, from, to, s2_chars, s2_char_count, matrix)
+	local cols = s2_char_count + 1
+	local rows = to - from + 2
+	if cols == 1 then return rows - 1 end
+	if rows == 1 then return cols - 1 end
+	for r = 2, rows do
+		for c = 2, cols do
+			if s1_chars[from + r - 2] == s2_chars[c - 1] then
+				matrix[r][c] = matrix[r - 1][c - 1]
+			else
+				-- min(substitution, insertion, deletion)
+				matrix[r][c] = 1 + math.min(matrix[r - 1][c - 1], matrix[r][c - 1], matrix[r - 1][c])
+			end
+		end
+	end
+	return matrix[rows][cols]
+end
+
+---Calculates the lowest levenshtein distance of any substring of length pattern_char_count in text.
+---@param text_chars string[]
+---@param text_char_count integer
+---@param pattern_chars string[]
+---@param pattern_char_count integer
+---@param matrix integer[][]
+---@return integer
+local function substring_levenshtein_distance(text_chars, text_char_count, pattern_chars, pattern_char_count, matrix)
+	local best_score = pattern_char_count
+	for i = -pattern_char_count + 2, text_char_count do
+		local from, to = math.max(1, i), math.min(i + pattern_char_count - 1, text_char_count)
+		local score = levenshtein_distance(text_chars, from, to, pattern_chars, pattern_char_count, matrix)
+		if score < best_score then
+			best_score = score
+		end
+	end
+	return best_score
+end
+
+---Sort and filter items based on the hamming distance
+---@param source {scroll_y: number; selected_index?: integer; items?: MenuDataItem[], prepared: { matrix: integer [][]; text: { tc: string[]; tcn: integer; hc: string[]; hcn: integer; twc: string[]; twcn: integer; hwc: string[]; hwcn: integer;}[] }}
+---@param query string
+---@return MenuStackItem[]
+local function fuzzy_search(source, query)
+	local t, n, query_chars, query_char_count = {}, 1, utf8_chars(query)
+	local matrix, text = source.prepared.matrix, source.prepared.text
+	for i = 1, query_char_count + 1 do matrix[1][i] = i - 1 end
+	for i, item in ipairs(source.items) do
+		local p, td, tcd, hd, hcd = text[i], INFINITY, INFINITY, INFINITY, INFINITY
+		if p.tc then
+			td = substring_levenshtein_distance(p.tc, p.tcn, query_chars, query_char_count, matrix)
+			tcd = substring_levenshtein_distance(p.twc, p.twcn, query_chars, query_char_count, matrix)
+		end
+		if p.hc then
+			hd = substring_levenshtein_distance(p.hc, p.hcn, query_chars, query_char_count, matrix)
+			hcd = substring_levenshtein_distance(p.hwc, p.hwcn, query_chars, query_char_count, matrix)
+		end
+		local distance = math.min(td, hd, tcd, hcd)
+		if distance ~= INFINITY then
+			t[n] = { distance, n, item }
+			n = n + 1
+		end
+	end
+	table.sort(t, function(a, b) return a[1] == b[1] and a[2] < b[2] or a[1] < b[1] end)
+	for i, tuple in ipairs(t) do t[i] = tuple[3] end
+	return t
+end
+
+---@param items MenuStackItem[]
+---@return { matrix: integer [][]; text: { tc: string[]; tcn: integer; hc: string[]; hcn: integer; twc: string[]; twcn: integer; hwc: string[]; hwcn: integer;}[] }
+function search_prepare_search(items)
+	local t, n_max = {}, 0
+	for i, item in ipairs(items) do
+		local title = item.title and item.title:lower()
+		local hint = item.hint and item.hint:lower()
+		local tc, tcn, hc, hcn, twc, twcn, hwc, hwcn = nil, nil, nil, nil, nil, nil, nil, nil
+		if title then
+			local title_initials = table.concat(initials(title))
+			tc, tcn = utf8_chars(title)
+			twc, twcn = utf8_chars(title_initials)
+		end
+		if hint then
+			local hint_initials = table.concat(initials(hint))
+			hc, hcn = utf8_chars(hint)
+			hwc, hwcn = utf8_chars(hint_initials)
+		end
+		local n = math.max(tcn or 0, hcn or 0)
+		if n > n_max then
+			n_max = n
+		end
+		t[i] = {
+			tc = tc, tcn = tcn, hc = hc, hcn = hcn, twc = twc, twcn = twcn, hwc = hwc, hwcn = hwcn,
+		}
+	end
+	local matrix = {}
+	for i = 1, n_max + 1 do matrix[i] = { i - 1 } end
+	return { text = t, matrix = matrix }
+end
+
 ---@param menu MenuStack
 function Menu:search_internal(menu)
 	local query = menu.search.query:lower()
-	menu.items = query ~= '' and itable_filter(menu.search.source.items, function(item)
-		local title = item.title and item.title:lower()
-		local hint = item.hint and item.hint:lower()
-		return title and title:find(query, 1, true) or hint and hint:find(query, 1, true) or
-			title and table.concat(initials(title)):find(query, 1, true) or
-			hint and table.concat(initials(hint)):find(query, 1, true)
-	end) or menu.search.source.items
+	menu.items = query ~= '' and fuzzy_search(menu.search.source, query) or menu.search.source.items
 	self:search_update_items()
+	self:select_index(1, menu)
+	self:scroll_to_index(1, menu)
 end
 
 ---@param menu? MenuStack
@@ -753,7 +854,8 @@ function Menu:search_start()
 		query = '', timeout = timeout, width = menu.width, top = menu.top,
 		source = {
 			scroll_y = menu.scroll_y, selected_index = menu.selected_index,
-			items = not menu.on_search and menu.items or nil
+			items = not menu.on_search and menu.items or nil,
+			prepared = not menu.on_search and search_prepare_search(menu.items) or nil,
 		},
 	}
 	self:search_ensure_key_bindings()
