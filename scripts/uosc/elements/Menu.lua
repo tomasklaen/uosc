@@ -630,32 +630,26 @@ function Menu:on_end()
 	self:navigate_by_offset(INFINITY)
 end
 
-function Menu:search_update_items()
-	local menus_to_serialize = {self.root}
-
-	for _, menu in ipairs(menus_to_serialize) do
-		for _, item in ipairs(menu.items or {}) do
-			if item.items then menus_to_serialize[#menus_to_serialize + 1] = item end
-		end
-
-		if menu.selected_index then self:select_by_offset(0, menu) end
-	end
-
-	self:update_content_dimensions()
-	self:reset_navigation()
-end
-
 ---@param menu MenuStack
 function Menu:search_internal(menu)
 	local query = menu.search.query:lower()
-	menu.items = query ~= '' and itable_filter(menu.search.source.items, function(item)
-		local title = item.title and item.title:lower()
-		local hint = item.hint and item.hint:lower()
-		return title and title:find(query, 1, true) or hint and hint:find(query, 1, true) or
-			title and table.concat(initials(title)):find(query, 1, true) or
-			hint and table.concat(initials(hint)):find(query, 1, true)
-	end) or menu.search.source.items
-	self:search_update_items()
+	if query == '' then
+		-- Reset menu state to what it was before search
+		for key, value in pairs(menu.search.source) do menu[key] = value end
+	else
+		menu.items =  itable_filter(menu.search.source.items, function(item)
+			local title = item.title and item.title:lower()
+			local hint = item.hint and item.hint:lower()
+			return title and title:find(query, 1, true) or hint and hint:find(query, 1, true) or
+				title and table.concat(initials(title)):find(query, 1, true) or
+				hint and table.concat(initials(hint)):find(query, 1, true)
+		end)
+		-- Select 1st item in search results
+		menu.selected_index = 1
+		self:select_by_offset(0, menu)
+	end
+	self:update_content_dimensions()
+	self:reset_navigation()
 end
 
 ---@param menu? MenuStack
@@ -730,10 +724,7 @@ end
 
 function Menu:search_stop()
 	self:search_query_update('')
-	local menu, search_source = self.current, self.current.search.source
-	menu.selected_index = search_source.selected_index
-	menu.scroll_y = search_source.scroll_y
-	menu.search = nil
+	self.current.search = nil
 	self:search_ensure_key_bindings()
 	self:update_dimensions()
 	self:reset_navigation()
