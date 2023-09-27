@@ -1067,6 +1067,7 @@ function Menu:render()
 		if draw_title then
 			local requires_submit = menu.search_debounce == 'submit'
 			local rect = {ax = ax, ay = ay - self.item_height, bx = bx, by = ay - 2}
+			local prevent_title_click = true
 			rect.cx, rect.cy = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2 -- centers
 
 			-- Bottom border
@@ -1076,12 +1077,12 @@ function Menu:render()
 			if menu.search then
 				-- Icon
 				local icon_size, icon_opacity = self.font_size * 1.3, requires_submit and text_opacity * 0.5 or 1
-				local clip_ax = ax + icon_size + spacing * 1.5
-				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = clip_ax, by = ay}
+				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = ay}
 
 				if is_current and requires_submit and get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
 					cursor.on_primary_down = function() self:search_submit() end
 					icon_opacity = text_opacity
+					prevent_title_click = false
 				end
 
 				ass:icon(rect.ax + spacing + icon_size / 2, rect.cy, icon_size, 'search', {
@@ -1094,7 +1095,7 @@ function Menu:render()
 					local query = ass_escape(menu.search.query) .. '\239\187\191'
 					ass:txt(rect.bx - spacing, rect.cy, 6, query, {
 						size = self.font_size, color = bgt, wrap = 2, opacity = menu_opacity,
-						clip = '\\clip(' .. clip_ax .. ',' .. rect.ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
+						clip = '\\clip(' .. icon_rect.bx .. ',' .. rect.ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
 					})
 				else
 					local placeholder = requires_submit and t('type & ctrl+enter to search') or t('type to search')
@@ -1119,7 +1120,7 @@ function Menu:render()
 			end
 
 			-- Do nothing when user clicks title
-			if is_current and not cursor.on_primary_down and get_point_to_rectangle_proximity(cursor, rect) then
+			if is_current and prevent_title_click and get_point_to_rectangle_proximity(cursor, rect) == 0 then
 				cursor.on_primary_down = function() end
 			end
 		end
