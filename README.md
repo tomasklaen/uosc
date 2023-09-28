@@ -454,7 +454,7 @@ Command {
 
 When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(table.unpack(value))`. The same goes for `Menu.on_close` and `on_search`. `on_search` additionally appends the current search string as the last parameter.
 
-`Menu.type` controls what happens when opening a menu when some other menu is already open. When the new menu type is different, it'll replace the currently opened menu. When it's the same, the currently open menu will simply be closed. This is used to implement toggling of menus with the same type.
+`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.
 
 `search_debounce` controls how soon the search happens after the last character was entered in milliseconds. Entering new character resets the timer. Defaults to 300. It can also have a special value `submit`, which triggers a search only after `ctrl+enter` was pressed.
 
@@ -485,7 +485,7 @@ mp.commandv('script-message-to', 'uosc', 'open-menu', json)
 
 Updates currently opened menu with the same `type`.
 
-The difference between this and `open-menu` is that if the same type menu is already open, `open-menu` will close it (facilitating menu toggling with the same key/command), while `update-menu` will update it's data.
+The difference between this and `open-menu` is that if the same type menu is already open, `open-menu` will reset the menu as if it was newly opened, while `update-menu` will update it's data.
 
 `update-menu`, along with `{menu/item}.keep_open` property and `item.command` that sends a message back can be used to create a self updating menu with some limited UI. Example:
 
