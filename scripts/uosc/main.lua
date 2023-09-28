@@ -1296,6 +1296,9 @@ mp.register_script_message('update-menu', function(json)
 		if menu then menu:update(data) end
 	end
 end)
+mp.register_script_message('close-menu', function(type)
+	if Menu:is_open(type) then Menu:close() end
+end)
 mp.register_script_message('thumbfast-info', function(json)
 	local data = utils.parse_json(json)
 	if type(data) ~= 'table' or not data.width or not data.height then

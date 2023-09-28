@@ -560,6 +560,11 @@ mp.register_script_message('submit', function(prop, value)
 end)
 ```
 
+### `close-menu [type]`
+
+Closes the menu. If the optional parameter `type` is provided, then the menu only
+closes if it matches `Menu.type` of the currently open menu.
+
 ### `set <prop> <value>`
 
 Tell **uosc** to set an external property to this value. Currently, this is only used to set/display control button active state and badges:
