@@ -423,7 +423,8 @@ Menu {
   keep_open?: boolean;
   on_close?: string | string[];
   on_search?: string | string[];
-  search_debounce?: string | number;
+  palette?: boolean;
+  search_debounce?: 'submit' | number;
 }
 
 Item = Command | Submenu;
@@ -434,7 +435,8 @@ Submenu {
   items: Item[];
   keep_open?: boolean;
   on_search?: string | string[];
-  search_debounce?: string | number;
+  palette?: boolean;
+  search_debounce?: 'submit' | number;
 }
 
 Command {
@@ -456,9 +458,11 @@ When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it'
 
 `Menu.type` controls what happens when opening a menu when some other menu is already open. When the new menu type is different, it'll replace the currently opened menu. When it's the same, the currently open menu will simply be closed. This is used to implement toggling of menus with the same type.
 
-`search_debounce` controls how soon the search happens after the last character was entered in milliseconds. Entering new character resets the timer. Defaults to 300. It can also have a special value `submit`, which triggers a search only after `ctrl+enter` was pressed.
+`palette` specifies that this menu's primarily mode of interaction is through a search input. When enabled, search input will be visible at all times (doesn't have to be enabled and can't be disabled), and `title` will be used as input placeholder while search query is empty.
 
-`item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons?selected=Material+Icons)\
+`search_debounce` controls how soon the search happens after the last character was entered in milliseconds. Entering new character resets the timer. Defaults to `300`. It can also have a special value `'submit'`, which triggers a search only after `ctrl+enter` was pressed.
+
+`item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons)\
 There is also a special icon name `spinner` which will display a rotating spinner. Along with a no-op command on an item and `keep_open=true`, this can be used to display placeholder menus/items that are still loading.
 
 When `keep_open` is `true`, activating the item will not close the menu. This property can be defined on both menus and items, and is inherited from parent to child if child doesn't overwrite it.
