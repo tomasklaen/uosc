@@ -1293,8 +1293,7 @@ mp.register_script_message('update-menu', function(json)
 		msg.error('update-menu: received json didn\'t produce a table with menu configuration')
 	else
 		local menu = data.type and Menu:is_open(data.type)
-		if menu then menu:update(data)
-		else open_command_menu(data) end
+		if menu then menu:update(data) end
 	end
 end)
 mp.register_script_message('thumbfast-info', function(json)

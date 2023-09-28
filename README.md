@@ -483,7 +483,7 @@ mp.commandv('script-message-to', 'uosc', 'open-menu', json)
 
 ### `update-menu <menu_json>`
 
-Updates currently opened menu with the same `type`. If the menu isn't open, it will be opened.
+Updates currently opened menu with the same `type`.
 
 The difference between this and `open-menu` is that if the same type menu is already open, `open-menu` will close it (facilitating menu toggling with the same key/command), while `update-menu` will update it's data.
 
