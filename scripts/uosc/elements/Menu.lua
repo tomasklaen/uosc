@@ -1,13 +1,13 @@
 local Element = require('elements/Element')
 
 -- Menu data structure accepted by `Menu:open(menu)`.
----@alias MenuData {id?: string; type?: string; title?: string; hint?: string; palette?: boolean, keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string}
+---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; palette?: boolean; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; initial_query?: string}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'}
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(); on_close?: fun(); on_back?: fun(); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; palette?: boolean, selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; palette?: boolean, selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string); search_debounce?: number|string; initial_query?: string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
@@ -140,10 +140,11 @@ function Menu:update(data)
 
 	local new_root = {is_root = true, submenu_path = {}}
 	local new_all = {}
+	local new_menus = {} -- menus that didn't exist before this `update()`
 	local new_by_id = {}
 	local menus_to_serialize = {{new_root, data}}
 	local old_current_id = self.current and self.current.id
-	local menu_props_to_copy = {'title', 'hint', 'keep_open', 'palette', 'on_search'}
+	local menu_props_to_copy = {'title', 'hint', 'keep_open', 'palette', 'on_search', 'initial_query'}
 	local item_props_to_copy = itable_join(menu_props_to_copy, {
 		'icon', 'active', 'bold', 'italic', 'muted', 'value', 'separator', 'selectable', 'align'
 	})
@@ -200,7 +201,8 @@ function Menu:update(data)
 
 		-- Retain old state
 		local old_menu = self.by_id[menu.id]
-		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'}) end
+		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'})
+		else new_menus[#new_menus + 1] = menu end
 
 		if menu.selected_index then self:select_by_offset(0, menu) end
 
@@ -225,9 +227,15 @@ function Menu:update(data)
 			menu.search = nil
 		end
 	end
+	-- We update before _and_ after because search_inits need the initial un-searched
+	-- menu's position and scroll state to save on the `search.source` table.
 	if update_dimensions_again then
 		self:update_content_dimensions()
 		self:reset_navigation()
+	end
+	for _, menu in ipairs(new_menus) do
+		print(menu.id..': '.. (menu.initial_query or ''))
+		if menu.initial_query then self:search_query_update(menu.initial_query, menu) end
 	end
 
 	self:search_ensure_key_bindings()
