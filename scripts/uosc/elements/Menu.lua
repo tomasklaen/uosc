@@ -797,11 +797,8 @@ end
 function Menu:key_esc()
 	if self.current.search then
 		if self.current.palette then
-			if self.current.search.query == '' then
-				self:close()
-			else
-				self:search_query_update('')
-			end
+			if self.current.search.query == '' then self:close()
+			else self:search_query_update('') end
 		else
 			self:search_stop()
 		end
