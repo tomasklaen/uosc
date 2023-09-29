@@ -219,7 +219,7 @@ function Menu:update(data)
 	-- Ensure palette menus have active searches, and clean empty searches from menus that lost the `palette` flag
 	local update_dimensions_again = false
 	for _, menu in ipairs(self.all) do
-		if menu.palette and not menu.search then
+		if not menu.search and (menu.palette or (menu.initial_query and itable_index_of(new_menus, menu))) then
 			update_dimensions_again = true
 			self:search_init(menu)
 		elseif not menu.palette and menu.search and menu.search.query == '' then
@@ -233,8 +233,8 @@ function Menu:update(data)
 		self:update_content_dimensions()
 		self:reset_navigation()
 	end
+	-- Execute initial search queries
 	for _, menu in ipairs(new_menus) do
-		print(menu.id..': '.. (menu.initial_query or ''))
 		if menu.initial_query then self:search_query_update(menu.initial_query, menu) end
 	end
 
