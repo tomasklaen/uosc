@@ -112,6 +112,7 @@ function Menu:init(data, callback, opts)
 	self.drag_last_y = nil
 	self.is_dragging = false
 
+	mp.set_property_native('user-data/uosc/menu/type', self.type)
 	self:update(data)
 
 	if self.mouse_nav then
@@ -131,13 +132,12 @@ function Menu:destroy()
 	self:disable_key_bindings()
 	self.is_closed = true
 	if not self.is_being_replaced then Elements.curtain:unregister('menu') end
+	mp.del_property('user-data/uosc/menu/type')
 	if self.opts.on_close then self.opts.on_close() end
 end
 
 ---@param data MenuData
 function Menu:update(data)
-	self.type = data.type
-
 	local new_root = {is_root = true, submenu_path = {}}
 	local new_all = {}
 	local new_by_id = {}

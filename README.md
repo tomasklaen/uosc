@@ -454,7 +454,8 @@ Command {
 
 When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(table.unpack(value))`. The same goes for `Menu.on_close` and `on_search`. `on_search` additionally appends the current search string as the last parameter.
 
-`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.
+`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.  
+While the menu is open this value will be available in `user-data/uosc/menu/type`. Keep in mind that `nil` is a valid value. If the menu is closed `mp.get_property_native()` will return an error as the second return value.
 
 `search_debounce` controls how soon the search happens after the last character was entered in milliseconds. Entering new character resets the timer. Defaults to 300. It can also have a special value `submit`, which triggers a search only after `ctrl+enter` was pressed.
 
