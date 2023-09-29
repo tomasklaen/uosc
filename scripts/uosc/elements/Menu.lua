@@ -273,26 +273,21 @@ function Menu:update_content_dimensions()
 end
 
 function Menu:update_dimensions()
-	-- Coordinates and sizes are of the scrollable area. Title is rendered
+	-- Coordinates and sizes are of the scrollable area to make
+	-- consuming values in rendering and collisions easier. Title is rendered
 	-- above it, so we need to account for that in max_height and ay position.
-	-- This is a debt from an era where we had different cursor event handling,
-	-- and dumb titles with no search inputs. It could use a refactor.
 	local min_width = state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width
-	local vertical_padding = round(self.scroll_step / 2)
-	local height_available = display.height - vertical_padding * 2
+	local height_available = display.height - Elements.timeline.size_min
 
 	for _, menu in ipairs(self.all) do
 		local width = math.max(menu.search and menu.search.width or 0, menu.max_width)
 		menu.width = round(clamp(min_width, width, display.width * 0.9))
-		local title_height = (menu.title or menu.search) and self.scroll_step or 0
-		local max_height = height_available - title_height
+		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step or 0
+		local max_height = round(height_available * 0.9 - title_height)
 		local content_height = self.scroll_step * #menu.items
 		menu.height = math.min(content_height - self.item_spacing, max_height)
 		local search_top = menu.search and menu.search.top or height_available
-		menu.top = math.max(
-			title_height + vertical_padding,
-			math.min(search_top, round((height_available - menu.height + title_height) / 2))
-		)
+		menu.top = math.min(search_top, round((height_available - menu.height + title_height) / 2))
 		menu.scroll_height = math.max(content_height - menu.height - self.item_spacing, 0)
 		menu.scroll_y = menu.scroll_y or 0
 		self:scroll_to(menu.scroll_y, menu) -- clamps scroll_y to scroll limits
