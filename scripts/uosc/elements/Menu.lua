@@ -1,13 +1,13 @@
 local Element = require('elements/Element')
 
 -- Menu data structure accepted by `Menu:open(menu)`.
----@alias MenuData {id?: string; type?: string; title?: string; hint?: string; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string}
+---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; palette?: boolean; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; search_suggestion?: string}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'}
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(); on_close?: fun(); on_back?: fun(); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; palette?: boolean, selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string); search_debounce?: number|string; search_suggestion?: string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
@@ -140,11 +140,16 @@ function Menu:update(data)
 
 	local new_root = {is_root = true, submenu_path = {}}
 	local new_all = {}
+	local new_menus = {} -- menus that didn't exist before this `update()`
 	local new_by_id = {}
 	local menus_to_serialize = {{new_root, data}}
 	local old_current_id = self.current and self.current.id
+	local menu_props_to_copy = {'title', 'hint', 'keep_open', 'palette', 'on_search', 'search_suggestion'}
+	local item_props_to_copy = itable_join(menu_props_to_copy, {
+		'icon', 'active', 'bold', 'italic', 'muted', 'value', 'separator', 'selectable', 'align'
+	})
 
-	table_assign(new_root, data, {'type', 'title', 'hint', 'keep_open'})
+	table_assign(new_root, data, itable_join({'type'}, menu_props_to_copy))
 
 	local i = 0
 	while i < #menus_to_serialize do
@@ -160,7 +165,7 @@ function Menu:update(data)
 		end
 		menu.icon = 'chevron_right'
 
-		menu.on_search = menu_data.on_search
+		-- Normalize `search_debounce`
 		if type(menu_data.search_debounce) == 'number' then
 			menu.search_debounce = math.max(0, menu_data.search_debounce)
 		elseif menu_data.search_debounce == 'submit' then
@@ -179,10 +184,7 @@ function Menu:update(data)
 			if item_data.active and not first_active_index then first_active_index = i end
 
 			local item = {}
-			table_assign(item, item_data, {
-				'title', 'icon', 'hint', 'active', 'bold', 'italic', 'muted', 'value', 'keep_open', 'separator',
-				'selectable', 'align'
-			})
+			table_assign(item, item_data, item_props_to_copy)
 			if item.keep_open == nil then item.keep_open = menu.keep_open end
 
 			-- Submenu
@@ -199,7 +201,8 @@ function Menu:update(data)
 
 		-- Retain old state
 		local old_menu = self.by_id[menu.id]
-		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'}) end
+		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'})
+		else new_menus[#new_menus + 1] = menu end
 
 		if menu.selected_index then self:select_by_offset(0, menu) end
 
@@ -212,6 +215,29 @@ function Menu:update(data)
 
 	self:update_content_dimensions()
 	self:reset_navigation()
+
+	-- Ensure palette menus have active searches, and clean empty searches from menus that lost the `palette` flag
+	local update_dimensions_again = false
+	for _, menu in ipairs(self.all) do
+		if not menu.search and (menu.palette or (menu.search_suggestion and itable_index_of(new_menus, menu))) then
+			update_dimensions_again = true
+			self:search_init(menu)
+		elseif not menu.palette and menu.search and menu.search.query == '' then
+			update_dimensions_again = true
+			menu.search = nil
+		end
+	end
+	-- We update before _and_ after because search_inits need the initial un-searched
+	-- menu's position and scroll state to save on the `search.source` table.
+	if update_dimensions_again then
+		self:update_content_dimensions()
+		self:reset_navigation()
+	end
+	-- Execute initial search queries
+	for _, menu in ipairs(new_menus) do
+		if menu.search_suggestion then self:search_query_update(menu.search_suggestion, menu) end
+	end
+
 	self:search_ensure_key_bindings()
 end
 
@@ -684,8 +710,9 @@ function Menu:search_submit(menu)
 end
 
 ---@param query string
-function Menu:search_query_update(query)
-	local menu = self.current
+---@param menu? MenuStack
+function Menu:search_query_update(query, menu)
+	menu = menu or self.current
 	menu.search.query = query
 	if menu.search_debounce ~= 'submit' then
 		if menu.search.timeout then
@@ -698,13 +725,21 @@ function Menu:search_query_update(query)
 	request_render()
 end
 
-function Menu:search_backspace()
-	local pos, search_text = #self.current.search.query - 1, self.current.search.query
-	while pos > 1 and search_text:byte(pos) >= 0x80 and search_text:byte(pos) <= 0xbf do
+---@param event? string
+function Menu:search_backspace(event)
+	local pos, old_query, is_palette = #self.current.search.query - 1, self.current.search.query, self.current.palette
+	-- The while loop is for skipping utf8 continuation bytes
+	while pos > 1 and old_query:byte(pos) >= 0x80 and old_query:byte(pos) <= 0xbf do
 		pos = pos - 1
 	end
-	if pos <= 0 then self:search_stop()
-	else self:search_query_update(search_text:sub(1, pos)) end
+	local new_query = old_query:sub(1, pos)
+	if new_query ~= old_query and (is_palette or not self.type_to_search or pos > 0) then
+		self:search_query_update(new_query)
+	elseif not is_palette and self.type_to_search then
+		self:search_stop()
+	elseif is_palette and event ~= 'repeat' then
+		self:back()
+	end
 end
 
 function Menu:search_text_input(info)
@@ -722,16 +757,19 @@ function Menu:search_text_input(info)
 	end
 end
 
-function Menu:search_stop()
-	self:search_query_update('')
-	self.current.search = nil
+---@param menu? MenuStack
+function Menu:search_stop(menu)
+	menu = menu or self.current
+	self:search_query_update('', menu)
+	menu.search = nil
 	self:search_ensure_key_bindings()
 	self:update_dimensions()
 	self:reset_navigation()
 end
 
-function Menu:search_start()
-	local menu = self.current
+---@param menu? MenuStack
+function Menu:search_init(menu)
+	menu = menu or self.current
 	if menu.search then return end
 	local timeout
 	if menu.search_debounce ~= 'submit' and menu.search_debounce > 0 then
@@ -747,18 +785,29 @@ function Menu:search_start()
 			items = not menu.on_search and menu.items or nil
 		},
 	}
+end
+
+---@param menu? MenuStack
+function Menu:search_start(menu)
+	self:search_init(menu)
 	self:search_ensure_key_bindings()
 	self:update_dimensions()
 end
 
 function Menu:key_esc()
-	if self.current.search then self:search_stop()
+	if self.current.search then
+		if self.current.palette then
+			if self.current.search.query == '' then self:close()
+			else self:search_query_update('') end
+		else
+			self:search_stop()
+		end
 	else self:close() end
 end
 
 function Menu:key_bs(info)
 	if info.event ~= 'up' then
-		if self.current.search then self:search_backspace()
+		if self.current.search then self:search_backspace(info.event)
 		elseif info.event ~= 'repeat' then self:back() end
 	end
 end
@@ -1061,6 +1110,10 @@ function Menu:render()
 			local prevent_title_click = true
 			rect.cx, rect.cy = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2 -- centers
 
+			if menu.title and not menu.ass_safe_title then
+				menu.ass_safe_title = ass_escape(menu.title)
+			end
+
 			-- Bottom border
 			ass:rect(rect.ax, rect.by - 1, rect.bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
 
@@ -1089,7 +1142,9 @@ function Menu:render()
 						clip = '\\clip(' .. icon_rect.bx .. ',' .. rect.ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
 					})
 				else
-					local placeholder = requires_submit and t('type & ctrl+enter to search') or t('type to search')
+					local placeholder = (menu.palette and menu.ass_safe_title)
+						and menu.ass_safe_title
+						or (requires_submit and t('type & ctrl+enter to search') or t('type to search'))
 					ass:txt(rect.bx - spacing, rect.cy, 6, placeholder, {
 						size = self.font_size, italic = true, color = bgt, wrap = 2, opacity = menu_opacity * 0.4,
 						clip = '\\clip(' .. ax + spacing .. ',' .. rect.ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
@@ -1103,7 +1158,6 @@ function Menu:render()
 					color = fg, opacity = menu_opacity * 0.5
 				})
 			else
-				menu.ass_safe_title = menu.ass_safe_title or ass_escape(menu.title)
 				ass:txt(rect.cx, rect.cy, 5, menu.ass_safe_title, {
 					size = self.font_size, bold = true, color = bgt, wrap = 2, opacity = menu_opacity,
 					clip = '\\clip(' .. rect.ax + 2 .. ',' .. rect.ay .. ',' .. rect.bx - 2 .. ',' .. rect.by .. ')',
