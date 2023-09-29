@@ -1,13 +1,13 @@
 local Element = require('elements/Element')
 
 -- Menu data structure accepted by `Menu:open(menu)`.
----@alias MenuData {id?: string; type?: string; title?: string; hint?: string; palette?: boolean; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; initial_query?: string}
+---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; palette?: boolean; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string), search_debounce?: number|string; search_suggestion?: string}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'}
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(); on_close?: fun(); on_back?: fun(); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; palette?: boolean, selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string); search_debounce?: number|string; initial_query?: string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; palette?: boolean, selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string); search_debounce?: number|string; search_suggestion?: string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
@@ -144,7 +144,7 @@ function Menu:update(data)
 	local new_by_id = {}
 	local menus_to_serialize = {{new_root, data}}
 	local old_current_id = self.current and self.current.id
-	local menu_props_to_copy = {'title', 'hint', 'keep_open', 'palette', 'on_search', 'initial_query'}
+	local menu_props_to_copy = {'title', 'hint', 'keep_open', 'palette', 'on_search', 'search_suggestion'}
 	local item_props_to_copy = itable_join(menu_props_to_copy, {
 		'icon', 'active', 'bold', 'italic', 'muted', 'value', 'separator', 'selectable', 'align'
 	})
@@ -219,7 +219,7 @@ function Menu:update(data)
 	-- Ensure palette menus have active searches, and clean empty searches from menus that lost the `palette` flag
 	local update_dimensions_again = false
 	for _, menu in ipairs(self.all) do
-		if not menu.search and (menu.palette or (menu.initial_query and itable_index_of(new_menus, menu))) then
+		if not menu.search and (menu.palette or (menu.search_suggestion and itable_index_of(new_menus, menu))) then
 			update_dimensions_again = true
 			self:search_init(menu)
 		elseif not menu.palette and menu.search and menu.search.query == '' then
@@ -235,7 +235,7 @@ function Menu:update(data)
 	end
 	-- Execute initial search queries
 	for _, menu in ipairs(new_menus) do
-		if menu.initial_query then self:search_query_update(menu.initial_query, menu) end
+		if menu.search_suggestion then self:search_query_update(menu.search_suggestion, menu) end
 	end
 
 	self:search_ensure_key_bindings()

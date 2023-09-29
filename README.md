@@ -425,7 +425,7 @@ Menu {
   on_search?: string | string[];
   palette?: boolean;
   search_debounce?: 'submit' | number;
-  initial_query?: string;
+  search_suggestion?: string;
 }
 
 Item = Command | Submenu;
@@ -438,7 +438,7 @@ Submenu {
   on_search?: string | string[];
   palette?: boolean;
   search_debounce?: 'submit' | number;
-  initial_query?: string;
+  search_suggestion?: string;
 }
 
 Command {
@@ -464,7 +464,7 @@ When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it'
 
 `search_debounce` controls how soon the search happens after the last character was entered in milliseconds. Entering new character resets the timer. Defaults to `300`. It can also have a special value `'submit'`, which triggers a search only after `ctrl+enter` was pressed.
 
-`initial_query` fills menu search with initial query string. Useful for example when you want to implement something like subtitle downloader, you'd set it to current file name.
+`search_suggestion` fills menu search with initial query string. Useful for example when you want to implement something like subtitle downloader, you'd set it to current file name.
 
 `item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons)\
 There is also a special icon name `spinner` which will display a rotating spinner. Along with a no-op command on an item and `keep_open=true`, this can be used to display placeholder menus/items that are still loading.
