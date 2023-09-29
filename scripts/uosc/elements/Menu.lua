@@ -728,6 +728,7 @@ end
 ---@param event? string
 function Menu:search_backspace(event)
 	local pos, old_query, is_palette = #self.current.search.query - 1, self.current.search.query, self.current.palette
+	-- The while loop is for skipping utf8 continuation bytes
 	while pos > 1 and old_query:byte(pos) >= 0x80 and old_query:byte(pos) <= 0xbf do
 		pos = pos - 1
 	end
