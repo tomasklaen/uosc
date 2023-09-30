@@ -465,6 +465,8 @@ While the menu is open this value will be available in `user-data/uosc/menu/type
 
 `search_debounce` controls how soon the search happens after the last character was entered in milliseconds. Entering new character resets the timer. Defaults to `300`. It can also have a special value `'submit'`, which triggers a search only after `ctrl+enter` was pressed.
 
+`search_submenus` makes uosc's internal search handler (when no `on_search` callback is defined) look into submenus as well, effectively flattening the menu for the duration of the search.
+
 `search_suggestion` fills menu search with initial query string. Useful for example when you want to implement something like subtitle downloader, you'd set it to current file name.
 
 `item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons)\

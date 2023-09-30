@@ -23,7 +23,7 @@ end
 ---@param opts? {submenu?: string; mouse_nav?: boolean; on_close?: string | string[]}
 function toggle_menu_with_items(opts)
 	if Menu:is_open('menu') then Menu:close()
-	else open_command_menu({type = 'menu', items = config.menu_items}, opts) end
+	else open_command_menu({type = 'menu', items = config.menu_items, search_submenus = true}, opts) end
 end
 
 ---@param options {type: string; title: string; list_prop: string; active_prop?: string; serializer: fun(list: any, active: any): MenuDataItem[]; on_select: fun(value: any); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
