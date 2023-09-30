@@ -233,9 +233,16 @@ function Menu:update(data)
 		self:update_content_dimensions()
 		self:reset_navigation()
 	end
-	-- Execute initial search queries
+	-- Apply search suggestions
 	for _, menu in ipairs(new_menus) do
-		if menu.search_suggestion then self:search_query_update(menu.search_suggestion, menu) end
+		if menu.search_suggestion then
+			-- Only internal searches are immediately submitted
+			if menu.on_search then
+				menu.search.query = menu.search_suggestion
+			else
+				self:search_query_update(menu.search_suggestion, menu)
+			end
+		end
 	end
 
 	self:search_ensure_key_bindings()
