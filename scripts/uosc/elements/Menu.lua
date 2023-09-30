@@ -682,7 +682,7 @@ function search_items(items, query, recursive, prefix)
 	local result = {}
 	for _, item in ipairs(items) do
 		if item.selectable ~= false then
-			local prefixed_title = prefix and prefix .. ' > ' .. (item.title or '') or item.title
+			local prefixed_title = prefix and prefix .. ' / ' .. (item.title or '') or item.title
 			if item.items and recursive then
 				itable_append(result, search_items(item.items, query, recursive, prefixed_title))
 			else
