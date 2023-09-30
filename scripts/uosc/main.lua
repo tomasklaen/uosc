@@ -1283,8 +1283,7 @@ mp.register_script_message('open-menu', function(json, submenu_id)
 	if type(data) ~= 'table' or type(data.items) ~= 'table' then
 		msg.error('open-menu: received json didn\'t produce a table with menu configuration')
 	else
-		if data.type and Menu:is_open(data.type) then Menu:close()
-		else open_command_menu(data, {submenu = submenu_id, on_close = data.on_close}) end
+		open_command_menu(data, {submenu = submenu_id, on_close = data.on_close})
 	end
 end)
 mp.register_script_message('update-menu', function(json)
@@ -1293,9 +1292,11 @@ mp.register_script_message('update-menu', function(json)
 		msg.error('update-menu: received json didn\'t produce a table with menu configuration')
 	else
 		local menu = data.type and Menu:is_open(data.type)
-		if menu then menu:update(data)
-		else open_command_menu(data) end
+		if menu then menu:update(data) end
 	end
+end)
+mp.register_script_message('close-menu', function(type)
+	if Menu:is_open(type) then Menu:close() end
 end)
 mp.register_script_message('thumbfast-info', function(json)
 	local data = utils.parse_json(json)

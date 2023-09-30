@@ -458,7 +458,8 @@ Command {
 
 When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(table.unpack(value))`. The same goes for `Menu.on_close` and `on_search`. `on_search` additionally appends the current search string as the last parameter.
 
-`Menu.type` controls what happens when opening a menu when some other menu is already open. When the new menu type is different, it'll replace the currently opened menu. When it's the same, the currently open menu will simply be closed. This is used to implement toggling of menus with the same type.
+`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.  
+While the menu is open this value will be available in `user-data/uosc/menu/type`. Keep in mind that `nil` is a valid value. If the menu is closed `mp.get_property_native()` will return an error as the second return value.
 
 `palette` specifies that this menu's primarily mode of interaction is through a search input. When enabled, search input will be visible at all times (doesn't have to be enabled and can't be disabled), and `title` will be used as input placeholder while search query is empty.
 
@@ -491,9 +492,9 @@ mp.commandv('script-message-to', 'uosc', 'open-menu', json)
 
 ### `update-menu <menu_json>`
 
-Updates currently opened menu with the same `type`. If the menu isn't open, it will be opened.
+Updates currently opened menu with the same `type`.
 
-The difference between this and `open-menu` is that if the same type menu is already open, `open-menu` will close it (facilitating menu toggling with the same key/command), while `update-menu` will update it's data.
+The difference between this and `open-menu` is that if the same type menu is already open, `open-menu` will reset the menu as if it was newly opened, while `update-menu` will update it's data.
 
 `update-menu`, along with `{menu/item}.keep_open` property and `item.command` that sends a message back can be used to create a self updating menu with some limited UI. Example:
 
@@ -567,6 +568,11 @@ mp.register_script_message('submit', function(prop, value)
   -- Do something with state
 end)
 ```
+
+### `close-menu [type]`
+
+Closes the menu. If the optional parameter `type` is provided, then the menu only
+closes if it matches `Menu.type` of the currently open menu.
 
 ### `set <prop> <value>`
 
