@@ -11,7 +11,7 @@ local Element = require('elements/Element')
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
----@alias Search {query: string; timeout: unknown; width: number; top: number; source: {scroll_y: number; selected_index?: integer; items?: MenuDataItem[]}}
+---@alias Search {query: string; timeout: unknown; min_top: number; source: {width: number; top: number; scroll_y: number; selected_index?: integer; items?: MenuDataItem[]}}
 
 ---@alias Modifiers {shift?: boolean, ctrl?: boolean, alt?: boolean}
 ---@alias MenuCallbackMeta {modifiers: Modifiers}
@@ -294,22 +294,23 @@ function Menu:update_dimensions()
 	-- above it, so we need to account for that in max_height and ay position.
 	-- This is a debt from an era where we had different cursor event handling,
 	-- and dumb titles with no search inputs. It could use a refactor.
+	local margin = round(self.item_height / 2)
 	local min_width = state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width
-	local vertical_padding = round(self.scroll_step / 2)
-	local height_available = display.height - vertical_padding * 2
+	local height_available = display.height - margin * 2
 
 	for _, menu in ipairs(self.all) do
-		local width = math.max(menu.search and menu.search.width or 0, menu.max_width)
-		menu.width = round(clamp(min_width, width, display.width * 0.9))
+		local width = math.max(menu.search and menu.search.source.width or 0, menu.max_width)
+		menu.width = round(clamp(min_width, width, display.width - margin * 2))
 		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step or 0
 		local max_height = height_available - title_height
 		local content_height = self.scroll_step * #menu.items
 		menu.height = math.min(content_height - self.item_spacing, max_height)
-		local search_top = menu.search and menu.search.top or height_available
-		menu.top = math.max(
-			title_height + vertical_padding,
-			math.min(search_top, round((height_available - menu.height + title_height) / 2))
+		menu.top = clamp(
+			title_height + margin,
+			menu.search and math.min(menu.search.min_top, menu.search.source.top) or height_available,
+			round((height_available - menu.height + title_height) / 2)
 		)
+		if menu.search then menu.search.min_top = math.min(menu.search.min_top, menu.top) end
 		menu.scroll_height = math.max(content_height - menu.height - self.item_spacing, 0)
 		menu.scroll_y = menu.scroll_y or 0
 		self:scroll_to(menu.scroll_y, menu) -- clamps scroll_y to scroll limits
@@ -814,8 +815,9 @@ function Menu:search_init(menu)
 		timeout:kill()
 	end
 	menu.search = {
-		query = '', timeout = timeout, width = menu.width, top = menu.top,
+		query = '', timeout = timeout, min_top = menu.top,
 		source = {
+			width = menu.width, top = menu.top,
 			scroll_y = menu.scroll_y, selected_index = menu.selected_index,
 			items = not menu.on_search and menu.items or nil
 		},
@@ -1007,7 +1009,7 @@ function Menu:render()
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
 		-- Remove menu_opacity to start off with full, but still decay for parent menus
 		local text_opacity = menu_opacity / options.menu_opacity
-		local menu_rect = {ax = ax, ay = ay - (draw_title and self.item_height or 0) - 2, bx = bx, by = by + 2}
+		local menu_rect = {ax = ax, ay = ay - (draw_title and self.scroll_step or 0) - 2, bx = bx, by = by + 2}
 		local blur_selected_index = is_current and self.mouse_nav
 
 		-- Background
@@ -1141,7 +1143,7 @@ function Menu:render()
 		-- Menu title
 		if draw_title then
 			local requires_submit = menu.search_debounce == 'submit'
-			local rect = {ax = ax, ay = ay - self.item_height, bx = bx, by = ay - 2}
+			local rect = {ax = ax, ay = ay - self.scroll_step, bx = bx, by = ay - 2}
 			local prevent_title_click = true
 			rect.cx, rect.cy = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2 -- centers
 
