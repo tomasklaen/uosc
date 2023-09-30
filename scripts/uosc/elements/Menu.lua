@@ -1,13 +1,13 @@
 local Element = require('elements/Element')
 
 -- Menu data structure accepted by `Menu:open(menu)`.
----@alias MenuData {id?: string; type?: string; title?: string; hint?: string; palette?: boolean; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string); search_debounce?: number|string; search_recursive?: boolean; search_suggestion?: string}
+---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; palette?: boolean; keep_open?: boolean; separator?: boolean; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]|fun(search_text: string); search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; bold?: boolean; italic?: boolean; muted?: boolean; active?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'}
 ---@alias MenuOptions {mouse_nav?: boolean; on_open?: fun(); on_close?: fun(); on_back?: fun(); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 
 -- Internal data structure created from `Menu`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; palette?: boolean, selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string); search_debounce?: number|string; search_recursive?: boolean; search_suggestion?: string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; palette?: boolean, selected_index?: number; keep_open?: boolean; separator?: boolean; items: MenuStackItem[]; on_search?: string|string[]|fun(search_text: string); search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; active?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; keep_open?: boolean; separator?: boolean; selectable?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
@@ -145,7 +145,7 @@ function Menu:update(data)
 	local menus_to_serialize = {{new_root, data}}
 	local old_current_id = self.current and self.current.id
 	local menu_props_to_copy = {
-		'title', 'hint', 'keep_open', 'palette', 'on_search', 'search_recursive', 'search_suggestion'
+		'title', 'hint', 'keep_open', 'palette', 'on_search', 'search_submenus', 'search_suggestion'
 	}
 	local item_props_to_copy = itable_join(menu_props_to_copy, {
 		'icon', 'active', 'bold', 'italic', 'muted', 'value', 'separator', 'selectable', 'align'
@@ -665,7 +665,7 @@ function Menu:search_internal(menu)
 		-- Reset menu state to what it was before search
 		for key, value in pairs(menu.search.source) do menu[key] = value end
 	else
-		menu.items = search_items(menu.search.source.items, query, menu.search_recursive)
+		menu.items = search_items(menu.search.source.items, query, menu.search_submenus)
 		-- Select 1st item in search results
 		menu.scroll_y = 0
 		self:select_index(1, menu)
