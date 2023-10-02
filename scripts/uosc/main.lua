@@ -17,12 +17,11 @@ defaults = {
 	timeline_style = 'line',
 	timeline_line_width = 2,
 	timeline_line_width_fullscreen = 3,
-	timeline_line_width_minimized_scale = 10,
-	timeline_size_min = 2,
-	timeline_size_max = 40,
-	timeline_size_min_fullscreen = 0,
-	timeline_size_max_fullscreen = 60,
-	timeline_start_hidden = false,
+	timeline_size = 40,
+	timeline_size_fullscreen = 60,
+	timeline_progress = 'windowed',
+	timeline_progress_size = 2,
+	timeline_progress_line_width = 20,
 	timeline_persistency = 'paused',
 	timeline_opacity = 0.9,
 	timeline_border = 1,
@@ -949,16 +948,7 @@ bind_command('flash-top-bar', function() Elements:flash({'top_bar'}) end)
 bind_command('flash-volume', function() Elements:flash({'volume'}) end)
 bind_command('flash-speed', function() Elements:flash({'speed'}) end)
 bind_command('flash-pause-indicator', function() Elements:flash({'pause_indicator'}) end)
-bind_command('toggle-progress', function()
-	local timeline = Elements.timeline
-	if timeline.size_min_override then
-		timeline:tween_property('size_min_override', timeline.size_min_override, timeline.size_min, function()
-			timeline.size_min_override = nil
-		end)
-	else
-		timeline:tween_property('size_min_override', timeline.size_min, 0)
-	end
-end)
+bind_command('toggle-progress', function() Elements.timeline:toggle_progress() end)
 bind_command('toggle-title', function() Elements.top_bar:toggle_title() end)
 bind_command('decide-pause-indicator', function() Elements.pause_indicator:decide() end)
 bind_command('menu', function() toggle_menu_with_items() end)

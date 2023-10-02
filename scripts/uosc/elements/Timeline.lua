@@ -9,13 +9,14 @@ function Timeline:init()
 	---@type false|{pause: boolean, distance: number, last: {x: number, y: number}}
 	self.pressed = false
 	self.obstructed = false
-	self.size_max = 0
-	self.size_min = 0
-	self.size_min_override = options.timeline_start_hidden and 0 or nil
+	self.size = 0
+	self.progress_size = 0
 	self.font_size = 0
 	self.top_border = options.timeline_border
 	self.is_hovered = false
 	self.has_thumbnail = false
+
+	self:decide_progress_size()
 
 	-- Release any dragging when file gets unloaded
 	mp.register_event('end-file', function() self.pressed = false end)
@@ -32,14 +33,9 @@ function Timeline:decide_enabled()
 	if self.enabled ~= previous then Elements:trigger('timeline_enabled', self.enabled) end
 end
 
-function Timeline:get_effective_size_min()
-	return self.size_min_override or self.size_min
-end
-
 function Timeline:get_effective_size()
-	if Elements.speed and Elements.speed.dragging then return self.size_max end
-	local size_min = self:get_effective_size_min()
-	return size_min + math.ceil((self.size_max - size_min) * self:get_visibility())
+	if Elements.speed and Elements.speed.dragging then return self.size end
+	return self.progress_size + math.ceil((self.size - self.progress_size) * self:get_visibility())
 end
 
 function Timeline:get_effective_line_width()
@@ -49,16 +45,10 @@ end
 function Timeline:get_is_hovered() return self.enabled and self.is_hovered end
 
 function Timeline:update_dimensions()
-	if state.fullormaxed then
-		self.size_min = options.timeline_size_min_fullscreen
-		self.size_max = options.timeline_size_max_fullscreen
-	else
-		self.size_min = options.timeline_size_min
-		self.size_max = options.timeline_size_max
-	end
-	self.font_size = math.floor(math.min((self.size_max + 60) * 0.2, self.size_max * 0.96) * options.font_scale)
+	self.size = state.fullormaxed and options.timeline_size_fullscreen or options.timeline_size
+	self.font_size = math.floor(math.min((self.size + 60) * 0.2, self.size * 0.96) * options.font_scale)
 	self.ax = Elements.window_border.size
-	self.ay = display.height - Elements.window_border.size - self.size_max - self.top_border
+	self.ay = display.height - Elements.window_border.size - self.size - self.top_border
 	self.bx = display.width - Elements.window_border.size
 	self.by = display.height - Elements.window_border.size
 	self.width = self.bx - self.ax
@@ -68,12 +58,25 @@ function Timeline:update_dimensions()
 	-- Disable if not enough space
 	local available_space = display.height - Elements.window_border.size * 2
 	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
-	self.obstructed = available_space < self.size_max + 10
+	self.obstructed = available_space < self.size + 10
 	self:decide_enabled()
 end
 
+function Timeline:decide_progress_size()
+	local show = options.timeline_progress == 'always'
+		or (options.timeline_progress == 'fullscreen' and state.fullormaxed)
+		or (options.timeline_progress == 'windowed' and not state.fullormaxed)
+	self.progress_size = show and options.timeline_progress_size or 0
+end
+
+function Timeline:toggle_progress()
+	local current = self.progress_size
+	self:tween_property('progress_size', current, current > 0 and 0 or options.timeline_progress_size)
+	request_render()
+end
+
 function Timeline:get_time_at_x(x)
-	local line_width = (options.timeline_style == 'line' and self:get_effective_line_width() - 1 or 0)
+	local line_width = (options.timeline_style == 'line' and options.timeline_line_width - 1 or 0)
 	local time_width = self.width - line_width - 1
 	local fax = (time_width) * state.time / state.duration
 	local fbx = fax + line_width
@@ -107,7 +110,10 @@ function Timeline:on_prop_duration() self:decide_enabled() end
 function Timeline:on_prop_time() self:decide_enabled() end
 function Timeline:on_prop_border() self:update_dimensions() end
 function Timeline:on_prop_title_bar() self:update_dimensions() end
-function Timeline:on_prop_fullormaxed() self:update_dimensions() end
+function Timeline:on_prop_fullormaxed()
+	self:decide_progress_size()
+	self:update_dimensions()
+end
 function Timeline:on_display() self:update_dimensions() end
 function Timeline:on_options()
 	self.top_border = options.timeline_border
@@ -136,9 +142,8 @@ function Timeline:handle_wheel_up() mp.commandv('seek', options.timeline_step) e
 function Timeline:handle_wheel_down() mp.commandv('seek', -options.timeline_step) end
 
 function Timeline:render()
-	if self.size_max == 0 then return end
+	if self.size == 0 then return end
 
-	local size_min = self:get_effective_size_min()
 	local size = self:get_effective_size()
 	local visibility = self:get_visibility()
 	self.is_hovered = false
@@ -161,8 +166,8 @@ function Timeline:render()
 
 	local ass = assdraw.ass_new()
 
-	-- Text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches timeline.size_min
-	local hide_text_below = math.max(self.font_size * 0.8, size_min * 2)
+	-- Text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches self.progress_size
+	local hide_text_below = math.max(self.font_size * 0.8, self.progress_size * 2)
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = clamp(0, size - hide_text_below, hide_text_ramp) / hide_text_ramp
 
@@ -170,7 +175,7 @@ function Timeline:render()
 	local tooltip_margin = 10
 	local timestamp_gap = tooltip_gap
 
-	local spacing = math.max(math.floor((self.size_max - self.font_size) / 2.5), 4)
+	local spacing = math.max(math.floor((self.size - self.font_size) / 2.5), 4)
 	local progress = state.time / state.duration
 	local is_line = options.timeline_style == 'line'
 
@@ -182,12 +187,10 @@ function Timeline:render()
 	local line_width = 0
 
 	if is_line then
-		local minimized_fraction = 1 - math.min((size - size_min) / ((self.size_max - size_min) / 8), 1)
-		local line_width_max = self:get_effective_line_width()
-		local max_min_width_delta = size_min > 0
-			and line_width_max - line_width_max * options.timeline_line_width_minimized_scale
-			or 0
-		line_width = line_width_max - (max_min_width_delta * minimized_fraction)
+		local minimized_fraction = 1 - math.min((size - self.progress_size) / ((self.size - self.progress_size) / 8), 1)
+		local line_width_normal = self:get_effective_line_width()
+		local progress_delta = self.progress_size > 0 and options.timeline_progress_line_width - line_width_normal or 0
+		line_width = line_width_normal - (progress_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
 		line_width = line_width - 1

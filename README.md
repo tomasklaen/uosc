@@ -145,7 +145,7 @@ Under the hood, `toggle-ui` is using `toggle-elements`, and that is in turn usin
 
 #### `toggle-progress`
 
-Toggles the always visible portion of the timeline. You can look at it as switching `timeline_size_min` option between it's configured value and 0.
+Toggles the timeline progress mode on/off. Progress mode is an always visible thin version of timeline with no text labels. It can be configured using the `timeline_progress*` config options.
 
 #### `toggle-title`
 
@@ -458,7 +458,7 @@ Command {
 
 When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(table.unpack(value))`. The same goes for `Menu.on_close` and `on_search`. `on_search` additionally appends the current search string as the last parameter.
 
-`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.  
+`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.
 While the menu is open this value will be available in `user-data/uosc/menu/type`. Keep in mind that `nil` is a valid value. If the menu is closed `mp.get_property_native()` will return an error as the second return value.
 
 `palette` specifies that this menu's primarily mode of interaction is through a search input. When enabled, search input will be visible at all times (doesn't have to be enabled and can't be disabled), and `title` will be used as input placeholder while search query is empty.
