@@ -295,12 +295,15 @@ function Menu:update_dimensions()
 	-- This is a debt from an era where we had different cursor event handling,
 	-- and dumb titles with no search inputs. It could use a refactor.
 	local margin = round(self.item_height / 2)
-	local min_width = state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width
-	local height_available = display.height - margin * 2
+	local width_available, height_available = display.width - margin * 2, display.height - margin * 2
+	local min_width = math.min(
+		state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width,
+		width_available
+	)
 
 	for _, menu in ipairs(self.all) do
 		local width = math.max(menu.search and menu.search.max_width or 0, menu.max_width)
-		menu.width = round(clamp(min_width, width, display.width - margin * 2))
+		menu.width = round(clamp(min_width, width, width_available))
 		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step or 0
 		local max_height = height_available - title_height
 		local content_height = self.scroll_step * #menu.items
