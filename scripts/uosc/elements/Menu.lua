@@ -1150,7 +1150,7 @@ function Menu:render()
 		-- Menu title
 		if draw_title then
 			local requires_submit = menu.search_debounce == 'submit'
-			local rect = {ax = ax, ay = ay - self.scroll_step, bx = bx, by = ay - 2}
+			local rect = {ax = ax + spacing, ay = ay - self.scroll_step, bx = bx - spacing, by = math.min(by, ay - 2)}
 			local prevent_title_click = true
 			rect.cx, rect.cy = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2 -- centers
 
@@ -1159,13 +1159,13 @@ function Menu:render()
 			end
 
 			-- Bottom border
-			ass:rect(rect.ax, rect.by - 1, rect.bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
+			ass:rect(ax, rect.by - 1, bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
 
 			-- Title
 			if menu.search then
 				-- Icon
 				local icon_size, icon_opacity = self.font_size * 1.3, requires_submit and text_opacity * 0.5 or 1
-				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = ay}
+				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = rect.by}
 
 				if is_current and requires_submit and get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
 					cursor.on_primary_down = function() self:search_submit() end
@@ -1173,38 +1173,40 @@ function Menu:render()
 					prevent_title_click = false
 				end
 
-				ass:icon(rect.ax + spacing + icon_size / 2, rect.cy, icon_size, 'search', {
+				ass:icon(rect.ax + icon_size / 2, rect.cy, icon_size, 'search', {
 					color = fg, opacity = icon_opacity, shadow = 1, shadow_color = bg,
+					clip = '\\clip(' .. icon_rect.ax .. ',' .. icon_rect.ay .. ',' .. icon_rect.bx .. ',' .. icon_rect.by .. ')'
 				})
 
 				-- Query/Placeholder
 				if menu.search.query ~= '' then
 					-- Add a ZWNBSP suffix to prevent libass from trimming trailing spaces
 					local query = ass_escape(menu.search.query) .. '\239\187\191'
-					ass:txt(rect.bx - spacing, rect.cy, 6, query, {
+					ass:txt(rect.bx, rect.cy, 6, query, {
 						size = self.font_size, color = bgt, wrap = 2, opacity = menu_opacity,
-						clip = '\\clip(' .. icon_rect.bx .. ',' .. rect.ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
+						clip = '\\clip(' .. icon_rect.bx .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 					})
 				else
 					local placeholder = (menu.palette and menu.ass_safe_title)
 						and menu.ass_safe_title
 						or (requires_submit and t('type & ctrl+enter to search') or t('type to search'))
-					ass:txt(rect.bx - spacing, rect.cy, 6, placeholder, {
+					ass:txt(rect.bx, rect.cy, 6, placeholder, {
 						size = self.font_size, italic = true, color = bgt, wrap = 2, opacity = menu_opacity * 0.4,
-						clip = '\\clip(' .. ax + spacing .. ',' .. rect.ay .. ',' .. bx - spacing .. ',' .. ay .. ')',
+						clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 					})
 				end
 
 				-- Cursor
-				local font_size_half = round(self.font_size / 2)
-				local cursor_ax, cursor_thickness = rect.bx - spacing + 1, round(self.font_size / 14)
-				ass:rect(cursor_ax, rect.cy - font_size_half, cursor_ax + cursor_thickness, rect.cy + font_size_half, {
-					color = fg, opacity = menu_opacity * 0.5
+				local font_size_half, cursor_thickness = round(self.font_size / 2), round(self.font_size / 14)
+				local cursor_ax, cursor_bx = rect.bx + 1, rect.bx + 1 + cursor_thickness
+				ass:rect(cursor_ax, rect.cy - font_size_half, cursor_bx, rect.cy + font_size_half, {
+					color = fg, opacity = menu_opacity * 0.5,
+					clip = '\\clip(' .. cursor_ax .. ',' .. rect.ay .. ',' .. cursor_bx .. ',' .. rect.by .. ')',
 				})
 			else
 				ass:txt(rect.cx, rect.cy, 5, menu.ass_safe_title, {
 					size = self.font_size, bold = true, color = bgt, wrap = 2, opacity = menu_opacity,
-					clip = '\\clip(' .. rect.ax + 2 .. ',' .. rect.ay .. ',' .. rect.bx - 2 .. ',' .. rect.by .. ')',
+					clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 				})
 			end
 
