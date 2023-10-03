@@ -221,6 +221,10 @@ Editions menu. Editions are different video cuts available in some mkv files.
 
 Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv property from predefined options (configurable with `stream_quality_options`) and video reload, there is no fetching of available formats going on.
 
+#### `inputs`
+
+Displays a command palette menu with all inputs defined in your `input.conf` file. Useful to check what command is bound to what shortcut, etc.
+
 #### `open-file`
 
 Open file menu. Browsing starts in current file directory, or user directory when file not available. The explorer only displays file types defined in the `video_types`, `audio_types`, and `image_types` options.
@@ -369,6 +373,7 @@ o           script-binding uosc/open-file          #! Navigation > Open file
 #           script-binding uosc/audio-device       #! Utils > Audio devices
 #           script-binding uosc/editions           #! Utils > Editions
 ctrl+s      async screenshot                       #! Utils > Screenshot
+alt+i       script-binding uosc/inputs             #! Utils > Inputs
 O           script-binding uosc/show-in-directory  #! Utils > Show in directory
 #           script-binding uosc/open-config-directory #! Utils > Open config directory
 esc         quit #! Quit
