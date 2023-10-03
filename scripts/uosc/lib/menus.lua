@@ -311,7 +311,7 @@ do
 		if not input_conf_meta or not input_conf_meta.is_file then
 			items.inputs = {
 				{
-					title = t('%s doesn\'t exist', input_conf),
+					title = t('%s not found', input_conf),
 					selectable = false,
 					align = 'center',
 					italic = true,
