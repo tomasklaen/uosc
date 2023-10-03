@@ -386,7 +386,7 @@ do
 
 		items.inputs = #inputs > 0 and inputs or {
 			{
-				title = t('%s is empty', 'input.conf'),
+				title = t('%s is empty', input_conf),
 				selectable = false,
 				align = 'center',
 				italic = true,
