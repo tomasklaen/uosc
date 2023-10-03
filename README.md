@@ -145,7 +145,7 @@ Under the hood, `toggle-ui` is using `toggle-elements`, and that is in turn usin
 
 #### `toggle-progress`
 
-Toggles the timeline progress mode on/off. Progress mode is an always visible thin version of timeline with no text labels. It can be configured using the `timeline_progress*` config options.
+Toggles the timeline progress mode on/off. Progress mode is an always visible thin version of timeline with no text labels. It can be configured using the `progress*` config options.
 
 #### `toggle-title`
 

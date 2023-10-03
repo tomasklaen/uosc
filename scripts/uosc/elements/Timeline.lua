@@ -63,15 +63,15 @@ function Timeline:update_dimensions()
 end
 
 function Timeline:decide_progress_size()
-	local show = options.timeline_progress == 'always'
-		or (options.timeline_progress == 'fullscreen' and state.fullormaxed)
-		or (options.timeline_progress == 'windowed' and not state.fullormaxed)
-	self.progress_size = show and options.timeline_progress_size or 0
+	local show = options.progress == 'always'
+		or (options.progress == 'fullscreen' and state.fullormaxed)
+		or (options.progress == 'windowed' and not state.fullormaxed)
+	self.progress_size = show and options.progress_size or 0
 end
 
 function Timeline:toggle_progress()
 	local current = self.progress_size
-	self:tween_property('progress_size', current, current > 0 and 0 or options.timeline_progress_size)
+	self:tween_property('progress_size', current, current > 0 and 0 or options.progress_size)
 	request_render()
 end
 
@@ -189,7 +189,7 @@ function Timeline:render()
 	if is_line then
 		local minimized_fraction = 1 - math.min((size - self.progress_size) / ((self.size - self.progress_size) / 8), 1)
 		local line_width_normal = self:get_effective_line_width()
-		local progress_delta = self.progress_size > 0 and options.timeline_progress_line_width - line_width_normal or 0
+		local progress_delta = self.progress_size > 0 and options.progress_line_width - line_width_normal or 0
 		line_width = line_width_normal - (progress_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
