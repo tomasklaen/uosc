@@ -232,7 +232,7 @@ function Controls:update_dimensions()
 	-- Disable when not enough space
 	local available_space = display.height - Elements.window_border.size * 2
 	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
-	if Elements.timeline.enabled then available_space = available_space - Elements.timeline.size_max end
+	if Elements.timeline.enabled then available_space = available_space - Elements.timeline.size end
 	self.enabled = available_space > size + 10
 
 	-- Reset hide/enabled flags
