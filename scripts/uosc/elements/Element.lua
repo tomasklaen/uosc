@@ -74,6 +74,8 @@ function Element:is_persistent()
 		or (persist.video and state.is_video)
 		or (persist.image and state.is_image)
 		or (persist.idle and state.is_idle)
+		or (persist.windowed and not state.fullormaxed)
+		or (persist.fullscreen and state.fullormaxed)
 	)
 end
 
