@@ -226,7 +226,7 @@ function Volume:get_visibility()
 end
 
 function Volume:update_dimensions()
-	local width = state.fullormaxed and options.volume_size_fullscreen or options.volume_size
+	local width = options.volume_size
 	local controls, timeline, top_bar = Elements.controls, Elements.timeline, Elements.top_bar
 	local min_y = top_bar.enabled and top_bar.by or 0
 	local max_y = (controls and controls.enabled and controls.ay) or (timeline.enabled and timeline.ay)

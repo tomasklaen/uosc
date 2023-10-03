@@ -258,7 +258,7 @@ function Menu:update_items(items)
 end
 
 function Menu:update_content_dimensions()
-	self.item_height = state.fullormaxed and options.menu_item_height_fullscreen or options.menu_item_height
+	self.item_height = options.menu_item_height
 	self.font_size = round(self.item_height * 0.48 * options.font_scale)
 	self.font_size_hint = self.font_size - 1
 	self.item_padding = round((self.item_height - self.font_size) * 0.6)
@@ -296,10 +296,7 @@ function Menu:update_dimensions()
 	-- and dumb titles with no search inputs. It could use a refactor.
 	local margin = round(self.item_height / 2)
 	local width_available, height_available = display.width - margin * 2, display.height - margin * 2
-	local min_width = math.min(
-		state.fullormaxed and options.menu_min_width_fullscreen or options.menu_min_width,
-		width_available
-	)
+	local min_width = math.min(options.menu_min_width, width_available)
 
 	for _, menu in ipairs(self.all) do
 		local width = math.max(menu.search and menu.search.max_width or 0, menu.max_width)

@@ -38,14 +38,10 @@ function Timeline:get_effective_size()
 	return self.progress_size + math.ceil((self.size - self.progress_size) * self:get_visibility())
 end
 
-function Timeline:get_effective_line_width()
-	return state.fullormaxed and options.timeline_line_width_fullscreen or options.timeline_line_width
-end
-
 function Timeline:get_is_hovered() return self.enabled and self.is_hovered end
 
 function Timeline:update_dimensions()
-	self.size = state.fullormaxed and options.timeline_size_fullscreen or options.timeline_size
+	self.size = options.timeline_size
 	self.font_size = math.floor(math.min((self.size + 60) * 0.2, self.size * 0.96) * options.font_scale)
 	self.ax = Elements.window_border.size
 	self.ay = display.height - Elements.window_border.size - self.size - self.top_border
@@ -188,9 +184,8 @@ function Timeline:render()
 
 	if is_line then
 		local minimized_fraction = 1 - math.min((size - self.progress_size) / ((self.size - self.progress_size) / 8), 1)
-		local line_width_normal = self:get_effective_line_width()
-		local progress_delta = self.progress_size > 0 and options.progress_line_width - line_width_normal or 0
-		line_width = line_width_normal - (progress_delta * minimized_fraction)
+		local progress_delta = self.progress_size > 0 and options.progress_line_width - options.timeline_line_width or 0
+		line_width = options.timeline_line_width - (progress_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
 		line_width = line_width - 1

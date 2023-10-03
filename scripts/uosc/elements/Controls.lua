@@ -225,9 +225,7 @@ end
 
 function Controls:update_dimensions()
 	local window_border = Elements.window_border.size
-	local size = state.fullormaxed and options.controls_size_fullscreen or options.controls_size
-	local spacing = options.controls_spacing
-	local margin = options.controls_margin
+	local size, spacing, margin = options.controls_size, options.controls_spacing, options.controls_margin
 
 	-- Disable when not enough space
 	local available_space = display.height - Elements.window_border.size * 2

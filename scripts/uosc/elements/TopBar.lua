@@ -112,7 +112,7 @@ function TopBar:decide_titles()
 end
 
 function TopBar:update_dimensions()
-	self.size = state.fullormaxed and options.top_bar_size_fullscreen or options.top_bar_size
+	self.size = options.top_bar_size
 	self.icon_size = round(self.size * 0.5)
 	self.spacing = math.ceil(self.size * 0.25)
 	self.font_size = math.floor((self.size - (self.spacing * 2)) * options.font_scale)
