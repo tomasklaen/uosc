@@ -69,7 +69,7 @@ defaults = {
 	shuffle = false,
 
 	scale = 1,
-	scale_fullscreen = 1.5,
+	scale_fullscreen = 1.3,
 	font_scale = 1,
 	text_border = 1.2,
 	text_width_estimation = true,
