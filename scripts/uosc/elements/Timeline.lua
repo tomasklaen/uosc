@@ -397,7 +397,7 @@ function Timeline:render()
 			and thumbnail.width ~= 0
 			and thumbnail.height ~= 0
 		then
-			local border = math.ceil(2 * state.scale)
+			local border = math.ceil(math.max(2, state.radius / 2) * state.scale)
 			local margin_x, margin_y = round(tooltip_margin * state.scale), round(tooltip_gap * state.scale)
 			local thumb_x_margin, thumb_y_margin = border + margin_x + bax, border + margin_y
 			local thumb_width, thumb_height = thumbnail.width, thumbnail.height

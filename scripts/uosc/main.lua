@@ -499,7 +499,7 @@ state = {
 	margin_right = 0,
 	hidpi_scale = 1,
 	scale = 1,
-	radius = 4
+	radius = 0
 }
 thumbnail = {width = 0, height = 0, disabled = false}
 external = {} -- Properties set by external scripts
