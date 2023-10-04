@@ -126,7 +126,9 @@ function Speed:render()
 	local ass = assdraw.ass_new()
 
 	-- Background
-	ass:rect(self.ax, self.ay, self.bx, self.by, {color = bg, radius = 2, opacity = opacity * options.speed_opacity})
+	ass:rect(self.ax, self.ay, self.bx, self.by, {
+		color = bg, radius = state.radius, opacity = opacity * options.speed_opacity
+	})
 
 	-- Coordinates
 	local ax, ay = self.ax, self.ay

@@ -12,7 +12,7 @@ function Timeline:init()
 	self.size = 0
 	self.progress_size = 0
 	self.font_size = 0
-	self.top_border = options.timeline_border
+	self.top_border = 0
 	self.is_hovered = false
 	self.has_thumbnail = false
 
@@ -41,7 +41,8 @@ end
 function Timeline:get_is_hovered() return self.enabled and self.is_hovered end
 
 function Timeline:update_dimensions()
-	self.size = options.timeline_size
+	self.size = round(options.timeline_size * state.scale)
+	self.top_border = round(options.timeline_border * state.scale)
 	self.font_size = math.floor(math.min((self.size + 60) * 0.2, self.size * 0.96) * options.font_scale)
 	self.ax = Elements.window_border.size
 	self.ay = display.height - Elements.window_border.size - self.size - self.top_border
@@ -111,10 +112,7 @@ function Timeline:on_prop_fullormaxed()
 	self:update_dimensions()
 end
 function Timeline:on_display() self:update_dimensions() end
-function Timeline:on_options()
-	self.top_border = options.timeline_border
-	self:update_dimensions()
-end
+function Timeline:on_options() self:update_dimensions() end
 function Timeline:handle_cursor_up()
 	if self.pressed then
 		mp.set_property_native('pause', self.pressed.pause)
@@ -395,19 +393,21 @@ function Timeline:render()
 			and thumbnail.width ~= 0
 			and thumbnail.height ~= 0
 		then
-			local scale_x, scale_y = display.scale_x, display.scale_y
-			local border = math.ceil(2 * scale_x)
-			local margin_x, margin_y = round(tooltip_margin * scale_x), round(tooltip_gap * scale_y)
+			local border = math.ceil(2 * state.scale)
+			local margin_x, margin_y = round(tooltip_margin * state.scale), round(tooltip_gap * state.scale)
 			local thumb_x_margin, thumb_y_margin = border + margin_x + bax, border + margin_y
 			local thumb_width, thumb_height = thumbnail.width, thumbnail.height
 			local thumb_x = round(clamp(
-				thumb_x_margin, cursor_x * scale_x - thumb_width / 2,
-				display.width * scale_x - thumb_width - thumb_x_margin
+				thumb_x_margin, cursor_x * state.scale - thumb_width / 2,
+				display.width * state.scale - thumb_width - thumb_x_margin
 			))
-			local thumb_y = round(tooltip_anchor.ay * scale_y - thumb_y_margin - thumb_height)
-			local ax, ay = (thumb_x - border) / scale_x, (thumb_y - border) / scale_y
-			local bx, by = (thumb_x + thumb_width + border) / scale_x, (thumb_y + thumb_height + border) / scale_y
-			ass:rect(ax, ay, bx, by, {color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = 2})
+			local thumb_y = round(tooltip_anchor.ay * state.scale - thumb_y_margin - thumb_height)
+			local ax, ay = (thumb_x - border) / state.scale, (thumb_y - border) / state.scale
+			local bx = (thumb_x + thumb_width + border) / state.scale
+			local by = (thumb_y + thumb_height + border) / state.scale
+			ass:rect(ax, ay, bx, by, {
+				color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = state.radius
+			})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
 			self.has_thumbnail, rendered_thumbnail = true, true
 			tooltip_anchor.ay = ay

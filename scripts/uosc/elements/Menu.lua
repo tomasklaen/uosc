@@ -88,8 +88,12 @@ function Menu:init(data, callback, opts)
 	---@type Modifiers|nil
 	self.modifiers = nil
 	self.item_height = nil
+	self.min_width = nil
 	self.item_spacing = 1
 	self.item_padding = nil
+	self.separator_size = nil
+	self.padding = nil
+	self.gap = nil
 	self.font_size = nil
 	self.font_size_hint = nil
 	self.scroll_step = nil -- Item height + item spacing.
@@ -258,7 +262,11 @@ function Menu:update_items(items)
 end
 
 function Menu:update_content_dimensions()
-	self.item_height = options.menu_item_height
+	self.item_height = round(options.menu_item_height * state.scale)
+	self.min_width = round(options.menu_min_width * state.scale)
+	self.separator_size = round(1 * state.scale)
+	self.padding = round(2 * state.scale)
+	self.gap = round(2 * state.scale)
 	self.font_size = round(self.item_height * 0.48 * options.font_scale)
 	self.font_size_hint = self.font_size - 1
 	self.item_padding = round((self.item_height - self.font_size) * 0.6)
@@ -296,7 +304,7 @@ function Menu:update_dimensions()
 	-- and dumb titles with no search inputs. It could use a refactor.
 	local margin = round(self.item_height / 2)
 	local width_available, height_available = display.width - margin * 2, display.height - margin * 2
-	local min_width = math.min(options.menu_min_width, width_available)
+	local min_width = math.min(self.min_width, width_available)
 
 	for _, menu in ipairs(self.all) do
 		local width = math.max(menu.search and menu.search.max_width or 0, menu.max_width)
@@ -998,7 +1006,6 @@ function Menu:render()
 	local opacity = options.menu_opacity * self.opacity
 	local spacing = self.item_padding
 	local icon_size = self.font_size
-	local menu_gap, menu_padding = 2, 2
 
 	---@param menu MenuStack
 	---@param x number
@@ -1013,11 +1020,16 @@ function Menu:render()
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
 		-- Remove menu_opacity to start off with full, but still decay for parent menus
 		local text_opacity = menu_opacity / options.menu_opacity
-		local menu_rect = {ax = ax, ay = ay - (draw_title and self.scroll_step or 0) - 2, bx = bx, by = by + 2}
+		local menu_rect = {
+			ax = ax, ay = ay - (draw_title and self.scroll_step or 0) - self.padding,
+			bx = bx, by = by + self.padding
+		}
 		local blur_selected_index = is_current and self.mouse_nav
 
 		-- Background
-		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {color = bg, opacity = menu_opacity, radius = 4})
+		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {
+			color = bg, opacity = menu_opacity, radius = state.radius + self.padding
+		})
 
 		if is_parent and get_point_to_rectangle_proximity(cursor, menu_rect) == 0 then
 			cursor.on_primary_down = self:create_action(function() self:slide_in_menu(menu, x) end)
@@ -1027,7 +1039,7 @@ function Menu:render()
 		local submenu_rect, current_item = nil, is_current and menu.selected_index and menu.items[menu.selected_index]
 		local submenu_is_hovered = false
 		if current_item and current_item.items then
-			submenu_rect = draw_menu(current_item, menu_rect.bx + menu_gap, 1)
+			submenu_rect = draw_menu(current_item, menu_rect.bx + self.gap, 1)
 			submenu_is_hovered = get_point_to_rectangle_proximity(cursor, submenu_rect) == 0
 			if submenu_is_hovered then
 				cursor.on_primary_down = self:create_action(function()
@@ -1054,9 +1066,9 @@ function Menu:render()
 					blur_selected_index = false
 				else
 					local item_rect_hitbox = {
-						ax = menu_rect.ax + menu_padding,
+						ax = menu_rect.ax + self.padding,
 						ay = item_ay,
-						bx = menu_rect.bx + (item.items and menu_gap or -menu_padding), -- to bridge the gap with cursor
+						bx = menu_rect.bx + (item.items and self.gap or -self.padding), -- to bridge the gap with cursor
 						by = item_by
 					}
 					if submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0 then
@@ -1086,7 +1098,7 @@ function Menu:render()
 			-- Highlight
 			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (menu.selected_index == index and 0.15 or 0)
 			if not is_submenu and highlight_opacity > 0 then
-				ass:rect(ax + menu_padding, item_ay, bx - menu_padding, item_by, {
+				ass:rect(ax + self.padding, item_ay, bx - self.padding, item_by, {
 					radius = 2, color = fg, opacity = highlight_opacity * text_opacity,
 					clip = item_clip,
 				})
@@ -1156,7 +1168,7 @@ function Menu:render()
 			end
 
 			-- Bottom border
-			ass:rect(ax, rect.by - 1, bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
+			ass:rect(ax, rect.by - self.separator_size, bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
 
 			-- Title
 			if menu.search then
@@ -1237,7 +1249,7 @@ function Menu:render()
 	local parent_offset_x, parent_horizontal_index = self.ax, -1
 
 	while parent_menu do
-		parent_offset_x = parent_offset_x - parent_menu.width - menu_gap
+		parent_offset_x = parent_offset_x - parent_menu.width - self.gap
 		draw_menu(parent_menu, parent_offset_x, parent_horizontal_index)
 		parent_horizontal_index = parent_horizontal_index - 1
 		parent_menu = parent_menu.parent_menu

@@ -225,7 +225,9 @@ end
 
 function Controls:update_dimensions()
 	local window_border = Elements.window_border.size
-	local size, spacing, margin = options.controls_size, options.controls_spacing, options.controls_margin
+	local size = round(options.controls_size * state.scale)
+	local spacing = round(options.controls_spacing * state.scale)
+	local margin = round(options.controls_margin * state.scale)
 
 	-- Disable when not enough space
 	local available_space = display.height - Elements.window_border.size * 2

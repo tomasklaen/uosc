@@ -304,7 +304,7 @@ end
 
 --[[ STATE ]]
 
-display = {width = 1280, height = 720, scale_x = 1, scale_y = 1, initialized = false}
+display = {width = 1280, height = 720, initialized = false}
 cursor = {
 	x = 0,
 	y = 0,
@@ -373,7 +373,7 @@ cursor = {
 		end
 
 		-- Add 0.5 to be in the middle of the pixel
-		cursor.x, cursor.y = (x + 0.5) / display.scale_x, (y + 0.5) / display.scale_y
+		cursor.x, cursor.y = x + 0.5, y + 0.5
 
 		if old_x ~= cursor.x or old_y ~= cursor.y then
 			Elements:update_proximities()
@@ -498,6 +498,8 @@ state = {
 	margin_left = 0,
 	margin_right = 0,
 	hidpi_scale = 1,
+	scale = 1,
+	radius = 4
 }
 thumbnail = {width = 0, height = 0, disabled = false}
 external = {} -- Properties set by external scripts
@@ -514,12 +516,11 @@ require('lib/menus')
 --[[ STATE UPDATERS ]]
 
 function update_display_dimensions()
-	local scale = (state.hidpi_scale or 1) * (state.fullormaxed and options.scale_fullscreen or options.scale)
+	state.scale = (state.hidpi_scale or 1) * (state.fullormaxed and options.scale_fullscreen or options.scale)
+	state.radius = round(2 * state.scale)
 	local real_width, real_height = mp.get_osd_size()
 	if real_width <= 0 then return end
-	local scaled_width, scaled_height = round(real_width / scale), round(real_height / scale)
-	display.width, display.height = scaled_width, scaled_height
-	display.scale_x, display.scale_y = real_width / scaled_width, real_height / scaled_height
+	display.width, display.height = real_width, real_height
 	display.initialized = true
 
 	-- Tell elements about this

@@ -112,7 +112,7 @@ function TopBar:decide_titles()
 end
 
 function TopBar:update_dimensions()
-	self.size = options.top_bar_size
+	self.size = round(options.top_bar_size * state.scale)
 	self.icon_size = round(self.size * 0.5)
 	self.spacing = math.ceil(self.size * 0.25)
 	self.font_size = math.floor((self.size - (self.spacing * 2)) * options.font_scale)
@@ -196,7 +196,7 @@ function TopBar:render()
 				bx = round(title_ax + text_width(text, opts) + padding * 2),
 				by = self.by - bg_margin
 			}
-			ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {color = fg, opacity = visibility, radius = 2})
+			ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {color = fg, opacity = visibility, radius = state.radius})
 			ass:txt(rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2, 5, formatted_text, opts)
 			title_ax = rect.bx + bg_margin
 
@@ -215,7 +215,7 @@ function TopBar:render()
 					size = self.font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility,
 					clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
 				}
-				local bx = math.min(max_bx, title_ax + text_width(main_title, opts) + padding * 2)
+				local bx = round(math.min(max_bx, title_ax + text_width(main_title, opts) + padding * 2))
 				local by = self.by - bg_margin
 				local title_rect = {ax = title_ax, ay = title_ay, bx = bx, by = by}
 
@@ -226,7 +226,7 @@ function TopBar:render()
 				end
 
 				ass:rect(title_rect.ax, title_rect.ay, title_rect.bx, title_rect.by, {
-					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = state.radius,
 				})
 				ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, main_title, opts)
 				title_ay = by + 1
@@ -240,10 +240,10 @@ function TopBar:render()
 				local opts = {
 					size = font_size, wrap = 2, color = bgt, border = 1, border_color = bg, opacity = visibility
 				}
-				local bx = math.min(max_bx, title_ax + text_width(self.alt_title, opts) + padding * 2)
+				local bx = round(math.min(max_bx, title_ax + text_width(self.alt_title, opts) + padding * 2))
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
 				ass:rect(title_ax, title_ay, bx, by, {
-					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = state.radius,
 				})
 				ass:txt(title_ax + padding, title_ay + height / 2, 4, self.alt_title, opts)
 				title_ay = by + 1
@@ -261,12 +261,12 @@ function TopBar:render()
 				local rect = {
 					ax = title_ax,
 					ay = title_ay,
-					bx = math.min(max_bx, title_ax + text_width(text, opts) + padding * 2),
+					bx = round(math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)),
 					by = title_ay + height
 				}
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, rect.bx, rect.by)
 				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
-					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = 2,
+					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = state.radius,
 				})
 				ass:txt(rect.ax + padding, rect.ay + height / 2, 4, text, opts)
 				title_ay = rect.by + 1

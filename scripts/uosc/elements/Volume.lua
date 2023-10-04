@@ -35,7 +35,6 @@ function VolumeSlider:init(props)
 	self.nudge_size = 0
 	self.draw_nudge = false
 	self.spacing = 0
-	self.radius = 1
 end
 
 function VolumeSlider:get_visibility() return Elements.volume:get_visibility(self) end
@@ -58,7 +57,6 @@ function VolumeSlider:on_coordinates()
 	self.nudge_size = round(width * 0.18)
 	self.draw_nudge = self.ay < self.nudge_y
 	self.spacing = round(width * 0.2)
-	self.radius = math.max(2, (self.bx - self.ax) / 10)
 end
 function VolumeSlider:on_global_mouse_move()
 	if self.pressed then self:set_from_cursor() end
@@ -97,7 +95,7 @@ function VolumeSlider:render()
 	function create_nudged_path(p, cy)
 		cy = cy or ay + p
 		local ax, bx, by = ax + p, bx - p, by - p
-		local r = math.max(1, self.radius - p)
+		local r = math.max(1, state.radius)
 		local d, rh = r * 2, r / 2
 		local nudge_size = ((QUARTER_PI_SIN * (nudge_size - p)) + p) / QUARTER_PI_SIN
 		local path = assdraw.ass_new()
@@ -226,7 +224,7 @@ function Volume:get_visibility()
 end
 
 function Volume:update_dimensions()
-	local width = options.volume_size
+	local width = round(options.volume_size * state.scale)
 	local controls, timeline, top_bar = Elements.controls, Elements.timeline, Elements.top_bar
 	local min_y = top_bar.enabled and top_bar.by or 0
 	local max_y = (controls and controls.enabled and controls.ay) or (timeline.enabled and timeline.ay)
