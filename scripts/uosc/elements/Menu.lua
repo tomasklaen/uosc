@@ -1112,9 +1112,13 @@ function Menu:render()
 			local title_cut_x = content_bx
 			if item.hint_width > 0 then
 				-- controls title & hint clipping proportional to the ratio of their widths
+				-- both title and hint get at least 20% of the width, unless they are smaller then that
+				local width = content_bx - content_ax
+				local title_min = math.min(item.title_width, width * 0.2)
+				local hint_min = math.min(item.hint_width, width * 0.2)
 				local title_content_ratio = item.title_width / (item.title_width + item.hint_width)
-				title_cut_x = round(content_ax + (content_bx - content_ax - spacing) * title_content_ratio
-					+ (item.title_width > 0 and spacing / 2 or 0))
+				title_cut_x = round(content_ax + clamp(title_min, (width - spacing) * title_content_ratio
+					+ (item.title_width > 0 and spacing / 2 or 0), width - hint_min))
 			end
 
 			-- Hint
