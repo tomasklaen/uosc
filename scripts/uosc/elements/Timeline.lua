@@ -398,17 +398,17 @@ function Timeline:render()
 			and thumbnail.height ~= 0
 		then
 			local border = math.ceil(math.max(2, state.radius / 2) * state.scale)
-			local margin_x, margin_y = round(tooltip_margin * state.scale), round(tooltip_gap * state.scale)
+			local margin_x, margin_y = tooltip_margin, tooltip_gap
 			local thumb_x_margin, thumb_y_margin = border + margin_x + bax, border + margin_y
 			local thumb_width, thumb_height = thumbnail.width, thumbnail.height
 			local thumb_x = round(clamp(
-				thumb_x_margin, cursor_x * state.scale - thumb_width / 2,
-				display.width * state.scale - thumb_width - thumb_x_margin
+				thumb_x_margin,
+				cursor_x - thumb_width / 2,
+				display.width - thumb_width - thumb_x_margin
 			))
-			local thumb_y = round(tooltip_anchor.ay * state.scale - thumb_y_margin - thumb_height)
-			local ax, ay = (thumb_x - border) / state.scale, (thumb_y - border) / state.scale
-			local bx = (thumb_x + thumb_width + border) / state.scale
-			local by = (thumb_y + thumb_height + border) / state.scale
+			local thumb_y = round(tooltip_anchor.ay - thumb_y_margin - thumb_height)
+			local ax, ay = (thumb_x - border), (thumb_y - border)
+			local bx, by = (thumb_x + thumb_width + border), (thumb_y + thumb_height + border)
 			ass:rect(ax, ay, bx, by, {
 				color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = state.radius
 			})
