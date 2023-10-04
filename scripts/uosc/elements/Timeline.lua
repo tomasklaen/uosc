@@ -190,7 +190,7 @@ function Timeline:render()
 		local minimized_fraction = 1 - math.min((size - self.progress_size) / ((self.size - self.progress_size) / 8), 1)
 		local line_width_normal = self:get_effective_line_width()
 		local progress_delta = self.progress_size > 0 and options.progress_line_width - line_width_normal or 0
-		line_width = line_width_normal - (progress_delta * minimized_fraction)
+		line_width = line_width_normal + (progress_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
 		line_width = line_width - 1
