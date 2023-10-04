@@ -1099,7 +1099,7 @@ function Menu:render()
 			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (menu.selected_index == index and 0.15 or 0)
 			if not is_submenu and highlight_opacity > 0 then
 				ass:rect(ax + self.padding, item_ay, bx - self.padding, item_by, {
-					radius = 2, color = fg, opacity = highlight_opacity * text_opacity,
+					radius = state.radius, color = fg, opacity = highlight_opacity * text_opacity,
 					clip = item_clip,
 				})
 			end
