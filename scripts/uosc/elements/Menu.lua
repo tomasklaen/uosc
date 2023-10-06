@@ -689,7 +689,12 @@ function Menu:search_internal(menu)
 		-- Reset menu state to what it was before search
 		for key, value in pairs(menu.search.source) do menu[key] = value end
 	else
-		menu.items = search_items(menu.search.source.items, query, menu.search_submenus)
+		-- Inherit `search_submenus` from parent menus
+		local search_submenus, parent_menu = menu.search_submenus, menu.parent_menu
+		while not search_submenus and parent_menu do
+			search_submenus, parent_menu = parent_menu.search_submenus, parent_menu.parent_menu
+		end
+		menu.items = search_items(menu.search.source.items, query, search_submenus)
 		-- Select 1st item in search results
 		menu.scroll_y = 0
 		self:select_index(1, menu)
@@ -717,6 +722,7 @@ function search_items(items, query, recursive, prefix)
 					hint and table.concat(initials(hint)):find(query, 1, true) then
 					item = table_shallow_copy(item)
 					item.title = prefixed_title
+					item.ass_safe_title = nil
 					result[#result + 1] = item
 				end
 			end
