@@ -1173,12 +1173,12 @@ function Menu:render()
 			-- Title
 			if menu.search then
 				-- Icon
-				local icon_size, icon_opacity = self.font_size * 1.3, requires_submit and text_opacity * 0.5 or 1
+				local icon_size, icon_opacity = self.font_size * 1.3, menu_opacity * (requires_submit and 0.5 or 1)
 				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = rect.by}
 
 				if is_current and requires_submit and get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
 					cursor.on_primary_down = function() self:search_submit() end
-					icon_opacity = text_opacity
+					icon_opacity = menu_opacity
 					prevent_title_click = false
 				end
 
