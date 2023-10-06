@@ -201,7 +201,7 @@ function VolumeSlider:render()
 
 	-- Disabled stripes for no audio
 	if not state.has_audio then
-		local fg_100_path = create_nudged_path(self.border_size)
+		local fg_100_path = create_nudged_path(self.border_size, state.radius)
 		local texture_opts = {
 			size = 200, color = 'ffffff', opacity = visibility * 0.1, anchor_x = ax,
 			clip = '\\clip(' .. fg_100_path.scale .. ',' .. fg_100_path.text .. ')',
