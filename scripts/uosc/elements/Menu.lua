@@ -112,7 +112,10 @@ function Menu:init(data, callback, opts)
 	self.drag_last_y = nil
 	self.is_dragging = false
 
-	mp.set_property_native('user-data/uosc/menu/type', self.type)
+	if utils.shared_script_property_set then
+		utils.shared_script_property_set('uosc-menu-type', self.type or 'undefined')
+	end
+	mp.set_property_native('user-data/uosc/menu/type', self.type or 'undefined')
 	self:update(data)
 
 	if self.mouse_nav then
@@ -132,7 +135,10 @@ function Menu:destroy()
 	self:disable_key_bindings()
 	self.is_closed = true
 	if not self.is_being_replaced then Elements.curtain:unregister('menu') end
-	mp.del_property('user-data/uosc/menu/type')
+	if utils.shared_script_property_set then
+		utils.shared_script_property_set('uosc-menu-type', nil)
+	end
+	mp.set_property_native('user-data/uosc/menu/type', nil)
 	if self.opts.on_close then self.opts.on_close() end
 end
 
