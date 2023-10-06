@@ -390,6 +390,9 @@ function get_input_items()
 		items[#items + 1] = {title = bind.cmd, hint = bind.key, value = bind.cmd}
 	end
 
+	-- Sort
+	table.sort(items, function(a, b) return a.title < b.title end)
+
 	return #items > 0 and items or {
 		{
 			title = t('%s are empty', '`input-bindings`'),
