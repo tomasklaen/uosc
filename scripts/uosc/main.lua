@@ -142,38 +142,6 @@ t = intl.t
 
 --[[ CONFIG ]]
 
-function create_default_menu()
-	return {
-		{title = t('Subtitles'), value = 'script-binding uosc/subtitles'},
-		{title = t('Audio tracks'), value = 'script-binding uosc/audio'},
-		{title = t('Stream quality'), value = 'script-binding uosc/stream-quality'},
-		{title = t('Playlist'), value = 'script-binding uosc/items'},
-		{title = t('Chapters'), value = 'script-binding uosc/chapters'},
-		{title = t('Navigation'), items = {
-			{title = t('Next'), hint = t('playlist or file'), value = 'script-binding uosc/next'},
-			{title = t('Prev'), hint = t('playlist or file'), value = 'script-binding uosc/prev'},
-			{title = t('Delete file & Next'), value = 'script-binding uosc/delete-file-next'},
-			{title = t('Delete file & Prev'), value = 'script-binding uosc/delete-file-prev'},
-			{title = t('Delete file & Quit'), value = 'script-binding uosc/delete-file-quit'},
-			{title = t('Open file'), value = 'script-binding uosc/open-file'},
-		},},
-		{title = t('Utils'), items = {
-			{title = t('Aspect ratio'), items = {
-				{title = t('Default'), value = 'set video-aspect-override "-1"'},
-				{title = '16:9', value = 'set video-aspect-override "16:9"'},
-				{title = '4:3', value = 'set video-aspect-override "4:3"'},
-				{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
-			},},
-			{title = t('Audio devices'), value = 'script-binding uosc/audio-device'},
-			{title = t('Editions'), value = 'script-binding uosc/editions'},
-			{title = t('Screenshot'), value = 'async screenshot'},
-			{title = t('Show in directory'), value = 'script-binding uosc/show-in-directory'},
-			{title = t('Open config folder'), value = 'script-binding uosc/open-config-directory'},
-		},},
-		{title = t('Quit'), value = 'quit'},
-	}
-end
-
 config = {
 	version = uosc_version,
 	-- sets max rendering frequency in case the
@@ -202,73 +170,6 @@ config = {
 	},
 	stream_quality_options = split(options.stream_quality_options, ' *, *'),
 	top_bar_flash_on = split(options.top_bar_flash_on, ' *, *'),
-	menu_items = (function()
-		local input_conf_property = mp.get_property_native('input-conf')
-		local input_conf_path = mp.command_native({
-			'expand-path', input_conf_property == '' and '~~/input.conf' or input_conf_property,
-		})
-		local input_conf_meta, meta_error = utils.file_info(input_conf_path)
-
-		-- File doesn't exist
-		if not input_conf_meta or not input_conf_meta.is_file then return create_default_menu() end
-
-		local main_menu = {items = {}, items_by_command = {}}
-		local by_id = {}
-
-		for line in io.lines(input_conf_path) do
-			local key, command, comment = string.match(line, '%s*([%S]+)%s+(.-)%s+#%s*(.-)%s*$')
-			local title = ''
-			if comment then
-				local comments = split(comment, '#')
-				local titles = itable_filter(comments, function(v, i) return v:match('^!') or v:match('^menu:') end)
-				if titles and #titles > 0 then
-					title = titles[1]:match('^!%s*(.*)%s*') or titles[1]:match('^menu:%s*(.*)%s*')
-				end
-			end
-			if title ~= '' then
-				local is_dummy = key:sub(1, 1) == '#'
-				local submenu_id = ''
-				local target_menu = main_menu
-				local title_parts = split(title or '', ' *> *')
-
-				for index, title_part in ipairs(#title_parts > 0 and title_parts or {''}) do
-					if index < #title_parts then
-						submenu_id = submenu_id .. title_part
-
-						if not by_id[submenu_id] then
-							local items = {}
-							by_id[submenu_id] = {items = items, items_by_command = {}}
-							target_menu.items[#target_menu.items + 1] = {title = title_part, items = items}
-						end
-
-						target_menu = by_id[submenu_id]
-					else
-						if command == 'ignore' then break end
-						-- If command is already in menu, just append the key to it
-						if target_menu.items_by_command[command] then
-							local hint = target_menu.items_by_command[command].hint
-							target_menu.items_by_command[command].hint = hint and hint .. ', ' .. key or key
-						else
-							local item = {
-								title = title_part,
-								hint = not is_dummy and key or nil,
-								value = command,
-							}
-							target_menu.items_by_command[command] = item
-							target_menu.items[#target_menu.items + 1] = item
-						end
-					end
-				end
-			end
-		end
-
-		if #main_menu.items > 0 then
-			return main_menu.items
-		else
-			-- Default context menu
-			return create_default_menu()
-		end
-	end)(),
 	chapter_ranges = (function()
 		---@type table<string, string[]> Alternative patterns.
 		local alt_patterns = {}
@@ -306,6 +207,40 @@ for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
 		for _, state in ipairs(split(value, ' *, *')) do flags[state] = true end
 	end
 	config[option_name] = flags
+end
+
+-- Default menu items
+function create_default_menu_items()
+	return {
+		{title = t('Subtitles'), value = 'script-binding uosc/subtitles'},
+		{title = t('Audio tracks'), value = 'script-binding uosc/audio'},
+		{title = t('Stream quality'), value = 'script-binding uosc/stream-quality'},
+		{title = t('Playlist'), value = 'script-binding uosc/items'},
+		{title = t('Chapters'), value = 'script-binding uosc/chapters'},
+		{title = t('Navigation'), items = {
+			{title = t('Next'), hint = t('playlist or file'), value = 'script-binding uosc/next'},
+			{title = t('Prev'), hint = t('playlist or file'), value = 'script-binding uosc/prev'},
+			{title = t('Delete file & Next'), value = 'script-binding uosc/delete-file-next'},
+			{title = t('Delete file & Prev'), value = 'script-binding uosc/delete-file-prev'},
+			{title = t('Delete file & Quit'), value = 'script-binding uosc/delete-file-quit'},
+			{title = t('Open file'), value = 'script-binding uosc/open-file'},
+		},},
+		{title = t('Utils'), items = {
+			{title = t('Aspect ratio'), items = {
+				{title = t('Default'), value = 'set video-aspect-override "-1"'},
+				{title = '16:9', value = 'set video-aspect-override "16:9"'},
+				{title = '4:3', value = 'set video-aspect-override "4:3"'},
+				{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
+			},},
+			{title = t('Audio devices'), value = 'script-binding uosc/audio-device'},
+			{title = t('Editions'), value = 'script-binding uosc/editions'},
+			{title = t('Screenshot'), value = 'async screenshot'},
+			{title = t('Inputs'), value = 'script-binding uosc/inputs'},
+			{title = t('Show in directory'), value = 'script-binding uosc/show-in-directory'},
+			{title = t('Open config folder'), value = 'script-binding uosc/open-config-directory'},
+		},},
+		{title = t('Quit'), value = 'quit'},
+	}
 end
 
 --[[ STATE ]]
@@ -953,6 +888,10 @@ bind_command('toggle-title', function() Elements.top_bar:toggle_title() end)
 bind_command('decide-pause-indicator', function() Elements.pause_indicator:decide() end)
 bind_command('menu', function() toggle_menu_with_items() end)
 bind_command('menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
+bind_command('inputs', function()
+	if Menu:is_open('inputs') then Menu:close()
+	else open_command_menu({type = 'inputs', items = get_input_items(), palette = true}) end
+end)
 local track_loaders = {
 	{name = 'subtitles', prop = 'sub', allowed_types = itable_join(config.types.video, config.types.subtitle)},
 	{name = 'audio', prop = 'audio', allowed_types = itable_join(config.types.video, config.types.audio)},
