@@ -12,7 +12,9 @@ function Timeline:init()
 	self.size = 0
 	self.progress_size = 0
 	self.font_size = 0
-	self.top_border = options.timeline_border
+	self.top_border = 0
+	self.line_width = 0
+	self.progress_line_width = 0
 	self.is_hovered = false
 	self.has_thumbnail = false
 
@@ -38,14 +40,13 @@ function Timeline:get_effective_size()
 	return self.progress_size + math.ceil((self.size - self.progress_size) * self:get_visibility())
 end
 
-function Timeline:get_effective_line_width()
-	return state.fullormaxed and options.timeline_line_width_fullscreen or options.timeline_line_width
-end
-
 function Timeline:get_is_hovered() return self.enabled and self.is_hovered end
 
 function Timeline:update_dimensions()
-	self.size = state.fullormaxed and options.timeline_size_fullscreen or options.timeline_size
+	self.size = round(options.timeline_size * state.scale)
+	self.top_border = round(options.timeline_border * state.scale)
+	self.line_width = round(options.timeline_line_width * state.scale)
+	self.progress_line_width = round(options.progress_line_width * state.scale)
 	self.font_size = math.floor(math.min((self.size + 60) * 0.2, self.size * 0.96) * options.font_scale)
 	self.ax = Elements.window_border.size
 	self.ay = display.height - Elements.window_border.size - self.size - self.top_border
@@ -76,7 +77,7 @@ function Timeline:toggle_progress()
 end
 
 function Timeline:get_time_at_x(x)
-	local line_width = (options.timeline_style == 'line' and options.timeline_line_width - 1 or 0)
+	local line_width = (options.timeline_style == 'line' and self.line_width - 1 or 0)
 	local time_width = self.width - line_width - 1
 	local fax = (time_width) * state.time / state.duration
 	local fbx = fax + line_width
@@ -115,10 +116,7 @@ function Timeline:on_prop_fullormaxed()
 	self:update_dimensions()
 end
 function Timeline:on_display() self:update_dimensions() end
-function Timeline:on_options()
-	self.top_border = options.timeline_border
-	self:update_dimensions()
-end
+function Timeline:on_options() self:update_dimensions() end
 function Timeline:handle_cursor_up()
 	if self.pressed then
 		mp.set_property_native('pause', self.pressed.pause)
@@ -171,8 +169,8 @@ function Timeline:render()
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = clamp(0, size - hide_text_below, hide_text_ramp) / hide_text_ramp
 
-	local tooltip_gap = 2
-	local tooltip_margin = 10
+	local tooltip_gap = round(2 * state.scale)
+	local tooltip_margin = round(10 * state.scale)
 	local timestamp_gap = tooltip_gap
 
 	local spacing = math.max(math.floor((self.size - self.font_size) / 2.5), 4)
@@ -188,9 +186,8 @@ function Timeline:render()
 
 	if is_line then
 		local minimized_fraction = 1 - math.min((size - self.progress_size) / ((self.size - self.progress_size) / 8), 1)
-		local line_width_normal = self:get_effective_line_width()
-		local progress_delta = self.progress_size > 0 and options.progress_line_width - line_width_normal or 0
-		line_width = line_width_normal + (progress_delta * minimized_fraction)
+		local progress_delta = self.progress_size > 0 and self.progress_line_width - self.line_width or 0
+		line_width = self.line_width + (progress_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
 		line_width = line_width - 1
@@ -353,7 +350,9 @@ function Timeline:render()
 		if buffered_playtime and options.buffered_time_threshold > 0
 			and buffered_playtime < options.buffered_time_threshold then
 			local x, align = fbx + 5, 4
-			local cache_opts = {size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = 1}
+			local cache_opts = {
+				size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = options.text_border * state.scale
+			}
 			local human = round(math.max(buffered_playtime, 0)) .. 's'
 			local width = text_width(human, cache_opts)
 			local time_width = timestamp_width(state.time_human, time_opts)
@@ -400,19 +399,21 @@ function Timeline:render()
 			and thumbnail.width ~= 0
 			and thumbnail.height ~= 0
 		then
-			local scale_x, scale_y = display.scale_x, display.scale_y
-			local border = math.ceil(2 * scale_x)
-			local margin_x, margin_y = round(tooltip_margin * scale_x), round(tooltip_gap * scale_y)
+			local border = math.ceil(math.max(2, state.radius / 2) * state.scale)
+			local margin_x, margin_y = tooltip_margin, tooltip_gap
 			local thumb_x_margin, thumb_y_margin = border + margin_x + bax, border + margin_y
 			local thumb_width, thumb_height = thumbnail.width, thumbnail.height
 			local thumb_x = round(clamp(
-				thumb_x_margin, cursor_x * scale_x - thumb_width / 2,
-				display.width * scale_x - thumb_width - thumb_x_margin
+				thumb_x_margin,
+				cursor_x - thumb_width / 2,
+				display.width - thumb_width - thumb_x_margin
 			))
-			local thumb_y = round(tooltip_anchor.ay * scale_y - thumb_y_margin - thumb_height)
-			local ax, ay = (thumb_x - border) / scale_x, (thumb_y - border) / scale_y
-			local bx, by = (thumb_x + thumb_width + border) / scale_x, (thumb_y + thumb_height + border) / scale_y
-			ass:rect(ax, ay, bx, by, {color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = 2})
+			local thumb_y = round(tooltip_anchor.ay - thumb_y_margin - thumb_height)
+			local ax, ay = (thumb_x - border), (thumb_y - border)
+			local bx, by = (thumb_x + thumb_width + border), (thumb_y + thumb_height + border)
+			ass:rect(ax, ay, bx, by, {
+				color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = state.radius
+			})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
 			self.has_thumbnail, rendered_thumbnail = true, true
 			tooltip_anchor.ay = ay
