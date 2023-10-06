@@ -80,7 +80,7 @@ function Button:render()
 	-- Icon
 	local x, y = round(self.ax + (self.bx - self.ax) / 2), round(self.ay + (self.by - self.ay) / 2)
 	ass:icon(x, y, self.font_size, self.icon, {
-		color = foreground, border = self.active and 0 or options.text_border, border_color = background,
+		color = foreground, border = self.active and 0 or options.text_border * state.scale, border_color = background,
 		opacity = visibility, clip = icon_clip,
 	})
 

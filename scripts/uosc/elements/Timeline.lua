@@ -169,8 +169,8 @@ function Timeline:render()
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = clamp(0, size - hide_text_below, hide_text_ramp) / hide_text_ramp
 
-	local tooltip_gap = 2
-	local tooltip_margin = 10
+	local tooltip_gap = round(2 * state.scale)
+	local tooltip_margin = round(10 * state.scale)
 	local timestamp_gap = tooltip_gap
 
 	local spacing = math.max(math.floor((self.size - self.font_size) / 2.5), 4)
@@ -350,7 +350,9 @@ function Timeline:render()
 		if buffered_playtime and options.buffered_time_threshold > 0
 			and buffered_playtime < options.buffered_time_threshold then
 			local x, align = fbx + 5, 4
-			local cache_opts = {size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = 1}
+			local cache_opts = {
+				size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = options.text_border * state.scale
+			}
 			local human = round(math.max(buffered_playtime, 0)) .. 's'
 			local width = text_width(human, cache_opts)
 			local time_width = timestamp_width(state.time_human, time_opts)

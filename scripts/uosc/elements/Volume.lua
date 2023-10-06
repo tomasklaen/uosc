@@ -17,7 +17,7 @@ function MuteButton:render()
 	local icon_name = state.mute and 'volume_off' or 'volume_up'
 	local width = self.bx - self.ax
 	ass:icon(self.ax + (width / 2), self.by, width * 0.7, icon_name,
-		{border = options.text_border, opacity = options.volume_opacity * visibility, align = 2}
+		{border = options.text_border * state.scale, opacity = options.volume_opacity * visibility, align = 2}
 	)
 	return ass
 end

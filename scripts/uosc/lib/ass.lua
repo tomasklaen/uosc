@@ -79,10 +79,10 @@ end
 function ass_mt:tooltip(element, value, opts)
 	if value == '' then return end
 	opts = opts or {}
-	opts.size = opts.size or 16
-	opts.border = options.text_border
+	opts.size = opts.size or round(16 * state.scale)
+	opts.border = options.text_border * state.scale
 	opts.border_color = bg
-	opts.margin = opts.margin or 10
+	opts.margin = opts.margin or round(10 * state.scale)
 	opts.opacity = opts.opacity or options.timeline_opacity
 	opts.lines = opts.lines or 1
 	local padding_y = round(opts.size / 6)
