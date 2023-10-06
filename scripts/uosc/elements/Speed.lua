@@ -126,7 +126,9 @@ function Speed:render()
 	local ass = assdraw.ass_new()
 
 	-- Background
-	ass:rect(self.ax, self.ay, self.bx, self.by, {color = bg, radius = 2, opacity = opacity * options.speed_opacity})
+	ass:rect(self.ax, self.ay, self.bx, self.by, {
+		color = bg, radius = state.radius, opacity = opacity * options.speed_opacity
+	})
 
 	-- Coordinates
 	local ax, ay = self.ax, self.ay
@@ -184,7 +186,8 @@ function Speed:render()
 	-- Speed value
 	local speed_text = (round(state.speed * 100) / 100) .. 'x'
 	ass:txt(half_x, ay + (notch_ay_big - ay) / 2, 5, speed_text, {
-		size = self.font_size, color = bgt, border = options.text_border, border_color = bg, opacity = opacity,
+		size = self.font_size, color = bgt, border = options.text_border * state.scale, border_color = bg,
+		opacity = opacity,
 	})
 
 	return ass

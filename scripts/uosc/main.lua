@@ -16,9 +16,7 @@ require('lib/std')
 defaults = {
 	timeline_style = 'line',
 	timeline_line_width = 2,
-	timeline_line_width_fullscreen = 3,
 	timeline_size = 40,
-	timeline_size_fullscreen = 60,
 	progress = 'windowed',
 	progress_size = 2,
 	progress_line_width = 20,
@@ -31,14 +29,12 @@ defaults = {
 
 	controls = 'menu,gap,subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
 	controls_size = 32,
-	controls_size_fullscreen = 40,
 	controls_margin = 8,
 	controls_spacing = 2,
 	controls_persistency = '',
 
 	volume = 'right',
 	volume_size = 40,
-	volume_size_fullscreen = 52,
 	volume_persistency = '',
 	volume_opacity = 0.9,
 	volume_border = 1,
@@ -50,16 +46,13 @@ defaults = {
 	speed_step_is_factor = false,
 
 	menu_item_height = 36,
-	menu_item_height_fullscreen = 50,
 	menu_min_width = 260,
-	menu_min_width_fullscreen = 360,
 	menu_opacity = 1,
 	menu_parent_opacity = 0.4,
 	menu_type_to_search = true,
 
 	top_bar = 'no-border',
 	top_bar_size = 40,
-	top_bar_size_fullscreen = 46,
 	top_bar_persistency = '',
 	top_bar_controls = true,
 	top_bar_title = 'yes',
@@ -75,9 +68,11 @@ defaults = {
 	autoload_types = 'video,audio,image',
 	shuffle = false,
 
-	ui_scale = 1,
+	scale = 1,
+	scale_fullscreen = 1.3,
 	font_scale = 1,
 	text_border = 1.2,
+	border_radius = 2,
 	text_width_estimation = true,
 	pause_on_click_shorter_than = 0, -- deprecated by below
 	click_threshold = 0,
@@ -245,7 +240,7 @@ end
 
 --[[ STATE ]]
 
-display = {width = 1280, height = 720, scale_x = 1, scale_y = 1, initialized = false}
+display = {width = 1280, height = 720, initialized = false}
 cursor = {
 	x = 0,
 	y = 0,
@@ -314,7 +309,7 @@ cursor = {
 		end
 
 		-- Add 0.5 to be in the middle of the pixel
-		cursor.x, cursor.y = (x + 0.5) / display.scale_x, (y + 0.5) / display.scale_y
+		cursor.x, cursor.y = x + 0.5, y + 0.5
 
 		if old_x ~= cursor.x or old_y ~= cursor.y then
 			Elements:update_proximities()
@@ -439,6 +434,8 @@ state = {
 	margin_left = 0,
 	margin_right = 0,
 	hidpi_scale = 1,
+	scale = 1,
+	radius = 0
 }
 thumbnail = {width = 0, height = 0, disabled = false}
 external = {} -- Properties set by external scripts
@@ -455,12 +452,11 @@ require('lib/menus')
 --[[ STATE UPDATERS ]]
 
 function update_display_dimensions()
-	local scale = (state.hidpi_scale or 1) * options.ui_scale
+	state.scale = (state.hidpi_scale or 1) * (state.fullormaxed and options.scale_fullscreen or options.scale)
+	state.radius = round(options.border_radius * state.scale)
 	local real_width, real_height = mp.get_osd_size()
 	if real_width <= 0 then return end
-	local scaled_width, scaled_height = round(real_width / scale), round(real_height / scale)
-	display.width, display.height = scaled_width, scaled_height
-	display.scale_x, display.scale_y = real_width / scaled_width, real_height / scaled_height
+	display.width, display.height = real_width, real_height
 	display.initialized = true
 
 	-- Tell elements about this
