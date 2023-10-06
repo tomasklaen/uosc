@@ -12,7 +12,7 @@ end
 
 function WindowBorder:decide_enabled()
 	self.enabled = options.window_border_size > 0 and not state.fullormaxed and not state.border
-	    and state.title_bar == false
+		and (state.platform ~= 'windows' or state.title_bar == false)
 	self.size = self.enabled and round(options.window_border_size * state.scale) or 0
 end
 
