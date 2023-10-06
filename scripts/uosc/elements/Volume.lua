@@ -99,11 +99,11 @@ function VolumeSlider:render()
 
 	-- Draws a rectangle with nudge at requested position
 	---@param p number Padding from slider edges.
+	---@param r number Padding from slider edges.
 	---@param cy? number A y coordinate where to clip the path from the bottom.
-	function create_nudged_path(p, cy)
+	function create_nudged_path(p, r, cy)
 		cy = cy or ay + p
 		local ax, bx, by = ax + p, bx - p, by - p
-		local r = math.max(1, state.radius)
 		local d, rh = r * 2, r / 2
 		local nudge_size = ((QUARTER_PI_SIN * (nudge_size - p)) + p) / QUARTER_PI_SIN
 		local path = assdraw.ass_new()
@@ -161,8 +161,8 @@ function VolumeSlider:render()
 	end
 
 	-- BG & FG paths
-	local bg_path = create_nudged_path(0)
-	local fg_path = create_nudged_path(self.border_size, volume_y)
+	local bg_path = create_nudged_path(0, state.radius + self.border_size)
+	local fg_path = create_nudged_path(self.border_size, state.radius, volume_y)
 
 	-- Background
 	ass:new_event()
