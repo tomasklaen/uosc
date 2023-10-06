@@ -237,13 +237,14 @@ function Menu:update(data)
 	end
 	-- Apply search suggestions
 	for _, menu in ipairs(new_menus) do
-		if menu.search_suggestion then
+		if menu.search_suggestion then menu.search.query = menu.search_suggestion end
+	end
+	for _, menu in ipairs(self.all) do
+		if menu.search then
+			-- the menu items are new objects and the search needs to contain those
+			menu.search.source.items = not menu.on_search and menu.items or nil
 			-- Only internal searches are immediately submitted
-			if menu.on_search then
-				menu.search.query = menu.search_suggestion
-			else
-				self:search_query_update(menu.search_suggestion, menu)
-			end
+			if not menu.on_search then self:search_submit(menu) end
 		end
 	end
 
@@ -687,7 +688,7 @@ function Menu:search_internal(menu)
 		menu.items = search_items(menu.search.source.items, query, menu.search_submenus)
 		-- Select 1st item in search results
 		menu.scroll_y = 0
-		self:select_index(1, menu)
+		if not self.mouse_nav then self:select_index(1, menu) end
 	end
 	self:update_content_dimensions()
 end
