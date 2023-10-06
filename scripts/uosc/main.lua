@@ -72,6 +72,7 @@ defaults = {
 	scale_fullscreen = 1.3,
 	font_scale = 1,
 	text_border = 1.2,
+	border_radius = 2,
 	text_width_estimation = true,
 	pause_on_click_shorter_than = 0, -- deprecated by below
 	click_threshold = 0,
@@ -452,7 +453,7 @@ require('lib/menus')
 
 function update_display_dimensions()
 	state.scale = (state.hidpi_scale or 1) * (state.fullormaxed and options.scale_fullscreen or options.scale)
-	state.radius = round(2 * state.scale)
+	state.radius = round(options.border_radius * state.scale)
 	local real_width, real_height = mp.get_osd_size()
 	if real_width <= 0 then return end
 	display.width, display.height = real_width, real_height
