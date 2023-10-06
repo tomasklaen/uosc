@@ -35,6 +35,12 @@ function VolumeSlider:init(props)
 	self.nudge_size = 0
 	self.draw_nudge = false
 	self.spacing = 0
+	self.border_size = 0
+	self:update_dimensions()
+end
+
+function VolumeSlider:update_dimensions()
+	self.border_size = math.max(1, round(options.volume_border * state.scale))
 end
 
 function VolumeSlider:get_visibility() return Elements.volume:get_visibility(self) end
@@ -46,10 +52,12 @@ function VolumeSlider:set_volume(volume)
 end
 
 function VolumeSlider:set_from_cursor()
-	local volume_fraction = (self.by - cursor.y - options.volume_border) / (self.by - self.ay - options.volume_border)
+	local volume_fraction = (self.by - cursor.y - self.border_size) / (self.by - self.ay - self.border_size)
 	self:set_volume(volume_fraction * state.volume_max)
 end
 
+function VolumeSlider:on_display() self:update_dimensions() end
+function VolumeSlider:on_options() self:update_dimensions() end
 function VolumeSlider:on_coordinates()
 	if type(state.volume_max) ~= 'number' or state.volume_max <= 0 then return end
 	local width = self.bx - self.ax
@@ -86,8 +94,8 @@ function VolumeSlider:render()
 
 	local ass = assdraw.ass_new()
 	local nudge_y, nudge_size = self.draw_nudge and self.nudge_y or -INFINITY, self.nudge_size
-	local volume_y = self.ay + options.volume_border +
-		((height - (options.volume_border * 2)) * (1 - math.min(state.volume / state.volume_max, 1)))
+	local volume_y = self.ay + self.border_size +
+		((height - (self.border_size * 2)) * (1 - math.min(state.volume / state.volume_max, 1)))
 
 	-- Draws a rectangle with nudge at requested position
 	---@param p number Padding from slider edges.
@@ -154,7 +162,7 @@ function VolumeSlider:render()
 
 	-- BG & FG paths
 	local bg_path = create_nudged_path(0)
-	local fg_path = create_nudged_path(options.volume_border, volume_y)
+	local fg_path = create_nudged_path(self.border_size, volume_y)
 
 	-- Background
 	ass:new_event()
@@ -193,7 +201,7 @@ function VolumeSlider:render()
 
 	-- Disabled stripes for no audio
 	if not state.has_audio then
-		local fg_100_path = create_nudged_path(options.volume_border)
+		local fg_100_path = create_nudged_path(self.border_size)
 		local texture_opts = {
 			size = 200, color = 'ffffff', opacity = visibility * 0.1, anchor_x = ax,
 			clip = '\\clip(' .. fg_100_path.scale .. ',' .. fg_100_path.text .. ')',
