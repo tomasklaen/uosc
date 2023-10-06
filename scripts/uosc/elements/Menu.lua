@@ -1099,7 +1099,7 @@ function Menu:render()
 			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (menu.selected_index == index and 0.15 or 0)
 			if not is_submenu and highlight_opacity > 0 then
 				ass:rect(ax + self.padding, item_ay, bx - self.padding, item_by, {
-					radius = state.radius, color = fg, opacity = highlight_opacity * text_opacity,
+					radius = state.radius, color = fg, opacity = highlight_opacity * menu_opacity,
 					clip = item_clip,
 				})
 			end
@@ -1132,7 +1132,7 @@ function Menu:render()
 				local clip = '\\clip(' .. title_cut_x .. ',' ..
 					math.max(item_ay, ay) .. ',' .. bx .. ',' .. math.min(item_by, by) .. ')'
 				ass:txt(content_bx, item_center_y, 6, item.ass_safe_hint, {
-					size = self.font_size_hint, color = font_color, wrap = 2, opacity = 0.5 * menu_opacity, clip = clip,
+					size = self.font_size_hint, color = font_color, wrap = 2, opacity = 0.5 * text_opacity, clip = clip,
 					shadow = 1, shadow_color = shadow_color,
 				})
 			end
@@ -1173,12 +1173,12 @@ function Menu:render()
 			-- Title
 			if menu.search then
 				-- Icon
-				local icon_size, icon_opacity = self.font_size * 1.3, menu_opacity * (requires_submit and 0.5 or 1)
+				local icon_size, icon_opacity = self.font_size * 1.3, text_opacity * (requires_submit and 0.5 or 1)
 				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = rect.by}
 
 				if is_current and requires_submit and get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
 					cursor.on_primary_down = function() self:search_submit() end
-					icon_opacity = menu_opacity
+					icon_opacity = text_opacity
 					prevent_title_click = false
 				end
 
@@ -1192,7 +1192,7 @@ function Menu:render()
 					-- Add a ZWNBSP suffix to prevent libass from trimming trailing spaces
 					local query = ass_escape(menu.search.query) .. '\239\187\191'
 					ass:txt(rect.bx, rect.cy, 6, query, {
-						size = self.font_size, color = bgt, wrap = 2, opacity = menu_opacity,
+						size = self.font_size, color = bgt, wrap = 2, opacity = text_opacity,
 						clip = '\\clip(' .. icon_rect.bx .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 					})
 				else
@@ -1200,7 +1200,7 @@ function Menu:render()
 						and menu.ass_safe_title
 						or (requires_submit and t('type & ctrl+enter to search') or t('type to search'))
 					ass:txt(rect.bx, rect.cy, 6, placeholder, {
-						size = self.font_size, italic = true, color = bgt, wrap = 2, opacity = menu_opacity * 0.4,
+						size = self.font_size, italic = true, color = bgt, wrap = 2, opacity = text_opacity * 0.4,
 						clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 					})
 				end
@@ -1209,12 +1209,12 @@ function Menu:render()
 				local font_size_half, cursor_thickness = round(self.font_size / 2), round(self.font_size / 14)
 				local cursor_ax, cursor_bx = rect.bx + 1, rect.bx + 1 + cursor_thickness
 				ass:rect(cursor_ax, rect.cy - font_size_half, cursor_bx, rect.cy + font_size_half, {
-					color = fg, opacity = menu_opacity * 0.5,
+					color = fg, opacity = text_opacity * 0.5,
 					clip = '\\clip(' .. cursor_ax .. ',' .. rect.ay .. ',' .. cursor_bx .. ',' .. rect.by .. ')',
 				})
 			else
 				ass:txt(rect.cx, rect.cy, 5, menu.ass_safe_title, {
-					size = self.font_size, bold = true, color = bgt, wrap = 2, opacity = menu_opacity,
+					size = self.font_size, bold = true, color = bgt, wrap = 2, opacity = text_opacity,
 					clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 				})
 			end
