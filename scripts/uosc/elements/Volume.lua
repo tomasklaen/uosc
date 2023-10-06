@@ -99,7 +99,7 @@ function VolumeSlider:render()
 
 	-- Draws a rectangle with nudge at requested position
 	---@param p number Padding from slider edges.
-	---@param r number Padding from slider edges.
+	---@param r number Border radius.
 	---@param cy? number A y coordinate where to clip the path from the bottom.
 	function create_nudged_path(p, r, cy)
 		cy = cy or ay + p
