@@ -1132,15 +1132,18 @@ function Menu:render()
 			local title_cut_x = content_bx
 			if item.hint_width > 0 then
 				-- controls title & hint clipping proportional to the ratio of their widths
-				local title_content_ratio = item.title_width / (item.title_width + item.hint_width)
-				title_cut_x = round(content_ax + (content_bx - content_ax - spacing) * title_content_ratio
-					+ (item.title_width > 0 and spacing / 2 or 0))
+				-- both title and hint get at least 50% of the width, unless they are smaller then that
+				local width = content_bx - content_ax - spacing
+				local title_min = math.min(item.title_width, width * 0.5)
+				local hint_min = math.min(item.hint_width, width * 0.5)
+				local title_ratio = item.title_width / (item.title_width + item.hint_width)
+				title_cut_x = round(content_ax + clamp(title_min, width * title_ratio, width - hint_min))
 			end
 
 			-- Hint
 			if item.hint then
 				item.ass_safe_hint = item.ass_safe_hint or ass_escape(item.hint)
-				local clip = '\\clip(' .. title_cut_x .. ',' ..
+				local clip = '\\clip(' .. title_cut_x + spacing .. ',' ..
 					math.max(item_ay, ay) .. ',' .. bx .. ',' .. math.min(item_by, by) .. ')'
 				ass:txt(content_bx, item_center_y, 6, item.ass_safe_hint, {
 					size = self.font_size_hint, color = font_color, wrap = 2, opacity = 0.5 * menu_opacity, clip = clip,
