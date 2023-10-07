@@ -307,7 +307,8 @@ do
 
 		-- File doesn't exist
 		if not input_conf_meta or not input_conf_meta.is_file then
-			return create_default_menu_items()
+			items = create_default_menu_items()
+			return items
 		end
 
 		local main_menu = {items = {}, items_by_command = {}}
@@ -362,8 +363,8 @@ do
 			end
 		end
 
-		items = main_menu.items
-		return #items > 0 and items or create_default_menu_items()
+		items = #main_menu.items > 0 and main_menu.items or create_default_menu_items()
+		return items
 	end
 end
 
