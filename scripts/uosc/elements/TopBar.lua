@@ -227,7 +227,7 @@ function TopBar:render()
 				end
 
 				ass:rect(title_rect.ax, title_rect.ay, title_rect.bx, title_rect.by, {
-					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = state.radius,
+					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
 				ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, main_title, opts)
 				title_ay = by + 1
@@ -245,7 +245,7 @@ function TopBar:render()
 				local bx = round(math.min(max_bx, title_ax + text_width(self.alt_title, opts) + padding * 2))
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
 				ass:rect(title_ax, title_ay, bx, by, {
-					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = state.radius,
+					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
 				ass:txt(title_ax + padding, title_ay + height / 2, 4, self.alt_title, opts)
 				title_ay = by + 1
@@ -268,7 +268,7 @@ function TopBar:render()
 				}
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, rect.bx, rect.by)
 				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
-					color = bg, opacity = visibility * options.top_bar_title_opacity, radius = state.radius,
+					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
 				ass:txt(rect.ax + padding, rect.ay + height / 2, 4, text, opts)
 				title_ay = rect.by + 1

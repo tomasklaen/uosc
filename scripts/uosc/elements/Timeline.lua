@@ -212,7 +212,7 @@ function Timeline:render()
 	ass:new_event()
 	ass:pos(0, 0)
 	ass:append('{\\rDefault\\an7\\blur0\\bord0\\1c&H' .. bg .. '}')
-	ass:opacity(options.timeline_opacity)
+	ass:opacity(config.opacity.timeline)
 	ass:draw_start()
 	ass:rect_cw(bax, bay, fax, bby) --left of progress
 	ass:rect_cw(fbx, bay, bbx, bby) --right of progress
@@ -220,7 +220,7 @@ function Timeline:render()
 	ass:draw_stop()
 
 	-- Progress
-	ass:rect(fax, fay, fbx, fby, {opacity = options.timeline_opacity})
+	ass:rect(fax, fay, fbx, fby, {opacity = config.opacity.position})
 
 	-- Uncached ranges
 	local buffered_playtime = nil
@@ -253,7 +253,7 @@ function Timeline:render()
 
 	-- Chapters
 	local hovered_chapter = nil
-	if (options.timeline_chapters_opacity > 0
+	if (config.opacity.chapters > 0
 		and (#state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)
 		) then
 		local diamond_radius = foreground_size < 3 and foreground_size or self.chapter_size
@@ -266,7 +266,7 @@ function Timeline:render()
 				ass:new_event()
 				ass:append(string.format(
 					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
-					diamond_border, fg, bg, bg, opacity_to_alpha(options.timeline_opacity * options.timeline_chapters_opacity)
+					diamond_border, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
 				))
 				ass:draw_start()
 				ass:move_to(chapter_x - radius, chapter_y)
@@ -318,7 +318,7 @@ function Timeline:render()
 				ass:new_event()
 				ass:append(string.format(
 					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
-					diamond_border, fg, bg, bg, opacity_to_alpha(options.timeline_opacity * options.timeline_chapters_opacity)
+					diamond_border, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
 				))
 				ass:draw_start()
 				ass:move_to(x, fby - ab_radius)
@@ -412,7 +412,8 @@ function Timeline:render()
 			local ax, ay = (thumb_x - border), (thumb_y - border)
 			local bx, by = (thumb_x + thumb_width + border), (thumb_y + thumb_height + border)
 			ass:rect(ax, ay, bx, by, {
-				color = bg, border = 1, border_color = fg, border_opacity = 0.08, radius = state.radius
+				color = bg, border = 1, opacity = config.opacity.thumbnail,
+				border_color = fg, border_opacity = 0.08 * config.opacity.thumbnail, radius = state.radius
 			})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
 			self.has_thumbnail, rendered_thumbnail = true, true

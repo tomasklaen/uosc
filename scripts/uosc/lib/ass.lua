@@ -75,7 +75,7 @@ end
 -- Tooltip.
 ---@param element {ax: number; ay: number; bx: number; by: number}
 ---@param value string|number
----@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, margin?: number, responsive?: boolean, opacity?: number, lines?: integer}
+---@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, margin?: number; responsive?: boolean; lines?: integer}
 function ass_mt:tooltip(element, value, opts)
 	if value == '' then return end
 	opts = opts or {}
@@ -83,7 +83,6 @@ function ass_mt:tooltip(element, value, opts)
 	opts.border = options.text_border * state.scale
 	opts.border_color = bg
 	opts.margin = opts.margin or round(10 * state.scale)
-	opts.opacity = opts.opacity or options.timeline_opacity
 	opts.lines = opts.lines or 1
 	local padding_y = round(opts.size / 6)
 	local padding_x = round(opts.size / 3)
@@ -97,8 +96,7 @@ function ass_mt:tooltip(element, value, opts)
 	local ax, bx = round(x - width_half), round(x + width_half)
 	local ay = (align_top and y - opts.size * opts.lines - 2 * padding_y or y)
 	local by = (align_top and y or y + opts.size * opts.lines + 2 * padding_y)
-	self:rect(ax, ay, bx, by, {color = bg, opacity = opts.opacity, radius = state.radius})
-	opts.opacity = nil
+	self:rect(ax, ay, bx, by, {color = bg, opacity = config.opacity.tooltip, radius = state.radius})
 	self:txt(x, align_top and y - padding_y or y + padding_y, align_top and 2 or 8, value, opts)
 	return { ax = element.ax, ay = ay, bx = element.bx, by = by }
 end
