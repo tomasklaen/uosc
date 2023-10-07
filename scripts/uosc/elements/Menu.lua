@@ -1089,7 +1089,6 @@ function Menu:render()
 			local next_is_active = next_item and next_item.active
 			local next_is_highlighted = menu.selected_index == index + 1 or next_is_active
 			local font_color = item.active and fgt or bgt
-			local shadow_color = item.active and fg or bg
 
 			-- Separator
 			local separator_ay = item.separator and item_by - 1 or item_by
@@ -1119,7 +1118,6 @@ function Menu:render()
 				else
 					ass:icon(x, y, icon_size * 1.5, item.icon, {
 						color = font_color, opacity = text_opacity, clip = item_clip,
-						shadow = 1, shadow_color = shadow_color,
 					})
 				end
 				content_bx = content_bx - icon_size - spacing
@@ -1140,7 +1138,6 @@ function Menu:render()
 					math.max(item_ay, ay) .. ',' .. bx .. ',' .. math.min(item_by, by) .. ')'
 				ass:txt(content_bx, item_center_y, 6, item.ass_safe_hint, {
 					size = self.font_size_hint, color = font_color, wrap = 2, opacity = 0.5 * menu_opacity, clip = clip,
-					shadow = 1, shadow_color = shadow_color,
 				})
 			end
 
@@ -1158,7 +1155,6 @@ function Menu:render()
 				ass:txt(title_x, item_center_y, align, item.ass_safe_title, {
 					size = self.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
 					opacity = text_opacity * (item.muted and 0.5 or 1), clip = clip,
-					shadow = 1, shadow_color = shadow_color,
 				})
 			end
 		end
@@ -1190,7 +1186,7 @@ function Menu:render()
 				end
 
 				ass:icon(rect.ax + icon_size / 2, rect.cy, icon_size, 'search', {
-					color = fg, opacity = icon_opacity, shadow = 1, shadow_color = bg,
+					color = fg, opacity = icon_opacity,
 					clip = '\\clip(' .. icon_rect.ax .. ',' .. icon_rect.ay .. ',' .. icon_rect.bx .. ',' .. icon_rect.by .. ')'
 				})
 
