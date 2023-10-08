@@ -346,17 +346,29 @@ do
 					else
 						if command == 'ignore' then break end
 						-- If command is already in menu, just append the key to it
-						if target_menu.items_by_command[command] then
+						if key ~= '#' and command ~= '' and target_menu.items_by_command[command] then
 							local hint = target_menu.items_by_command[command].hint
 							target_menu.items_by_command[command].hint = hint and hint .. ', ' .. key or key
 						else
-							local item = {
-								title = title_part,
-								hint = not is_dummy and key or nil,
-								value = command,
-							}
-							target_menu.items_by_command[command] = item
-							target_menu.items[#target_menu.items + 1] = item
+							-- Separator
+							if title_part:sub(1, 3) == '---' then
+								local last_item = target_menu.items[#target_menu.items]
+								if last_item then last_item.separator = true end
+							else
+								local item = {
+									title = title_part,
+									hint = not is_dummy and key or nil,
+									value = command,
+								}
+								if command == '' then
+									item.selectable = false
+									item.muted = true
+									item.italic = true
+								else
+									target_menu.items_by_command[command] = item
+								end
+								target_menu.items[#target_menu.items + 1] = item
+							end
 						end
 					end
 				end
