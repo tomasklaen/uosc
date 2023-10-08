@@ -21,10 +21,8 @@ defaults = {
 	progress_size = 2,
 	progress_line_width = 20,
 	timeline_persistency = 'paused',
-	timeline_opacity = 0.9,
 	timeline_border = 1,
 	timeline_step = 5,
-	timeline_chapters_opacity = 0.8,
 	timeline_cache = true,
 
 	controls = 'menu,gap,subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
@@ -36,19 +34,15 @@ defaults = {
 	volume = 'right',
 	volume_size = 40,
 	volume_persistency = '',
-	volume_opacity = 0.9,
 	volume_border = 1,
 	volume_step = 1,
 
 	speed_persistency = '',
-	speed_opacity = 0.6,
 	speed_step = 0.1,
 	speed_step_is_factor = false,
 
 	menu_item_height = 36,
 	menu_min_width = 260,
-	menu_opacity = 1,
-	menu_parent_opacity = 0.4,
 	menu_type_to_search = true,
 
 	top_bar = 'no-border',
@@ -58,11 +52,9 @@ defaults = {
 	top_bar_title = 'yes',
 	top_bar_alt_title = '',
 	top_bar_alt_title_place = 'below',
-	top_bar_title_opacity = 0.8,
 	top_bar_flash_on = 'video,audio',
 
 	window_border_size = 1,
-	window_border_opacity = 0.8,
 
 	autoload = false,
 	autoload_types = 'video,audio,image',
@@ -73,6 +65,7 @@ defaults = {
 	font_scale = 1,
 	text_border = 1.2,
 	border_radius = 2,
+	opacity = '',
 	text_width_estimation = true,
 	pause_on_click_shorter_than = 0, -- deprecated by below
 	click_threshold = 0,
@@ -91,7 +84,6 @@ defaults = {
 	autohide = false,
 	buffered_time_threshold = 60,
 	pause_indicator = 'flash',
-	curtain_opacity = 0.5,
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',
 	video_types= '3g2,3gp,asf,avi,f4v,flv,h264,h265,m2ts,m4v,mkv,mov,mp4,mp4v,mpeg,mpg,ogm,ogv,rm,rmvb,ts,vob,webm,wmv,y4m',
 	audio_types= 'aac,ac3,aiff,ape,au,cue,dsf,dts,flac,m4a,mid,midi,mka,mp3,mp4a,oga,ogg,opus,spx,tak,tta,wav,weba,wma,wv',
@@ -193,6 +185,10 @@ config = {
 		end
 		return ranges
 	end)(),
+	opacity = {
+		timeline = .9, position = 1, chapters = 0.8, slider = 0.9, slider_gauge = 1, speed = 0.6,
+		menu = 1, submenu = 0.4, border = 1, title = 1, tooltip = 1, thumbnail = 1, curtain = 0.5
+	}
 }
 -- Adds `{element}_persistency` property with table of flags when the element should be visible (`{paused = true}`)
 for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
@@ -202,6 +198,15 @@ for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
 		for _, state in ipairs(split(value, ' *, *')) do flags[state] = true end
 	end
 	config[option_name] = flags
+end
+-- Parse `opacity` overrides
+do
+	for _, key_value_pair in ipairs(split(options.opacity, ' *, *')) do
+		local key, value = key_value_pair:match('^([%w_]+)=([%d%.]+)$')
+		if key and config.opacity[key] then
+			config.opacity[key] = clamp(0, tonumber(value) or config.opacity[key], 1)
+		end
+	end
 end
 
 -- Default menu items

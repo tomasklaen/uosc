@@ -1016,7 +1016,6 @@ function Menu:render()
 	end
 
 	local ass = assdraw.ass_new()
-	local opacity = options.menu_opacity * self.opacity
 	local spacing = self.item_padding
 	local icon_size = self.font_size
 
@@ -1025,14 +1024,12 @@ function Menu:render()
 	---@param pos number Horizontal position index. 0 = current menu, <0 parent menus, >1 submenu.
 	local function draw_menu(menu, x, pos)
 		local is_current, is_parent, is_submenu = pos == 0, pos < 0, pos > 0
-		local menu_opacity = pos == 0 and opacity or opacity * (options.menu_parent_opacity ^ math.abs(pos))
+		local menu_opacity = (pos == 0 and 1 or config.opacity.submenu ^ math.abs(pos)) * self.opacity
 		local ax, ay, bx, by = x, menu.top, x + menu.width, menu.top + menu.height
 		local draw_title = menu.is_root and menu.title or menu.search
 		local scroll_clip = '\\clip(0,' .. ay .. ',' .. display.width .. ',' .. by .. ')'
 		local start_index = math.floor(menu.scroll_y / self.scroll_step) + 1
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
-		-- Remove menu_opacity to start off with full, but still decay for parent menus
-		local text_opacity = menu_opacity / options.menu_opacity
 		local menu_rect = {
 			ax = ax, ay = ay - (draw_title and self.scroll_step or 0) - self.padding,
 			bx = bx, by = by + self.padding
@@ -1041,7 +1038,7 @@ function Menu:render()
 
 		-- Background
 		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {
-			color = bg, opacity = menu_opacity, radius = state.radius + self.padding
+			color = bg, opacity = menu_opacity * config.opacity.menu, radius = state.radius + self.padding
 		})
 
 		if is_parent and get_point_to_rectangle_proximity(cursor, menu_rect) == 0 then
@@ -1111,7 +1108,7 @@ function Menu:render()
 			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (menu.selected_index == index and 0.15 or 0)
 			if not is_submenu and highlight_opacity > 0 then
 				ass:rect(ax + self.padding, item_ay, bx - self.padding, item_by, {
-					radius = state.radius, color = fg, opacity = highlight_opacity * text_opacity,
+					radius = state.radius, color = fg, opacity = highlight_opacity * menu_opacity,
 					clip = item_clip,
 				})
 			end
@@ -1120,10 +1117,10 @@ function Menu:render()
 			if item.icon then
 				local x, y = content_bx - (icon_size / 2), item_center_y
 				if item.icon == 'spinner' then
-					ass:spinner(x, y, icon_size * 1.5, {color = font_color, opacity = text_opacity * 0.8})
+					ass:spinner(x, y, icon_size * 1.5, {color = font_color, opacity = menu_opacity * 0.8})
 				else
 					ass:icon(x, y, icon_size * 1.5, item.icon, {
-						color = font_color, opacity = text_opacity, clip = item_clip,
+						color = font_color, opacity = menu_opacity, clip = item_clip,
 					})
 				end
 				content_bx = content_bx - icon_size - spacing
@@ -1163,7 +1160,7 @@ function Menu:render()
 				end
 				ass:txt(title_x, item_center_y, align, item.ass_safe_title, {
 					size = self.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
-					opacity = text_opacity * (item.muted and 0.5 or 1), clip = clip,
+					opacity = menu_opacity * (item.muted and 0.5 or 1), clip = clip,
 				})
 			end
 		end
@@ -1185,12 +1182,12 @@ function Menu:render()
 			-- Title
 			if menu.search then
 				-- Icon
-				local icon_size, icon_opacity = self.font_size * 1.3, requires_submit and text_opacity * 0.5 or 1
+				local icon_size, icon_opacity = self.font_size * 1.3, menu_opacity * (requires_submit and 0.5 or 1)
 				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = rect.by}
 
 				if is_current and requires_submit and get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
 					cursor.on_primary_down = function() self:search_submit() end
-					icon_opacity = text_opacity
+					icon_opacity = menu_opacity
 					prevent_title_click = false
 				end
 
