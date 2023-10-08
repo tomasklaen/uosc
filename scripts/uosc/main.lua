@@ -66,6 +66,7 @@ defaults = {
 	text_border = 1.2,
 	border_radius = 2,
 	opacity = '',
+	animation_factor = 0.3,
 	text_width_estimation = true,
 	pause_on_click_shorter_than = 0, -- deprecated by below
 	click_threshold = 0,

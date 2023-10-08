@@ -30,7 +30,7 @@ end
 function tween(from, to, setter, factor_or_callback, callback)
 	local factor = factor_or_callback
 	if type(factor_or_callback) == 'function' then callback = factor_or_callback end
-	if type(factor) ~= 'number' then factor = 0.3 end
+	if type(factor) ~= 'number' then factor = options.animation_factor end
 
 	local current, done, timeout = from, false, nil
 	local get_to = type(to) == 'function' and to or function() return to --[[@as number]] end
