@@ -523,14 +523,6 @@ function Menu:delete_value(value, menu)
 	self:delete_index(index)
 end
 
-function Menu:prev()
-	self:navigate_by_offset(-1)
-end
-
-function Menu:next()
-	self:navigate_by_offset(1)
-end
-
 ---@param menu MenuStack One of menus in `self.all`.
 ---@param x number `x` coordinate to slide from.
 function Menu:slide_in_menu(menu, x)
@@ -666,9 +658,18 @@ function Menu:select_by_offset(offset, menu)
 end
 
 ---@param offset integer
-function Menu:navigate_by_offset(offset)
+---@param immediate? boolean
+function Menu:navigate_by_offset(offset, immediate)
 	self:select_by_offset(offset)
-	if self.current.selected_index then self:scroll_to_index(self.current.selected_index) end
+	if self.current.selected_index then self:scroll_to_index(self.current.selected_index, self.current, immediate) end
+end
+
+function Menu:prev()
+	self:navigate_by_offset(-1, true)
+end
+
+function Menu:next()
+	self:navigate_by_offset(1, true)
 end
 
 function Menu:on_pgup()
@@ -682,11 +683,11 @@ function Menu:on_pgdwn()
 end
 
 function Menu:on_home()
-	self:navigate_by_offset(-INFINITY)
+	self:navigate_by_offset(-INFINITY, true)
 end
 
 function Menu:on_end()
-	self:navigate_by_offset(INFINITY)
+	self:navigate_by_offset(INFINITY, true)
 end
 
 ---@param menu MenuStack
