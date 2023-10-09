@@ -348,6 +348,20 @@ Define a folder without defining any of its contents:
 #  ignore  #! Folder title >
 ```
 
+Define an un-selectable, muted, and italic title item by using `#` as key, and omitting the command:
+
+```
+#    #! Title
+#    #! Section > Title
+```
+
+Define a separator between previous and next items by doing the same, but using `---` as title:
+
+```
+#    #! ---
+#    #! Section > ---
+```
+
 Example context menu:
 
 This is the default pre-configured menu if none is defined in your `input.conf`, but with added shortcuts. To both pause & move the window with left mouse button, so that you can have the menu on the right one, enable `click_threshold` in `uosc.conf` (see default `uosc.conf` for example/docs).
