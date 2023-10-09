@@ -348,6 +348,20 @@ Define a folder without defining any of its contents:
 #  ignore  #! Folder title >
 ```
 
+Define an un-selectable, muted, and italic title item by using `#` as key, and omitting the command:
+
+```
+#    #! Title
+#    #! Section > Title
+```
+
+Define a separator between previous and next items by doing the same, but using `---` as title:
+
+```
+#    #! ---
+#    #! Section > ---
+```
+
 Example context menu:
 
 This is the default pre-configured menu if none is defined in your `input.conf`, but with added shortcuts. To both pause & move the window with left mouse button, so that you can have the menu on the right one, enable `click_threshold` in `uosc.conf` (see default `uosc.conf` for example/docs).
@@ -440,6 +454,11 @@ Submenu {
   title?: string;
   hint?: string;
   items: Item[];
+  bold?: boolean;
+  italic?: boolean;
+  align?: 'left'|'center'|'right';
+  muted?: boolean;
+  separator?: boolean;
   keep_open?: boolean;
   on_search?: string | string[];
   palette?: boolean;
@@ -453,19 +472,20 @@ Command {
   hint?: string;
   icon?: string;
   value: string | string[];
+  active?: integer;
+  selectable?: boolean;
   bold?: boolean;
   italic?: boolean;
   align?: 'left'|'center'|'right';
-  selectable?: boolean;
   muted?: boolean;
-  active?: integer;
+  separator?: boolean;
   keep_open?: boolean;
 }
 ```
 
 When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(table.unpack(value))`. The same goes for `Menu.on_close` and `on_search`. `on_search` additionally appends the current search string as the last parameter.
 
-`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.  
+`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.
 While the menu is open this value will be available in `user-data/uosc/menu/type` and the `shared-script-properties` entry `uosc-menu-type`. If no type was provided, those will be set to `'undefined'`.
 
 `palette` specifies that this menu's primarily mode of interaction is through a search input. When enabled, search input will be visible at all times (doesn't have to be enabled and can't be disabled), and `title` will be used as input placeholder while search query is empty.
