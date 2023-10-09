@@ -424,6 +424,7 @@ state = {
 	is_audio = false, -- true if file is audio only (mp3, etc)
 	is_image = false,
 	is_stream = false,
+	has_image = false,
 	has_audio = false,
 	has_sub = false,
 	has_chapter = false,
@@ -747,6 +748,7 @@ mp.observe_property('track-list', 'native', function(name, value)
 	end
 	set_state('is_audio', types.video == 0 and types.audio > 0)
 	set_state('is_image', types.image > 0 and types.video == 0 and types.audio == 0)
+	set_state('has_image', types.image > 0)
 	set_state('has_audio', types.audio > 0)
 	set_state('has_many_audio', types.audio > 1)
 	set_state('has_sub', types.sub > 0)
