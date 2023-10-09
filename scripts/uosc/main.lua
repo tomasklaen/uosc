@@ -320,8 +320,6 @@ cursor = {
 		cursor.y = y == INFINITY and y or y + 0.5
 
 		if old_x ~= cursor.x or old_y ~= cursor.y then
-			Elements:update_proximities()
-
 			if cursor.x == INFINITY or cursor.y == INFINITY then
 				cursor.hidden = true
 				cursor.history:clear()
@@ -329,21 +327,29 @@ cursor = {
 				-- Slowly fadeout elements that are currently visible
 				for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
 					local element = Elements[element_name]
-					if element and element.proximity > 0 then
-						element:tween_property('forced_visibility', element:get_visibility(), 0, function()
-							element.forced_visibility = nil
-						end)
+					if element then
+						local visibility = element:get_visibility()
+						if visibility > 0 then
+							element:tween_property('forced_visibility', visibility, 0, function()
+								element.forced_visibility = nil
+							end)
+						end
 					end
 				end
 
+				Elements:update_proximities()
 				Elements:trigger('global_mouse_leave')
-			elseif cursor.hidden then
-				cursor.hidden = false
-				cursor.history:clear()
-				Elements:trigger('global_mouse_enter')
 			else
-				-- Update history
-				cursor.history:insert({x = cursor.x, y = cursor.y, time = mp.get_time()})
+				Elements:update_proximities()
+
+				if cursor.hidden then
+					cursor.hidden = false
+					cursor.history:clear()
+					Elements:trigger('global_mouse_enter')
+				else
+					-- Update history
+					cursor.history:insert({x = cursor.x, y = cursor.y, time = mp.get_time()})
+				end
 			end
 
 			Elements:proximity_trigger('mouse_move')
