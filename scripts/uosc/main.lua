@@ -248,8 +248,8 @@ end
 
 display = {width = 1280, height = 720, initialized = false}
 cursor = {
-	x = 0,
-	y = 0,
+	x = INFINITY,
+	y = INFINITY,
 	hidden = true,
 	hover_raw = false,
 	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
@@ -260,6 +260,7 @@ cursor = {
 	on_wheel_down = nil,
 	on_wheel_up = nil,
 	allow_dragging = false,
+	first_real_mouse_move_received = false,
 	history = CircularBuffer:new(10),
 	-- Called at the beginning of each render
 	reset_handlers = function()
@@ -309,13 +310,14 @@ cursor = {
 		-- mpv reports initial mouse position on linux as (0, 0), which always
 		-- displays the top bar, so we hardcode cursor position as infinity until
 		-- we receive a first real mouse move event with coordinates other than 0,0.
-		if not state.first_real_mouse_move_received then
-			if x > 0 and y > 0 then state.first_real_mouse_move_received = true
+		if not cursor.first_real_mouse_move_received then
+			if x > 0 and y > 0 then cursor.first_real_mouse_move_received = true
 			else x, y = INFINITY, INFINITY end
 		end
 
 		-- Add 0.5 to be in the middle of the pixel
-		cursor.x, cursor.y = x + 0.5, y + 0.5
+		cursor.x = x == INFINITY and x or x + 0.5
+		cursor.y = y == INFINITY and y or y + 0.5
 
 		if old_x ~= cursor.x or old_y ~= cursor.y then
 			Elements:update_proximities()
@@ -432,7 +434,6 @@ state = {
 	core_idle = false,
 	eof_reached = false,
 	render_delay = config.render_delay,
-	first_real_mouse_move_received = false,
 	playlist_count = 0,
 	playlist_pos = 0,
 	margin_top = 0,
