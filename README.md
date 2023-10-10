@@ -31,11 +31,9 @@ Most notable features:
 
 ## Installation
 
-1. #### Commands
+1. These commands will install or update **uosc** and place a `uosc.conf` file with default options and their documentation into `script-opts` directory if it doesn't exist already.
 
-    These commands will install or update **uosc** and place a `uosc.conf` file with default options and their documentation into `script-opts` directory if it doesn't exist already.
-
-    ##### Windows
+    #### Windows
 
     _Optional, needed to run a remote script the first time if not enabled already:_
 
@@ -51,7 +49,7 @@ Most notable features:
 
     **NOTE**: If this command is run in an mpv installation directory with `portable_config`, it'll install there instead of `AppData`.
 
-    ##### Linux & macOS
+    #### Linux & macOS
 
     _Requires **curl** and **unzip**._
 
