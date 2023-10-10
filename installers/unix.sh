@@ -1,7 +1,6 @@
 #!/bin/bash
 zip_url=https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip
 conf_url=https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf
-data_dir="${XDG_CONFIG_HOME:-~/.config}/mpv"
 zip_file=/tmp/uosc.zip
 
 # Exit immediately if a command exits with a non-zero status
