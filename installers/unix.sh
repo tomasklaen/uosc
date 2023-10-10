@@ -8,8 +8,10 @@ zip_file=/tmp/uosc.zip
 set -e
 
 cleanup() {
-	echo "Deleting: $zip_file"
-	rm -f $zip_file
+	if [ -f "$zip_file" ]; then
+		echo "Deleting: $zip_file"
+		rm -f $zip_file
+	fi
 }
 
 abort() {
