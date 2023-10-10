@@ -49,7 +49,7 @@ Most notable features:
     irm https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/windows.ps1 | iex
     ```
 
-    **NOTE**: If this command is run in an mpv installation directory with `portable_config` folder present, it'll install into it instead of the default `AppData`.
+    **NOTE**: If this command is run in an mpv installation directory with `portable_config`, it'll install there instead of `AppData`.
 
     ##### Linux & macOS
 
