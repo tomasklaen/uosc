@@ -33,7 +33,7 @@ Most notable features:
 
 1. These commands will install or update **uosc** and place a default `uosc.conf` file into `script-opts` if it doesn't exist already.
 
-    #### Windows
+    ### Windows
 
     _Optional, needed to run a remote script the first time if not enabled already:_
 
@@ -49,7 +49,7 @@ Most notable features:
 
     **NOTE**: If this command is run in an mpv installation directory with `portable_config`, it'll install there instead of `AppData`.
 
-    #### Linux & macOS
+    ### Linux & macOS
 
     _Requires **curl** and **unzip**._
 
@@ -57,7 +57,7 @@ Most notable features:
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/unix.sh)"
     ```
 
-    #### Manual
+    ### Manual
 
     1. Download & extract [`uosc.zip`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip) into your mpv config directory. (_See the [documentation of mpv config locations](https://mpv.io/manual/master/#files)._)
 
