@@ -31,7 +31,7 @@ Most notable features:
 
 ## Installation
 
-1. These commands will install or update **uosc** and place a `uosc.conf` file with default options and their documentation into `script-opts` directory if it doesn't exist already.
+1. These commands will install or update **uosc** and place a default `uosc.conf` file into `script-opts` if it doesn't exist already.
 
     #### Windows
 
@@ -59,17 +59,15 @@ Most notable features:
 
     #### Manual
 
-    Download & extract [`uosc.zip`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip) into your mpv config directory.
+    1. Download & extract [`uosc.zip`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip) into your mpv config directory. (_See the [documentation of mpv config locations](https://mpv.io/manual/master/#files)._)
 
-    _List of all the possible places where it can be located is documented here: https://mpv.io/manual/master/#files_
-
-    If you don't have it already, download & extract [`uosc.conf`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf) into `script-opts` inside your mpv config directory. It contains all of uosc options along with their default values and documentation.
+    2. If you don't have it already, download & extract [`uosc.conf`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf) into `script-opts` inside your mpv config directory. It contains all of uosc options along with their default values and documentation.
 
 2. **OPTIONAL**: `mpv.conf` tweaks to better integrate with **uosc**:
 
     ```config
-    # uosc provides seeking & volume indicators (flash-timeline, flash-volume)
-    # if you decide to use the, you don't need osd-bar
+    # uosc provides seeking & volume indicators (via flash-timeline and flash-volume commands)
+    # if you decide to use them, you don't need osd-bar
     osd-bar=no
 
     # uosc will draw its own window controls and border if you disable window border
