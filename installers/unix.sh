@@ -30,7 +30,7 @@ else
 fi
 
 # Ensure directory exists
-mkdir -pv data_dir
+mkdir -pv $data_dir
 
 # Remove old and deprecated folders & files
 echo "Deleting old and deprecated uosc files and directories."
