@@ -189,7 +189,8 @@ config = {
 	opacity = {
 		timeline = .9, position = 1, chapters = 0.8, slider = 0.9, slider_gauge = 1, speed = 0.6,
 		menu = 1, submenu = 0.4, border = 1, title = 1, tooltip = 1, thumbnail = 1, curtain = 0.5
-	}
+	},
+	cursor_leave_fadeout_elements = {'timeline', 'volume', 'top_bar', 'controls'}
 }
 -- Adds `{element}_persistency` property with table of flags when the element should be visible (`{paused = true}`)
 for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
@@ -325,8 +326,8 @@ cursor = {
 				cursor.history:clear()
 
 				-- Slowly fadeout elements that are currently visible
-				for _, element_name in ipairs({'timeline', 'volume', 'top_bar'}) do
-					local element = Elements[element_name]
+				for _, id in ipairs(config.cursor_leave_fadeout_elements) do
+					local element = Elements[id]
 					if element then
 						local visibility = element:get_visibility()
 						if visibility > 0 then
@@ -343,6 +344,11 @@ cursor = {
 				Elements:update_proximities()
 
 				if cursor.hidden then
+					-- Cancel potential fadeouts
+					for _, id in ipairs(config.cursor_leave_fadeout_elements) do
+						if Elements[id] then Elements[id]:tween_stop() end
+					end
+
 					cursor.hidden = false
 					cursor.history:clear()
 					Elements:trigger('global_mouse_enter')
