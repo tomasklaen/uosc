@@ -683,11 +683,11 @@ function Menu:on_pgdwn()
 end
 
 function Menu:on_home()
-	self:navigate_by_offset(-INFINITY, true)
+	self:navigate_by_offset(-INFINITY)
 end
 
 function Menu:on_end()
-	self:navigate_by_offset(INFINITY, true)
+	self:navigate_by_offset(INFINITY)
 end
 
 ---@param menu MenuStack
