@@ -29,6 +29,9 @@ else
 	abort "This install script works only on linux and macOS."
 fi
 
+# Ensure directory exists
+mkdir -pv data_dir
+
 # Remove old and deprecated folders & files
 echo "Deleting old and deprecated uosc files and directories."
 rm -rf "$data_dir/scripts/uosc_shared" || abort "Couldn't cleanup old files."
