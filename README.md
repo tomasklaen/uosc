@@ -90,7 +90,7 @@ Most notable features:
 
 ## Options
 
-All of the available **uosc** options with their default values are documented in [`uosc.conf`](https://github.com/tomasklaen/uosc/blob/HEAD/script-opts/uosc.conf) ([download](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf)) file.
+All of the available **uosc** options with their default values are documented in [`uosc.conf`](https://github.com/tomasklaen/uosc/blob/HEAD/script-opts/uosc.conf) file ([download](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf)).
 
 To change the font, **uosc** respects the mpv's `osd-font` configuration.
 
