@@ -6,7 +6,6 @@ opt = require('mp.options')
 utils = require('mp.utils')
 msg = require('mp.msg')
 osd = mp.create_osd_overlay('ass-events')
-INFINITY = 1e309
 QUARTER_PI_SIN = math.sin(math.pi / 4)
 
 require('lib/std')
@@ -249,8 +248,8 @@ end
 
 display = {width = 1280, height = 720, initialized = false}
 cursor = {
-	x = INFINITY,
-	y = INFINITY,
+	x = math.huge,
+	y = math.huge,
 	hidden = true,
 	hover_raw = false,
 	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
@@ -313,15 +312,15 @@ cursor = {
 		-- we receive a first real mouse move event with coordinates other than 0,0.
 		if not cursor.first_real_mouse_move_received then
 			if x > 0 and y > 0 then cursor.first_real_mouse_move_received = true
-			else x, y = INFINITY, INFINITY end
+			else x, y = math.huge, math.huge end
 		end
 
 		-- Add 0.5 to be in the middle of the pixel
-		cursor.x = x == INFINITY and x or x + 0.5
-		cursor.y = y == INFINITY and y or y + 0.5
+		cursor.x = x == math.huge and x or x + 0.5
+		cursor.y = y == math.huge and y or y + 0.5
 
 		if old_x ~= cursor.x or old_y ~= cursor.y then
-			if cursor.x == INFINITY or cursor.y == INFINITY then
+			if cursor.x == math.huge or cursor.y == math.huge then
 				cursor.hidden = true
 				cursor.history:clear()
 
@@ -364,7 +363,7 @@ cursor = {
 
 		request_render()
 	end,
-	leave = function () cursor.move(INFINITY, INFINITY) end,
+	leave = function () cursor.move(math.huge, math.huge) end,
 	-- Cursor auto-hiding after period of inactivity
 	autohide = function()
 		if not cursor.on_primary_up and not Menu:is_open() then cursor.leave() end
