@@ -93,7 +93,7 @@ function VolumeSlider:render()
 	end
 
 	local ass = assdraw.ass_new()
-	local nudge_y, nudge_size = self.draw_nudge and self.nudge_y or -INFINITY, self.nudge_size
+	local nudge_y, nudge_size = self.draw_nudge and self.nudge_y or -math.huge, self.nudge_size
 	local volume_y = self.ay + self.border_size +
 		((height - (self.border_size * 2)) * (1 - math.min(state.volume / state.volume_max, 1)))
 

@@ -564,7 +564,7 @@ function serialize_chapter_ranges(normalized_chapters)
 					if next_chapter or not meta.requires_next_chapter then
 						ranges[#ranges + 1] = table_assign({
 							start = chapter.time,
-							['end'] = next_chapter and next_chapter.time or INFINITY,
+							['end'] = next_chapter and next_chapter.time or math.huge,
 						}, config.chapter_ranges[meta.name])
 					end
 				end
@@ -593,7 +593,7 @@ function serialize_chapter_ranges(normalized_chapters)
 				local next_chapter = chapters[i + 1]
 				ranges[#ranges + 1] = table_assign({
 					start = chapter.time,
-					['end'] = next_chapter and next_chapter.time or INFINITY,
+					['end'] = next_chapter and next_chapter.time or math.huge,
 				}, config.chapter_ranges.ads)
 			end
 		end
