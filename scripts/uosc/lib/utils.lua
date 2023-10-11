@@ -25,16 +25,19 @@ end
 ---@param from number
 ---@param to number|fun():number
 ---@param setter fun(value: number)
----@param factor_or_callback? number|fun()
+---@param duration_or_callback? number|fun() Duration in milliseconds or a callback function.
 ---@param callback? fun() Called either on animation end, or when animation is killed.
-function tween(from, to, setter, factor_or_callback, callback)
-	local factor = factor_or_callback
-	if type(factor_or_callback) == 'function' then callback = factor_or_callback end
-	if type(factor) ~= 'number' then factor = options.animation_factor end
+function tween(from, to, setter, duration_or_callback, callback)
+	local duration = duration_or_callback
+	if type(duration_or_callback) == 'function' then callback = duration_or_callback end
+	if type(duration) ~= 'number' then duration = options.animation_duration end
 
 	local current, done, timeout = from, false, nil
 	local get_to = type(to) == 'function' and to or function() return to --[[@as number]] end
-	local cutoff = math.abs(get_to() - from) * 0.01
+	local distance = math.abs(get_to() - current)
+	local cutoff = distance * 0.01
+	local target_ticks = (math.max(duration, 1) / (state.render_delay * 1000))
+	local decay = 1 - ((cutoff / distance) ^ (1 / target_ticks))
 
 	local function finish()
 		if not done then
@@ -46,7 +49,7 @@ function tween(from, to, setter, factor_or_callback, callback)
 
 	local function tick()
 		local to = get_to()
-		current = current + ((to - current) * factor)
+		current = current + ((to - current) * decay)
 		local is_end = math.abs(to - current) <= cutoff
 		setter(is_end and to or current)
 		request_render()

@@ -108,12 +108,12 @@ end
 ---@param from number
 ---@param to number|fun():number
 ---@param setter fun(value: number)
----@param factor_or_callback? number|fun()
+---@param duration_or_callback? number|fun() Duration in milliseconds or a callback function.
 ---@param callback? fun() Called either on animation end, or when animation is killed.
-function Element:tween(from, to, setter, factor_or_callback, callback)
+function Element:tween(from, to, setter, duration_or_callback, callback)
 	self:tween_stop()
 	self._kill_tween = self.enabled and tween(
-		from, to, setter, factor_or_callback,
+		from, to, setter, duration_or_callback,
 		function()
 			self._kill_tween = nil
 			if callback then callback() end
@@ -128,10 +128,10 @@ function Element:tween_stop() self:maybe('_kill_tween') end
 ---@param prop string
 ---@param from number
 ---@param to number|fun():number
----@param factor_or_callback? number|fun()
+---@param duration_or_callback? number|fun() Duration in milliseconds or a callback function.
 ---@param callback? fun() Called either on animation end, or when animation is killed.
-function Element:tween_property(prop, from, to, factor_or_callback, callback)
-	self:tween(from, to, function(value) self[prop] = value end, factor_or_callback, callback)
+function Element:tween_property(prop, from, to, duration_or_callback, callback)
+	self:tween(from, to, function(value) self[prop] = value end, duration_or_callback, callback)
 end
 
 ---@param name string
