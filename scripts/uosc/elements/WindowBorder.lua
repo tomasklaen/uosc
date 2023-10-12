@@ -5,9 +5,10 @@ local WindowBorder = class(Element)
 
 function WindowBorder:new() return Class.new(self) --[[@as WindowBorder]] end
 function WindowBorder:init()
-	Element.init(self, 'window_border')
+	Element.init(self, 'window_border', {render_order = 1})
 	self.ignores_menu = true
 	self.size = 0
+	self:decide_enabled()
 end
 
 function WindowBorder:decide_enabled()

@@ -651,6 +651,16 @@ mp.commandv('script-message-to', 'uosc', 'overwrite-binding', 'stream-quality', 
 
 To cancel the overwrite and return to default behavior, just omit the `<command>` parameter.
 
+### `disable-elements <script_id> <element_ids>`
+
+Set what uosc elements your script wants to disable. To cancel or re-enable them, send the message again with an empty string in place of `element_ids`.
+
+```lua
+mp.commandv('script-message-to', 'uosc', 'disable-elements', mp.get_script_name(), 'timeline,volume')
+```
+
+Using `'user'` as `script_id` will overwrite user's `disable_elements` config. Elements will be enabled only when neither user, nor any script requested them to be disabled.
+
 ## Why _uosc_?
 
 It stood for micro osc as it used to render just a couple rectangles before it grew to what it is today. And now it means a minimalist UI design direction where everything is out of your way until needed.

@@ -5,7 +5,7 @@ local Curtain = class(Element)
 
 function Curtain:new() return Class.new(self) --[[@as Curtain]] end
 function Curtain:init()
-	Element.init(self, 'curtain', {ignores_menu = true})
+	Element.init(self, 'curtain', {ignores_menu = true, render_order = 999})
 	self.opacity = 0
 	---@type string[]
 	self.dependents = {}

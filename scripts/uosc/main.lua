@@ -97,10 +97,12 @@ defaults = {
 	chapter_ranges = 'openings:30abf964,endings:30abf964,ads:c54e4e80',
 	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
 	languages = 'slang,en',
+	disable_elements = '',
 }
 options = table_shallow_copy(defaults)
 opt.read_options(options, 'uosc', function(_)
 	update_human_times()
+	Manager:disable('user', options.disable_elements)
 	Elements:trigger('options')
 	Elements:update_proximities()
 	request_render()
@@ -900,9 +902,9 @@ bind_command('flash-top-bar', function() Elements:flash({'top_bar'}) end)
 bind_command('flash-volume', function() Elements:flash({'volume'}) end)
 bind_command('flash-speed', function() Elements:flash({'speed'}) end)
 bind_command('flash-pause-indicator', function() Elements:flash({'pause_indicator'}) end)
-bind_command('toggle-progress', function() Elements.timeline:toggle_progress() end)
-bind_command('toggle-title', function() Elements.top_bar:toggle_title() end)
-bind_command('decide-pause-indicator', function() Elements.pause_indicator:decide() end)
+bind_command('toggle-progress', function() Elements:maybe('timeline', 'toggle_progress') end)
+bind_command('toggle-title', function() Elements:maybe('top_bar', 'toggle_title') end)
+bind_command('decide-pause-indicator', function() Elements:maybe('pause_indicator', 'decide') end)
 bind_command('menu', function() toggle_menu_with_items() end)
 bind_command('menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
 bind_command('inputs', function()
@@ -1090,13 +1092,14 @@ bind_command('open-file', function()
 	end
 
 	-- Update active file in directory navigation menu
+	local menu = nil
 	local function handle_file_loaded()
-		if Menu:is_open('open-file') then
-			Elements.menu:activate_one_value(normalize_path(mp.get_property_native('path')))
+		if menu and menu:is_alive() then
+			menu:activate_one_value(normalize_path(mp.get_property_native('path')))
 		end
 	end
 
-	open_file_navigation_menu(
+	menu = open_file_navigation_menu(
 		directory,
 		function(path) mp.commandv('loadfile', path) end,
 		{
@@ -1141,7 +1144,7 @@ bind_command('delete-file-next', function()
 	local is_local_file = state.path and not is_protocol(state.path)
 
 	if is_local_file then
-		if Menu:is_open('open-file') then Elements.menu:delete_value(state.path) end
+		if Menu:is_open('open-file') then Elements:maybe('menu', 'delete_value', state.path) end
 	end
 
 	if state.has_playlist then
@@ -1266,14 +1269,57 @@ mp.register_script_message('set-min-visibility', function(visibility, elements)
 end)
 mp.register_script_message('flash-elements', function(elements) Elements:flash(split(elements, ' *, *')) end)
 mp.register_script_message('overwrite-binding', function(name, command) key_binding_overwrites[name] = command end)
+mp.register_script_message('disable-elements', function(id, elements) Manager:disable(id, elements) end)
 
 --[[ ELEMENTS ]]
 
-require('elements/WindowBorder'):new()
-require('elements/BufferingIndicator'):new()
-require('elements/PauseIndicator'):new()
-require('elements/TopBar'):new()
-require('elements/Timeline'):new()
-if options.controls and options.controls ~= 'never' then require('elements/Controls'):new() end
-if itable_index_of({'left', 'right'}, options.volume) then require('elements/Volume'):new() end
+-- Dynamic elements
+local constructors = {
+	window_border = require('elements/WindowBorder'),
+	buffering_indicator = require('elements/BufferingIndicator'),
+	pause_indicator = require('elements/PauseIndicator'),
+	top_bar = require('elements/TopBar'),
+	timeline = require('elements/Timeline'),
+	controls = options.controls and options.controls ~= 'never' and require('elements/Controls'),
+	volume = itable_index_of({'left', 'right'}, options.volume) and require('elements/Volume'),
+}
+
+Manager = {
+	-- Managed disable-able element IDs
+	_ids = itable_join(table_keys(constructors), {'audio_indicator'}),
+	---@type table<string, string[]> A map of manager id and a list of element ids it disables
+	_disabled_by = {},
+	---@type table<string, boolean>
+	disabled = {}
+}
+
+---@param manager_id string
+---@param element_ids string|string[]|nil `foo,bar` or `{'foo', 'bar'}`.
+function Manager:disable(manager_id, element_ids)
+	self._disabled_by[manager_id] = comma_split(element_ids)
+	self:_commit()
+end
+
+function Manager:_commit()
+	local disabled_ids = itable_join_unique(table.unpack(table_values(self._disabled_by)))
+
+	-- Create as needed
+	for _, id in ipairs(self._ids) do
+		local constructor = constructors[id]
+		self.disabled[id] = itable_index_of(disabled_ids, id) ~= nil
+		if not self.disabled[id] then
+			if not Elements:has(id) and constructor then constructor:new() end
+		else
+			Elements:maybe(id, 'destroy')
+		end
+	end
+
+	-- We use `on_display` event to tell elements to update their dimensions
+	Elements:trigger('display')
+end
+
+-- Initial commit
+Manager:disable('user', options.disable_elements)
+
+-- Required elements
 require('elements/Curtain'):new()

@@ -1,4 +1,4 @@
----@alias ElementProps {enabled?: boolean; ax?: number; ay?: number; bx?: number; by?: number; ignores_menu?: boolean; anchor_id?: string;}
+---@alias ElementProps {enabled?: boolean; render_order?: number; ax?: number; ay?: number; bx?: number; by?: number; ignores_menu?: boolean; anchor_id?: string;}
 
 -- Base class all elements inherit from.
 ---@class Element : Class
@@ -8,6 +8,7 @@ local Element = class()
 ---@param props? ElementProps
 function Element:init(id, props)
 	self.id = id
+	self.render_order = 1
 	-- `false` means element won't be rendered, or receive events
 	self.enabled = true
 	-- Element coordinates
@@ -24,6 +25,8 @@ function Element:init(id, props)
 	self.ignores_menu = false
 	---@type nil|string ID of an element from which this one should inherit visibility.
 	self.anchor_id = nil
+	---@type fun()[] Disposer functions called when element is destroyed.
+	self._disposers = {}
 
 	if props then table_assign(self, props) end
 
@@ -40,6 +43,7 @@ function Element:init(id, props)
 end
 
 function Element:destroy()
+	for _, disposer in ipairs(self._disposers) do disposer() end
 	self.destroyed = true
 	Elements:remove(self)
 end
@@ -70,7 +74,10 @@ function Element:is_persistent()
 	local persist = config[self.id .. '_persistency']
 	return persist and (
 		(persist.audio and state.is_audio)
-		or (persist.paused and state.pause and (not Elements.timeline.pressed or Elements.timeline.pressed.pause))
+		or (
+			persist.paused and state.pause
+			and (not Elements.timeline or not Elements.timeline.pressed or Elements.timeline.pressed.pause)
+		)
 		or (persist.video and state.is_video)
 		or (persist.image and state.is_image)
 		or (persist.idle and state.is_idle)
@@ -152,6 +159,30 @@ function Element:flash()
 		self._flash_out_timer:kill()
 		self._flash_out_timer:resume()
 	end
+end
+
+-- Register disposer to be called when element is destroyed.
+---@param disposer fun()
+function Element:register_disposer(disposer)
+	if not itable_index_of(self._disposers, disposer) then
+		self._disposers[#self._disposers + 1] = disposer
+	end
+end
+
+-- Automatically registers disposer for the passed callback.
+---@param event string
+---@param callback fun()
+function Element:register_mp_event(event, callback)
+	mp.register_event(event, callback)
+	self:register_disposer(function() mp.unregister_event(callback) end)
+end
+
+-- Automatically registers disposer for the observer.
+---@param name string
+---@param callback fun(name: string, value: any)
+function Element:observe_mp_property(name, callback)
+	mp.observe_property(name, 'native', callback)
+	self:register_disposer(function() mp.unobserve_property(callback) end)
 end
 
 return Element

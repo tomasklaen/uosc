@@ -5,7 +5,7 @@ local Timeline = class(Element)
 
 function Timeline:new() return Class.new(self) --[[@as Timeline]] end
 function Timeline:init()
-	Element.init(self, 'timeline')
+	Element.init(self, 'timeline', {render_order = 5})
 	---@type false|{pause: boolean, distance: number, last: {x: number, y: number}}
 	self.pressed = false
 	self.obstructed = false
@@ -19,14 +19,14 @@ function Timeline:init()
 	self.has_thumbnail = false
 
 	self:decide_progress_size()
+	self:update_dimensions()
 
 	-- Release any dragging when file gets unloaded
-	mp.register_event('end-file', function() self.pressed = false end)
+	self:register_mp_event('end-file', function() self.pressed = false end)
 end
 
 function Timeline:get_visibility()
-	return Elements.controls and math.max(Elements.controls.proximity, Element.get_visibility(self))
-		or Element.get_visibility(self)
+	return math.max(Elements:ev('controls', 'proximity', 0), Element.get_visibility(self))
 end
 
 function Timeline:decide_enabled()
@@ -36,7 +36,7 @@ function Timeline:decide_enabled()
 end
 
 function Timeline:get_effective_size()
-	if Elements.speed and Elements.speed.dragging then return self.size end
+	if Elements:ev('speed', 'dragging') then return self.size end
 	return self.progress_size + math.ceil((self.size - self.progress_size) * self:get_visibility())
 end
 
@@ -48,17 +48,17 @@ function Timeline:update_dimensions()
 	self.line_width = round(options.timeline_line_width * state.scale)
 	self.progress_line_width = round(options.progress_line_width * state.scale)
 	self.font_size = math.floor(math.min((self.size + 60) * 0.2, self.size * 0.96) * options.font_scale)
-	self.ax = Elements.window_border.size
-	self.ay = display.height - Elements.window_border.size - self.size - self.top_border
-	self.bx = display.width - Elements.window_border.size
-	self.by = display.height - Elements.window_border.size
+	local window_border_size = Elements:ev('window_border', 'size', 0)
+	self.ax = window_border_size
+	self.ay = display.height - window_border_size - self.size - self.top_border
+	self.bx = display.width - window_border_size
+	self.by = display.height - window_border_size
 	self.width = self.bx - self.ax
 	self.chapter_size = math.max((self.by - self.ay) / 10, 3)
 	self.chapter_size_hover = self.chapter_size * 2
 
 	-- Disable if not enough space
-	local available_space = display.height - Elements.window_border.size * 2
-	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
+	local available_space = display.height - window_border_size * 2 - Elements:ev('top_bar', 'size', 0)
 	self.obstructed = available_space < self.size + 10
 	self:decide_enabled()
 end
@@ -375,8 +375,7 @@ function Timeline:render()
 
 	-- Hovered time and chapter
 	local rendered_thumbnail = false
-	if (self.proximity_raw == 0 or self.pressed or hovered_chapter) and
-		not (Elements.speed and Elements.speed.dragging) then
+	if (self.proximity_raw == 0 or self.pressed or hovered_chapter) and not Elements:ev('speed', 'dragging') then
 		local cursor_x = hovered_chapter and t2x(hovered_chapter.time) or cursor.x
 		local hovered_seconds = hovered_chapter and hovered_chapter.time or self:get_time_at_x(cursor.x)
 

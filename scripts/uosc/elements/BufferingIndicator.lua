@@ -5,9 +5,10 @@ local BufferingIndicator = class(Element)
 
 function BufferingIndicator:new() return Class.new(self) --[[@as BufferingIndicator]] end
 function BufferingIndicator:init()
-	Element.init(self, 'buffer_indicator')
+	Element.init(self, 'buffer_indicator', {render_order = 2})
 	self.ignores_menu = true
 	self.enabled = false
+	self:decide_enabled()
 end
 
 function BufferingIndicator:decide_enabled()

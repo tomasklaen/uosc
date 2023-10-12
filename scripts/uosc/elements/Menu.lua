@@ -78,7 +78,7 @@ function Menu:new(data, callback, opts) return Class.new(self, data, callback, o
 ---@param callback MenuCallback
 ---@param opts? MenuOptions
 function Menu:init(data, callback, opts)
-	Element.init(self, 'menu', {ignores_menu = true})
+	Element.init(self, 'menu', {ignores_menu = true, render_order = 1000})
 
 	-----@type fun()
 	self.callback = callback
@@ -130,7 +130,7 @@ function Menu:init(data, callback, opts)
 
 	self:tween_property('opacity', 0, 1)
 	self:enable_key_bindings()
-	Elements.curtain:register('menu')
+	Elements:maybe('curtain', 'register', 'menu')
 	if self.opts.on_open then self.opts.on_open() end
 end
 
@@ -138,7 +138,7 @@ function Menu:destroy()
 	Element.destroy(self)
 	self:disable_key_bindings()
 	self.is_closed = true
-	if not self.is_being_replaced then Elements.curtain:unregister('menu') end
+	if not self.is_being_replaced then Elements:maybe('curtain', 'unregister', 'menu') end
 	if utils.shared_script_property_set then
 		utils.shared_script_property_set('uosc-menu-type', nil)
 	end
@@ -969,11 +969,14 @@ function Menu:disable_key_bindings()
 	self.key_bindings = {}
 end
 
+-- Check if menu is not closed or closing.
+function Menu:is_alive() return not self.is_closing and not self.is_closed end
+
 -- Wraps a function so that it won't run if menu is closing or closed.
 ---@param fn function()
 function Menu:create_action(fn)
 	return function(...)
-		if not self.is_closing and not self.is_closed then fn(...) end
+		if self:is_alive() then fn(...) end
 	end
 end
 
