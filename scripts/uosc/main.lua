@@ -1292,7 +1292,7 @@ require('elements/Curtain'):new()
 Manager = {
 	-- Managed disable-able element IDs
 	_ids = itable_join(table_keys(constructors), {'audio_indicator'}),
-	---@type table<string, string[]> A map of scopes and a list of element ids they disable
+	---@type table<string, string[]> A map of clients and a list of element ids they disable
 	_disabled_by = {},
 	---@type table<string, boolean>
 	disabled = {}
