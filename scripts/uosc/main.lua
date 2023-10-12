@@ -1297,16 +1297,14 @@ Manager = {
 ---@param element_ids string|string[]|nil `foo,bar` or `{'foo', 'bar'}`.
 function Manager:disable(manager_id, element_ids)
 	self._disabled_by[manager_id] = comma_split(element_ids)
+	self.disabled = make_set(itable_join_unique(table.unpack(table_values(self._disabled_by))))
 	self:_commit()
 end
 
 function Manager:_commit()
-	local disabled_ids = itable_join_unique(table.unpack(table_values(self._disabled_by)))
-
-	-- Create as needed
+	-- Create and destroy elements as needed
 	for _, id in ipairs(self._ids) do
 		local constructor = constructors[id]
-		self.disabled[id] = itable_index_of(disabled_ids, id) ~= nil
 		if not self.disabled[id] then
 			if not Elements:has(id) and constructor then constructor:new() end
 		else

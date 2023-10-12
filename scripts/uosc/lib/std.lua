@@ -227,6 +227,14 @@ function table_shallow_copy(table)
 	return result
 end
 
+-- Converts itable values into `table<value, true>` map.
+---@param values any[]
+function make_set(values)
+	local result = {}
+	for _, value in ipairs(values) do result[value] = true end
+	return result
+end
+
 --[[ EASING FUNCTIONS ]]
 
 function ease_out_quart(x) return 1 - ((1 - x) ^ 4) end
