@@ -166,21 +166,6 @@ function itable_join(...)
 	return result
 end
 
----@generic T
----@param ...T[]|nil
----@return T[]
-function itable_join_unique(...)
-	local result = {}
-	for _, table in ipairs({...}) do
-		if table then
-			for _, value in ipairs(table) do
-				if not itable_index_of(result, value) then result[#result + 1] = value end
-			end
-		end
-	end
-	return result
-end
-
 ---@param target any[]
 ---@param source any[]
 function itable_append(target, source)
