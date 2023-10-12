@@ -1284,20 +1284,26 @@ local constructors = {
 	volume = itable_index_of({'left', 'right'}, options.volume) and require('elements/Volume'),
 }
 
+-- Required elements
+require('elements/Curtain'):new()
+
+-- Element manager
+-- Handles creating and destroying elements based on disabled_elements user+script config.
 Manager = {
 	-- Managed disable-able element IDs
 	_ids = itable_join(table_keys(constructors), {'audio_indicator'}),
-	---@type table<string, string[]> A map of manager id and a list of element ids it disables
+	---@type table<string, string[]> A map of scopes and a list of element ids they disable
 	_disabled_by = {},
 	---@type table<string, boolean>
 	disabled = {}
 }
 
----@param manager_id string
+-- Set client and which elements it wishes disabled. To undo just pass an empty `element_ids` for the same `client`.
+---@param client string
 ---@param element_ids string|string[]|nil `foo,bar` or `{'foo', 'bar'}`.
-function Manager:disable(manager_id, element_ids)
-	self._disabled_by[manager_id] = comma_split(element_ids)
-	self.disabled = make_set(itable_join(table.unpack(table_values(self._disabled_by))))
+function Manager:disable(client, element_ids)
+	self._disabled_by[client] = comma_split(element_ids)
+	self.disabled = make_set(itable_join(unpack(table_values(self._disabled_by))))
 	self:_commit()
 end
 
@@ -1318,6 +1324,3 @@ end
 
 -- Initial commit
 Manager:disable('user', options.disable_elements)
-
--- Required elements
-require('elements/Curtain'):new()
