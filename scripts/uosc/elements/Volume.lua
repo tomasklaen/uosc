@@ -219,9 +219,9 @@ end
 
 function Volume:update_dimensions()
 	self.size = round(options.volume_size * state.scale)
-	local min_y = Elements:ev('top_bar', 'by', 0)
+	local min_y = Elements:ev('top_bar', 'by') or Elements:ev('window_border', 'size', 0)
 	local max_y = Elements:ev('controls', 'ay') or Elements:ev('timeline', 'ay')
-		or display.height - Elements:ev('top_bar', 'size', 0)
+		or display.height - Elements:ev('window_border', 'size', 0)
 	local available_height = max_y - min_y
 	local max_height = available_height * 0.8
 	local height = round(math.min(self.size * 8, max_height))

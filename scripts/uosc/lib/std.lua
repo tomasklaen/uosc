@@ -159,9 +159,9 @@ end
 ---@param ...T[]|nil
 ---@return T[]
 function itable_join(...)
-	local result = {}
-	for _, table in ipairs({...}) do
-		if table then for _, value in ipairs(table) do result[#result + 1] = value end end
+	local args, result = {...}, {}
+	for i = 1, #args do
+		if args[i] then for _, value in ipairs(args[i]) do result[#result + 1] = value end end
 	end
 	return result
 end

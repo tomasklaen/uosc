@@ -11,6 +11,7 @@ function PauseIndicator:init()
 	self.fadeout_requested = false
 	self.opacity = 0
 	self:init_options()
+	self:decide()
 end
 
 function PauseIndicator:init_options()
