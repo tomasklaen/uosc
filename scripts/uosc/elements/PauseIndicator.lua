@@ -45,7 +45,7 @@ function PauseIndicator:decide()
 end
 
 function PauseIndicator:on_prop_pause()
-	if Elements:ev('timeline', 'pressed') then return end
+	if Elements:v('timeline', 'pressed') then return end
 	if options.pause_indicator == 'flash' then
 		if self.paused == state.pause then return end
 		self:flash()

@@ -126,7 +126,7 @@ end
 ---@param id string
 ---@param prop string
 ---@param fallback any
-function Elements:ev(id, prop, fallback)
+function Elements:v(id, prop, fallback)
 	if self[id] and self[id].enabled and self[id][prop] ~= nil then return self[id][prop] end
 	return fallback
 end

@@ -26,7 +26,7 @@ function Timeline:init()
 end
 
 function Timeline:get_visibility()
-	return math.max(Elements:ev('controls', 'proximity', 0), Element.get_visibility(self))
+	return math.max(Elements:v('controls', 'proximity', 0), Element.get_visibility(self))
 end
 
 function Timeline:decide_enabled()
@@ -36,7 +36,7 @@ function Timeline:decide_enabled()
 end
 
 function Timeline:get_effective_size()
-	if Elements:ev('speed', 'dragging') then return self.size end
+	if Elements:v('speed', 'dragging') then return self.size end
 	return self.progress_size + math.ceil((self.size - self.progress_size) * self:get_visibility())
 end
 
@@ -48,7 +48,7 @@ function Timeline:update_dimensions()
 	self.line_width = round(options.timeline_line_width * state.scale)
 	self.progress_line_width = round(options.progress_line_width * state.scale)
 	self.font_size = math.floor(math.min((self.size + 60) * 0.2, self.size * 0.96) * options.font_scale)
-	local window_border_size = Elements:ev('window_border', 'size', 0)
+	local window_border_size = Elements:v('window_border', 'size', 0)
 	self.ax = window_border_size
 	self.ay = display.height - window_border_size - self.size - self.top_border
 	self.bx = display.width - window_border_size
@@ -58,7 +58,7 @@ function Timeline:update_dimensions()
 	self.chapter_size_hover = self.chapter_size * 2
 
 	-- Disable if not enough space
-	local available_space = display.height - window_border_size * 2 - Elements:ev('top_bar', 'size', 0)
+	local available_space = display.height - window_border_size * 2 - Elements:v('top_bar', 'size', 0)
 	self.obstructed = available_space < self.size + 10
 	self:decide_enabled()
 end
@@ -375,7 +375,7 @@ function Timeline:render()
 
 	-- Hovered time and chapter
 	local rendered_thumbnail = false
-	if (self.proximity_raw == 0 or self.pressed or hovered_chapter) and not Elements:ev('speed', 'dragging') then
+	if (self.proximity_raw == 0 or self.pressed or hovered_chapter) and not Elements:v('speed', 'dragging') then
 		local cursor_x = hovered_chapter and t2x(hovered_chapter.time) or cursor.x
 		local hovered_seconds = hovered_chapter and hovered_chapter.time or self:get_time_at_x(cursor.x)
 

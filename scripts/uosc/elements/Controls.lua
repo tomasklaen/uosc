@@ -229,19 +229,19 @@ function Controls:register_badge_updater(badge, element)
 end
 
 function Controls:get_visibility()
-	return Elements:ev('speed', 'dragging') and 1 or Elements:maybe('timeline', 'get_is_hovered')
+	return Elements:v('speed', 'dragging') and 1 or Elements:maybe('timeline', 'get_is_hovered')
 		and -1 or Element.get_visibility(self)
 end
 
 function Controls:update_dimensions()
-	local window_border = Elements:ev('window_border', 'size', 0)
+	local window_border = Elements:v('window_border', 'size', 0)
 	local size = round(options.controls_size * state.scale)
 	local spacing = round(options.controls_spacing * state.scale)
 	local margin = round(options.controls_margin * state.scale)
 
 	-- Disable when not enough space
-	local available_space = display.height - window_border * 2 - Elements:ev('top_bar', 'size', 0)
-		- Elements:ev('timeline', 'size', 0)
+	local available_space = display.height - window_border * 2 - Elements:v('top_bar', 'size', 0)
+		- Elements:v('timeline', 'size', 0)
 	self.enabled = available_space > size + 10
 
 	-- Reset hide/enabled flags
@@ -254,7 +254,7 @@ function Controls:update_dimensions()
 
 	-- Container
 	self.bx = display.width - window_border - margin
-	self.by = Elements:ev('timeline', 'ay', display.height - window_border) - margin
+	self.by = Elements:v('timeline', 'ay', display.height - window_border) - margin
 	self.ax, self.ay = window_border + margin, self.by - size
 
 	-- Controls

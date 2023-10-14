@@ -130,7 +130,7 @@ function TopBar:update_dimensions()
 	self.spacing = math.ceil(self.size * 0.25)
 	self.font_size = math.floor((self.size - (self.spacing * 2)) * options.font_scale)
 	self.button_width = round(self.size * 1.15)
-	local window_border_size = Elements:ev('window_border', 'size', 0)
+	local window_border_size = Elements:v('window_border', 'size', 0)
 	self.ay = window_border_size
 	self.bx = display.width - window_border_size
 	self.by = self.size + window_border_size
