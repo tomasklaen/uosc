@@ -7,10 +7,10 @@
 	<a href="https://user-images.githubusercontent.com/47283320/195073006-bfa72bcc-89d2-4dc7-b8dc-f3c13273910c.webm"><img src="https://user-images.githubusercontent.com/47283320/195072935-44d591d9-00bb-4a55-8795-9cf81f65d397.png" alt="Preview screenshot"></a>
 </div>
 
-Most notable features:
+Notable features:
 
--   UI elements hide and show based on their proximity to cursor instead of every time mouse moves. This gives you 100% control over when you see the UI and when you don't. Click on the preview above to see it in action.
--   Set min timeline size to make an always visible discrete progress bar.
+-   UI elements hide and show based on their proximity to cursor instead of every time mouse moves. This provides 100% control over when you see the UI and when you don't. Click on the preview above to see it in action.
+-   When timeline is unused, it can minimize itself into a small discrete progress bar.
 -   Build your own context menu with nesting support by editing your `input.conf` file.
 -   Configurable controls bar.
 -   Fast and efficient thumbnails with [thumbfast](https://github.com/po5/thumbfast) integration.
@@ -19,6 +19,7 @@ Most notable features:
     -   Selecting subtitle/audio/video track.
     -   Selecting stream quality.
     -   Quick directory and playlist navigation.
+-   All menus are instantly searchable. Just start typing.
 -   Mouse scroll wheel does multiple things depending on what is the cursor hovering over:
     -   Timeline: seek by `timeline_step` seconds per scroll.
     -   Volume bar: change volume by `volume_step` per scroll.
@@ -104,6 +105,8 @@ These bindings are active when any **uosc** menu is open (main menu, playlist, l
 -   `esc` - close menu
 -   `wheel_up`, `wheel_down` - scroll menu
 -   `pgup`, `pgdwn`, `home`, `end` - self explanatory
+-   `ctrl+f` or `\` - in case `menu_type_to_search` is disabled, these two trigger the menu search instead
+-   `ctrl+enter` - submits a search in menus without instant search
 -   `ctrl+up/down` - move selected item in menus that support it (playlist)
 -   `del` - delete selected item in menus that support it (playlist)
 -   `shift+enter`, `shift+right` - activate item without closing the menu
@@ -113,11 +116,11 @@ Click on a faded parent menu to go back to it.
 
 ## Commands
 
-**uosc** provides various commands with useful features to bind your preferred keys to. These are all unbound by default.
+**uosc** provides various commands with useful features to bind your preferred keys to, or populate your menu with. These are all unbound by default.
 
 To add a keybind to one of this commands, open your `input.conf` file and add one on a new line. The command syntax is `script-binding uosc/{command-name}`.
 
-Example to bind the `tab` key to peek timeline:
+Example to bind the `tab` key to toggle the ui visibility:
 
 ```
 tab  script-binding uosc/toggle-ui
