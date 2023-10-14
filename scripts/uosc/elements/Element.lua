@@ -1,4 +1,4 @@
----@alias ElementProps {enabled?: boolean; render_order?: number; ax?: number; ay?: number; bx?: number; by?: number; ignores_menu?: boolean; anchor_id?: string;}
+---@alias ElementProps {enabled?: boolean; render_order?: number; ax?: number; ay?: number; bx?: number; by?: number; ignores_curtain?: boolean; anchor_id?: string;}
 
 -- Base class all elements inherit from.
 ---@class Element : Class
@@ -21,8 +21,8 @@ function Element:init(id, props)
 	self.min_visibility = 0
 	---@type number `0-1` factor to force a visibility value. Used for flashing, fading out, and other animations
 	self.forced_visibility = nil
-	---@type boolean Render this element even when menu is open.
-	self.ignores_menu = false
+	---@type boolean Show this element even when curtain is visible.
+	self.ignores_curtain = false
 	---@type nil|string ID of an element from which this one should inherit visibility.
 	self.anchor_id = nil
 	---@type fun()[] Disposer functions called when element is destroyed.
@@ -91,9 +91,9 @@ end
 
 -- Decide elements visibility based on proximity and various other factors
 function Element:get_visibility()
-	-- Hide when menu is open, unless this is a menu
-	---@diagnostic disable-next-line: undefined-global
-	if not self.ignores_menu and Menu and Menu:is_open() then return 0 end
+	-- Hide when curtain is visible, unless this elements ignores it
+	local min_order = (Elements.curtain.opacity > 0 and not self.ignores_curtain) and Elements.curtain.render_order or 0
+	if self.render_order < min_order then return 0 end
 
 	-- Persistency
 	if self:is_persistent() then return 1 end

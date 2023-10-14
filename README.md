@@ -290,6 +290,10 @@ Switch audio output device.
 
 Open directory with `mpv.conf` in file explorer.
 
+#### `update`
+
+Updates uosc to the latest stable release.
+
 ## Menu
 
 **uosc** provides a way to build, display, and use your own menu. By default it displays a pre-configured menu with common actions.
@@ -401,6 +405,7 @@ ctrl+s      async screenshot                       #! Utils > Screenshot
 alt+i       script-binding uosc/inputs             #! Utils > Inputs
 O           script-binding uosc/show-in-directory  #! Utils > Show in directory
 #           script-binding uosc/open-config-directory #! Utils > Open config directory
+#           script-binding uosc/update             #! Utils > Update uosc
 esc         quit #! Quit
 ```
 

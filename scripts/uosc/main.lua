@@ -135,6 +135,8 @@ local config_defaults = {
 		background = serialize_rgba('000000').color,
 		background_text = serialize_rgba('ffffff').color,
 		curtain = serialize_rgba('111111').color,
+		success = serialize_rgba('a5e075').color,
+		error = serialize_rgba('ff616e').color,
 	},
 	opacity = {
 		timeline = 0.9,
@@ -293,6 +295,7 @@ function create_default_menu_items()
 				{title = t('Inputs'), value = 'script-binding uosc/inputs'},
 				{title = t('Show in directory'), value = 'script-binding uosc/show-in-directory'},
 				{title = t('Open config folder'), value = 'script-binding uosc/open-config-directory'},
+				{title = t('Update uosc'), value = 'script-binding uosc/update'},
 			},
 		},
 		{title = t('Quit'), value = 'quit'},
@@ -1140,6 +1143,9 @@ bind_command('open-config-directory', function()
 	else
 		msg.error('Couldn\'t serialize config path "' .. config_path .. '".')
 	end
+end)
+bind_command('update', function()
+	if not Elements:has('updater') then require('elements/Updater'):new() end
 end)
 
 --[[ MESSAGE HANDLERS ]]
