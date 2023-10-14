@@ -658,10 +658,24 @@ function render()
 	-- Actual rendering
 	local ass = assdraw.ass_new()
 
+	-- Idle indicator
+	if state.is_idle and not Manager.disabled.idle_indicator then
+		local smaller_side = math.min(display.width, display.height)
+		local center_x, center_y, icon_size = display.width / 2, display.height / 2, math.max(smaller_side / 4, 56)
+		ass:icon(center_x, center_y - icon_size / 4, icon_size, 'not_started', {
+			color = fg, opacity = config.opacity.idle_indicator
+		})
+		ass:txt(center_x, center_y + icon_size / 2, 8, t('Drop files or URLs to play here'), {
+			size = icon_size / 4, color = fg, opacity = config.opacity.idle_indicator
+		})
+	end
+
 	-- Audio indicator
 	if state.is_audio and not state.has_image and not Manager.disabled.audio_indicator then
 		local smaller_side = math.min(display.width, display.height)
-		ass:icon(display.width / 2, display.height / 2, smaller_side / 3, 'graphic_eq', {color = fg, opacity = 0.5})
+		ass:icon(display.width / 2, display.height / 2, smaller_side / 4, 'graphic_eq', {
+			color = fg, opacity = config.opacity.audio_indicator
+		})
 	end
 
 	-- Elements

@@ -188,8 +188,9 @@ config = {
 		return ranges
 	end)(),
 	opacity = {
-		timeline = .9, position = 1, chapters = 0.8, slider = 0.9, slider_gauge = 1, speed = 0.6,
-		menu = 1, submenu = 0.4, border = 1, title = 1, tooltip = 1, thumbnail = 1, curtain = 0.5
+		timeline = 0.9, position = 1, chapters = 0.8, slider = 0.9, slider_gauge = 1, speed = 0.6,
+		menu = 1, submenu = 0.4, border = 1, title = 1, tooltip = 1, thumbnail = 1, curtain = 0.5,
+		idle_indicator = 0.8, audio_indicator = 0.5
 	},
 	cursor_leave_fadeout_elements = {'timeline', 'volume', 'top_bar', 'controls'}
 }
@@ -1290,7 +1291,7 @@ require('elements/Curtain'):new()
 -- Handles creating and destroying elements based on disabled_elements user+script config.
 Manager = {
 	-- Managed disable-able element IDs
-	_ids = itable_join(table_keys(constructors), {'audio_indicator'}),
+	_ids = itable_join(table_keys(constructors), {'idle_indicator', 'audio_indicator'}),
 	---@type table<string, string[]> A map of clients and a list of element ids they disable
 	_disabled_by = {},
 	---@type table<string, boolean>
