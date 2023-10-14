@@ -57,5 +57,7 @@
     "parent dir": "父文件夹",
     "playlist or file": "播放列表或文件",
     "type to search": "输入搜索内容",
-    "type & ctrl+enter to search": "输入并按 ctrl+enter 进行搜索"
+    "type & ctrl+enter to search": "输入并按 ctrl+enter 进行搜索",
+    "Inputs": "输入",
+    "Drop files or URLs to play here": "拖放文件或 URL 到此处进行播放"
 }
