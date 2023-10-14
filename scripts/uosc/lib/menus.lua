@@ -235,7 +235,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 			return
 		end
 
-		if info.is_dir and not meta.modifiers.ctrl then
+		if info.is_dir and not meta.modifiers.alt then
 			--  Preselect directory we are coming from
 			if is_to_parent then
 				inheritable_options.selected_path = directory.path

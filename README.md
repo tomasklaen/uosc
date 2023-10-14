@@ -99,18 +99,18 @@ To change the font, **uosc** respects the mpv's `osd-font` configuration.
 
 These bindings are active when any **uosc** menu is open (main menu, playlist, load/select subtitles,...):
 
--   `up`, `down` - select previous/next item
--   `left`, `right` - back to parent menu or close, activate item
--   `enter` - activate item
--   `esc` - close menu
--   `wheel_up`, `wheel_down` - scroll menu
--   `pgup`, `pgdwn`, `home`, `end` - self explanatory
--   `ctrl+f` or `\` - in case `menu_type_to_search` is disabled, these two trigger the menu search instead
--   `ctrl+enter` - submits a search in menus without instant search
--   `ctrl+up/down` - move selected item in menus that support it (playlist)
--   `del` - delete selected item in menus that support it (playlist)
--   `shift+enter`, `shift+right` - activate item without closing the menu
--   `ctrl+enter`, `ctrl+click` - force activate an item, even if it's a submenu. In practical terms: activates a directory instead of navigation to its contents.
+-   `up`, `down` - Select previous/next item.
+-   `left`, `right` - Back to parent menu or close, activate item.
+-   `enter` - Activate item.
+-   `esc` - Close menu.
+-   `wheel_up`, `wheel_down` - Scroll menu.
+-   `pgup`, `pgdwn`, `home`, `end` - Self explanatory.
+-   `ctrl+f` or `\` - In case `menu_type_to_search` is disabled, these two trigger the menu search instead.
+-   `ctrl+enter` - Submits a search in menus without instant search.
+-   `ctrl+up/down` - Move selected item in menus that support it (playlist).
+-   `del` - Delete selected item in menus that support it (playlist).
+-   `shift+enter`, `shift+right` - Activate item without closing the menu.
+-   `alt+enter`, `alt+click` - In file navigating menus, opens a directory in mpv instead of navigating to its contents.
 
 Click on a faded parent menu to go back to it.
 

@@ -937,14 +937,19 @@ function Menu:enable_key_bindings()
 		self:create_key_action('open_selected_item_soft', {shift = true}))
 	self:add_key_binding('shift+mbtn_left', 'menu-select3', self:create_modified_mbtn_left_handler({shift = true}))
 	self:add_key_binding('ctrl+mbtn_left', 'menu-select4', self:create_modified_mbtn_left_handler({ctrl = true}))
+	self:add_key_binding('alt+mbtn_left', 'menu-select4', self:create_modified_mbtn_left_handler({alt = true}))
 	self:add_key_binding('mbtn_back', 'menu-back-alt3', self:create_key_action('back'))
 	self:add_key_binding('bs', 'menu-back-alt4', self:create_key_action('key_bs'), {repeatable = true, complex = true})
 	self:add_key_binding('enter', 'menu-select-alt3', self:create_key_action('open_selected_item_preselect'))
 	self:add_key_binding('kp_enter', 'menu-select-alt4', self:create_key_action('open_selected_item_preselect'))
 	self:add_key_binding('ctrl+enter', 'menu-select-ctrl1',
 		self:create_key_action('key_ctrl_enter', {ctrl = true}))
+	self:add_key_binding('alt+enter', 'menu-select-alt1',
+		self:create_key_action('open_selected_item_preselect', {alt = true}))
 	self:add_key_binding('ctrl+kp_enter', 'menu-select-ctrl2',
 		self:create_key_action('open_selected_item_preselect', {ctrl = true}))
+	self:add_key_binding('alt+kp_enter', 'menu-select-alt2',
+		self:create_key_action('open_selected_item_preselect', {alt = true}))
 	self:add_key_binding('shift+enter', 'menu-select-alt5',
 		self:create_key_action('open_selected_item_soft', {shift = true}))
 	self:add_key_binding('shift+kp_enter', 'menu-select-alt6',
