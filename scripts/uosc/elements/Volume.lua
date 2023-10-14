@@ -252,7 +252,11 @@ function Volume:render()
 		cursor.on_primary_down = function() mp.commandv('cycle', 'mute') end
 	end
 	local ass = assdraw.ass_new()
-	local icon_name = state.mute and 'volume_off' or 'volume_up'
+	local icon_name = 'volume_up'
+	if state.mute then icon_name = 'volume_off'
+	elseif state.volume <= 0 then icon_name = 'volume_mute'
+	elseif state.volume <= 60 then icon_name = 'volume_down'
+	end
 	local width_half = (mute_rect.bx - mute_rect.ax) / 2
 	local height_half = (mute_rect.by - mute_rect.ay) / 2
 	local icon_size = math.min(width_half, height_half) * 1.5
