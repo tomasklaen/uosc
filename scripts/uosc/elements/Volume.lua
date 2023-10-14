@@ -1,27 +1,5 @@
 local Element = require('elements/Element')
 
---[[ MuteButton ]]
-
----@class MuteButton : Element
-local MuteButton = class(Element)
----@param props? ElementProps
-function MuteButton:new(props) return Class.new(self, 'volume_mute', props) --[[@as MuteButton]] end
-function MuteButton:get_visibility() return Elements.volume:get_visibility(self) end
-function MuteButton:render()
-	local visibility = self:get_visibility()
-	if visibility <= 0 then return end
-	if self.proximity_raw == 0 then
-		cursor.on_primary_down = function() mp.commandv('cycle', 'mute') end
-	end
-	local ass = assdraw.ass_new()
-	local icon_name = state.mute and 'volume_off' or 'volume_up'
-	local width = self.bx - self.ax
-	ass:icon(self.ax + (width / 2), self.by, width * 0.7, icon_name,
-		{border = options.text_border * state.scale, opacity = visibility, align = 2}
-	)
-	return ass
-end
-
 --[[ VolumeSlider ]]
 
 ---@class VolumeSlider : Element
@@ -222,33 +200,40 @@ local Volume = class(Element)
 
 function Volume:new() return Class.new(self) --[[@as Volume]] end
 function Volume:init()
-	Element.init(self, 'volume')
-	self.mute = MuteButton:new({anchor_id = 'volume'})
-	self.slider = VolumeSlider:new({anchor_id = 'volume'})
+	Element.init(self, 'volume', {render_order = 7})
+	self.size = 0
+	self.mute_ay = 0
+	self.slider = VolumeSlider:new({anchor_id = 'volume', render_order = self.render_order})
+	self:update_dimensions()
+end
+
+function Volume:destroy()
+	self.slider:destroy()
+	Element.destroy(self)
 end
 
 function Volume:get_visibility()
-	return self.slider.pressed and 1 or Elements.timeline:get_is_hovered() and -1 or Element.get_visibility(self)
+	return self.slider.pressed and 1 or Elements:maybe('timeline', 'get_is_hovered') and -1
+		or Element.get_visibility(self)
 end
 
 function Volume:update_dimensions()
-	local width = round(options.volume_size * state.scale)
-	local controls, timeline, top_bar = Elements.controls, Elements.timeline, Elements.top_bar
-	local min_y = top_bar.enabled and top_bar.by or 0
-	local max_y = (controls and controls.enabled and controls.ay) or (timeline.enabled and timeline.ay)
-		or display.height - top_bar.size
+	self.size = round(options.volume_size * state.scale)
+	local min_y = Elements:v('top_bar', 'by') or Elements:v('window_border', 'size', 0)
+	local max_y = Elements:v('controls', 'ay') or Elements:v('timeline', 'ay')
+		or display.height - Elements:v('window_border', 'size', 0)
 	local available_height = max_y - min_y
 	local max_height = available_height * 0.8
-	local height = round(math.min(width * 8, max_height))
-	self.enabled = height > width * 2 -- don't render if too small
-	local margin = (width / 2) + Elements.window_border.size
-	self.ax = round(options.volume == 'left' and margin or display.width - margin - width)
+	local height = round(math.min(self.size * 8, max_height))
+	self.enabled = height > self.size * 2 -- don't render if too small
+	local margin = (self.size / 2) + Elements:v('window_border', 'size', 0)
+	self.ax = round(options.volume == 'left' and margin or display.width - margin - self.size)
 	self.ay = min_y + round((available_height - height) / 2)
-	self.bx = round(self.ax + width)
+	self.bx = round(self.ax + self.size)
 	self.by = round(self.ay + height)
-	self.mute.enabled, self.slider.enabled = self.enabled, self.enabled
-	self.mute:set_coordinates(self.ax, self.by - round(width * 0.8), self.bx, self.by)
-	self.slider:set_coordinates(self.ax, self.ay, self.bx, self.mute.ay)
+	self.mute_ay = self.by - self.size
+	self.slider.enabled = self.enabled
+	self.slider:set_coordinates(self.ax, self.ay, self.bx, self.mute_ay)
 end
 
 function Volume:on_display() self:update_dimensions() end
@@ -256,5 +241,25 @@ function Volume:on_prop_border() self:update_dimensions() end
 function Volume:on_prop_title_bar() self:update_dimensions() end
 function Volume:on_controls_reflow() self:update_dimensions() end
 function Volume:on_options() self:update_dimensions() end
+
+function Volume:render()
+	local visibility = self:get_visibility()
+	if visibility <= 0 then return end
+
+	-- Mute button
+	local mute_rect = {ax = self.ax, ay = self.mute_ay, bx = self.bx, by = self.by}
+	if get_point_to_rectangle_proximity(cursor, mute_rect) == 0 then
+		cursor.on_primary_down = function() mp.commandv('cycle', 'mute') end
+	end
+	local ass = assdraw.ass_new()
+	local icon_name = state.mute and 'volume_off' or 'volume_up'
+	local width_half = (mute_rect.bx - mute_rect.ax) / 2
+	local height_half = (mute_rect.by - mute_rect.ay) / 2
+	local icon_size = math.min(width_half, height_half) * 1.5
+	ass:icon(mute_rect.ax + width_half, mute_rect.ay + height_half, icon_size, icon_name,
+		{border = options.text_border * state.scale, opacity = visibility, align = 5}
+	)
+	return ass
+end
 
 return Volume

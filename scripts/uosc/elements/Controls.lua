@@ -13,13 +13,18 @@ local Controls = class(Element)
 
 function Controls:new() return Class.new(self) --[[@as Controls]] end
 function Controls:init()
-	Element.init(self, 'controls')
+	Element.init(self, 'controls', {render_order = 6})
 	---@type ControlItem[] All control elements serialized from `options.controls`.
 	self.controls = {}
 	---@type ControlItem[] Only controls that match current dispositions.
 	self.layout = {}
 
 	self:init_options()
+end
+
+function Controls:destroy()
+	self:destroy_elements()
+	Element.destroy(self)
 end
 
 function Controls:init_options()
@@ -109,6 +114,7 @@ function Controls:init_options()
 				))
 			else
 				local element = Button:new('control_' .. i, {
+					render_order = self.render_order,
 					icon = params[1],
 					anchor_id = 'controls',
 					on_click = function() mp.command(params[2]) end,
@@ -140,14 +146,18 @@ function Controls:init_options()
 				end
 
 				local element = CycleButton:new('control_' .. i, {
-					prop = params[2], anchor_id = 'controls', states = states, tooltip = tooltip,
+					render_order = self.render_order,
+					prop = params[2],
+					anchor_id = 'controls',
+					states = states,
+					tooltip = tooltip,
 				})
 				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
 				if badge then self:register_badge_updater(badge, element) end
 			end
 		elseif kind == 'speed' then
 			if not Elements.speed then
-				local element = Speed:new({anchor_id = 'controls'})
+				local element = Speed:new({anchor_id = 'controls', render_order = self.render_order})
 				local scale = tonumber(params[1]) or 1.3
 				table_assign(control, {
 					element = element, sizing = 'dynamic', scale = scale, ratio = 3.5, ratio_min = 2,
@@ -215,24 +225,23 @@ function Controls:register_badge_updater(badge, element)
 	end
 
 	if is_external_prop then element['on_external_prop_' .. prop] = function(_, value) handler(prop, value) end
-	else mp.observe_property(observable_name, 'native', handler) end
+	else self:observe_mp_property(observable_name, handler) end
 end
 
 function Controls:get_visibility()
-	return (Elements.speed and Elements.speed.dragging) and 1 or Elements.timeline:get_is_hovered()
+	return Elements:v('speed', 'dragging') and 1 or Elements:maybe('timeline', 'get_is_hovered')
 		and -1 or Element.get_visibility(self)
 end
 
 function Controls:update_dimensions()
-	local window_border = Elements.window_border.size
+	local window_border = Elements:v('window_border', 'size', 0)
 	local size = round(options.controls_size * state.scale)
 	local spacing = round(options.controls_spacing * state.scale)
 	local margin = round(options.controls_margin * state.scale)
 
 	-- Disable when not enough space
-	local available_space = display.height - Elements.window_border.size * 2
-	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
-	if Elements.timeline.enabled then available_space = available_space - Elements.timeline.size end
+	local available_space = display.height - window_border * 2 - Elements:v('top_bar', 'size', 0)
+		- Elements:v('timeline', 'size', 0)
 	self.enabled = available_space > size + 10
 
 	-- Reset hide/enabled flags
@@ -245,7 +254,7 @@ function Controls:update_dimensions()
 
 	-- Container
 	self.bx = display.width - window_border - margin
-	self.by = (Elements.timeline.enabled and Elements.timeline.ay or display.height - window_border) - margin
+	self.by = Elements:v('timeline', 'ay', display.height - window_border) - margin
 	self.ax, self.ay = window_border + margin, self.by - size
 
 	-- Controls
@@ -332,10 +341,14 @@ function Controls:on_prop_title_bar() self:update_dimensions() end
 function Controls:on_prop_fullormaxed() self:update_dimensions() end
 function Controls:on_timeline_enabled() self:update_dimensions() end
 
-function Controls:on_options()
+function Controls:destroy_elements()
 	for _, control in ipairs(self.controls) do
 		if control.element then control.element:destroy() end
 	end
+end
+
+function Controls:on_options()
+	self:destroy_elements()
 	self:init_options()
 end
 

@@ -34,8 +34,8 @@ function CycleButton:init(id, props)
 		end
 	end
 
-	self.handle_change = function(name, value)
-		if is_state_prop and type(value) == 'boolean' then value = value and 'yes' or 'no' end
+	local function handle_change(name, value)
+		value = type(value) == 'boolean' and (value and 'yes' or 'no') or tostring(value or '')
 		local index = itable_find(self.states, function(state) return state.value == value end)
 		self.current_state_index = index or 1
 		self.icon = self.states[self.current_state_index].icon
@@ -46,19 +46,14 @@ function CycleButton:init(id, props)
 	local prop_parts = split(self.prop, '@')
 	if #prop_parts == 2 then -- External prop with a script owner
 		self.prop, self.owner = prop_parts[1], prop_parts[2]
-		self['on_external_prop_' .. self.prop] = function(_, value) self.handle_change(self.prop, value) end
-		self.handle_change(self.prop, external[self.prop])
+		self['on_external_prop_' .. self.prop] = function(_, value) handle_change(self.prop, value) end
+		handle_change(self.prop, external[self.prop])
 	elseif is_state_prop then -- uosc's state props
-		self['on_prop_' .. self.prop] = function(self, value) self.handle_change(self.prop, value) end
-		self.handle_change(self.prop, state[self.prop])
+		self['on_prop_' .. self.prop] = function(self, value) handle_change(self.prop, value) end
+		handle_change(self.prop, state[self.prop])
 	else
-		mp.observe_property(self.prop, 'string', self.handle_change)
+		self:observe_mp_property(self.prop, handle_change)
 	end
-end
-
-function CycleButton:destroy()
-	Button.destroy(self)
-	mp.unobserve_property(self.handle_change)
 end
 
 return CycleButton

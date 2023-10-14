@@ -659,7 +659,7 @@ function render()
 	local ass = assdraw.ass_new()
 
 	-- Audio indicator
-	if state.is_audio and not state.has_image then
+	if state.is_audio and not state.has_image and not Manager.disabled.audio_indicator then
 		local smaller_side = math.min(display.width, display.height)
 		ass:icon(display.width / 2, display.height / 2, smaller_side / 3, 'graphic_eq', {color = fg, opacity = 0.5})
 	end
