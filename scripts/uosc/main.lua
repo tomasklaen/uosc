@@ -142,23 +142,23 @@ config = {
 	osd_alignment_x = mp.get_property('osd-align-x'),
 	osd_alignment_y = mp.get_property('osd-align-y'),
 	types = {
-		video = split(options.video_types, ' *, *'),
-		audio = split(options.audio_types, ' *, *'),
-		image = split(options.image_types, ' *, *'),
-		subtitle = split(options.subtitle_types, ' *, *'),
-		media = split(options.video_types .. ',' .. options.audio_types .. ',' .. options.image_types, ' *, *'),
+		video = comma_split(options.video_types),
+		audio = comma_split(options.audio_types),
+		image = comma_split(options.image_types),
+		subtitle = comma_split(options.subtitle_types),
+		media = comma_split(options.video_types .. ',' .. options.audio_types .. ',' .. options.image_types),
 		autoload = (function()
 			---@type string[]
 			local option_values = {}
-			for _, name in ipairs(split(options.autoload_types, ' *, *')) do
+			for _, name in ipairs(comma_split(options.autoload_types)) do
 				local value = options[name .. '_types']
 				if type(value) == 'string' then option_values[#option_values + 1] = value end
 			end
-			return split(table.concat(option_values, ','), ' *, *')
+			return comma_split(table.concat(option_values, ','))
 		end)(),
 	},
-	stream_quality_options = split(options.stream_quality_options, ' *, *'),
-	top_bar_flash_on = split(options.top_bar_flash_on, ' *, *'),
+	stream_quality_options = comma_split(options.stream_quality_options),
+	top_bar_flash_on = comma_split(options.top_bar_flash_on),
 	chapter_ranges = (function()
 		---@type table<string, string[]> Alternative patterns.
 		local alt_patterns = {}
@@ -199,13 +199,13 @@ for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
 	local option_name = name .. '_persistency'
 	local value, flags = options[option_name], {}
 	if type(value) == 'string' then
-		for _, state in ipairs(split(value, ' *, *')) do flags[state] = true end
+		for _, state in ipairs(comma_split(value)) do flags[state] = true end
 	end
 	config[option_name] = flags
 end
 -- Parse `opacity` overrides
 do
-	for _, key_value_pair in ipairs(split(options.opacity, ' *, *')) do
+	for _, key_value_pair in ipairs(comma_split(options.opacity)) do
 		local key, value = key_value_pair:match('^([%w_]+)=([%d%.]+)$')
 		if key and config.opacity[key] then
 			config.opacity[key] = clamp(0, tonumber(value) or config.opacity[key], 1)
@@ -1261,13 +1261,13 @@ mp.register_script_message('set', function(name, value)
 	external[name] = value
 	Elements:trigger('external_prop_' .. name, value)
 end)
-mp.register_script_message('toggle-elements', function(elements) Elements:toggle(split(elements, ' *, *')) end)
+mp.register_script_message('toggle-elements', function(elements) Elements:toggle(comma_split(elements)) end)
 mp.register_script_message('set-min-visibility', function(visibility, elements)
 	local fraction = tonumber(visibility)
-	local ids = split(elements and elements ~= '' and elements or 'timeline,controls,volume,top_bar', ' *, *')
+	local ids = comma_split(elements and elements ~= '' and elements or 'timeline,controls,volume,top_bar')
 	if fraction then Elements:set_min_visibility(clamp(0, fraction, 1), ids) end
 end)
-mp.register_script_message('flash-elements', function(elements) Elements:flash(split(elements, ' *, *')) end)
+mp.register_script_message('flash-elements', function(elements) Elements:flash(comma_split(elements)) end)
 mp.register_script_message('overwrite-binding', function(name, command) key_binding_overwrites[name] = command end)
 mp.register_script_message('disable-elements', function(id, elements) Manager:disable(id, elements) end)
 

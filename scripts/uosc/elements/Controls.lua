@@ -85,7 +85,7 @@ function Controls:init_options()
 
 		-- Serialize dispositions
 		local dispositions = {}
-		for _, definition in ipairs(split(item.disposition, ' *, *')) do
+		for _, definition in ipairs(comma_split(item.disposition)) do
 			if #definition > 0 then
 				local value = definition:sub(1, 1) ~= '!'
 				local name = not value and definition:sub(2) or definition
