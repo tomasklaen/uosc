@@ -66,8 +66,10 @@ function VolumeSlider:render()
 		cursor.on_wheel_down = function() self:handle_wheel_down() end
 		cursor.on_wheel_up = function() self:handle_wheel_up() end
 	end
-	if self.pressed then cursor.on_primary_up = function()
-		self.pressed = false end
+	if self.pressed then
+		cursor.on_primary_up = function()
+			self.pressed = false
+		end
 	end
 
 	local ass = assdraw.ass_new()
@@ -166,13 +168,17 @@ function VolumeSlider:render()
 	local font_size = round(((width * 0.6) - (#volume_string * (width / 20))) * options.font_scale)
 	if volume_y < self.by - self.spacing then
 		ass:txt(self.ax + (width / 2), self.by - self.spacing, 2, volume_string, {
-			size = font_size, color = fgt, opacity = visibility,
+			size = font_size,
+			color = fgt,
+			opacity = visibility,
 			clip = '\\clip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')',
 		})
 	end
 	if volume_y > self.by - self.spacing - font_size then
 		ass:txt(self.ax + (width / 2), self.by - self.spacing, 2, volume_string, {
-			size = font_size, color = bgt, opacity = visibility,
+			size = font_size,
+			color = bgt,
+			opacity = visibility,
 			clip = '\\iclip(' .. fg_path.scale .. ', ' .. fg_path.text .. ')',
 		})
 	end
@@ -181,7 +187,10 @@ function VolumeSlider:render()
 	if not state.has_audio then
 		local fg_100_path = create_nudged_path(self.border_size, state.radius)
 		local texture_opts = {
-			size = 200, color = 'ffffff', opacity = visibility * 0.1, anchor_x = ax,
+			size = 200,
+			color = 'ffffff',
+			opacity = visibility * 0.1,
+			anchor_x = ax,
 			clip = '\\clip(' .. fg_100_path.scale .. ',' .. fg_100_path.text .. ')',
 		}
 		ass:texture(ax, ay, bx, by, 'a', texture_opts)

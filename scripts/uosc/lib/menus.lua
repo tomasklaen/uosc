@@ -22,14 +22,20 @@ end
 
 ---@param opts? {submenu?: string; mouse_nav?: boolean; on_close?: string | string[]}
 function toggle_menu_with_items(opts)
-	if Menu:is_open('menu') then Menu:close()
-	else open_command_menu({type = 'menu', items = get_menu_items(), search_submenus = true}, opts) end
+	if Menu:is_open('menu') then
+		Menu:close()
+	else
+		open_command_menu({type = 'menu', items = get_menu_items(), search_submenus = true}, opts)
+	end
 end
 
 ---@param options {type: string; title: string; list_prop: string; active_prop?: string; serializer: fun(list: any, active: any): MenuDataItem[]; on_select: fun(value: any); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
 function create_self_updating_menu_opener(options)
 	return function()
-		if Menu:is_open(options.type) then Menu:close() return end
+		if Menu:is_open(options.type) then
+			Menu:close()
+			return
+		end
 		local list = mp.get_property_native(options.list_prop)
 		local active = options.active_prop and mp.get_property_native(options.active_prop) or nil
 		local menu
@@ -38,14 +44,22 @@ function create_self_updating_menu_opener(options)
 
 		local ignore_initial_list = true
 		local function handle_list_prop_change(name, value)
-			if ignore_initial_list then ignore_initial_list = false
-			else list = value update() end
+			if ignore_initial_list then
+				ignore_initial_list = false
+			else
+				list = value
+				update()
+			end
 		end
 
 		local ignore_initial_active = true
 		local function handle_active_prop_change(name, value)
-			if ignore_initial_active then ignore_initial_active = false
-			else active = value update() end
+			if ignore_initial_active then
+				ignore_initial_active = false
+			else
+				active = value
+				update()
+			end
 		end
 
 		local initial_items, selected_index = options.serializer(list, active)
@@ -55,19 +69,19 @@ function create_self_updating_menu_opener(options)
 		menu = Menu:open(
 			{type = options.type, title = options.title, items = initial_items, selected_index = selected_index},
 			options.on_select, {
-			on_open = function()
-				mp.observe_property(options.list_prop, 'native', handle_list_prop_change)
-				if options.active_prop then
-					mp.observe_property(options.active_prop, 'native', handle_active_prop_change)
-				end
-			end,
-			on_close = function()
-				mp.unobserve_property(handle_list_prop_change)
-				mp.unobserve_property(handle_active_prop_change)
-			end,
-			on_move_item = options.on_move_item,
-			on_delete_item = options.on_delete_item,
-		})
+				on_open = function()
+					mp.observe_property(options.list_prop, 'native', handle_list_prop_change)
+					if options.active_prop then
+						mp.observe_property(options.active_prop, 'native', handle_active_prop_change)
+					end
+				end,
+				on_close = function()
+					mp.unobserve_property(handle_list_prop_change)
+					mp.unobserve_property(handle_active_prop_change)
+				end,
+				on_move_item = options.on_move_item,
+				on_delete_item = options.on_delete_item,
+			})
 	end
 end
 
@@ -106,7 +120,8 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				end
 				if track['demux-fps'] then h(string.format('%.5gfps', track['demux-fps'])) end
 				h(track.codec)
-				if track['audio-channels'] then h(t(track['audio-channels'] == 1 and '%s channel' or '%s channels', track['audio-channels'])) end
+				if track['audio-channels'] then h(t(track['audio-channels'] == 1 and '%s channel' or '%s channels',
+						track['audio-channels'])) end
 				if track['demux-samplerate'] then h(string.format('%.3gkHz', track['demux-samplerate'] / 1000)) end
 				if track.forced then h(t('forced')) end
 				if track.default then h(t('default')) end
@@ -168,7 +183,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 	local files, directories = read_directory(directory.path, {
 		types = opts.allowed_types,
-		hidden = options.show_hidden_files
+		hidden = options.show_hidden_files,
 	})
 	local is_root = not directory.dirname
 	local path_separator = path_separator(directory.path)
@@ -222,8 +237,11 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 			open_drives_menu(function(drive_path)
 				open_file_navigation_menu(drive_path, handle_select, inheritable_options)
 			end, {
-				type = inheritable_options.type, title = inheritable_options.title, selected_path = directory.path,
-				on_open = opts.on_open, on_close = opts.on_close,
+				type = inheritable_options.type,
+				title = inheritable_options.title,
+				selected_path = directory.path,
+				on_open = opts.on_open,
+				on_close = opts.on_close,
 			})
 			return
 		end
@@ -252,7 +270,9 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 	end
 
 	local menu_data = {
-		type = opts.type, title = opts.title or directory.basename .. path_separator, items = items,
+		type = opts.type,
+		title = opts.title or directory.basename .. path_separator,
+		items = items,
 		selected_index = selected_index,
 	}
 	local menu_options = {on_open = opts.on_open, on_close = opts.on_close, on_back = handle_back}
@@ -382,17 +402,17 @@ end
 
 -- Adapted from `stats.lua`
 function get_input_items()
-	local bindings = mp.get_property_native("input-bindings", {})
-	local active = {}  -- map: key-name -> bind-info
+	local bindings = mp.get_property_native('input-bindings', {})
+	local active = {} -- map: key-name -> bind-info
 	local items = {}
 
 	-- Find active keybinds
 	for _, bind in pairs(bindings) do
 		if bind.priority >= 0 and (
-			not active[bind.key]
-			or (active[bind.key].is_weak and not bind.is_weak)
-			or (bind.is_weak == active[bind.key].is_weak and bind.priority > active[bind.key].priority)
-		)
+				not active[bind.key]
+				or (active[bind.key].is_weak and not bind.is_weak)
+				or (bind.is_weak == active[bind.key].is_weak and bind.priority > active[bind.key].priority)
+			)
 		then
 			active[bind.key] = bind
 		end
@@ -412,7 +432,7 @@ function get_input_items()
 			selectable = false,
 			align = 'center',
 			italic = true,
-			muted = true
-		}
+			muted = true,
+		},
 	}
 end

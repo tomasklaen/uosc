@@ -98,7 +98,7 @@ function ass_mt:tooltip(element, value, opts)
 	local by = (align_top and y or y + opts.size * opts.lines + 2 * padding_y)
 	self:rect(ax, ay, bx, by, {color = bg, opacity = config.opacity.tooltip, radius = state.radius})
 	self:txt(x, align_top and y - padding_y or y + padding_y, align_top and 2 or 8, value, opts)
-	return { ax = element.ax, ay = ay, bx = element.bx, by = by }
+	return {ax = element.ax, ay = ay, bx = element.bx, by = by}
 end
 
 -- Rectangle.

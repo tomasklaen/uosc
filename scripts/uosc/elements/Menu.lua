@@ -64,8 +64,11 @@ function Menu:close(immediate, callback)
 
 		menu.is_closing = true
 
-		if immediate then close()
-		else menu:fadeout(close) end
+		if immediate then
+			close()
+		else
+			menu:fadeout(close)
+		end
 	end
 end
 
@@ -155,10 +158,10 @@ function Menu:update(data)
 	local menus_to_serialize = {{new_root, data}}
 	local old_current_id = self.current and self.current.id
 	local menu_props_to_copy = {
-		'title', 'hint', 'keep_open', 'palette', 'on_search', 'search_submenus', 'search_suggestion'
+		'title', 'hint', 'keep_open', 'palette', 'on_search', 'search_submenus', 'search_suggestion',
 	}
 	local item_props_to_copy = itable_join(menu_props_to_copy, {
-		'icon', 'active', 'bold', 'italic', 'muted', 'value', 'separator', 'selectable', 'align'
+		'icon', 'active', 'bold', 'italic', 'muted', 'value', 'separator', 'selectable', 'align',
 	})
 
 	table_assign(new_root, data, itable_join({'type'}, menu_props_to_copy))
@@ -189,7 +192,7 @@ function Menu:update(data)
 		-- Update items
 		local first_active_index = nil
 		menu.items = {
-			{title = t('Empty'), value = 'ignore', italic = 'true', muted = 'true', selectable = false, align = 'center'}
+			{title = t('Empty'), value = 'ignore', italic = 'true', muted = 'true', selectable = false, align = 'center'},
 		}
 
 		for i, item_data in ipairs(menu_data.items or {}) do
@@ -213,8 +216,11 @@ function Menu:update(data)
 
 		-- Retain old state
 		local old_menu = self.by_id[menu.id]
-		if old_menu then table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'})
-		else new_menus[#new_menus + 1] = menu end
+		if old_menu then
+			table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'})
+		else
+			new_menus[#new_menus + 1] = menu
+		end
 
 		if menu.selected_index then self:select_by_offset(0, menu) end
 
@@ -403,8 +409,11 @@ end
 function Menu:scroll_to(pos, menu, fling_options)
 	menu = menu or self.current
 	menu.fling = {
-		y = menu.scroll_y, distance = clamp(-menu.scroll_y, pos - menu.scroll_y, menu.scroll_height - menu.scroll_y),
-		time = mp.get_time(), duration = 0.1, easing = ease_out_sext,
+		y = menu.scroll_y,
+		distance = clamp(-menu.scroll_y, pos - menu.scroll_y, menu.scroll_height - menu.scroll_y),
+		time = mp.get_time(),
+		duration = 0.1,
+		easing = ease_out_sext,
 	}
 	if fling_options then table_assign(menu.fling, fling_options) end
 	request_render()
@@ -425,8 +434,11 @@ function Menu:scroll_to_index(index, menu, immediate)
 	menu = menu or self.current
 	if (index and index >= 1 and index <= #menu.items) then
 		local position = round((self.scroll_step * (index - 1)) - ((menu.height - self.scroll_step) / 2))
-		if immediate then self:set_scroll_to(position, menu)
-		else self:scroll_to(position, menu) end
+		if immediate then
+			self:set_scroll_to(position, menu)
+		else
+			self:scroll_to(position, menu)
+		end
 	end
 end
 
@@ -500,8 +512,11 @@ end
 ---@param id string
 function Menu:activate_submenu(id)
 	local submenu = self.by_id[id]
-	if submenu then self:activate_menu(submenu)
-	else msg.error(string.format('Requested submenu id "%s" doesn\'t exist', id)) end
+	if submenu then
+		self:activate_menu(submenu)
+	else
+		msg.error(string.format('Requested submenu id "%s" doesn\'t exist', id))
+	end
 end
 
 ---@param index? integer
@@ -617,8 +632,12 @@ function Menu:handle_cursor_up()
 		local distance = cursor.get_velocity().y / -3
 		if math.abs(distance) > 50 then
 			self.current.fling = {
-				y = self.current.scroll_y, distance = distance, time = cursor.history:head().time,
-				easing = ease_out_quart, duration = 0.5, update_cursor = true,
+				y = self.current.scroll_y,
+				distance = distance,
+				time = cursor.history:head().time,
+				easing = ease_out_quart,
+				duration = 0.5,
+				update_cursor = true,
 			}
 		end
 	end
@@ -648,9 +667,13 @@ function Menu:select_by_offset(offset, menu)
 	local prev_index = itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1)
 	local next_index = itable_find(menu.items, function(item) return item.selectable ~= false end, index)
 	if prev_index and next_index then
-		if offset == 0 then menu.selected_index = index - prev_index <= next_index - index and prev_index or next_index
-		elseif offset > 0 then menu.selected_index = next_index
-		else menu.selected_index = prev_index end
+		if offset == 0 then
+			menu.selected_index = index - prev_index <= next_index - index and prev_index or next_index
+		elseif offset > 0 then
+			menu.selected_index = next_index
+		else
+			menu.selected_index = prev_index
+		end
 	else
 		menu.selected_index = prev_index or next_index or nil
 	end
@@ -752,8 +775,8 @@ function Menu:search_submit(menu)
 					italic = true,
 					align = 'center',
 					selectable = false,
-					muted = true
-				}
+					muted = true,
+				},
 			}
 			self:update_items(self.root.items)
 		end
@@ -767,7 +790,9 @@ function Menu:search_submit(menu)
 		else
 			menu.on_search(menu.search.query)
 		end
-	else self:search_internal(menu) end
+	else
+		self:search_internal(menu)
+	end
 end
 
 ---@param query string
@@ -841,11 +866,16 @@ function Menu:search_init(menu)
 		timeout:kill()
 	end
 	menu.search = {
-		query = '', timeout = timeout, min_top = menu.top, max_width = menu.width,
+		query = '',
+		timeout = timeout,
+		min_top = menu.top,
+		max_width = menu.width,
 		source = {
-			width = menu.width, top = menu.top,
-			scroll_y = menu.scroll_y, selected_index = menu.selected_index,
-			items = not menu.on_search and menu.items or nil
+			width = menu.width,
+			top = menu.top,
+			scroll_y = menu.scroll_y,
+			selected_index = menu.selected_index,
+			items = not menu.on_search and menu.items or nil,
 		},
 	}
 end
@@ -860,34 +890,49 @@ end
 function Menu:key_esc()
 	if self.current.search then
 		if self.current.palette then
-			if self.current.search.query == '' then self:close()
-			else self:search_query_update('') end
+			if self.current.search.query == '' then
+				self:close()
+			else
+				self:search_query_update('')
+			end
 		else
 			self:search_stop()
 		end
-	else self:close() end
+	else
+		self:close()
+	end
 end
 
 function Menu:key_bs(info)
 	if info.event ~= 'up' then
-		if self.current.search then self:search_backspace(info.event)
-		elseif info.event ~= 'repeat' then self:back() end
+		if self.current.search then
+			self:search_backspace(info.event)
+		elseif info.event ~= 'repeat' then
+			self:back()
+		end
 	end
 end
 
 function Menu:key_ctrl_enter()
-	if self.current.search then self:search_submit()
-	else self:open_selected_item_preselect() end
+	if self.current.search then
+		self:search_submit()
+	else
+		self:open_selected_item_preselect()
+	end
 end
 
 function Menu:key_left()
 	if self.current.search then -- control cursor when it's implemented
-	else self:back() end
+	else
+		self:back()
+	end
 end
 
 function Menu:key_right()
 	if self.current.search then -- control cursor when it's implemented
-	else self:open_selected_item_preselect() end
+	else
+		self:open_selected_item_preselect()
+	end
 end
 
 function Menu:search_enable_key_bindings()
@@ -905,8 +950,11 @@ end
 
 function Menu:search_ensure_key_bindings()
 	if self.type_to_search then return end
-	if self.current.search then self:search_enable_key_bindings()
-	else self:search_disable_key_bindings() end
+	if self.current.search then
+		self:search_enable_key_bindings()
+	else
+		self:search_disable_key_bindings()
+	end
 end
 
 function Menu:search_disable_key_bindings()
@@ -942,8 +990,7 @@ function Menu:enable_key_bindings()
 	self:add_key_binding('bs', 'menu-back-alt4', self:create_key_action('key_bs'), {repeatable = true, complex = true})
 	self:add_key_binding('enter', 'menu-select-alt3', self:create_key_action('open_selected_item_preselect'))
 	self:add_key_binding('kp_enter', 'menu-select-alt4', self:create_key_action('open_selected_item_preselect'))
-	self:add_key_binding('ctrl+enter', 'menu-select-ctrl1',
-		self:create_key_action('key_ctrl_enter', {ctrl = true}))
+	self:add_key_binding('ctrl+enter', 'menu-select-ctrl1', self:create_key_action('key_ctrl_enter', {ctrl = true}))
 	self:add_key_binding('alt+enter', 'menu-select-alt1',
 		self:create_key_action('open_selected_item_preselect', {alt = true}))
 	self:add_key_binding('ctrl+kp_enter', 'menu-select-ctrl2',
@@ -1040,14 +1087,16 @@ function Menu:render()
 		local start_index = math.floor(menu.scroll_y / self.scroll_step) + 1
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
 		local menu_rect = {
-			ax = ax, ay = ay - (draw_title and self.scroll_step or 0) - self.padding,
-			bx = bx, by = by + self.padding
+			ax = ax,
+			ay = ay - (draw_title and self.scroll_step or 0) - self.padding,
+			bx = bx,
+			by = by + self.padding,
 		}
 		local blur_selected_index = is_current and self.mouse_nav
 
 		-- Background
 		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {
-			color = bg, opacity = menu_opacity * config.opacity.menu, radius = state.radius + self.padding
+			color = bg, opacity = menu_opacity * config.opacity.menu, radius = state.radius + self.padding,
 		})
 
 		if is_parent and get_point_to_rectangle_proximity(cursor, menu_rect) == 0 then
@@ -1088,7 +1137,7 @@ function Menu:render()
 						ax = menu_rect.ax + self.padding,
 						ay = item_ay,
 						bx = menu_rect.bx + (item.items and self.gap or -self.padding), -- to bridge the gap with cursor
-						by = item_by
+						by = item_by,
 					}
 					if submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0 then
 						blur_selected_index = false
@@ -1117,7 +1166,9 @@ function Menu:render()
 			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (menu.selected_index == index and 0.15 or 0)
 			if not is_submenu and highlight_opacity > 0 then
 				ass:rect(ax + self.padding, item_ay, bx - self.padding, item_by, {
-					radius = state.radius, color = fg, opacity = highlight_opacity * menu_opacity,
+					radius = state.radius,
+					color = fg,
+					opacity = highlight_opacity * menu_opacity,
 					clip = item_clip,
 				})
 			end
@@ -1168,8 +1219,13 @@ function Menu:render()
 					title_x, align = content_ax + (title_cut_x - content_ax) / 2, 5
 				end
 				ass:txt(title_x, item_center_y, align, item.ass_safe_title, {
-					size = self.font_size, color = font_color, italic = item.italic, bold = item.bold, wrap = 2,
-					opacity = menu_opacity * (item.muted and 0.5 or 1), clip = clip,
+					size = self.font_size,
+					color = font_color,
+					italic = item.italic,
+					bold = item.bold,
+					wrap = 2,
+					opacity = menu_opacity * (item.muted and 0.5 or 1),
+					clip = clip,
 				})
 			end
 		end
@@ -1201,8 +1257,10 @@ function Menu:render()
 				end
 
 				ass:icon(rect.ax + icon_size / 2, rect.cy, icon_size, 'search', {
-					color = fg, opacity = icon_opacity,
-					clip = '\\clip(' .. icon_rect.ax .. ',' .. icon_rect.ay .. ',' .. icon_rect.bx .. ',' .. icon_rect.by .. ')'
+					color = fg,
+					opacity = icon_opacity,
+					clip = '\\clip(' ..
+						icon_rect.ax .. ',' .. icon_rect.ay .. ',' .. icon_rect.bx .. ',' .. icon_rect.by .. ')',
 				})
 
 				-- Query/Placeholder
@@ -1210,7 +1268,10 @@ function Menu:render()
 					-- Add a ZWNBSP suffix to prevent libass from trimming trailing spaces
 					local query = ass_escape(menu.search.query) .. '\239\187\191'
 					ass:txt(rect.bx, rect.cy, 6, query, {
-						size = self.font_size, color = bgt, wrap = 2, opacity = menu_opacity,
+						size = self.font_size,
+						color = bgt,
+						wrap = 2,
+						opacity = menu_opacity,
 						clip = '\\clip(' .. icon_rect.bx .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 					})
 				else
@@ -1218,7 +1279,11 @@ function Menu:render()
 						and menu.ass_safe_title
 						or (requires_submit and t('type & ctrl+enter to search') or t('type to search'))
 					ass:txt(rect.bx, rect.cy, 6, placeholder, {
-						size = self.font_size, italic = true, color = bgt, wrap = 2, opacity = menu_opacity * 0.4,
+						size = self.font_size,
+						italic = true,
+						color = bgt,
+						wrap = 2,
+						opacity = menu_opacity * 0.4,
 						clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 					})
 				end
@@ -1227,12 +1292,17 @@ function Menu:render()
 				local font_size_half, cursor_thickness = round(self.font_size / 2), round(self.font_size / 14)
 				local cursor_ax, cursor_bx = rect.bx + 1, rect.bx + 1 + cursor_thickness
 				ass:rect(cursor_ax, rect.cy - font_size_half, cursor_bx, rect.cy + font_size_half, {
-					color = fg, opacity = menu_opacity * 0.5,
+					color = fg,
+					opacity = menu_opacity * 0.5,
 					clip = '\\clip(' .. cursor_ax .. ',' .. rect.ay .. ',' .. cursor_bx .. ',' .. rect.by .. ')',
 				})
 			else
 				ass:txt(rect.cx, rect.cy, 5, menu.ass_safe_title, {
-					size = self.font_size, bold = true, color = bgt, wrap = 2, opacity = menu_opacity,
+					size = self.font_size,
+					bold = true,
+					color = bgt,
+					wrap = 2,
+					opacity = menu_opacity,
 					clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 				})
 			end

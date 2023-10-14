@@ -83,8 +83,11 @@ function Timeline:get_time_at_x(x)
 	local fbx = fax + line_width
 	-- time starts 0.5 pixels in
 	x = x - self.ax - 0.5
-	if x > fbx then x = x - line_width
-	elseif x > fax then x = fax end
+	if x > fbx then
+		x = x - line_width
+	elseif x > fax then
+		x = fax
+	end
 	local progress = clamp(0, x / time_width, 1)
 	return state.duration * progress
 end
@@ -133,7 +136,9 @@ function Timeline:on_global_mouse_move()
 		self.pressed.last.x, self.pressed.last.y = cursor.x, cursor.y
 		if state.is_video and math.abs(cursor.get_velocity().x) / self.width * state.duration > 30 then
 			self:set_from_cursor(true)
-		else self:set_from_cursor() end
+		else
+			self:set_from_cursor()
+		end
 	end
 end
 function Timeline:handle_wheel_up() mp.commandv('seek', options.timeline_step) end
@@ -254,7 +259,7 @@ function Timeline:render()
 	-- Chapters
 	local hovered_chapter = nil
 	if (config.opacity.chapters > 0
-		and (#state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)
+			and (#state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)
 		) then
 		local diamond_radius = foreground_size < 3 and foreground_size or self.chapter_size
 		local diamond_radius_hovered = diamond_radius * 2
@@ -351,7 +356,7 @@ function Timeline:render()
 			and buffered_playtime < options.buffered_time_threshold then
 			local x, align = fbx + 5, 4
 			local cache_opts = {
-				size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = options.text_border * state.scale
+				size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = options.text_border * state.scale,
 			}
 			local human = round(math.max(buffered_playtime, 0)) .. 's'
 			local width = text_width(human, cache_opts)
@@ -411,8 +416,12 @@ function Timeline:render()
 			local ax, ay = (thumb_x - border), (thumb_y - border)
 			local bx, by = (thumb_x + thumb_width + border), (thumb_y + thumb_height + border)
 			ass:rect(ax, ay, bx, by, {
-				color = bg, border = 1, opacity = config.opacity.thumbnail,
-				border_color = fg, border_opacity = 0.08 * config.opacity.thumbnail, radius = state.radius
+				color = bg,
+				border = 1,
+				opacity = config.opacity.thumbnail,
+				border_color = fg,
+				border_opacity = 0.08 * config.opacity.thumbnail,
+				radius = state.radius,
 			})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)
 			self.has_thumbnail, rendered_thumbnail = true, true
@@ -421,12 +430,17 @@ function Timeline:render()
 
 		-- Chapter title
 		if #state.chapters > 0 then
-			local _, chapter = itable_find(state.chapters, function(c) return hovered_seconds >= c.time end, #state.chapters, 1)
+			local _, chapter = itable_find(state.chapters, function(c) return hovered_seconds >= c.time end,
+				#state.chapters, 1)
 			if chapter and not chapter.is_end_only then
 				ass:tooltip(tooltip_anchor, chapter.title_wrapped, {
-					size = self.font_size, offset = tooltip_gap, responsive = false, bold = true,
+					size = self.font_size,
+					offset = tooltip_gap,
+					responsive = false,
+					bold = true,
 					width_overwrite = chapter.title_wrapped_width * self.font_size,
-					lines = chapter.title_lines, margin = tooltip_margin,
+					lines = chapter.title_lines,
+					margin = tooltip_margin,
 				})
 			end
 		end

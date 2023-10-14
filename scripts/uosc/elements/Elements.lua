@@ -43,8 +43,11 @@ function Elements:update_proximities()
 
 			-- If menu is open, all other elements have to be disabled
 			if menu_only then
-				if element.ignores_menu then element:update_proximity()
-				else element:reset_proximity() end
+				if element.ignores_menu then
+					element:update_proximity()
+				else
+					element:reset_proximity()
+				end
 			else
 				element:update_proximity()
 			end

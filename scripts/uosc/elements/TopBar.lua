@@ -62,15 +62,19 @@ function TopBar:init()
 	-- Order aligns from right to left
 	self.buttons = {
 		TopBarButton:new('tb_close', {
-			icon = 'close', background = '2311e8', command = 'quit', render_order = self.render_order
+			icon = 'close', background = '2311e8', command = 'quit', render_order = self.render_order,
 		}),
 		TopBarButton:new('tb_max', {
-			icon = 'crop_square', background = '222222', command = get_maximized_command,
-			render_order = self.render_order
+			icon = 'crop_square',
+			background = '222222',
+			command = get_maximized_command,
+			render_order = self.render_order,
 		}),
 		TopBarButton:new('tb_min', {
-			icon = 'minimize', background = '222222', command = 'cycle window-minimized',
-			render_order = self.render_order
+			icon = 'minimize',
+			background = '222222',
+			command = 'cycle window-minimized',
+			render_order = self.render_order,
 		}),
 	}
 
@@ -117,7 +121,7 @@ function TopBar:decide_titles()
 			longer_title, shorter_title = self.main_title, self.alt_title
 		end
 
-		local escaped_shorter_title = string.gsub(shorter_title --[[@as string]], "[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1")
+		local escaped_shorter_title = string.gsub(shorter_title --[[@as string]], '[%(%)%.%+%-%*%?%[%]%^%$%%]', '%%%1')
 		if string.match(longer_title --[[@as string]], escaped_shorter_title) then
 			self.main_title, self.alt_title = longer_title, nil
 		end
@@ -208,7 +212,7 @@ function TopBar:render()
 				ax = title_ax,
 				ay = title_ay,
 				bx = round(title_ax + text_width(text, opts) + padding * 2),
-				by = self.by - bg_margin
+				by = self.by - bg_margin,
 			}
 			ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {color = fg, opacity = visibility, radius = state.radius})
 			ass:txt(rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2, 5, formatted_text, opts)
@@ -226,8 +230,12 @@ function TopBar:render()
 			local main_title = self.show_alt_title and self.alt_title or self.main_title
 			if main_title then
 				local opts = {
-					size = self.font_size, wrap = 2, color = bgt, opacity = visibility,
-					border = options.text_border * state.scale, border_color = bg,
+					size = self.font_size,
+					wrap = 2,
+					color = bgt,
+					opacity = visibility,
+					border = options.text_border * state.scale,
+					border_color = bg,
 					clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
 				}
 				local bx = round(math.min(max_bx, title_ax + text_width(main_title, opts) + padding * 2))
@@ -253,8 +261,12 @@ function TopBar:render()
 				local height = font_size * 1.3
 				local by = title_ay + height
 				local opts = {
-					size = font_size, wrap = 2, color = bgt,
-					border = options.text_border * state.scale, border_color = bg, opacity = visibility
+					size = font_size,
+					wrap = 2,
+					color = bgt,
+					border = options.text_border * state.scale,
+					border_color = bg,
+					opacity = visibility,
 				}
 				local bx = round(math.min(max_bx, title_ax + text_width(self.alt_title, opts) + padding * 2))
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
@@ -271,14 +283,19 @@ function TopBar:render()
 				local height = font_size * 1.3
 				local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
 				local opts = {
-					size = font_size, italic = true, wrap = 2, color = bgt,
-					border = options.text_border * state.scale, border_color = bg, opacity = visibility * 0.8,
+					size = font_size,
+					italic = true,
+					wrap = 2,
+					color = bgt,
+					border = options.text_border * state.scale,
+					border_color = bg,
+					opacity = visibility * 0.8,
 				}
 				local rect = {
 					ax = title_ax,
 					ay = title_ay,
 					bx = round(math.min(max_bx, title_ax + text_width(text, opts) + padding * 2)),
-					by = title_ay + height
+					by = title_ay + height,
 				}
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, rect.bx, rect.by)
 				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {

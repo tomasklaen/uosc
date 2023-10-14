@@ -3,33 +3,33 @@
 
 ---@type CodePointRange[]
 local zero_width_blocks = {
-	{0x0000, 0x001F}, -- C0
-	{0x007F, 0x009F}, -- Delete + C1
-	{0x034F, 0x034F}, -- combining grapheme joiner
-	{0x061C, 0x061C}, -- Arabic Letter	Strong
-	{0x200B, 0x200F}, -- {zero-width space, zero-width non-joiner, zero-width joiner, left-to-right mark, right-to-left mark}
-	{0x2028, 0x202E}, -- {line separator, paragraph separator, Left-to-Right Embedding, Right-to-Left Embedding, Pop Directional Format, Left-to-Right Override, Right-to-Left Override}
-	{0x2060, 0x2060}, -- word joiner
-	{0x2066, 0x2069}, -- {Left-to-Right Isolate, Right-to-Left Isolate, First Strong Isolate, Pop Directional Isolate}
-	{0xFEFF, 0xFEFF}, -- zero-width non-breaking space
+	{0x0000,  0x001F}, -- C0
+	{0x007F,  0x009F}, -- Delete + C1
+	{0x034F,  0x034F}, -- combining grapheme joiner
+	{0x061C,  0x061C}, -- Arabic Letter	Strong
+	{0x200B,  0x200F}, -- {zero-width space, zero-width non-joiner, zero-width joiner, left-to-right mark, right-to-left mark}
+	{0x2028,  0x202E}, -- {line separator, paragraph separator, Left-to-Right Embedding, Right-to-Left Embedding, Pop Directional Format, Left-to-Right Override, Right-to-Left Override}
+	{0x2060,  0x2060}, -- word joiner
+	{0x2066,  0x2069}, -- {Left-to-Right Isolate, Right-to-Left Isolate, First Strong Isolate, Pop Directional Isolate}
+	{0xFEFF,  0xFEFF}, -- zero-width non-breaking space
 	-- Some other characters can also be combined https://en.wikipedia.org/wiki/Combining_character
-	{0x0300, 0x036F}, -- Combining Diacritical Marks	 0 BMP	Inherited
-	{0x1AB0, 0x1AFF}, -- Combining Diacritical Marks Extended	 0 BMP	Inherited
-	{0x1DC0, 0x1DFF}, -- Combining Diacritical Marks Supplement	 0 BMP	Inherited
-	{0x20D0, 0x20FF}, -- Combining Diacritical Marks for Symbols	 0 BMP	Inherited
-	{0xFE20, 0xFE2F}, -- Combining Half Marks	 0 BMP	Cyrillic (2 characters), Inherited (14 characters)
+	{0x0300,  0x036F}, -- Combining Diacritical Marks	 0 BMP	Inherited
+	{0x1AB0,  0x1AFF}, -- Combining Diacritical Marks Extended	 0 BMP	Inherited
+	{0x1DC0,  0x1DFF}, -- Combining Diacritical Marks Supplement	 0 BMP	Inherited
+	{0x20D0,  0x20FF}, -- Combining Diacritical Marks for Symbols	 0 BMP	Inherited
+	{0xFE20,  0xFE2F}, -- Combining Half Marks	 0 BMP	Cyrillic (2 characters), Inherited (14 characters)
 	-- Egyptian Hieroglyph Format Controls and Shorthand format Controls
 	{0x13430, 0x1345F}, -- Egyptian Hieroglyph Format Controls	 1 SMP	Egyptian Hieroglyphs
 	{0x1BCA0, 0x1BCAF}, -- Shorthand Format Controls	 1 SMP	Common
 	-- not sure how to deal with those https://en.wikipedia.org/wiki/Spacing_Modifier_Letters
-	{0x02B0, 0x02FF}, -- Spacing Modifier Letters	 0 BMP	Bopomofo (2 characters), Latin (14 characters), Common (64 characters)
+	{0x02B0,  0x02FF}, -- Spacing Modifier Letters	 0 BMP	Bopomofo (2 characters), Latin (14 characters), Common (64 characters)
 }
 
 -- All characters have the same width as the first one
 ---@type CodePointRange[]
 local same_width_blocks = {
-	{0x3400, 0x4DBF}, -- CJK Unified Ideographs Extension A	 0 BMP	Han
-	{0x4E00, 0x9FFF}, -- CJK Unified Ideographs	 0 BMP	Han
+	{0x3400,  0x4DBF}, -- CJK Unified Ideographs Extension A	 0 BMP	Han
+	{0x4E00,  0x9FFF}, -- CJK Unified Ideographs	 0 BMP	Han
 	{0x20000, 0x2A6DF}, -- CJK Unified Ideographs Extension B	 2 SIP	Han
 	{0x2A700, 0x2B73F}, -- CJK Unified Ideographs Extension C	 2 SIP	Han
 	{0x2B740, 0x2B81F}, -- CJK Unified Ideographs Extension D	 2 SIP	Han
@@ -52,11 +52,17 @@ local osd_width, osd_height = 100, 100
 local function utf8_char_bytes(str, i)
 	local char_byte = str:byte(i)
 	local max_bytes = #str - i + 1
-	if char_byte < 0xC0 then return math.min(max_bytes, 1)
-	elseif char_byte < 0xE0 then return math.min(max_bytes, 2)
-	elseif char_byte < 0xF0 then return math.min(max_bytes, 3)
-	elseif char_byte < 0xF8 then return math.min(max_bytes, 4)
-	else return math.min(max_bytes, 1) end
+	if char_byte < 0xC0 then
+		return math.min(max_bytes, 1)
+	elseif char_byte < 0xE0 then
+		return math.min(max_bytes, 2)
+	elseif char_byte < 0xF0 then
+		return math.min(max_bytes, 3)
+	elseif char_byte < 0xF8 then
+		return math.min(max_bytes, 4)
+	else
+		return math.min(max_bytes, 1)
+	end
 end
 
 ---Creates an iterator for an utf-8 encoded string
@@ -98,13 +104,19 @@ end
 ---@param unicode integer
 ---@return string?
 local function unicode_to_utf8(unicode)
-	if unicode < 0x80 then return string.char(unicode)
+	if unicode < 0x80 then
+		return string.char(unicode)
 	else
 		local byte_count
-		if unicode < 0x800 then byte_count = 2
-		elseif unicode < 0x10000 then byte_count = 3
-		elseif unicode < 0x110000 then byte_count = 4
-		else return end -- too big
+		if unicode < 0x800 then
+			byte_count = 2
+		elseif unicode < 0x10000 then
+			byte_count = 3
+		elseif unicode < 0x110000 then
+			byte_count = 4
+		else
+			return
+		end -- too big
 
 		local res = {}
 		local shift = 2 ^ 6
@@ -128,13 +140,13 @@ local function update_osd_resolution(width, height)
 	if width > 0 and height > 0 then osd_width, osd_height = width, height end
 end
 
-mp.observe_property('osd-dimensions', 'native', function (_, dim)
+mp.observe_property('osd-dimensions', 'native', function(_, dim)
 	if dim then update_osd_resolution(dim.w, dim.h) end
 end)
 
 local measure_bounds
 do
-	local text_osd = mp.create_osd_overlay("ass-events")
+	local text_osd = mp.create_osd_overlay('ass-events')
 	text_osd.compute_bounds, text_osd.hidden = true, true
 
 	---@param ass_text string
@@ -277,8 +289,11 @@ do
 		local size = math.min(max_size * 0.9, 50)
 		char_count = math.min(math.floor(char_count * max_size / size * 0.8), 100)
 		local enclosing_char, enclosing_width, next_char_count = '|', 0, char_count
-		if measured_char == enclosing_char then enclosing_char = ''
-		else enclosing_width = 2 * character_width(enclosing_char, bold) end
+		if measured_char == enclosing_char then
+			enclosing_char = ''
+		else
+			enclosing_width = 2 * character_width(enclosing_char, bold)
+		end
 		local width_ratio, width, px = nil, nil, nil
 		repeat
 			char_count = next_char_count
@@ -304,7 +319,7 @@ end
 local function character_based_width(text, bold)
 	local max_width = 0
 	local min_px = math.huge
-	for line in tostring(text):gmatch("([^\n]*)\n?") do
+	for line in tostring(text):gmatch('([^\n]*)\n?') do
 		local total_width = 0
 		for _, char in utf8_iter(line) do
 			local width, px = character_width(char, bold)
@@ -397,8 +412,8 @@ do
 end
 
 do
-	local wrap_at_chars = { ' ', '　', '-', '–' }
-	local remove_when_wrap = { ' ', '　' }
+	local wrap_at_chars = {' ', '　', '-', '–'}
+	local remove_when_wrap = {' ', '　'}
 
 	---Wrap the text at the closest opportunity to target_line_length
 	---@param text string
@@ -445,8 +460,11 @@ do
 					end
 				end
 			end
-			if #text_line >= line_start then lines[#lines + 1] = text_line:sub(line_start)
-			elseif text_line == '' then lines[#lines + 1] = '' end
+			if #text_line >= line_start then
+				lines[#lines + 1] = text_line:sub(line_start)
+			elseif text_line == '' then
+				lines[#lines + 1] = ''
+			end
 		end
 		return table.concat(lines, '\n'), #lines
 	end

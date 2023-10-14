@@ -12,7 +12,7 @@ function sort_filenames(filenames)
 
 	local tuples = {}
 	for i, f in ipairs(filenames) do
-		tuples[i] = { f:lower():gsub('0*(%d+)%.?(%d*)', padnum), f }
+		tuples[i] = {f:lower():gsub('0*(%d+)%.?(%d*)', padnum), f}
 	end
 	table.sort(tuples, function(a, b)
 		return a[1] == b[1] and #b[2] < #a[2] or a[1] < b[1]
@@ -53,8 +53,11 @@ function tween(from, to, setter, duration_or_callback, callback)
 		local is_end = math.abs(to - current) <= cutoff
 		setter(is_end and to or current)
 		request_render()
-		if is_end then finish()
-		else timeout:resume() end
+		if is_end then
+			finish()
+		else
+			timeout:resume()
+		end
 	end
 
 	timeout = mp.add_timeout(state.render_delay, tick)
@@ -88,12 +91,12 @@ end
 ---@param mby number
 function get_line_to_line_intersection(lax, lay, lbx, lby, max, may, mbx, mby)
 	-- Calculate the direction of the lines
-	local uA = ((mbx-max)*(lay-may) - (mby-may)*(lax-max)) / ((mby-may)*(lbx-lax) - (mbx-max)*(lby-lay))
-	local uB = ((lbx-lax)*(lay-may) - (lby-lay)*(lax-max)) / ((mby-may)*(lbx-lax) - (mbx-max)*(lby-lay))
+	local uA = ((mbx - max) * (lay - may) - (mby - may) * (lax - max)) / ((mby - may) * (lbx - lax) - (mbx - max) * (lby - lay))
+	local uB = ((lbx - lax) * (lay - may) - (lby - lay) * (lax - max)) / ((mby - may) * (lbx - lax) - (mbx - max) * (lby - lay))
 
 	-- If uA and uB are between 0-1, lines are colliding
 	if uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1 then
-		return lax + (uA * (lbx-lax)), lay + (uA * (lby-lay))
+		return lax + (uA * (lbx - lax)), lay + (uA * (lby - lay))
 	end
 
 	return nil, nil
@@ -230,16 +233,20 @@ function join_path(p1, p2)
 	local p1, separator = trim_trailing_separator(p1)
 	-- Prevents joining drive letters with a redundant separator (`C:\\foo`),
 	-- as `trim_trailing_separator()` doesn't trim separators from drive letters.
-	return p1:sub(#p1) == separator and p1 .. p2 or p1 .. separator.. p2
+	return p1:sub(#p1) == separator and p1 .. p2 or p1 .. separator .. p2
 end
 
 -- Check if path is absolute.
 ---@param path string
 ---@return boolean
 function is_absolute(path)
-	if path:sub(1, 2) == '\\\\' then return true
-	elseif state.platform == 'windows' then return path:find('^%a+:') ~= nil
-	else return path:sub(1, 1) == '/' end
+	if path:sub(1, 2) == '\\\\' then
+		return true
+	elseif state.platform == 'windows' then
+		return path:find('^%a+:') ~= nil
+	else
+		return path:sub(1, 1) == '/'
+	end
 end
 
 -- Ensure path is absolute.
@@ -287,9 +294,13 @@ function normalize_path(path)
 	path = trim_trailing_separator(path)
 
 	--Deduplication of path separators
-	if is_unc then path = path:gsub('(.\\)\\+', '%1')
-	elseif state.platform == 'windows' then path = path:gsub('\\\\+', '\\')
-	else path = path:gsub('//+', '/') end
+	if is_unc then
+		path = path:gsub('(.\\)\\+', '%1')
+	elseif state.platform == 'windows' then
+		path = path:gsub('\\\\+', '\\')
+	else
+		path = path:gsub('//+', '/')
+	end
 
 	return path
 end
@@ -355,14 +366,16 @@ function read_directory(path, opts)
 	local files, directories = {}, {}
 
 	for _, item in ipairs(items) do
-		if item ~= '.' and item ~= '..' and (opts.hidden or item:sub(1, 1) ~= ".") then
+		if item ~= '.' and item ~= '..' and (opts.hidden or item:sub(1, 1) ~= '.') then
 			local info = utils.file_info(join_path(path, item))
 			if info then
 				if info.is_file then
 					if not opts.types or has_any_extension(item, opts.types) then
 						files[#files + 1] = item
 					end
-				else directories[#directories + 1] = item end
+				else
+					directories[#directories + 1] = item
+				end
 			end
 		end
 	end
@@ -410,7 +423,7 @@ function decide_navigation_in_list(paths, current_index, delta)
 	if state.shuffle then
 		state.shuffle_history = state.shuffle_history or {
 			pos = #state.history,
-			paths = itable_slice(state.history)
+			paths = itable_slice(state.history),
 		}
 		state.shuffle_history.pos = state.shuffle_history.pos + delta
 		local history_path = state.shuffle_history.paths[state.shuffle_history.pos]
@@ -442,8 +455,11 @@ function decide_navigation_in_list(paths, current_index, delta)
 
 	local new_index = current_index + delta
 	if mp.get_property_native('loop-playlist') then
-		if new_index > #paths then new_index = new_index % #paths
-		elseif new_index < 1 then new_index = #paths - new_index end
+		if new_index > #paths then
+			new_index = new_index % #paths
+		elseif new_index < 1 then
+			new_index = #paths - new_index
+		end
 	elseif new_index < 1 or new_index > #paths then
 		return
 	end
@@ -456,11 +472,14 @@ function navigate_directory(delta)
 	if not state.path or is_protocol(state.path) then return false end
 	local paths, current_index = get_adjacent_files(state.path, {
 		types = config.types.autoload,
-		hidden = options.show_hidden_files
+		hidden = options.show_hidden_files,
 	})
 	if paths and current_index then
 		local _, path = decide_navigation_in_list(paths, current_index, delta)
-		if path then mp.commandv('loadfile', path) return true end
+		if path then
+			mp.commandv('loadfile', path)
+			return true
+		end
 	end
 	return false
 end
@@ -497,19 +516,19 @@ function delete_file(path)
 			]]
 
 			local escaped_path = string.gsub(path, "'", "''")
-            escaped_path = string.gsub(escaped_path, "’", "’’")
-            escaped_path = string.gsub(escaped_path, "%%", "%%%%")
-            ps_code = string.gsub(ps_code, "__path__", escaped_path)
-		    args = { 'powershell', '-NoProfile', '-Command', ps_code }
+			escaped_path = string.gsub(escaped_path, '’', '’’')
+			escaped_path = string.gsub(escaped_path, '%%', '%%%%')
+			ps_code = string.gsub(ps_code, '__path__', escaped_path)
+			args = {'powershell', '-NoProfile', '-Command', ps_code}
 		else
-			args = { 'cmd', '/C', 'del', path }
+			args = {'cmd', '/C', 'del', path}
 		end
 	else
 		if options.use_trash then
 			--On Linux and Macos the app trash-cli/trash must be installed first.
-		    args = { 'trash', path }
+			args = {'trash', path}
 		else
-		    args = { 'rm', path }
+			args = {'rm', path}
 		end
 	end
 	return mp.command_native({
@@ -524,23 +543,37 @@ end
 function serialize_chapter_ranges(normalized_chapters)
 	local ranges = {}
 	local simple_ranges = {
-		{name = 'openings', patterns = {
+		{
+			name = 'openings',
+			patterns = {
 				'^op ', '^op$', ' op$',
-				'^opening$', ' opening$'
-			}, requires_next_chapter = true},
-		{name = 'intros', patterns = {
+				'^opening$', ' opening$',
+			},
+			requires_next_chapter = true
+		},
+		{
+			name = 'intros',
+			patterns = {
 				'^intro$', ' intro$',
-				'^avant$', '^prologue$'
-			}, requires_next_chapter = true},
-		{name = 'endings', patterns = {
+				'^avant$', '^prologue$',
+			},
+			requires_next_chapter = true
+		},
+		{
+			name = 'endings',
+			patterns = {
 				'^ed ', '^ed$', ' ed$',
 				'^ending ', '^ending$', ' ending$',
-			}},
-		{name = 'outros', patterns = {
+			}
+		},
+		{
+			name = 'outros',
+			patterns = {
 				'^outro$', ' outro$',
 				'^closing$', '^closing ',
 				'^preview$', '^pv$',
-			}},
+			}
+		},
 	}
 	local sponsor_ranges = {}
 
@@ -580,8 +613,10 @@ function serialize_chapter_ranges(normalized_chapters)
 					local end_match = end_chapter.lowercase_title:match('segment end *%(' .. id .. '%)')
 					if end_match then
 						local range = table_assign({
-							start_chapter = chapter, end_chapter = end_chapter,
-							start = chapter.time, ['end'] = end_chapter.time,
+							start_chapter = chapter,
+							end_chapter = end_chapter,
+							start = chapter.time,
+							['end'] = end_chapter.time,
 						}, config.chapter_ranges.ads)
 						ranges[#ranges + 1], sponsor_ranges[#sponsor_ranges + 1] = range, range
 						end_chapter.is_end_only = true
@@ -663,10 +698,10 @@ function render()
 		local smaller_side = math.min(display.width, display.height)
 		local center_x, center_y, icon_size = display.width / 2, display.height / 2, math.max(smaller_side / 4, 56)
 		ass:icon(center_x, center_y - icon_size / 4, icon_size, 'not_started', {
-			color = fg, opacity = config.opacity.idle_indicator
+			color = fg, opacity = config.opacity.idle_indicator,
 		})
 		ass:txt(center_x, center_y + icon_size / 2, 8, t('Drop files or URLs to play here'), {
-			size = icon_size / 4, color = fg, opacity = config.opacity.idle_indicator
+			size = icon_size / 4, color = fg, opacity = config.opacity.idle_indicator,
 		})
 	end
 
@@ -675,7 +710,7 @@ function render()
 		and not (state.pause and options.pause_indicator == 'static') then
 		local smaller_side = math.min(display.width, display.height)
 		ass:icon(display.width / 2, display.height / 2, smaller_side / 4, 'graphic_eq', {
-			color = fg, opacity = config.opacity.audio_indicator
+			color = fg, opacity = config.opacity.audio_indicator,
 		})
 	end
 

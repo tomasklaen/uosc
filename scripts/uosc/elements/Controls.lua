@@ -57,8 +57,10 @@ function Controls:init_options()
 	local current_item = nil
 	for c in options.controls:gmatch('.') do
 		if not current_item then current_item = {disposition = '', config = ''} end
-		if c == '<' and #current_item.config == 0 then in_disposition = true
-		elseif c == '>' and #current_item.config == 0 then in_disposition = false
+		if c == '<' and #current_item.config == 0 then
+			in_disposition = true
+		elseif c == '>' and #current_item.config == 0 then
+			in_disposition = false
 		elseif c == ',' and not in_disposition then
 			items[#items + 1] = current_item
 			current_item = nil
@@ -224,8 +226,11 @@ function Controls:register_badge_updater(badge, element)
 		request_render()
 	end
 
-	if is_external_prop then element['on_external_prop_' .. prop] = function(_, value) handler(prop, value) end
-	else self:observe_mp_property(observable_name, handler) end
+	if is_external_prop then
+		element['on_external_prop_' .. prop] = function(_, value) handler(prop, value) end
+	else
+		self:observe_mp_property(observable_name, handler)
+	end
 end
 
 function Controls:get_visibility()

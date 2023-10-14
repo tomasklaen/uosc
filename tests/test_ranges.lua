@@ -1,5 +1,3 @@
-
-
 local example_chapters = {
 	openings = {
 		yes = {
@@ -7,8 +5,8 @@ local example_chapters = {
 			'Opening',
 		},
 		no = {
-			'Opening the box'
-		}
+			'Opening the box',
+		},
 	},
 	intros = {
 		yes = {
@@ -18,7 +16,7 @@ local example_chapters = {
 			'Prologue',
 		},
 		no = {
-		}
+		},
 	},
 	endings = {
 		yes = {
@@ -28,7 +26,7 @@ local example_chapters = {
 		no = {
 			'end of the thread',
 			'trending',
-		}
+		},
 	},
 	outros = {
 		yes = {
@@ -38,28 +36,42 @@ local example_chapters = {
 			'PV',
 		},
 		no = {
-		}
-	}
+		},
+	},
 }
 
 local simple_ranges = {
-	{name = 'openings', patterns = {
+	{
+		name = 'openings',
+		patterns = {
 			'^op ', '^op$', ' op$',
-			'^opening$', ' opening$'
-		}, requires_next_chapter = true},
-	{name = 'intros', patterns = {
+			'^opening$', ' opening$',
+		},
+		requires_next_chapter = true
+	},
+	{
+		name = 'intros',
+		patterns = {
 			'^intro$', ' intro$',
-			'^avant$', '^prologue$'
-		}, requires_next_chapter = true},
-	{name = 'endings', patterns = {
+			'^avant$', '^prologue$',
+		},
+		requires_next_chapter = true
+	},
+	{
+		name = 'endings',
+		patterns = {
 			'^ed ', '^ed$', ' ed$',
 			'^ending ', '^ending$', ' ending$',
-		}},
-	{name = 'outros', patterns = {
+		}
+	},
+	{
+		name = 'outros',
+		patterns = {
 			'^outro$', ' outro$',
 			'^closing$', '^closing ',
 			'^preview$', '^pv$',
-		}},
+		}
+	},
 }
 
 local function find_any(s, patterns)

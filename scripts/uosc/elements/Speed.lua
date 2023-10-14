@@ -127,7 +127,7 @@ function Speed:render()
 
 	-- Background
 	ass:rect(self.ax, self.ay, self.bx, self.by, {
-		color = bg, radius = state.radius, opacity = opacity * config.opacity.speed
+		color = bg, radius = state.radius, opacity = opacity * config.opacity.speed,
 	})
 
 	-- Coordinates
@@ -166,7 +166,9 @@ function Speed:render()
 			end
 
 			ass:rect(notch_x - notch_thickness, notch_ay, notch_x + notch_thickness, notch_by, {
-				color = fg, border = 1, border_color = bg,
+				color = fg,
+				border = 1,
+				border_color = bg,
 				opacity = math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1) * opacity,
 			})
 		end
@@ -186,7 +188,10 @@ function Speed:render()
 	-- Speed value
 	local speed_text = (round(state.speed * 100) / 100) .. 'x'
 	ass:txt(half_x, ay + (notch_ay_big - ay) / 2, 5, speed_text, {
-		size = self.font_size, color = bgt, border = options.text_border * state.scale, border_color = bg,
+		size = self.font_size,
+		color = bgt,
+		border = options.text_border * state.scale,
+		border_color = bg,
 		opacity = opacity,
 	})
 

@@ -16,7 +16,9 @@ function BufferingIndicator:decide_enabled()
 	local player = state.core_idle and not state.eof_reached
 	if self.enabled then
 		if not player or (state.pause and not cache) then self.enabled = false end
-	elseif player and cache and state.uncached_ranges then self.enabled = true end
+	elseif player and cache and state.uncached_ranges then
+		self.enabled = true
+	end
 end
 
 function BufferingIndicator:on_prop_pause() self:decide_enabled() end

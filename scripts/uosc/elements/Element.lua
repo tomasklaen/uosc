@@ -34,8 +34,11 @@ function Element:init(id, props)
 	self._flash_out_timer = mp.add_timeout(options.flash_duration / 1000, function()
 		local function getTo() return self.proximity end
 		local function onTweenEnd() self.forced_visibility = nil end
-		if self.enabled then self:tween_property('forced_visibility', 1, getTo, onTweenEnd)
-		else onTweenEnd() end
+		if self.enabled then
+			self:tween_property('forced_visibility', 1, getTo, onTweenEnd)
+		else
+			onTweenEnd()
+		end
 	end)
 	self._flash_out_timer:kill()
 
