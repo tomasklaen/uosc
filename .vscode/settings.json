@@ -8,7 +8,8 @@
 	],
 	"Lua.diagnostics.disable": [
 		"lowercase-global",
-		"redefined-local"
+		"redefined-local",
+		"duplicate-set-field"
 	],
 	"Lua.diagnostics.globals": [
 		"mp"
@@ -28,6 +29,7 @@
 		"hidpi",
 		"hitbox",
 		"jfif",
+		"keybids",
 		"logicaldisk",
 		"outro",
 		"outros",

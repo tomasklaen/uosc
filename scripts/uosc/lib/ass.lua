@@ -73,7 +73,7 @@ function ass_mt:txt(x, y, align, value, opts)
 end
 
 -- Tooltip.
----@param element {ax: number; ay: number; bx: number; by: number}
+---@param element Rect
 ---@param value string|number
 ---@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, margin?: number; responsive?: boolean; lines?: integer}
 function ass_mt:tooltip(element, value, opts)

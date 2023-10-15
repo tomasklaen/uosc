@@ -1,5 +1,8 @@
 --[[ UI specific utilities that might or might not depend on its state or options ]]
 
+---@alias Point {x: number; y: number}
+---@alias Rect {ax: number, ay: number, bx: number, by: number}
+
 --- In place sorting of filenames
 ---@param filenames string[]
 function sort_filenames(filenames)
@@ -66,16 +69,16 @@ function tween(from, to, setter, duration_or_callback, callback)
 	return finish
 end
 
----@param point {x: number; y: number}
----@param rect {ax: number; ay: number; bx: number; by: number}
+---@param point Point
+---@param rect Rect
 function get_point_to_rectangle_proximity(point, rect)
 	local dx = math.max(rect.ax - point.x, 0, point.x - rect.bx)
 	local dy = math.max(rect.ay - point.y, 0, point.y - rect.by)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
----@param point_a {x: number; y: number}
----@param point_b {x: number; y: number}
+---@param point_a Point
+---@param point_b Point
 function get_point_to_point_proximity(point_a, point_b)
 	local dx, dy = point_a.x - point_b.x, point_a.y - point_b.y
 	return math.sqrt(dx * dx + dy * dy)
@@ -128,7 +131,7 @@ end
 ---@param  ay number
 ---@param  bx number
 ---@param  by number
----@param  rect {ax: number; ay: number; bx: number; by: number}
+---@param  rect Rect
 ---@return number|nil
 function get_ray_to_rectangle_distance(ax, ay, bx, by, rect)
 	-- Is inside
@@ -690,7 +693,7 @@ function render()
 	if not display.initialized then return end
 	state.render_last_time = mp.get_time()
 
-	cursor.reset_handlers()
+	cursor:reset_main_handlers()
 
 	-- Actual rendering
 	local ass = assdraw.ass_new()
@@ -727,7 +730,7 @@ function render()
 		end
 	end
 
-	cursor.decide_keybinds()
+	cursor:decide_keybinds()
 
 	-- submit
 	if osd.res_x == display.width and osd.res_y == display.height and osd.data == ass.text then

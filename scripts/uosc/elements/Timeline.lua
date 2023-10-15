@@ -134,7 +134,7 @@ function Timeline:on_global_mouse_move()
 	if self.pressed then
 		self.pressed.distance = self.pressed.distance + get_point_to_point_proximity(self.pressed.last, cursor)
 		self.pressed.last.x, self.pressed.last.y = cursor.x, cursor.y
-		if state.is_video and math.abs(cursor.get_velocity().x) / self.width * state.duration > 30 then
+		if state.is_video and math.abs(cursor:get_velocity().x) / self.width * state.duration > 30 then
 			self:set_from_cursor(true)
 		else
 			self:set_from_cursor()

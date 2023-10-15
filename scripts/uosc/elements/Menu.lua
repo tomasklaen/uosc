@@ -57,7 +57,7 @@ function Menu:close(immediate, callback)
 			menu.is_closing, menu.stack, menu.current, menu.all, menu.by_id = false, nil, nil, {}, {}
 			menu:disable_key_bindings()
 			Elements:update_proximities()
-			cursor.queue_autohide()
+			cursor:queue_autohide()
 			if callback then callback() end
 			request_render()
 		end
@@ -629,7 +629,7 @@ function Menu:handle_cursor_up()
 		self:open_selected_item({preselect_first_item = false, keep_open = self.modifiers and self.modifiers.shift})
 	end
 	if self.is_dragging then
-		local distance = cursor.get_velocity().y / -3
+		local distance = cursor:get_velocity().y / -3
 		if math.abs(distance) > 50 then
 			self.current.fling = {
 				y = self.current.scroll_y,
@@ -1130,7 +1130,7 @@ function Menu:render()
 
 			-- Select hovered item
 			if is_current and self.mouse_nav and item.selectable ~= false then
-				if submenu_rect and cursor.direction_to_rectangle_distance(submenu_rect) then
+				if submenu_rect and cursor:direction_to_rectangle_distance(submenu_rect) then
 					blur_selected_index = false
 				else
 					local item_rect_hitbox = {

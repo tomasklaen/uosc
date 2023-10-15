@@ -301,150 +301,7 @@ end
 --[[ STATE ]]
 
 display = {width = 1280, height = 720, initialized = false}
-cursor = {
-	x = math.huge,
-	y = math.huge,
-	hidden = true,
-	hover_raw = false,
-	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
-	-- - element activations (clicks) go to `on_primary_down` handler
-	-- - `on_primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
-	on_primary_down = nil,
-	on_primary_up = nil,
-	on_wheel_down = nil,
-	on_wheel_up = nil,
-	allow_dragging = false,
-	first_real_mouse_move_received = false,
-	history = CircularBuffer:new(10),
-	-- Called at the beginning of each render
-	reset_handlers = function()
-		cursor.on_primary_down, cursor.on_primary_up = nil, nil
-		cursor.on_wheel_down, cursor.on_wheel_up = nil, nil
-		cursor.allow_dragging = false
-	end,
-	-- Enables pointer key group captures needed by handlers (called at the end of each render)
-	mbtn_left_enabled = nil,
-	wheel_enabled = nil,
-	decide_keybinds = function()
-		local enable_mbtn_left = (cursor.on_primary_down or cursor.on_primary_up) ~= nil
-		local enable_wheel = (cursor.on_wheel_down or cursor.on_wheel_up) ~= nil
-		if enable_mbtn_left ~= cursor.mbtn_left_enabled then
-			local flags = cursor.allow_dragging and 'allow-vo-dragging' or nil
-			mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left', flags)
-			cursor.mbtn_left_enabled = enable_mbtn_left
-		end
-		if enable_wheel ~= cursor.wheel_enabled then
-			mp[(enable_wheel and 'enable' or 'disable') .. '_key_bindings']('wheel')
-			cursor.wheel_enabled = enable_wheel
-		end
-	end,
-	find_history_sample = function()
-		local time = mp.get_time()
-		for _, e in cursor.history:iter_rev() do
-			if time - e.time > 0.1 then
-				return e
-			end
-		end
-		return cursor.history:tail()
-	end,
-	get_velocity = function()
-		local snap = cursor.find_history_sample()
-		if snap then
-			local x, y, time = cursor.x - snap.x, cursor.y - snap.y, mp.get_time()
-			local time_diff = time - snap.time
-			if time_diff > 0.001 then
-				return {x = x / time_diff, y = y / time_diff}
-			end
-		end
-		return {x = 0, y = 0}
-	end,
-	move = function(x, y)
-		local old_x, old_y = cursor.x, cursor.y
-
-		-- mpv reports initial mouse position on linux as (0, 0), which always
-		-- displays the top bar, so we hardcode cursor position as infinity until
-		-- we receive a first real mouse move event with coordinates other than 0,0.
-		if not cursor.first_real_mouse_move_received then
-			if x > 0 and y > 0 then
-				cursor.first_real_mouse_move_received = true
-			else
-				x, y = math.huge, math.huge
-			end
-		end
-
-		-- Add 0.5 to be in the middle of the pixel
-		cursor.x = x == math.huge and x or x + 0.5
-		cursor.y = y == math.huge and y or y + 0.5
-
-		if old_x ~= cursor.x or old_y ~= cursor.y then
-			if cursor.x == math.huge or cursor.y == math.huge then
-				cursor.hidden = true
-				cursor.history:clear()
-
-				-- Slowly fadeout elements that are currently visible
-				for _, id in ipairs(config.cursor_leave_fadeout_elements) do
-					local element = Elements[id]
-					if element then
-						local visibility = element:get_visibility()
-						if visibility > 0 then
-							element:tween_property('forced_visibility', visibility, 0, function()
-								element.forced_visibility = nil
-							end)
-						end
-					end
-				end
-
-				Elements:update_proximities()
-				Elements:trigger('global_mouse_leave')
-			else
-				Elements:update_proximities()
-
-				if cursor.hidden then
-					-- Cancel potential fadeouts
-					for _, id in ipairs(config.cursor_leave_fadeout_elements) do
-						if Elements[id] then Elements[id]:tween_stop() end
-					end
-
-					cursor.hidden = false
-					cursor.history:clear()
-					Elements:trigger('global_mouse_enter')
-				else
-					-- Update history
-					cursor.history:insert({x = cursor.x, y = cursor.y, time = mp.get_time()})
-				end
-			end
-
-			Elements:proximity_trigger('mouse_move')
-			cursor.queue_autohide()
-		end
-
-		request_render()
-	end,
-	leave = function() cursor.move(math.huge, math.huge) end,
-	-- Cursor auto-hiding after period of inactivity
-	autohide = function()
-		if not cursor.on_primary_up and not Menu:is_open() then cursor.leave() end
-	end,
-	autohide_timer = (function()
-		local timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function() cursor.autohide() end)
-		timer:kill()
-		return timer
-	end)(),
-	queue_autohide = function()
-		if options.autohide and not cursor.on_primary_up then
-			cursor.autohide_timer:kill()
-			cursor.autohide_timer:resume()
-		end
-	end,
-	-- Calculates distance in which cursor reaches rectangle if it continues moving on the same path.
-	-- Returns `nil` if cursor is not moving towards the rectangle.
-	direction_to_rectangle_distance = function(rect)
-		local prev = cursor.find_history_sample()
-		if not prev then return false end
-		local end_x, end_y = cursor.x + (cursor.x - prev.x) * 1e10, cursor.y + (cursor.y - prev.y) * 1e10
-		return get_ray_to_rectangle_distance(cursor.x, cursor.y, end_x, end_y, rect)
-	end,
-}
+cursor = require('lib/cursor')
 state = {
 	platform = (function()
 		local platform = mp.get_property_native('platform')
@@ -547,7 +404,7 @@ function update_fullormaxed()
 	state.fullormaxed = state.fullscreen or state.maximized
 	update_display_dimensions()
 	Elements:trigger('prop_fullormaxed', state.fullormaxed)
-	cursor.leave()
+	cursor:leave()
 end
 
 function update_human_times()
@@ -720,16 +577,6 @@ if options.click_threshold > 0 then
 	mp.enable_key_bindings('mouse_movement', 'allow-vo-dragging+allow-hide-cursor')
 end
 
-function handle_mouse_pos(_, mouse)
-	if not mouse then return end
-	if cursor.hover_raw and not mouse.hover then
-		cursor.leave()
-	else
-		cursor.move(mouse.x, mouse.y)
-	end
-	cursor.hover_raw = mouse.hover
-end
-mp.observe_property('mouse-pos', 'native', handle_mouse_pos)
 mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 mp.register_event('file-loaded', function()
 	local path = normalize_path(mp.get_property_native('path'))
@@ -940,29 +787,6 @@ mp.observe_property('eof-reached', 'native', create_state_setter('eof_reached'))
 mp.observe_property('core-idle', 'native', create_state_setter('core_idle'))
 
 --[[ KEY BINDS ]]
-
--- Pointer related binding groups
-function make_cursor_handler(event, cb)
-	return function(...)
-		call_maybe(cursor[event], ...)
-		call_maybe(cb, ...)
-		cursor.queue_autohide() -- refresh cursor autohide timer
-	end
-end
-mp.set_key_bindings({
-	{
-		'mbtn_left',
-		make_cursor_handler('on_primary_up'),
-		make_cursor_handler('on_primary_down', function(...)
-			handle_mouse_pos(nil, mp.get_property_native('mouse-pos'))
-		end),
-	},
-	{'mbtn_left_dbl', 'ignore'},
-}, 'mbtn_left', 'force')
-mp.set_key_bindings({
-	{'wheel_up', make_cursor_handler('on_wheel_up')},
-	{'wheel_down', make_cursor_handler('on_wheel_down')},
-}, 'wheel', 'force')
 
 -- Adds a key binding that respects rerouting set by `key_binding_overwrites` table.
 ---@param name string
