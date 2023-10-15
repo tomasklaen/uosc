@@ -91,8 +91,10 @@ end
 ---@param mby number
 function get_line_to_line_intersection(lax, lay, lbx, lby, max, may, mbx, mby)
 	-- Calculate the direction of the lines
-	local uA = ((mbx - max) * (lay - may) - (mby - may) * (lax - max)) / ((mby - may) * (lbx - lax) - (mbx - max) * (lby - lay))
-	local uB = ((lbx - lax) * (lay - may) - (lby - lay) * (lax - max)) / ((mby - may) * (lbx - lax) - (mbx - max) * (lby - lay))
+	local uA = ((mbx - max) * (lay - may) - (mby - may) * (lax - max)) /
+		((mby - may) * (lbx - lax) - (mbx - max) * (lby - lay))
+	local uB = ((lbx - lax) * (lay - may) - (lby - lay) * (lax - max)) /
+		((mby - may) * (lbx - lax) - (mbx - max) * (lby - lay))
 
 	-- If uA and uB are between 0-1, lines are colliding
 	if uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1 then
@@ -549,7 +551,7 @@ function serialize_chapter_ranges(normalized_chapters)
 				'^op ', '^op$', ' op$',
 				'^opening$', ' opening$',
 			},
-			requires_next_chapter = true
+			requires_next_chapter = true,
 		},
 		{
 			name = 'intros',
@@ -557,14 +559,14 @@ function serialize_chapter_ranges(normalized_chapters)
 				'^intro$', ' intro$',
 				'^avant$', '^prologue$',
 			},
-			requires_next_chapter = true
+			requires_next_chapter = true,
 		},
 		{
 			name = 'endings',
 			patterns = {
 				'^ed ', '^ed$', ' ed$',
 				'^ending ', '^ending$', ' ending$',
-			}
+			},
 		},
 		{
 			name = 'outros',
@@ -572,7 +574,7 @@ function serialize_chapter_ranges(normalized_chapters)
 				'^outro$', ' outro$',
 				'^closing$', '^closing ',
 				'^preview$', '^pv$',
-			}
+			},
 		},
 	}
 	local sponsor_ranges = {}
@@ -585,7 +587,7 @@ function serialize_chapter_ranges(normalized_chapters)
 
 	-- Clone chapters
 	local chapters = {}
-	for i, normalized in ipairs(normalized_chapters) do chapters[i] = table_shallow_copy(normalized) end
+	for i, normalized in ipairs(normalized_chapters) do chapters[i] = table_assign({}, normalized) end
 
 	for i, chapter in ipairs(chapters) do
 		-- Simple ranges

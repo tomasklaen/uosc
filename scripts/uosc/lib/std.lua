@@ -191,32 +191,52 @@ function table_values(input)
 	return values
 end
 
----@param target any[]
----@param source any[]
----@param props? string[]
-function table_assign(target, source, props)
-	if props then
-		for _, name in ipairs(props) do target[name] = source[name] end
-	else
-		for prop, value in pairs(source) do target[prop] = value end
+---@generic T: table<any, any>
+---@param target T
+---@param ... T|nil
+---@return T
+function table_assign(target, ...)
+	local args = {...}
+	for i = 1, #args do
+		if args[i] then for key, value in pairs(args[i]) do target[key] = value end end
 	end
 	return target
 end
 
----@generic T
----@param table T
+---@generic T: table<any, any>
+---@param target T
+---@param source T
+---@param props string[]
 ---@return T
-function table_shallow_copy(table)
-	local result = {}
-	for key, value in pairs(table) do result[key] = value end
-	return result
+function table_assign_props(target, source, props)
+	for _, name in ipairs(props) do target[name] = source[name] end
+	return target
 end
+
+-- `table_assign({}, input)` without loosing types :(
+---@generic T: table<any, any>
+---@param input T
+---@return T
+function table_copy(input) return table_assign({}, input) end
 
 -- Converts itable values into `table<value, true>` map.
 ---@param values any[]
 function make_set(values)
 	local result = {}
 	for _, value in ipairs(values) do result[value] = true end
+	return result
+end
+
+---@generic T: any
+---@param input string
+---@param value_sanitizer? fun(value: string, key: string): T
+---@return table<string, T>
+function serialize_key_value_list(input, value_sanitizer)
+	local result, sanitize = {}, value_sanitizer or function(value) return value end
+	for _, key_value_pair in ipairs(comma_split(input)) do
+		local key, value = key_value_pair:match('^([%w_]+)=([%w%.]+)$')
+		if key and value then result[key] = sanitize(value, key) end
+	end
 	return result
 end
 

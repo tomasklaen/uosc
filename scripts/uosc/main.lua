@@ -65,6 +65,7 @@ defaults = {
 	font_scale = 1,
 	text_border = 1.2,
 	border_radius = 2,
+	color = '',
 	opacity = '',
 	animation_duration = 100,
 	text_width_estimation = true,
@@ -74,10 +75,6 @@ defaults = {
 	flash_duration = 1000,
 	proximity_in = 40,
 	proximity_out = 120,
-	foreground = 'ffffff',
-	foreground_text = '000000',
-	background = '000000',
-	background_text = 'ffffff',
 	total_time = false, -- deprecated by below
 	destination_time = 'playtime-remaining',
 	time_precision = 0,
@@ -101,8 +98,9 @@ defaults = {
 	languages = 'slang,en',
 	disable_elements = '',
 }
-options = table_shallow_copy(defaults)
+options = table_copy(defaults)
 opt.read_options(options, 'uosc', function(_)
+	update_config()
 	update_human_times()
 	Manager:disable('user', options.disable_elements)
 	Elements:trigger('options')
@@ -124,16 +122,38 @@ elseif not itable_index_of({'total', 'playtime-remaining', 'time-remaining'}, op
 end
 -- Ensure required environment configuration
 if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
--- Color shorthands
-fg, bg = serialize_rgba(options.foreground).color, serialize_rgba(options.background).color
-fgt, bgt = serialize_rgba(options.foreground_text).color, serialize_rgba(options.background_text).color
 
 --[[ INTERNATIONALIZATION ]]
 local intl = require('lib/intl')
 t = intl.t
 
 --[[ CONFIG ]]
-
+local config_defaults = {
+	color = {
+		foreground = 'ffffff',
+		foreground_text = '000000',
+		background = '000000',
+		background_text = 'ffffff',
+		curtain = '111111',
+	},
+	opacity = {
+		timeline = 0.9,
+		position = 1,
+		chapters = 0.8,
+		slider = 0.9,
+		slider_gauge = 1,
+		speed = 0.6,
+		menu = 1,
+		submenu = 0.4,
+		border = 1,
+		title = 1,
+		tooltip = 1,
+		thumbnail = 1,
+		curtain = 0.8,
+		idle_indicator = 0.8,
+		audio_indicator = 0.5,
+	},
+}
 config = {
 	version = uosc_version,
 	-- sets max rendering frequency in case the
@@ -190,43 +210,40 @@ config = {
 		end
 		return ranges
 	end)(),
-	opacity = {
-		timeline = 0.9,
-		position = 1,
-		chapters = 0.8,
-		slider = 0.9,
-		slider_gauge = 1,
-		speed = 0.6,
-		menu = 1,
-		submenu = 0.4,
-		border = 1,
-		title = 1,
-		tooltip = 1,
-		thumbnail = 1,
-		curtain = 0.8,
-		idle_indicator = 0.8,
-		audio_indicator = 0.5,
-	},
+	color = table_copy(config_defaults.color),
+	opacity = table_copy(config_defaults.opacity),
 	cursor_leave_fadeout_elements = {'timeline', 'volume', 'top_bar', 'controls'},
 }
--- Adds `{element}_persistency` property with table of flags when the element should be visible (`{paused = true}`)
-for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
-	local option_name = name .. '_persistency'
-	local value, flags = options[option_name], {}
-	if type(value) == 'string' then
-		for _, state in ipairs(comma_split(value)) do flags[state] = true end
-	end
-	config[option_name] = flags
-end
--- Parse `opacity` overrides
-do
-	for _, key_value_pair in ipairs(comma_split(options.opacity)) do
-		local key, value = key_value_pair:match('^([%w_]+)=([%d%.]+)$')
-		if key and config.opacity[key] then
-			config.opacity[key] = clamp(0, tonumber(value) or config.opacity[key], 1)
+
+-- Updates config with values dependent on options
+function update_config()
+	-- Adds `{element}_persistency` config properties with forced visibility states (e.g.: `{paused = true}`)
+	for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
+		local option_name = name .. '_persistency'
+		local value, flags = options[option_name], {}
+		if type(value) == 'string' then
+			for _, state in ipairs(comma_split(value)) do flags[state] = true end
 		end
+		config[option_name] = flags
 	end
+
+	-- Opacity
+	config.opacity = table_assign({}, config_defaults.opacity, serialize_key_value_list(options.opacity,
+		function(value, key)
+			return clamp(0, tonumber(value) or config.opacity[key], 1)
+		end
+	))
+
+	-- Color
+	config.color = table_assign({}, config_defaults.color, serialize_key_value_list(options.color, function(value)
+		return serialize_rgba(value).color
+	end))
+
+	-- Global color shorthands
+	fg, bg = config.color.foreground, config.color.background
+	fgt, bgt = config.color.foreground_text, config.color.background_text
 end
+update_config()
 
 -- Default menu items
 function create_default_menu_items()

@@ -164,7 +164,7 @@ function Menu:update(data)
 		'icon', 'active', 'bold', 'italic', 'muted', 'value', 'separator', 'selectable', 'align',
 	})
 
-	table_assign(new_root, data, itable_join({'type'}, menu_props_to_copy))
+	table_assign_props(new_root, data, itable_join({'type'}, menu_props_to_copy))
 
 	local i = 0
 	while i < #menus_to_serialize do
@@ -199,7 +199,7 @@ function Menu:update(data)
 			if item_data.active and not first_active_index then first_active_index = i end
 
 			local item = {}
-			table_assign(item, item_data, item_props_to_copy)
+			table_assign_props(item, item_data, item_props_to_copy)
 			if item.keep_open == nil then item.keep_open = menu.keep_open end
 
 			-- Submenu
@@ -217,7 +217,7 @@ function Menu:update(data)
 		-- Retain old state
 		local old_menu = self.by_id[menu.id]
 		if old_menu then
-			table_assign(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'})
+			table_assign_props(menu, old_menu, {'selected_index', 'scroll_y', 'fling', 'search'})
 		else
 			new_menus[#new_menus + 1] = menu
 		end
@@ -269,7 +269,7 @@ end
 
 ---@param items MenuDataItem[]
 function Menu:update_items(items)
-	local data = table_shallow_copy(self.root)
+	local data = table_assign({}, self.root)
 	data.items = items
 	self:update(data)
 end
@@ -751,7 +751,7 @@ function search_items(items, query, recursive, prefix)
 				if title and title:find(query, 1, true) or hint and hint:find(query, 1, true) or
 					title and table.concat(initials(title)):find(query, 1, true) or
 					hint and table.concat(initials(hint)):find(query, 1, true) then
-					item = table_shallow_copy(item)
+					item = table_assign({}, item)
 					item.title = prefixed_title
 					item.ass_safe_title = nil
 					result[#result + 1] = item
@@ -784,7 +784,7 @@ function Menu:search_submit(menu)
 		if search_type == 'string' then
 			mp.command(menu.on_search .. ' ' .. menu.search.query)
 		elseif search_type == 'table' then
-			local command = table_shallow_copy(menu.on_search)
+			local command = itable_join({}, menu.on_search)
 			command[#command + 1] = menu.search.query
 			mp.command_native(command)
 		else
