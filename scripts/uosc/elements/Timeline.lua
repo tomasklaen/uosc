@@ -418,7 +418,7 @@ function Timeline:render()
 			ass:rect(ax, ay, bx, by, {
 				color = bg,
 				border = 1,
-				opacity = {other = config.opacity.thumbnail, border = 0.08 * config.opacity.thumbnail},
+				opacity = {main = config.opacity.thumbnail, border = 0.08 * config.opacity.thumbnail},
 				border_color = fg,
 				radius = state.radius,
 			})
