@@ -52,8 +52,13 @@ function tween(from, to, setter, duration_or_callback, callback)
 
 	local function tick()
 		local to = get_to()
-		current = current + ((to - current) * decay)
-		local is_end = math.abs(to - current) <= cutoff
+		local is_end = false
+		if cutoff > 0 then
+			current = current + ((to - current) * decay)
+			is_end = math.abs(to - current) <= cutoff
+		else
+			is_end = true
+		end
 		setter(is_end and to or current)
 		request_render()
 		if is_end then
