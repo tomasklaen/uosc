@@ -44,32 +44,29 @@ function tween(from, to, setter, duration_or_callback, callback)
 
 	local function finish()
 		if not done then
+			setter(get_to())
 			done = true
 			timeout:kill()
 			if callback then callback() end
+			request_render()
 		end
 	end
 
 	local function tick()
 		local to = get_to()
-		local is_end = false
-		if cutoff > 0 then
-			current = current + ((to - current) * decay)
-			is_end = math.abs(to - current) <= cutoff
-		else
-			is_end = true
-		end
-		setter(is_end and to or current)
-		request_render()
+		current = current + ((to - current) * decay)
+		local is_end = math.abs(to - current) <= cutoff
 		if is_end then
 			finish()
 		else
+			setter(current)
 			timeout:resume()
+			request_render()
 		end
 	end
 
 	timeout = mp.add_timeout(state.render_delay, tick)
-	tick()
+	if cutoff > 0 then tick() else finish() end
 
 	return finish
 end
