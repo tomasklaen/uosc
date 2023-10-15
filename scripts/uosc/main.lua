@@ -152,6 +152,7 @@ local config_defaults = {
 		curtain = 0.8,
 		idle_indicator = 0.8,
 		audio_indicator = 0.5,
+		buffering_indicator = 0.3,
 	},
 }
 config = {
