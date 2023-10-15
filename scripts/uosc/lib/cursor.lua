@@ -50,7 +50,7 @@ end
 function cursor:on(event, callback)
 	if self.handlers[event] and not itable_index_of(self.handlers[event], callback) then
 		self.handlers[event][#self.handlers[event] + 1] = callback
-		self:decide_keybids()
+		self:decide_keybinds()
 	end
 	return function() self:off(event, callback) end
 end
@@ -62,7 +62,7 @@ function cursor:off(event, callback)
 		local index = itable_index_of(self.handlers[event], callback)
 		if index then
 			table.remove(self.handlers[event], index)
-			self:decide_keybids()
+			self:decide_keybinds()
 		end
 	end
 end
