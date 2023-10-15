@@ -25,6 +25,7 @@ Notable features:
     -   Volume bar: change volume by `volume_step` per scroll.
     -   Speed bar: change speed by `speed_step` per scroll.
     -   Just hovering video with no UI widget below cursor: your configured wheel bindings from `input.conf`.
+-   Right click on volume or speed elements to reset them.
 -   Transform chapters into timeline ranges (the red portion of the timeline in the preview).
 -   And a lot of useful options and commands to bind keys to.
 

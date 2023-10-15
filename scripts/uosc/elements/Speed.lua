@@ -87,12 +87,6 @@ function Speed:on_global_mouse_move()
 end
 
 function Speed:handle_cursor_up()
-	if self.proximity_raw == 0 then
-		-- Reset speed on short clicks
-		if self.dragging and math.abs(self.dragging.distance) < 6 and mp.get_time() - self.dragging.start_time < 0.15 then
-			mp.set_property_native('speed', 1)
-		end
-	end
 	self.dragging = nil
 	request_render()
 end
@@ -116,6 +110,7 @@ function Speed:render()
 			self:handle_cursor_down()
 			cursor.on_primary_up = function() self:handle_cursor_up() end
 		end
+		cursor.on_secondary_down = function() mp.set_property_native('speed', 1) end
 		cursor.on_wheel_down = function() self:handle_wheel_down() end
 		cursor.on_wheel_up = function() self:handle_wheel_up() end
 	end

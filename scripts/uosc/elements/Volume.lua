@@ -255,6 +255,14 @@ function Volume:render()
 	local visibility = self:get_visibility()
 	if visibility <= 0 then return end
 
+	-- Reset volume on secondary click
+	if self.proximity_raw == 0 then
+		cursor.on_secondary_down = function()
+			mp.set_property_native('mute', false)
+			mp.set_property_native('volume', 100)
+		end
+	end
+
 	-- Mute button
 	local mute_rect = {ax = self.ax, ay = self.mute_ay, bx = self.bx, by = self.by}
 	if get_point_to_rectangle_proximity(cursor, mute_rect) == 0 then
