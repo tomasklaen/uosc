@@ -418,9 +418,8 @@ function Timeline:render()
 			ass:rect(ax, ay, bx, by, {
 				color = bg,
 				border = 1,
-				opacity = config.opacity.thumbnail,
+				opacity = {other = config.opacity.thumbnail, border = 0.08 * config.opacity.thumbnail},
 				border_color = fg,
-				border_opacity = 0.08 * config.opacity.thumbnail,
 				radius = state.radius,
 			})
 			mp.commandv('script-message-to', 'thumbfast', 'thumb', hovered_seconds, thumb_x, thumb_y)

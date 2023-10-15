@@ -38,7 +38,7 @@ end
 ---@param y number
 ---@param align number
 ---@param value string|number
----@param opts {size: number; font?: string; color?: string; bold?: boolean; italic?: boolean; border?: number; border_color?: string; shadow?: number; shadow_color?: string; rotate?: number; wrap?: number; opacity?: number; clip?: string}
+---@param opts {size: number; font?: string; color?: string; bold?: boolean; italic?: boolean; border?: number; border_color?: string; shadow?: number; shadow_color?: string; rotate?: number; wrap?: number; opacity?: number|{primary?: number; border?: number, shadow?: number, other?: number}; clip?: string}
 function ass_mt:txt(x, y, align, value, opts)
 	local border_size = opts.border or 0
 	local shadow_size = opts.shadow or 0
@@ -64,7 +64,11 @@ function ass_mt:txt(x, y, align, value, opts)
 	if border_size > 0 then tags = tags .. '\\3c&H' .. (opts.border_color or bg) end
 	if shadow_size > 0 then tags = tags .. '\\4c&H' .. (opts.shadow_color or bg) end
 	-- opacity
-	if opts.opacity then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity)) end
+	local opacity = type(opts.opacity) == 'table' and opts.opacity or {other = opts.opacity}
+	if opacity.other then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opacity.other)) end
+	if opacity.primary then tags = tags .. string.format('\\1a&H%X&', opacity_to_alpha(opacity.primary)) end
+	if opacity.border then tags = tags .. string.format('\\3a&H%X&', opacity_to_alpha(opacity.border)) end
+	if opacity.shadow then tags = tags .. string.format('\\4a&H%X&', opacity_to_alpha(opacity.shadow)) end
 	-- clip
 	if opts.clip then tags = tags .. opts.clip end
 	-- render
@@ -106,7 +110,7 @@ end
 ---@param ay number
 ---@param bx number
 ---@param by number
----@param opts? {color?: string; border?: number; border_color?: string; opacity?: number; border_opacity?: number; clip?: string, radius?: number}
+---@param opts? {color?: string; border?: number; border_color?: string; opacity?: number|{primary?: number; border?: number, shadow?: number, other?: number}; clip?: string, radius?: number}
 function ass_mt:rect(ax, ay, bx, by, opts)
 	opts = opts or {}
 	local border_size = opts.border or 0
@@ -117,8 +121,11 @@ function ass_mt:rect(ax, ay, bx, by, opts)
 	tags = tags .. '\\1c&H' .. (opts.color or fg)
 	if border_size > 0 then tags = tags .. '\\3c&H' .. (opts.border_color or bg) end
 	-- opacity
-	if opts.opacity then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opts.opacity)) end
-	if opts.border_opacity then tags = tags .. string.format('\\3a&H%X&', opacity_to_alpha(opts.border_opacity)) end
+	local opacity = type(opts.opacity) == 'table' and opts.opacity or {other = opts.opacity}
+	if opacity.other then tags = tags .. string.format('\\alpha&H%X&', opacity_to_alpha(opacity.other)) end
+	if opacity.primary then tags = tags .. string.format('\\1a&H%X&', opacity_to_alpha(opacity.primary)) end
+	if opacity.border then tags = tags .. string.format('\\3a&H%X&', opacity_to_alpha(opacity.border)) end
+	if opacity.shadow then tags = tags .. string.format('\\4a&H%X&', opacity_to_alpha(opacity.shadow)) end
 	-- clip
 	if opts.clip then
 		tags = tags .. opts.clip
