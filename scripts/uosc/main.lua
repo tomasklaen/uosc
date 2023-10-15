@@ -203,7 +203,7 @@ config = {
 		title = 1,
 		tooltip = 1,
 		thumbnail = 1,
-		curtain = 0.5,
+		curtain = 0.8,
 		idle_indicator = 0.8,
 		audio_indicator = 0.5,
 	},
@@ -243,13 +243,13 @@ function create_default_menu_items()
 					title = t('Next'),
 					hint = t('playlist or file'),
 					value =
-					'script-binding uosc/next'
+					'script-binding uosc/next',
 				},
 				{
 					title = t('Prev'),
 					hint = t('playlist or file'),
 					value =
-					'script-binding uosc/prev'
+					'script-binding uosc/prev',
 				},
 				{title = t('Delete file & Next'), value = 'script-binding uosc/delete-file-next'},
 				{title = t('Delete file & Prev'), value = 'script-binding uosc/delete-file-prev'},
