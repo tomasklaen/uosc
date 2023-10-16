@@ -3,16 +3,20 @@ local cursor = {
 	y = math.huge,
 	hidden = true,
 	hover_raw = false,
-	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
-	-- - element activations (clicks) go to `on_primary_down` handler
-	-- - `on_primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
-	on_primary_down = nil,
-	on_primary_up = nil,
-	on_secondary_down = nil,
-	on_secondary_up = nil,
-	on_wheel_down = nil,
-	on_wheel_up = nil,
 	allow_dragging = false,
+	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
+	-- - element activations (clicks) go to `primary_down` handler
+	-- - `primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
+	---@type {[string]: {rect: Rect; handler: fun()}[]}
+	main_handlers = {
+		primary_down = {},
+		primary_up = {},
+		secondary_down = {},
+		secondary_up = {},
+		wheel_down = {},
+		wheel_up = {},
+		move = {},
+	},
 	handlers = {
 		primary_down = {},
 		primary_up = {},
@@ -38,10 +42,26 @@ end)()
 
 -- Called at the beginning of each render
 function cursor:reset_main_handlers()
-	cursor.on_primary_down, cursor.on_primary_up = nil, nil
-	cursor.on_secondary_down, cursor.on_secondary_up = nil, nil
-	cursor.on_wheel_down, cursor.on_wheel_up = nil, nil
-	cursor.allow_dragging = false
+	for _, handlers in pairs(self.main_handlers) do
+		itable_clear(handlers)
+	end
+	self.allow_dragging = false
+end
+
+---@param event string
+function cursor:find_main_handler(event)
+	local area_handlers = self.main_handlers[event]
+	for i = #area_handlers, 1, -1 do
+		local area_handler = area_handlers[i]
+		if get_point_to_rectangle_proximity(self, area_handler.rect) == 0 then
+			return area_handler.handler
+		end
+	end
+end
+
+function cursor:on_main(event, rect, callback)
+	local area_handlers = self.main_handlers[event]
+	area_handlers[#area_handlers + 1] = {rect = rect, handler = callback}
 end
 
 -- Binds a cursor event handler.
@@ -80,14 +100,14 @@ end
 -- Trigger the event.
 ---@param event string
 function cursor:trigger(event, ...)
-	call_maybe(cursor['on_' .. event], ...)
-	for _, callback in ipairs(cursor.handlers[event]) do callback(...) end
+	call_maybe(self:find_main_handler(event), ...)
+	for _, callback in ipairs(self.handlers[event]) do callback(...) end
 	self:queue_autohide() -- refresh cursor autohide timer
 end
 
 ---@param name string
 function cursor:has_handler(name)
-	return self['on_' .. name] ~= nil or #self.handlers[name] > 0
+	return self:find_main_handler(name) ~= nil or #self.handlers[name] > 0
 end
 
 -- Enables or disables keybinding groups based on what event listeners are bound.
@@ -205,11 +225,11 @@ function cursor:leave() self:move(math.huge, math.huge) end
 
 -- Cursor auto-hiding after period of inactivity.
 function cursor:autohide()
-	if not cursor.on_primary_up and not Menu:is_open() then cursor:leave() end
+	if #self.main_handlers.primary_up == 0 and not Menu:is_open() then self:leave() end
 end
 
 function cursor:queue_autohide()
-	if options.autohide and not self.on_primary_up then
+	if options.autohide and #self.main_handlers.primary_up == 0 then
 		self.autohide_timer:kill()
 		self.autohide_timer:resume()
 	end

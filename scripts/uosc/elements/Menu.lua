@@ -1065,12 +1065,11 @@ function Menu:render()
 		end
 	end
 
-	cursor.on_primary_down = self:create_action(function() self:handle_cursor_down() end)
-	cursor.on_primary_up = self:create_action(function() self:handle_cursor_up() end)
-	if self.proximity_raw == 0 then
-		cursor.on_wheel_down = self:create_action(function() self:handle_wheel_down() end)
-		cursor.on_wheel_up = self:create_action(function() self:handle_wheel_up() end)
-	end
+	local display_rect = {ax = 0, ay = 0, bx = display.width, by = display.height}
+	cursor:on_main('primary_down', display_rect, self:create_action(function() self:handle_cursor_down() end))
+	cursor:on_main('primary_up', display_rect, self:create_action(function() self:handle_cursor_up() end))
+	cursor:on_main('wheel_down', self, function() self:handle_wheel_down() end)
+	cursor:on_main('wheel_up', self, function() self:handle_wheel_up() end)
 
 	local ass = assdraw.ass_new()
 	local spacing = self.item_padding
@@ -1100,8 +1099,8 @@ function Menu:render()
 			color = bg, opacity = menu_opacity * config.opacity.menu, radius = state.radius + self.padding,
 		})
 
-		if is_parent and get_point_to_rectangle_proximity(cursor, menu_rect) == 0 then
-			cursor.on_primary_down = self:create_action(function() self:slide_in_menu(menu, x) end)
+		if is_parent then
+			cursor:on_main('primary_down', menu_rect, self:create_action(function() self:slide_in_menu(menu, x) end))
 		end
 
 		-- Draw submenu if selected
@@ -1109,12 +1108,9 @@ function Menu:render()
 		local submenu_is_hovered = false
 		if current_item and current_item.items then
 			submenu_rect = draw_menu(current_item, menu_rect.bx + self.gap, 1)
-			submenu_is_hovered = get_point_to_rectangle_proximity(cursor, submenu_rect) == 0
-			if submenu_is_hovered then
-				cursor.on_primary_down = self:create_action(function()
-					self:open_selected_item({preselect_first_item = false})
-				end)
-			end
+			cursor:on_main('primary_down', submenu_rect, self:create_action(function()
+				self:open_selected_item({preselect_first_item = false})
+			end))
 		end
 
 		for index = start_index, end_index, 1 do
@@ -1235,7 +1231,6 @@ function Menu:render()
 		if draw_title then
 			local requires_submit = menu.search_debounce == 'submit'
 			local rect = {ax = ax + spacing, ay = ay - self.scroll_step, bx = bx - spacing, by = math.min(by, ay - 2)}
-			local prevent_title_click = true
 			rect.cx, rect.cy = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2 -- centers
 
 			if menu.title and not menu.ass_safe_title then
@@ -1245,16 +1240,22 @@ function Menu:render()
 			-- Bottom border
 			ass:rect(ax, rect.by - self.separator_size, bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
 
+			-- Do nothing when user clicks title
+			if is_current then
+				cursor:on_main('primary_down', rect, function() end)
+			end
+
 			-- Title
 			if menu.search then
 				-- Icon
 				local icon_size, icon_opacity = self.font_size * 1.3, menu_opacity * (requires_submit and 0.5 or 1)
 				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = rect.by}
 
-				if is_current and requires_submit and get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
-					cursor.on_primary_down = function() self:search_submit() end
-					icon_opacity = menu_opacity
-					prevent_title_click = false
+				if is_current and requires_submit then
+					cursor:on_main('primary_down', icon_rect, function() self:search_submit() end)
+					if get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
+						icon_opacity = menu_opacity
+					end
 				end
 
 				ass:icon(rect.ax + icon_size / 2, rect.cy, icon_size, 'search', {
@@ -1306,11 +1307,6 @@ function Menu:render()
 					opacity = menu_opacity,
 					clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 				})
-			end
-
-			-- Do nothing when user clicks title
-			if is_current and prevent_title_click and get_point_to_rectangle_proximity(cursor, rect) == 0 then
-				cursor.on_primary_down = function() end
 			end
 		end
 

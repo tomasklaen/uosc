@@ -173,6 +173,10 @@ function itable_append(target, source)
 	return target
 end
 
+function itable_clear(itable)
+	for i = #itable, 1, -1 do itable[i] = nil end
+end
+
 ---@generic T
 ---@param input table<T, any>
 ---@return T[]

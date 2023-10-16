@@ -108,7 +108,6 @@ function Timeline:handle_cursor_down()
 	self.pressed = {pause = state.pause, distance = 0, last = {x = cursor.x, y = cursor.y}}
 	mp.set_property_native('pause', true)
 	self:set_from_cursor()
-	cursor.on_primary_up = function() self:handle_cursor_up() end
 end
 function Timeline:on_prop_duration() self:decide_enabled() end
 function Timeline:on_prop_time() self:decide_enabled() end
@@ -158,14 +157,13 @@ function Timeline:render()
 
 	if self.proximity_raw == 0 then
 		self.is_hovered = true
-		cursor.on_primary_down = function() self:handle_cursor_down() end
-		cursor.on_wheel_down = function() self:handle_wheel_down() end
-		cursor.on_wheel_up = function() self:handle_wheel_up() end
 	end
-
-	if self.pressed then
-		cursor.on_primary_up = function() self:handle_cursor_up() end
-	end
+	cursor:on_main('primary_down', self, function()
+		self:handle_cursor_down()
+		cursor:once('primary_up', function() self:handle_cursor_up() end)
+	end)
+	cursor:on_main('wheel_down', self, function() self:handle_wheel_down() end)
+	cursor:on_main('wheel_up', self, function() self:handle_wheel_up() end)
 
 	local ass = assdraw.ass_new()
 
@@ -292,9 +290,15 @@ function Timeline:render()
 						if cursor_chapter_delta <= diamond_radius_hovered and cursor_chapter_delta < closest_delta then
 							hovered_chapter, closest_delta = chapter, cursor_chapter_delta
 							self.is_hovered = true
-							cursor.on_primary_down = function()
+							local rect = {
+								ax = chapter_x - diamond_radius_hovered,
+								ay = chapter_y - diamond_radius_hovered,
+								bx = chapter_x + diamond_radius_hovered,
+								by = chapter_y + diamond_radius_hovered,
+							}
+							cursor:on_main('primary_down', rect, function()
 								mp.commandv('seek', hovered_chapter.time, 'absolute+exact')
-							end
+							end)
 						end
 					end
 				end
