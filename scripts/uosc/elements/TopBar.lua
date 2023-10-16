@@ -242,9 +242,6 @@ function TopBar:render()
 
 				if options.top_bar_alt_title_place == 'toggle' then
 					cursor:zone('primary_down', title_rect, function() self:toggle_title() end)
-					if get_point_to_rectangle_proximity(cursor, title_rect) == 0 then
-						cursor.allow_dragging = true
-					end
 				end
 
 				ass:rect(title_rect.ax, title_rect.ay, title_rect.bx, title_rect.by, {

@@ -3,7 +3,7 @@ local cursor = {
 	y = math.huge,
 	hidden = true,
 	hover_raw = false,
-	allow_dragging = false,
+	allow_dragging = true,
 	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
 	-- - element activations (clicks) go to `primary_down` handler
 	-- - `primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
@@ -29,7 +29,7 @@ local cursor = {
 	first_real_mouse_move_received = false,
 	history = CircularBuffer:new(10),
 	-- Enables pointer key group captures needed by handlers (called at the end of each render)
-	mbtn_left_enabled = nil,
+	allow_dragging_enabled = nil,
 	mbtn_right_enabled = nil,
 	wheel_enabled = nil,
 }
@@ -45,7 +45,7 @@ function cursor:clear_zones()
 	for _, handlers in pairs(self.zone_handlers) do
 		itable_clear(handlers)
 	end
-	self.allow_dragging = false
+	self.allow_dragging = true
 end
 
 ---@param event string
@@ -129,13 +129,11 @@ end
 
 -- Enables or disables keybinding groups based on what event listeners are bound.
 function cursor:decide_keybinds()
-	local enable_mbtn_left = self:has_handler('primary_down') or self:has_handler('primary_up') or true
 	local enable_mbtn_right = self:has_handler('secondary_down') or self:has_handler('secondary_up')
 	local enable_wheel = self:has_handler('wheel_down') or self:has_handler('wheel_up')
-	if enable_mbtn_left ~= self.mbtn_left_enabled then
-		local flags = self.allow_dragging and 'allow-vo-dragging' or nil
-		mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left', flags)
-		self.mbtn_left_enabled = enable_mbtn_left
+	if self.allow_dragging ~= self.allow_dragging_enabled then
+		mp.enable_key_bindings('mbtn_left', 'allow-vo-dragging')
+		self.allow_dragging_enabled = self.allow_dragging
 	end
 	if enable_mbtn_right ~= self.mbtn_right_enabled then
 		mp[(enable_mbtn_right and 'enable' or 'disable') .. '_key_bindings']('mbtn_right')
@@ -290,7 +288,7 @@ mp.set_key_bindings({
 			handle_mouse_pos(nil, mp.get_property_native('mouse-pos'))
 		end),
 	},
-	{'mbtn_left_dbl', 'ignore'},
+	-- {'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left', 'force')
 mp.set_key_bindings({
 	{'mbtn_right', cursor:make_handler('secondary_up'), cursor:make_handler('secondary_down')},
