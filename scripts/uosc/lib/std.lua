@@ -258,7 +258,7 @@ function Class:new(...)
 	object:init(...)
 	return object
 end
-function Class:init() end
+function Class:init(...) end
 function Class:destroy() end
 
 function class(parent) return setmetatable({}, {__index = parent or Class}) end
