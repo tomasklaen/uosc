@@ -102,7 +102,22 @@ end
 -- Trigger the event.
 ---@param event string
 function cursor:trigger(event, ...)
-	call_maybe(self:find_zone_handler(event), ...)
+	local zone_handler = self:find_zone_handler(event)
+	if zone_handler then
+		call_maybe(zone_handler, ...)
+	elseif event == 'primary_down' or event == 'primary_up' then
+		-- forward to other scripts
+		local active = find_active_keybindings('MBTN_LEFT')
+		if active then
+			if active.owner then
+				local state = event == 'primary_up' and 'um' or 'dm'
+				local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
+				mp.commandv('script-message-to', active.owner, 'key-binding', name, state, 'MBTN_LEFT', '')
+			elseif event == 'primary_down' then
+				mp.command(active.cmd)
+			end
+		end
+	end
 	for _, callback in ipairs(self.handlers[event]) do callback(...) end
 	self:queue_autohide() -- refresh cursor autohide timer
 end
@@ -114,7 +129,7 @@ end
 
 -- Enables or disables keybinding groups based on what event listeners are bound.
 function cursor:decide_keybinds()
-	local enable_mbtn_left = self:has_handler('primary_down') or self:has_handler('primary_up')
+	local enable_mbtn_left = self:has_handler('primary_down') or self:has_handler('primary_up') or true
 	local enable_mbtn_right = self:has_handler('secondary_down') or self:has_handler('secondary_up')
 	local enable_wheel = self:has_handler('wheel_down') or self:has_handler('wheel_up')
 	if enable_mbtn_left ~= self.mbtn_left_enabled then
