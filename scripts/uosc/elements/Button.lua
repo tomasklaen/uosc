@@ -34,7 +34,7 @@ end
 function Button:render()
 	local visibility = self:get_visibility()
 	if visibility <= 0 then return end
-	cursor:on_main('primary_down', self, function() self:handle_cursor_down() end)
+	cursor:zone('primary_down', self, function() self:handle_cursor_down() end)
 
 	local ass = assdraw.ass_new()
 	local is_hover = self.proximity_raw == 0

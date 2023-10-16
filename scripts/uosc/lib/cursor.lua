@@ -8,7 +8,7 @@ local cursor = {
 	-- - element activations (clicks) go to `primary_down` handler
 	-- - `primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
 	---@type {[string]: {hitbox: Rect|{point: Point, r: number}; handler: fun()}[]}
-	main_handlers = {
+	zone_handlers = {
 		primary_down = {},
 		primary_up = {},
 		secondary_down = {},
@@ -41,29 +41,28 @@ cursor.autohide_timer = (function()
 end)()
 
 -- Called at the beginning of each render
-function cursor:reset_main_handlers()
-	for _, handlers in pairs(self.main_handlers) do
+function cursor:clear_zones()
+	for _, handlers in pairs(self.zone_handlers) do
 		itable_clear(handlers)
 	end
 	self.allow_dragging = false
 end
 
 ---@param event string
-function cursor:find_main_handler(event)
-	local area_handlers = self.main_handlers[event]
-	for i = #area_handlers, 1, -1 do
-		local area_handler = area_handlers[i]
-		local hitbox = area_handler.hitbox
-		print(utils.to_string(hitbox))
+function cursor:find_zone_handler(event)
+	local zone_handlers = self.zone_handlers[event]
+	for i = #zone_handlers, 1, -1 do
+		local zone_handler = zone_handlers[i]
+		local hitbox = zone_handler.hitbox
 		if (hitbox.r and get_point_to_point_proximity(self, hitbox.point) <= hitbox.r) or
 			(not hitbox.r and get_point_to_rectangle_proximity(self, hitbox) == 0) then
-			return area_handler.handler
+			return zone_handler.handler
 		end
 	end
 end
 
-function cursor:on_main(event, hitbox, callback)
-	local area_handlers = self.main_handlers[event]
+function cursor:zone(event, hitbox, callback)
+	local area_handlers = self.zone_handlers[event]
 	area_handlers[#area_handlers + 1] = {hitbox = hitbox, handler = callback}
 end
 
@@ -103,14 +102,14 @@ end
 -- Trigger the event.
 ---@param event string
 function cursor:trigger(event, ...)
-	call_maybe(self:find_main_handler(event), ...)
+	call_maybe(self:find_zone_handler(event), ...)
 	for _, callback in ipairs(self.handlers[event]) do callback(...) end
 	self:queue_autohide() -- refresh cursor autohide timer
 end
 
 ---@param name string
 function cursor:has_handler(name)
-	return self:find_main_handler(name) ~= nil or #self.handlers[name] > 0
+	return self:find_zone_handler(name) ~= nil or #self.handlers[name] > 0
 end
 
 -- Enables or disables keybinding groups based on what event listeners are bound.
@@ -228,11 +227,11 @@ function cursor:leave() self:move(math.huge, math.huge) end
 
 -- Cursor auto-hiding after period of inactivity.
 function cursor:autohide()
-	if #self.main_handlers.primary_up == 0 and not Menu:is_open() then self:leave() end
+	if #self.zone_handlers.primary_up == 0 and not Menu:is_open() then self:leave() end
 end
 
 function cursor:queue_autohide()
-	if options.autohide and #self.main_handlers.primary_up == 0 then
+	if options.autohide and #self.zone_handlers.primary_up == 0 then
 		self.autohide_timer:kill()
 		self.autohide_timer:resume()
 	end

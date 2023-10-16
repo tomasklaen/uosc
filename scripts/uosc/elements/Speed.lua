@@ -105,13 +105,13 @@ function Speed:render()
 
 	if opacity <= 0 then return end
 
-	cursor:on_main('primary_down', self, function()
+	cursor:zone('primary_down', self, function()
 		self:handle_cursor_down()
 		cursor:once('primary_up', function() self:handle_cursor_up() end)
 	end)
-	cursor:on_main('secondary_down', self, function() mp.set_property_native('speed', 1) end)
-	cursor:on_main('wheel_down', self, function() self:handle_wheel_down() end)
-	cursor:on_main('wheel_up', self, function() self:handle_wheel_up() end)
+	cursor:zone('secondary_down', self, function() mp.set_property_native('speed', 1) end)
+	cursor:zone('wheel_down', self, function() self:handle_wheel_down() end)
+	cursor:zone('wheel_up', self, function() self:handle_wheel_up() end)
 
 	local ass = assdraw.ass_new()
 

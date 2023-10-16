@@ -1066,10 +1066,10 @@ function Menu:render()
 	end
 
 	local display_rect = {ax = 0, ay = 0, bx = display.width, by = display.height}
-	cursor:on_main('primary_down', display_rect, self:create_action(function() self:handle_cursor_down() end))
-	cursor:on_main('primary_up', display_rect, self:create_action(function() self:handle_cursor_up() end))
-	cursor:on_main('wheel_down', self, function() self:handle_wheel_down() end)
-	cursor:on_main('wheel_up', self, function() self:handle_wheel_up() end)
+	cursor:zone('primary_down', display_rect, self:create_action(function() self:handle_cursor_down() end))
+	cursor:zone('primary_up', display_rect, self:create_action(function() self:handle_cursor_up() end))
+	cursor:zone('wheel_down', self, function() self:handle_wheel_down() end)
+	cursor:zone('wheel_up', self, function() self:handle_wheel_up() end)
 
 	local ass = assdraw.ass_new()
 	local spacing = self.item_padding
@@ -1100,7 +1100,7 @@ function Menu:render()
 		})
 
 		if is_parent then
-			cursor:on_main('primary_down', menu_rect, self:create_action(function() self:slide_in_menu(menu, x) end))
+			cursor:zone('primary_down', menu_rect, self:create_action(function() self:slide_in_menu(menu, x) end))
 		end
 
 		-- Draw submenu if selected
@@ -1108,7 +1108,7 @@ function Menu:render()
 		local submenu_is_hovered = false
 		if current_item and current_item.items then
 			submenu_rect = draw_menu(current_item, menu_rect.bx + self.gap, 1)
-			cursor:on_main('primary_down', submenu_rect, self:create_action(function()
+			cursor:zone('primary_down', submenu_rect, self:create_action(function()
 				self:open_selected_item({preselect_first_item = false})
 			end))
 		end
@@ -1242,7 +1242,7 @@ function Menu:render()
 
 			-- Do nothing when user clicks title
 			if is_current then
-				cursor:on_main('primary_down', rect, function() end)
+				cursor:zone('primary_down', rect, function() end)
 			end
 
 			-- Title
@@ -1252,7 +1252,7 @@ function Menu:render()
 				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = rect.by}
 
 				if is_current and requires_submit then
-					cursor:on_main('primary_down', icon_rect, function() self:search_submit() end)
+					cursor:zone('primary_down', icon_rect, function() self:search_submit() end)
 					if get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
 						icon_opacity = menu_opacity
 					end

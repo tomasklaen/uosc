@@ -158,12 +158,12 @@ function Timeline:render()
 	if self.proximity_raw == 0 then
 		self.is_hovered = true
 	end
-	cursor:on_main('primary_down', self, function()
+	cursor:zone('primary_down', self, function()
 		self:handle_cursor_down()
 		cursor:once('primary_up', function() self:handle_cursor_up() end)
 	end)
-	cursor:on_main('wheel_down', self, function() self:handle_wheel_down() end)
-	cursor:on_main('wheel_up', self, function() self:handle_wheel_up() end)
+	cursor:zone('wheel_down', self, function() self:handle_wheel_down() end)
+	cursor:zone('wheel_up', self, function() self:handle_wheel_up() end)
 
 	local ass = assdraw.ass_new()
 
@@ -297,7 +297,7 @@ function Timeline:render()
 				for i, chapter in ipairs(state.chapters) do
 					if chapter ~= hovered_chapter then draw_chapter(chapter.time, diamond_radius) end
 					local circle = {point = {x = t2x(chapter.time), y = fay - 1}, r = diamond_radius_hovered}
-					cursor:on_main('primary_down', circle, function()
+					cursor:zone('primary_down', circle, function()
 						mp.commandv('seek', chapter.time, 'absolute+exact')
 					end)
 				end

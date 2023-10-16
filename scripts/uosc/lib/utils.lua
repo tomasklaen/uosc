@@ -695,7 +695,7 @@ function render()
 	if not display.initialized then return end
 	state.render_last_time = mp.get_time()
 
-	cursor:reset_main_handlers()
+	cursor:clear_zones()
 
 	-- Actual rendering
 	local ass = assdraw.ass_new()
