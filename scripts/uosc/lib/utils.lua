@@ -733,6 +733,7 @@ function render()
 	end
 
 	cursor:decide_keybinds()
+	cursor:release_main_queue()
 
 	-- submit
 	if osd.res_x == display.width and osd.res_y == display.height and osd.data == ass.text then

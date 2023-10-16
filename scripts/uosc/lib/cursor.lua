@@ -28,6 +28,14 @@ local cursor = {
 	mbtn_left_enabled = nil,
 	mbtn_right_enabled = nil,
 	wheel_enabled = nil,
+	main_queue = {
+		required = make_set({'primary_down', 'secondary_down'}),
+		dependent = {primary_up = 'primary_down', secondary_up = 'secondary_down'},
+		---@type table<string, boolean>
+		has = {},
+		---@type string[]
+		events = {},
+	},
 }
 
 cursor.autohide_timer = (function()
@@ -80,14 +88,36 @@ end
 -- Trigger the event.
 ---@param event string
 function cursor:trigger(event, ...)
-	call_maybe(cursor['on_' .. event], ...)
+	-- Queue for main events
+	local queue = self.main_queue
+	if queue.required[event] or (queue.dependent[event] and queue.has[queue.dependent[event]]) then
+		if queue.events[#queue.events] ~= event then
+			queue.events[#queue.events + 1] = event
+			queue.has[event] = true
+			request_render()
+		end
+	else
+		cursor:_trigger_main(event, ...)
+	end
+
 	for _, callback in ipairs(cursor.handlers[event]) do callback(...) end
 	self:queue_autohide() -- refresh cursor autohide timer
 end
 
+-- Trigger a main event.
+---@param event string
+function cursor:_trigger_main(event, ...) call_maybe(cursor['on_' .. event], ...) end
+
 ---@param name string
 function cursor:has_handler(name)
 	return self['on_' .. name] ~= nil or #self.handlers[name] > 0
+end
+
+-- Trigger the event.
+function cursor:release_main_queue()
+	for _, event in ipairs(self.main_queue.events) do self:_trigger_main(event) end
+	self.main_queue.events = {}
+	self.main_queue.has = {}
 end
 
 -- Enables or disables keybinding groups based on what event listeners are bound.
