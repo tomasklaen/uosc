@@ -227,8 +227,8 @@ end
 
 function cursor:make_handler(event, cb)
 	return function(...)
-		self:trigger(event, ...)
 		call_maybe(cb, ...)
+		self:trigger(event, ...)
 	end
 end
 
