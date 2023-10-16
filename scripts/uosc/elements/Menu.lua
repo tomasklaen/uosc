@@ -639,6 +639,7 @@ function Menu:handle_cursor_up()
 				duration = 0.5,
 				update_cursor = true,
 			}
+			request_render()
 		end
 	end
 	self.is_dragging = false
