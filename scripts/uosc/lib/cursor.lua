@@ -104,14 +104,18 @@ function cursor:trigger(event, ...)
 	if zone_handler then
 		call_maybe(zone_handler, ...)
 	elseif event == 'primary_down' or event == 'primary_up' then
-		-- forward to other scripts
+		-- forward the event if we don't have any use for it
 		local active = find_active_keybindings('MBTN_LEFT')
 		if active then
 			if active.owner then
+				-- binding belongs to other script, so make it look like regular key event
+				-- mouse bindings are simple, other keys would require repeat and pressed handling
+				-- which can't be done with mp.set_key_bindings(), but is possible with mp.add_key_binding()
 				local state = event == 'primary_up' and 'um' or 'dm'
 				local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
-				mp.commandv('script-message-to', active.owner, 'key-binding', name, state, 'MBTN_LEFT', '')
+				mp.commandv('script-message-to', active.owner, 'key-binding', name, state, 'MBTN_LEFT')
 			elseif event == 'primary_down' then
+				-- input.conf binding
 				mp.command(active.cmd)
 			end
 		end

@@ -705,11 +705,7 @@ function find_active_keybindings(key)
 			active[bind.key] = bind
 		end
 	end
-	if key then
-		return active[key]
-	else
-		return active
-	end
+	return not key and active or active[key]
 end
 
 --[[ RENDERING ]]
