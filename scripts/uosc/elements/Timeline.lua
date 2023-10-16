@@ -290,21 +290,16 @@ function Timeline:render()
 						if cursor_chapter_delta <= diamond_radius_hovered and cursor_chapter_delta < closest_delta then
 							hovered_chapter, closest_delta = chapter, cursor_chapter_delta
 							self.is_hovered = true
-							local rect = {
-								ax = chapter_x - diamond_radius_hovered,
-								ay = chapter_y - diamond_radius_hovered,
-								bx = chapter_x + diamond_radius_hovered,
-								by = chapter_y + diamond_radius_hovered,
-							}
-							cursor:on_main('primary_down', rect, function()
-								mp.commandv('seek', hovered_chapter.time, 'absolute+exact')
-							end)
 						end
 					end
 				end
 
 				for i, chapter in ipairs(state.chapters) do
 					if chapter ~= hovered_chapter then draw_chapter(chapter.time, diamond_radius) end
+					local circle = {point = {x = t2x(chapter.time), y = fay - 1}, r = diamond_radius_hovered}
+					cursor:on_main('primary_down', circle, function()
+						mp.commandv('seek', chapter.time, 'absolute+exact')
+					end)
 				end
 
 				-- Render hovered chapter above others

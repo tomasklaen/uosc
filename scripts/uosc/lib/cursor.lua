@@ -7,7 +7,7 @@ local cursor = {
 	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
 	-- - element activations (clicks) go to `primary_down` handler
 	-- - `primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
-	---@type {[string]: {rect: Rect; handler: fun()}[]}
+	---@type {[string]: {hitbox: Rect|{point: Point, r: number}; handler: fun()}[]}
 	main_handlers = {
 		primary_down = {},
 		primary_up = {},
@@ -53,15 +53,18 @@ function cursor:find_main_handler(event)
 	local area_handlers = self.main_handlers[event]
 	for i = #area_handlers, 1, -1 do
 		local area_handler = area_handlers[i]
-		if get_point_to_rectangle_proximity(self, area_handler.rect) == 0 then
+		local hitbox = area_handler.hitbox
+		print(utils.to_string(hitbox))
+		if (hitbox.r and get_point_to_point_proximity(self, hitbox.point) <= hitbox.r) or
+			(not hitbox.r and get_point_to_rectangle_proximity(self, hitbox) == 0) then
 			return area_handler.handler
 		end
 	end
 end
 
-function cursor:on_main(event, rect, callback)
+function cursor:on_main(event, hitbox, callback)
 	local area_handlers = self.main_handlers[event]
-	area_handlers[#area_handlers + 1] = {rect = rect, handler = callback}
+	area_handlers[#area_handlers + 1] = {hitbox = hitbox, handler = callback}
 end
 
 -- Binds a cursor event handler.
