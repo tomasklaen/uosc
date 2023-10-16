@@ -408,7 +408,7 @@ function get_input_items()
 
 	-- Find active keybinds
 	for _, bind in pairs(bindings) do
-		if bind.priority >= 0 and (
+		if bind.owner ~= 'uosc' and bind.priority >= 0 and (
 				not active[bind.key]
 				or (active[bind.key].is_weak and not bind.is_weak)
 				or (bind.is_weak == active[bind.key].is_weak and bind.priority > active[bind.key].priority)
