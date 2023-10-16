@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 zip_url=https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip
 conf_url=https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf
 zip_file=/tmp/uosc.zip
