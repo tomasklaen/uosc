@@ -280,8 +280,12 @@ function Volume:render()
 	elseif state.volume <= 60 then
 		icon_name, horizontal_shift = 'volume_down', height_half * 0.125
 	end
+	local underlay_opacity = {main = visibility * 0.3, border = visibility}
+	ass:icon(mute_rect.ax + width_half, mute_rect.ay + height_half, icon_size, 'volume_up',
+		{border = options.text_border * state.scale, opacity = underlay_opacity, align = 5}
+	)
 	ass:icon(mute_rect.ax + width_half - horizontal_shift, mute_rect.ay + height_half, icon_size, icon_name,
-		{border = options.text_border * state.scale, opacity = visibility, align = 5}
+		{opacity = visibility, align = 5}
 	)
 	return ass
 end
