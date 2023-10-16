@@ -6,7 +6,7 @@ local cursor = {
 	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
 	-- - element activations (clicks) go to `primary_down` handler
 	-- - `primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
-	---@type {[string]: {hitbox: Rect|{point: Point, r: number}; handler: fun()}[]}
+	---@type {[string]: {hitbox: Rect|{point: Point, r: number}; handler: fun(...)}[]}
 	zone_handlers = {
 		primary_down = {},
 		primary_up = {},
@@ -101,10 +101,12 @@ end
 ---@param event string
 function cursor:trigger(event, ...)
 	local zone_handler = self:find_zone_handler(event)
-	if zone_handler then
+	local callbacks = self.handlers[event]
+	if zone_handler or #callbacks > 0 then
 		call_maybe(zone_handler, ...)
-	elseif event == 'primary_down' or event == 'primary_up' then
-		-- forward the event if we don't have any use for it
+		for _, callback in ipairs(callbacks) do callback(...) end
+	elseif (event == 'primary_down' or event == 'primary_up') then
+		-- forward mbtn_left events if there was no handler
 		local active = find_active_keybindings('MBTN_LEFT')
 		if active then
 			if active.owner then
@@ -120,7 +122,6 @@ function cursor:trigger(event, ...)
 			end
 		end
 	end
-	for _, callback in ipairs(self.handlers[event]) do callback(...) end
 	self:queue_autohide() -- refresh cursor autohide timer
 end
 
