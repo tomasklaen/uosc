@@ -126,11 +126,13 @@ function cursor:trigger(event, ...)
 	self:queue_autohide() -- refresh cursor autohide timer
 end
 
+---Checks if there are any handlers for the current cursor position
 ---@param name string
 function cursor:has_handler(name)
 	return self:find_zone_handler(name) ~= nil or #self.handlers[name] > 0
 end
 
+---Checks if there are any handlers at all
 ---@param name string
 function cursor:has_any_handler(name)
 	return #self.zone_handlers[name] > 0 or #self.handlers[name] > 0
