@@ -130,11 +130,11 @@ t = intl.t
 --[[ CONFIG ]]
 local config_defaults = {
 	color = {
-		foreground = 'ffffff',
-		foreground_text = '000000',
-		background = '000000',
-		background_text = 'ffffff',
-		curtain = '111111',
+		foreground = serialize_rgba('ffffff').color,
+		foreground_text = serialize_rgba('000000').color,
+		background = serialize_rgba('000000').color,
+		background_text = serialize_rgba('ffffff').color,
+		curtain = serialize_rgba('111111').color,
 	},
 	opacity = {
 		timeline = 0.9,
