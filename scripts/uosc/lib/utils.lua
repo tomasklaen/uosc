@@ -751,6 +751,8 @@ function render()
 		end
 	end
 
+	cursor:decide_keybinds()
+
 	-- submit
 	if osd.res_x == display.width and osd.res_y == display.height and osd.data == ass.text then
 		return
@@ -762,7 +764,6 @@ function render()
 	osd.z = 2000
 	osd:update()
 
-	cursor:decide_keybinds()
 	update_margins()
 end
 
