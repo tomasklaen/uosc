@@ -28,6 +28,7 @@ local cursor = {
 	first_real_mouse_move_received = false,
 	history = CircularBuffer:new(10),
 	-- Enables pointer key group captures needed by handlers (called at the end of each render)
+	mbtn_left_enabled = nil,
 	mbtn_left_dbl_enabled = nil,
 	mbtn_right_enabled = nil,
 	wheel_enabled = nil,
@@ -130,11 +131,22 @@ function cursor:has_handler(name)
 	return self:find_zone_handler(name) ~= nil or #self.handlers[name] > 0
 end
 
+---@param name string
+function cursor:has_any_handler(name)
+	return #self.zone_handlers[name] > 0 or #self.handlers[name] > 0
+end
+
 -- Enables or disables keybinding groups based on what event listeners are bound.
 function cursor:decide_keybinds()
+	local enable_mbtn_left = self:has_any_handler('primary_down') or self:has_any_handler('primary_up')
 	local enable_mbtn_left_dbl = self:has_handler('primary_down') or self:has_handler('primary_up')
 	local enable_mbtn_right = self:has_handler('secondary_down') or self:has_handler('secondary_up')
 	local enable_wheel = self:has_handler('wheel_down') or self:has_handler('wheel_up')
+	if enable_mbtn_left ~= self.mbtn_left_enabled then
+		local flags = 'allow-vo-dragging+allow-hide-cursor'
+		mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left', flags)
+		self.mbtn_left_enabled = enable_mbtn_left
+	end
 	if enable_mbtn_left_dbl ~= self.mbtn_left_dbl_enabled then
 		mp[(enable_mbtn_left_dbl and 'enable' or 'disable') .. '_key_bindings']('mbtn_left_dbl')
 		self.mbtn_left_dbl_enabled = enable_mbtn_left_dbl
@@ -293,7 +305,6 @@ mp.set_key_bindings({
 		end),
 	},
 }, 'mbtn_left', 'force')
-mp.add_timeout(0, function() mp.enable_key_bindings('mbtn_left', 'allow-vo-dragging+allow-hide-cursor') end)
 mp.set_key_bindings({
 	{'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left_dbl', 'force')
