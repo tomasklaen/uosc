@@ -293,7 +293,7 @@ mp.set_key_bindings({
 		end),
 	},
 }, 'mbtn_left', 'force')
-mp.add_timeout(0, function() mp.enable_key_bindings('mbtn_left', 'allow-vo-dragging') end)
+mp.add_timeout(0, function() mp.enable_key_bindings('mbtn_left', 'allow-vo-dragging+allow-hide-cursor') end)
 mp.set_key_bindings({
 	{'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left_dbl', 'force')
