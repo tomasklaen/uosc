@@ -59,6 +59,17 @@ Notable features:
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/unix.sh)"
     ```
 
+    On Linux, we try to detect what package manager variant of the config location you're using, with precedent being:
+
+    ```
+    ~/.var/app/io.mpv.Mpv     (flatpak)
+    ~/snap/mpv
+    ~/snap/mpv-wayland
+    ~/.config/mpv
+    ```
+
+    To install into any of these locations, make sure the ones above it don't exist.
+
     ### Manual
 
     1. Download & extract [`uosc.zip`](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip) into your mpv config directory. (_See the [documentation of mpv config locations](https://mpv.io/manual/master/#files)._)

@@ -2,57 +2,122 @@
 zip_url=https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip
 conf_url=https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf
 zip_file=/tmp/uosc.zip
+files=("scripts/uosc" "fonts/uosc_icons.otf" "fonts/uosc_textures.ttf" "scripts/uosc_shared" "scripts/uosc.lua")
+dependencies=(curl unzip)
 
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-cleanup() {
-	if [ -f "$zip_file" ]; then
-		echo "Deleting: $zip_file"
-		rm -f $zip_file
-	fi
-}
-
 abort() {
-	cleanup
 	echo "Error: $1"
+	echo "Aborting!"
+
+	rm -f $zip_file || true
+
+	echo "Deleting potentially broken install..."
+	for file in ${files[@]}
+	do
+		rm -rf "$config_dir/$file" || true
+	done
+
+	echo "Restoring backup..."
+	for file in ${files[@]}
+	do
+		from_path="$backup_dir/$file"
+		if [[ -e "$from_path" ]]; then
+			to_path="$config_dir/$file"
+			to_dir="$(dirname "${to_path}")"
+			mkdir -pv $to_dir || true
+			mv $from_path $to_path || true
+		fi
+	done
+
+	echo "Deleting backup..."
+	rm -rf $backup_dir || true
+
 	exit 1
 }
 
-# Check OS
-OS="$(uname)"
-if [ "${OS}" == "Linux" ]; then
-	data_dir="${XDG_CONFIG_HOME:-$HOME/.config}/mpv"
-elif [ "${OS}" == "Darwin" ]; then
-	data_dir=~/Library/Preferences/mpv
-else
-	abort "This install script works only on linux and macOS."
+# Check dependencies
+missing_dependencies=()
+for name in ${dependencies[@]}
+do
+	if [ ! -x "$(command -v $name)" ]; then
+		missing_dependencies+=($name)
+	fi
+done
+if [ ! ${#missing_dependencies[@]} -eq 0 ]; then
+	echo "Missing dependencies: ${missing_dependencies[@]}"
+	exit 1
 fi
 
-# Ensure directory exists
-mkdir -pv $data_dir
+# Determine install directory
+OS="$(uname)"
+if [ ! -z "${MPV_CONFIG_DIR}" ]; then
+	echo "Installing into (MPV_CONFIG_DIR):"
+	config_dir="${MPV_CONFIG_DIR}"
+elif [ "${OS}" == "Linux" ]; then
+	# Flatpak
+	if [ -d "$HOME/.var/app/io.mpv.Mpv" ]; then
+		echo "Installing into (flatpak io.mpv.Mpv package):"
+		config_dir="$HOME/.var/app/io.mpv.Mpv/config/mpv"
 
-# Remove old and deprecated folders & files
-echo "Deleting old and deprecated uosc files and directories."
-rm -rf "$data_dir/scripts/uosc_shared" || abort "Couldn't cleanup old files."
-rm -rf "$data_dir/scripts/uosc" || abort "Couldn't cleanup old files."
-rm -f "$data_dir/scripts/uosc.lua" || abort "Couldn't cleanup old files."
+	# Snap mpv
+	elif [ -d "$HOME/snap/mpv" ]; then
+		echo "Installing into (snap mpv package):"
+		config_dir="$HOME/snap/mpv/current/.config/mpv"
+
+	# Snap mpv-wayland
+	elif [ -d "$HOME/snap/mpv-wayland" ]; then
+		echo "Installing into (snap mpv-wayland package):"
+		config_dir="$HOME/snap/mpv-wayland/common/.config/mpv"
+
+	# ~/.config
+	else
+		echo "Config location:"
+		config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/mpv"
+
+	fi
+elif [ "${OS}" == "Darwin" ]; then
+	config_dir=~/Library/Preferences/mpv
+else
+	abort "This install script works only on Linux and macOS."
+fi
+backup_dir="$config_dir/.uosc-backup"
+
+echo "→ $config_dir"
+mkdir -p $config_dir || abort "Couldn't create config directory."
+
+echo "Backing up..."
+rm -rf $backup_dir || abort "Couldn't cleanup backup directory."
+for file in ${files[@]}
+do
+	from_path="$config_dir/$file"
+	if [[ -e "$from_path" ]]; then
+		to_path="$backup_dir/$file"
+		to_dir="$(dirname "${to_path}")"
+		mkdir -p $to_dir || abort "Couldn't create backup folder: $to_dir"
+		mv $from_path $to_path || abort "Couldn't move '$from_path' to '$to_path'."
+	fi
+done
 
 # Install new version
-echo "Downloading: $zip_url"
-curl -L -o $zip_file $zip_url || abort "Couldn't download the archive."
-echo "Extracting: $zip_file"
-unzip -od $data_dir $zip_file || abort "Couldn't extract the archive."
-cleanup
+echo "Downloading archive..."
+curl -Ls -o $zip_file $zip_url || abort "Couldn't download: $zip_url"
+echo "Extracting archive..."
+unzip -qod $config_dir $zip_file || abort "Couldn't extract: $zip_file"
+echo "Deleting archive..."
+rm -f $zip_file || echo "Couldn't delete: $zip_file"
+echo "Deleting backup..."
+rm -rf $backup_dir || echo "Couldn't delete: $backup_dir"
 
 # Download default config if one doesn't exist yet
-scriptopts_dir="$data_dir/script-opts"
+scriptopts_dir="$config_dir/script-opts"
 conf_file="$scriptopts_dir/uosc.conf"
 if [ ! -f "$conf_file" ]; then
-	echo "Config not found, downloading default one..."
-	mkdir -pv $scriptopts_dir
-	echo "Downloading: $conf_url"
-	curl -L -o $conf_file $conf_url || abort "Couldn't download the config file, but uosc should be installed correctly."
+	echo "Config not found, downloading default uosc.conf..."
+	mkdir -p $scriptopts_dir || echo "Couldn't create: $scriptopts_dir"
+	curl -Ls -o $conf_file $conf_url || echo "Couldn't download: $conf_url"
 fi
 
 echo "uosc has been installed."

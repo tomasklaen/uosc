@@ -1,89 +1,129 @@
 $ZipURL = "https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip"
 $ConfURL = "https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf"
+$Files = "scripts/uosc", "fonts/uosc_icons.otf", "fonts/uosc_textures.ttf", "scripts/uosc_shared", "scripts/uosc.lua"
 
-# Portable vs AppData install
-if (Test-Path "$PWD/portable_config") {
-	$DataDir = "$PWD/portable_config"
-	Write-Output "Portable mode: $DataDir"
+# Determine install directory
+if (Test-Path env:MPV_CONFIG_DIR) {
+	Write-Output "Installing into (MPV_CONFIG_DIR):"
+	$ConfigDir = "$env:MPV_CONFIG_DIR"
+}
+elseif (Test-Path "$PWD/portable_config") {
+	Write-Output "Installing into (portable config):"
+	$ConfigDir = "$PWD/portable_config"
 }
 elseif ((Get-Item -Path $PWD).BaseName -eq "portable_config") {
-	$DataDir = "$PWD"
-	Write-Output "Portable mode: $DataDir"
+	Write-Output "Installing into (portable config):"
+	$ConfigDir = "$PWD"
 }
 else {
-	$DataDir = "$env:APPDATA/mpv"
-	Write-Output "AppData mode: $DataDir"
-	if (!(Test-Path $DataDir)) {
-		Write-Output "Creating folder: $DataDir"
-		New-Item -ItemType Directory -Force -Path $DataDir > $null
+	Write-Output "Installing into (current user config):"
+	$ConfigDir = "$env:APPDATA/mpv"
+	if (!(Test-Path $ConfigDir)) {
+		Write-Output "Creating folder: $ConfigDir"
+		New-Item -ItemType Directory -Force -Path $ConfigDir > $null
 	}
 }
 
-$ZipFile = "$DataDir/uosc_tmp.zip"
+Write-Output "→ $ConfigDir"
 
-Function Cleanup() {
-	try {
-		if (Test-Path $ZipFile) {
-			Write-Output "Deleting: $ZipFile"
-			Remove-Item -LiteralPath $ZipFile -Force
-		}
+$BackupDir = "$ConfigDir/.uosc-backup"
+$ZipFile = "$ConfigDir/uosc_tmp.zip"
+
+function DeleteIfExists($Path) {
+	if (Test-Path $Path) {
+		Remove-Item -LiteralPath $Path -Force -Recurse > $null
 	}
-	catch {}
 }
 
 Function Abort($Message) {
-	Cleanup
 	Write-Output "Error: $Message"
+	Write-Output "Aborting!"
+
+	DeleteIfExists($ZipFile)
+
+	Write-Output "Deleting potentially broken install..."
+	foreach ($File in $Files) {
+		DeleteIfExists("$ConfigDir/$File")
+	}
+
+	Write-Output "Restoring backup..."
+	foreach ($File in $Files) {
+		$FromPath = "$BackupDir/$File"
+		if (Test-Path $FromPath) {
+			$ToPath = "$ConfigDir/$File"
+			$ToDir = Split-Path $ToPath -parent
+			New-Item -ItemType Directory -Force -Path $ToDir > $null
+			Move-Item -LiteralPath $FromPath -Destination $ToPath -Force > $null
+		}
+	}
+
+	Write-Output "Deleting backup..."
+	DeleteIfExists($BackupDir)
+
 	Exit 1
 }
 
-# Remove old or deprecated folders & files
-try {
-	$UoscDir = "$DataDir/scripts/uosc"
-	$UoscDeprecatedDir = "$DataDir/scripts/uosc_shared"
-	$UoscDeprecatedFile = "$DataDir/scripts/uosc.lua"
-	if (Test-Path $UoscDir) {
-		Write-Output "Deleting old: $UoscDir"
-		Remove-Item -LiteralPath $UoscDir -Force -Recurse
+# Ensure install directory exists
+if (!(Test-Path -Path $ConfigDir -PathType Container)) {
+	if (Test-Path -Path $ConfigDir -PathType Leaf) {
+		Abort("Config directory is a file.")
 	}
-	if (Test-Path $UoscDeprecatedDir) {
-		Write-Output "Deleting deprecated: $UoscDeprecatedDir"
-		Remove-Item -LiteralPath $UoscDeprecatedDir -Force -Recurse
+	try {
+		New-Item -ItemType Directory -Force -Path $ConfigDir > $null
 	}
-	if (Test-Path $UoscDeprecatedFile) {
-		Write-Output "Deleting deprecated: $UoscDeprecatedFile"
-		Remove-Item -LiteralPath $UoscDeprecatedFile -Force
+	catch {
+		Abort("Couldn't create config directory.")
 	}
 }
-catch {
-	Abort("Couldn't cleanup old files.")
+
+Write-Output "Backing up..."
+foreach ($File in $Files) {
+	$FromPath = "$ConfigDir/$File"
+	if (Test-Path $FromPath) {
+		$ToPath = "$BackupDir/$File"
+		$ToDir = Split-Path $ToPath -parent
+		try {
+			New-Item -ItemType Directory -Force -Path $ToDir > $null
+		}
+		catch {
+			Abort("Couldn't create backup folder: $ToDir")
+		}
+		try {
+			Move-Item -LiteralPath $FromPath -Destination $ToPath -Force > $null
+		}
+		catch {
+			Abort("Couldn't move '$FromPath' to '$ToPath'.")
+		}
+	}
 }
 
 # Install new version
+Write-Output "Downloading archive..."
 try {
-	Write-Output "Downloading: $ZipURL"
 	Invoke-WebRequest -OutFile $ZipFile -Uri $ZipURL > $null
 }
 catch {
-	Abort("Couldn't download the archive.")
+	Abort("Couldn't download: $ZipURL")
 }
+Write-Output "Extracting archive..."
 try {
-	Write-Output "Extracting: $ZipFile"
-	Expand-Archive $ZipFile -DestinationPath $DataDir -Force > $null
+	Expand-Archive $ZipFile -DestinationPath $ConfigDir -Force > $null
 }
 catch {
-	Abort("Couldn't extract the archive.")
+	Abort("Couldn't extract: $ZipFile")
 }
-Cleanup
+Write-Output "Deleting archive..."
+DeleteIfExists($ZipFile)
+Write-Output "Deleting backup..."
+DeleteIfExists($BackupDir)
 
 # Download default config if one doesn't exist yet
 try {
-	$ScriptOptsDir = "$DataDir/script-opts"
+	$ScriptOptsDir = "$ConfigDir/script-opts"
 	$ConfFile = "$ScriptOptsDir/uosc.conf"
 	if (!(Test-Path $ConfFile)) {
-		Write-Output "Config not found, downloading default one..."
+		Write-Output "Config not found, downloading default uosc.conf..."
 		New-Item -ItemType Directory -Force -Path $ScriptOptsDir > $null
-		Write-Output "Downloading: $ConfURL"
 		Invoke-WebRequest -OutFile $ConfFile -Uri $ConfURL > $null
 	}
 }
