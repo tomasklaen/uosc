@@ -1,5 +1,6 @@
 --[[ uosc 4.7.0 - 2023-Apr-15 | https://github.com/tomasklaen/uosc ]]
 local uosc_version = '4.7.0'
+mp.commandv('script-message', 'uosc-version', uosc_version)
 
 assdraw = require('mp.assdraw')
 opt = require('mp.options')
