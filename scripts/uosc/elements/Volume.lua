@@ -57,20 +57,13 @@ function VolumeSlider:render()
 
 	if width <= 0 or height <= 0 or visibility <= 0 then return end
 
-	if self.proximity_raw == 0 then
-		cursor.on_primary_down = function()
-			self.pressed = true
-			self:set_from_cursor()
-			cursor.on_primary_up = function() self.pressed = false end
-		end
-		cursor.on_wheel_down = function() self:handle_wheel_down() end
-		cursor.on_wheel_up = function() self:handle_wheel_up() end
-	end
-	if self.pressed then
-		cursor.on_primary_up = function()
-			self.pressed = false
-		end
-	end
+	cursor:zone('primary_down', self, function()
+		self.pressed = true
+		self:set_from_cursor()
+		cursor:once('primary_up', function() self.pressed = false end)
+	end)
+	cursor:zone('wheel_down', self, function() self:handle_wheel_down() end)
+	cursor:zone('wheel_up', self, function() self:handle_wheel_up() end)
 
 	local ass = assdraw.ass_new()
 	local nudge_y, nudge_size = self.draw_nudge and self.nudge_y or -math.huge, self.nudge_size
@@ -256,18 +249,14 @@ function Volume:render()
 	if visibility <= 0 then return end
 
 	-- Reset volume on secondary click
-	if self.proximity_raw == 0 then
-		cursor.on_secondary_down = function()
-			mp.set_property_native('mute', false)
-			mp.set_property_native('volume', 100)
-		end
-	end
+	cursor:zone('secondary_down', self, function()
+		mp.set_property_native('mute', false)
+		mp.set_property_native('volume', 100)
+	end)
 
 	-- Mute button
 	local mute_rect = {ax = self.ax, ay = self.mute_ay, bx = self.bx, by = self.by}
-	if get_point_to_rectangle_proximity(cursor, mute_rect) == 0 then
-		cursor.on_primary_down = function() mp.commandv('cycle', 'mute') end
-	end
+	cursor:zone('primary_down', mute_rect, function() mp.commandv('cycle', 'mute') end)
 	local ass = assdraw.ass_new()
 	local width_half = (mute_rect.bx - mute_rect.ax) / 2
 	local height_half = (mute_rect.by - mute_rect.ay) / 2

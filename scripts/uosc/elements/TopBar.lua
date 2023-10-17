@@ -28,8 +28,8 @@ function TopBarButton:render()
 	-- Background on hover
 	if self.proximity_raw == 0 then
 		ass:rect(self.ax, self.ay, self.bx, self.by, {color = self.background, opacity = visibility})
-		cursor.on_primary_down = function() self:handle_cursor_down() end
 	end
+	cursor:zone('primary_down', self, function() self:handle_cursor_down() end)
 
 	local width, height = self.bx - self.ax, self.by - self.ay
 	local icon_size = math.min(width, height) * 0.5
@@ -219,9 +219,7 @@ function TopBar:render()
 			title_ax = rect.bx + bg_margin
 
 			-- Click action
-			if get_point_to_rectangle_proximity(cursor, rect) == 0 then
-				cursor.on_primary_down = function() mp.command('script-binding uosc/playlist') end
-			end
+			cursor:zone('primary_down', rect, function() mp.command('script-binding uosc/playlist') end)
 		end
 
 		-- Skip rendering titles if there's not enough horizontal space
@@ -242,10 +240,8 @@ function TopBar:render()
 				local by = self.by - bg_margin
 				local title_rect = {ax = title_ax, ay = title_ay, bx = bx, by = by}
 
-				if options.top_bar_alt_title_place == 'toggle'
-					and get_point_to_rectangle_proximity(cursor, title_rect) == 0 then
-					cursor.on_primary_down = function() self:toggle_title() end
-					cursor.allow_dragging = true
+				if options.top_bar_alt_title_place == 'toggle' then
+					cursor:zone('primary_down', title_rect, function() self:toggle_title() end)
 				end
 
 				ass:rect(title_rect.ax, title_rect.ay, title_rect.bx, title_rect.by, {
@@ -305,9 +301,7 @@ function TopBar:render()
 				title_ay = rect.by + 1
 
 				-- Click action
-				if get_point_to_rectangle_proximity(cursor, rect) == 0 then
-					cursor.on_primary_down = function() mp.command('script-binding uosc/chapters') end
-				end
+				cursor:zone('primary_down', rect, function() mp.command('script-binding uosc/chapters') end)
 			end
 		end
 		self.title_by = title_ay - 1

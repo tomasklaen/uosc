@@ -689,13 +689,32 @@ function serialize_chapters(chapters)
 	return chapters
 end
 
+---Find all active key bindings or the active key binding for key
+---@param key string|nil
+---@return {[string]: table}|table
+function find_active_keybindings(key)
+	local bindings = mp.get_property_native('input-bindings', {})
+	local active = {} -- map: key-name -> bind-info
+	for _, bind in pairs(bindings) do
+		if bind.owner ~= 'uosc' and bind.priority >= 0 and (not key or bind.key == key) and (
+				not active[bind.key]
+				or (active[bind.key].is_weak and not bind.is_weak)
+				or (bind.is_weak == active[bind.key].is_weak and bind.priority > active[bind.key].priority)
+			)
+		then
+			active[bind.key] = bind
+		end
+	end
+	return not key and active or active[key]
+end
+
 --[[ RENDERING ]]
 
 function render()
 	if not display.initialized then return end
 	state.render_last_time = mp.get_time()
 
-	cursor:reset_main_handlers()
+	cursor:clear_zones()
 
 	-- Actual rendering
 	local ass = assdraw.ass_new()

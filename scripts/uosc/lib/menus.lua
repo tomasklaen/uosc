@@ -402,21 +402,8 @@ end
 
 -- Adapted from `stats.lua`
 function get_input_items()
-	local bindings = mp.get_property_native('input-bindings', {})
-	local active = {} -- map: key-name -> bind-info
 	local items = {}
-
-	-- Find active keybinds
-	for _, bind in pairs(bindings) do
-		if bind.priority >= 0 and (
-				not active[bind.key]
-				or (active[bind.key].is_weak and not bind.is_weak)
-				or (bind.is_weak == active[bind.key].is_weak and bind.priority > active[bind.key].priority)
-			)
-		then
-			active[bind.key] = bind
-		end
-	end
+	local active = find_active_keybindings()
 
 	-- Convert to menu items
 	for _, bind in pairs(active) do

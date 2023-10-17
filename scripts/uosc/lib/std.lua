@@ -173,6 +173,10 @@ function itable_append(target, source)
 	return target
 end
 
+function itable_clear(itable)
+	for i = #itable, 1, -1 do itable[i] = nil end
+end
+
 ---@generic T
 ---@param input table<T, any>
 ---@return T[]
@@ -254,7 +258,7 @@ function Class:new(...)
 	object:init(...)
 	return object
 end
-function Class:init() end
+function Class:init(...) end
 function Class:destroy() end
 
 function class(parent) return setmetatable({}, {__index = parent or Class}) end
@@ -265,7 +269,6 @@ CircularBuffer = class()
 function CircularBuffer:new(max_size) return Class.new(self, max_size) --[[@as CircularBuffer]] end
 function CircularBuffer:init(max_size)
 	self.max_size = max_size
-	self.size = 0
 	self.pos = 0
 	self.data = {}
 end
@@ -273,15 +276,14 @@ end
 function CircularBuffer:insert(item)
 	self.pos = self.pos % self.max_size + 1
 	self.data[self.pos] = item
-	if self.size < self.max_size then self.size = self.size + 1 end
 end
 
 function CircularBuffer:get(i)
-	return i <= self.size and self.data[(self.pos + i - 1) % self.size + 1] or nil
+	return i <= #self.data and self.data[(self.pos + i - 1) % #self.data + 1] or nil
 end
 
 local function iter(self, i)
-	if i == self.size then return nil end
+	if i == #self.data then return nil end
 	i = i + 1
 	return i, self:get(i)
 end
@@ -297,7 +299,7 @@ local function iter_rev(self, i)
 end
 
 function CircularBuffer:iter_rev()
-	return iter_rev, self, self.size + 1
+	return iter_rev, self, #self.data + 1
 end
 
 function CircularBuffer:head()
@@ -305,12 +307,11 @@ function CircularBuffer:head()
 end
 
 function CircularBuffer:tail()
-	if self.size < 1 then return nil end
-	return self.data[self.pos % self.size + 1]
+	if #self.data < 1 then return nil end
+	return self.data[self.pos % #self.data + 1]
 end
 
 function CircularBuffer:clear()
-	for i = self.size, 1, -1 do self.data[i] = nil end
-	self.size = 0
+	itable_clear(self.data)
 	self.pos = 0
 end

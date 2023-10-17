@@ -4,15 +4,18 @@ local cursor = {
 	hidden = true,
 	hover_raw = false,
 	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
-	-- - element activations (clicks) go to `on_primary_down` handler
-	-- - `on_primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
-	on_primary_down = nil,
-	on_primary_up = nil,
-	on_secondary_down = nil,
-	on_secondary_up = nil,
-	on_wheel_down = nil,
-	on_wheel_up = nil,
-	allow_dragging = false,
+	-- - element activations (clicks) go to `primary_down` handler
+	-- - `primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
+	---@type {[string]: {hitbox: Rect|{point: Point, r: number}; handler: fun(...)}[]}
+	zone_handlers = {
+		primary_down = {},
+		primary_up = {},
+		secondary_down = {},
+		secondary_up = {},
+		wheel_down = {},
+		wheel_up = {},
+		move = {},
+	},
 	handlers = {
 		primary_down = {},
 		primary_up = {},
@@ -26,6 +29,7 @@ local cursor = {
 	history = CircularBuffer:new(10),
 	-- Enables pointer key group captures needed by handlers (called at the end of each render)
 	mbtn_left_enabled = nil,
+	mbtn_left_dbl_enabled = nil,
 	mbtn_right_enabled = nil,
 	wheel_enabled = nil,
 }
@@ -37,11 +41,28 @@ cursor.autohide_timer = (function()
 end)()
 
 -- Called at the beginning of each render
-function cursor:reset_main_handlers()
-	cursor.on_primary_down, cursor.on_primary_up = nil, nil
-	cursor.on_secondary_down, cursor.on_secondary_up = nil, nil
-	cursor.on_wheel_down, cursor.on_wheel_up = nil, nil
-	cursor.allow_dragging = false
+function cursor:clear_zones()
+	for _, handlers in pairs(self.zone_handlers) do
+		itable_clear(handlers)
+	end
+end
+
+---@param event string
+function cursor:find_zone_handler(event)
+	local zone_handlers = self.zone_handlers[event]
+	for i = #zone_handlers, 1, -1 do
+		local zone_handler = zone_handlers[i]
+		local hitbox = zone_handler.hitbox
+		if (hitbox.r and get_point_to_point_proximity(self, hitbox.point) <= hitbox.r) or
+			(not hitbox.r and get_point_to_rectangle_proximity(self, hitbox) == 0) then
+			return zone_handler.handler
+		end
+	end
+end
+
+function cursor:zone(event, hitbox, callback)
+	local area_handlers = self.zone_handlers[event]
+	area_handlers[#area_handlers + 1] = {hitbox = hitbox, handler = callback}
 end
 
 -- Binds a cursor event handler.
@@ -80,25 +101,57 @@ end
 -- Trigger the event.
 ---@param event string
 function cursor:trigger(event, ...)
-	call_maybe(cursor['on_' .. event], ...)
-	for _, callback in ipairs(cursor.handlers[event]) do callback(...) end
+	local zone_handler = self:find_zone_handler(event)
+	local callbacks = self.handlers[event]
+	if zone_handler or #callbacks > 0 then
+		call_maybe(zone_handler, ...)
+		for _, callback in ipairs(callbacks) do callback(...) end
+	elseif (event == 'primary_down' or event == 'primary_up') then
+		-- forward mbtn_left events if there was no handler
+		local active = find_active_keybindings('MBTN_LEFT')
+		if active then
+			if active.owner then
+				-- binding belongs to other script, so make it look like regular key event
+				-- mouse bindings are simple, other keys would require repeat and pressed handling
+				-- which can't be done with mp.set_key_bindings(), but is possible with mp.add_key_binding()
+				local state = event == 'primary_up' and 'um' or 'dm'
+				local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
+				mp.commandv('script-message-to', active.owner, 'key-binding', name, state, 'MBTN_LEFT')
+			elseif event == 'primary_down' then
+				-- input.conf binding
+				mp.command(active.cmd)
+			end
+		end
+	end
 	self:queue_autohide() -- refresh cursor autohide timer
 end
 
+---Checks if there are any handlers for the current cursor position
 ---@param name string
 function cursor:has_handler(name)
-	return self['on_' .. name] ~= nil or #self.handlers[name] > 0
+	return self:find_zone_handler(name) ~= nil or #self.handlers[name] > 0
+end
+
+---Checks if there are any handlers at all
+---@param name string
+function cursor:has_any_handler(name)
+	return #self.zone_handlers[name] > 0 or #self.handlers[name] > 0
 end
 
 -- Enables or disables keybinding groups based on what event listeners are bound.
 function cursor:decide_keybinds()
-	local enable_mbtn_left = self:has_handler('primary_down') or self:has_handler('primary_up')
+	local enable_mbtn_left = self:has_any_handler('primary_down') or self:has_any_handler('primary_up')
+	local enable_mbtn_left_dbl = self:has_handler('primary_down') or self:has_handler('primary_up')
 	local enable_mbtn_right = self:has_handler('secondary_down') or self:has_handler('secondary_up')
 	local enable_wheel = self:has_handler('wheel_down') or self:has_handler('wheel_up')
 	if enable_mbtn_left ~= self.mbtn_left_enabled then
-		local flags = self.allow_dragging and 'allow-vo-dragging' or nil
+		local flags = 'allow-vo-dragging+allow-hide-cursor'
 		mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left', flags)
 		self.mbtn_left_enabled = enable_mbtn_left
+	end
+	if enable_mbtn_left_dbl ~= self.mbtn_left_dbl_enabled then
+		mp[(enable_mbtn_left_dbl and 'enable' or 'disable') .. '_key_bindings']('mbtn_left_dbl')
+		self.mbtn_left_dbl_enabled = enable_mbtn_left_dbl
 	end
 	if enable_mbtn_right ~= self.mbtn_right_enabled then
 		mp[(enable_mbtn_right and 'enable' or 'disable') .. '_key_bindings']('mbtn_right')
@@ -205,11 +258,11 @@ function cursor:leave() self:move(math.huge, math.huge) end
 
 -- Cursor auto-hiding after period of inactivity.
 function cursor:autohide()
-	if not cursor.on_primary_up and not Menu:is_open() then cursor:leave() end
+	if #self.zone_handlers.primary_up == 0 and not Menu:is_open() then self:leave() end
 end
 
 function cursor:queue_autohide()
-	if options.autohide and not self.on_primary_up then
+	if options.autohide and #self.zone_handlers.primary_up == 0 then
 		self.autohide_timer:kill()
 		self.autohide_timer:resume()
 	end
@@ -253,8 +306,10 @@ mp.set_key_bindings({
 			handle_mouse_pos(nil, mp.get_property_native('mouse-pos'))
 		end),
 	},
-	{'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left', 'force')
+mp.set_key_bindings({
+	{'mbtn_left_dbl', 'ignore'},
+}, 'mbtn_left_dbl', 'force')
 mp.set_key_bindings({
 	{'mbtn_right', cursor:make_handler('secondary_up'), cursor:make_handler('secondary_down')},
 }, 'mbtn_right', 'force')
