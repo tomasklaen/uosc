@@ -1,6 +1,10 @@
 local Element = require('elements/Element')
 local dots = {'.', '..', '...'}
 
+local function cleanup_output(output)
+	return tostring(output):gsub('%c*\n%c*', '\n'):match('^[%s%c]*(.-)[%s%c]*$')
+end
+
 ---@class Updater : Element
 local Updater = class(Element)
 
@@ -10,26 +14,11 @@ function Updater:init()
 	self.output = nil
 	self.message = t('Updating uosc')
 	self.state = 'pending' -- Matches icon name
+	local config_dir = mp.command_native({'expand-path', '~~/'})
 
 	Elements:maybe('curtain', 'register', self.id)
 
-	local args = state.platform == 'windows'
-		and {'powershell', '-NoProfile', '-Command',
-			'irm https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/windows.ps1 | iex'}
-		or {'/bin/bash', '-c',
-			'source <(curl -fsSL https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/unix.sh)'}
-	local env = utils.get_env_list()
-	env[#env + 1] = 'MPV_CONFIG_DIR=' .. mp.command_native({'expand-path', '~~/'})
-
-	-- Update
-	mp.command_native_async({
-		name = 'subprocess',
-		capture_stderr = true,
-		capture_stdout = true,
-		playback_only = false,
-		args = args,
-		env = env,
-	}, function(success, result, error)
+	local function handle_result(success, result, error)
 		if success and result and result.status == 0 then
 			self.state = 'done'
 			self.message = t('uosc has been installed. Restart mpv for it to take effect.')
@@ -37,12 +26,67 @@ function Updater:init()
 			self.state = 'error'
 			self.message = t('There has been an error. See above for clues.')
 		end
-		local output = ((result.stdout or '') .. '\n' .. (error or result.stderr or ''))
-			:gsub('%c*\n%c*', '\n')
-			:gsub('%c*$', '')
-		self.output = ass_escape(output)
+
+		local output = (result.stdout or '') .. '\n' .. (error or result.stderr or '')
+		if state.platform == 'darwin' then
+			output =
+				'Self-updater is known not to work on MacOS.\nIf you know about a solution, please make an issue and share it with us!.\n' ..
+				output
+		end
+
+		self.output = ass_escape(cleanup_output(output))
+
 		request_render()
-	end)
+	end
+
+	local function update(args)
+		local env = utils.get_env_list()
+		env[#env + 1] = 'MPV_CONFIG_DIR=' .. config_dir
+
+		mp.command_native_async({
+			name = 'subprocess',
+			capture_stderr = true,
+			capture_stdout = true,
+			playback_only = false,
+			args = args,
+			env = env,
+		}, handle_result)
+	end
+
+	if state.platform == 'windows' then
+		local url = 'https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/windows.ps1'
+		update({'powershell', '-NoProfile', '-Command', 'irm ' .. url .. ' | iex'})
+	else
+		-- Detect missing dependencies. We can't just let the process run and
+		-- report an error, as on snap packages there's no error. Everything
+		-- either exits with 0, or no helpful output/error message.
+		local missing = {}
+
+		for _, name in ipairs({'curl', 'unzip'}) do
+			local result = mp.command_native({
+				name = 'subprocess',
+				capture_stdout = true,
+				playback_only = false,
+				args = {'which', name},
+			})
+			local path = cleanup_output(result and result.stdout or '')
+			if path == '' then
+				missing[#missing + 1] = name
+			end
+		end
+
+		if #missing > 0 then
+			local stderr = 'Missing dependencies: ' .. table.concat(missing, ', ')
+			if config_dir:match('/snap/') then
+				stderr = stderr ..
+					'\nThis is a known error for mpv snap packages.\nYou can still update uosc by entering the Linux install command from uosc\'s readme into your terminal, it just can\'t be done this way.\nIf you know about a solution, please make an issue and share it with us!'
+			end
+			handle_result(false, {stderr = stderr})
+		else
+			local url = 'https://raw.githubusercontent.com/tomasklaen/uosc/HEAD/installers/unix.sh'
+			update({'/bin/bash', '-c', 'source <(curl -fsSL ' .. url .. ')'})
+		end
+	end
 end
 
 function Updater:destroy()
