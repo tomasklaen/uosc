@@ -79,7 +79,7 @@ elif [ "${OS}" == "Linux" ]; then
 
 	fi
 elif [ "${OS}" == "Darwin" ]; then
-	config_dir=~/Library/Preferences/mpv
+	config_dir=~/.config/mpv
 else
 	abort "This install script works only on Linux and macOS."
 fi
