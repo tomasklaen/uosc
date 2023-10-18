@@ -292,19 +292,19 @@ Open directory with `mpv.conf` in file explorer.
 
 #### `update`
 
-Updates uosc to the latest stable release right from the UI. Available in default menu in the "Utils" section.
+Updates uosc to the latest stable release right from the UI. Available in the "Utils" section of default menu .
 
 Supported environments:
 
 | Env | Works | Note |
 |:---|:---:|---|
-| Windows | ✔️ | _Not tested on older PowerShell versions. And you might need to `Set-ExecutionPolicy` from the install instructions and install with the terminal command first._ |
+| Windows | ✔️ | _Not tested on older PowerShell versions. You might need to `Set-ExecutionPolicy` from the install instructions and install with the terminal command first._ |
 | Linux (apt) | ✔️ | |
 | Linux (flatpak) | ✔️ | |
-| Linux (snap) | ❌ | We're not allowed to access commands like `curl` even if they're installed. (Or at least I think this is the issue.) |
+| Linux (snap) | ❌ | We're not allowed to access commands like `curl` even if they're installed. (Or at least this is what I think the issue is.) |
 | MacOS | ❌ | `(23) Failed writing body` error, whatever that means. |
 
-If you know about a solution to fix self-updater in one of the currently broken environments, please make an issue/PR and share it with us!
+If you know about a solution to fix self-updater for any of the currently broken environments, please make an issue/PR and share it with us!
 
 **Note:** The terminal commands from install instructions still work fine everywhere, so you can use those to update instead.
 

@@ -24,7 +24,7 @@ function Updater:init()
 			self.message = t('uosc has been installed. Restart mpv for it to take effect.')
 		else
 			self.state = 'error'
-			self.message = t('There has been an error. See above for clues.')
+			self.message = t('An error has occurred.') .. ' ' .. t('See above for clues.')
 		end
 
 		local output = (result.stdout or '') .. '\n' .. (error or result.stderr or '')
