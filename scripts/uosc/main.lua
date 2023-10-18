@@ -1059,7 +1059,7 @@ bind_command('last', function()
 end)
 bind_command('first-file', function() load_file_index_in_current_directory(1) end)
 bind_command('last-file', function() load_file_index_in_current_directory(-1) end)
-bind_command('delete-file-next', function()
+local function delete_file_navigate(delta)
 	local next_file = nil
 	local is_local_file = state.path and not is_protocol(state.path)
 
@@ -1076,7 +1076,7 @@ bind_command('delete-file-next', function()
 				hidden = options.show_hidden_files,
 			})
 			if paths and current_index then
-				local index, path = decide_navigation_in_list(paths, current_index, 1)
+				local index, path = decide_navigation_in_list(paths, current_index, delta)
 				if path then next_file = path end
 			end
 		end
@@ -1089,7 +1089,9 @@ bind_command('delete-file-next', function()
 	end
 
 	if is_local_file then delete_file(state.path) end
-end)
+end
+bind_command('delete-file-prev', function () delete_file_navigate(-1) end)
+bind_command('delete-file-next', function () delete_file_navigate(1) end)
 bind_command('delete-file-quit', function()
 	mp.command('stop')
 	if state.path and not is_protocol(state.path) then delete_file(state.path) end
