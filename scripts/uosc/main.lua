@@ -1,6 +1,8 @@
 --[[ uosc 4.7.0 - 2023-Apr-15 | https://github.com/tomasklaen/uosc ]]
 local uosc_version = '4.7.0'
 
+mp.commandv('script-message', 'uosc-version', uosc_version)
+
 assdraw = require('mp.assdraw')
 opt = require('mp.options')
 utils = require('mp.utils')
@@ -1155,9 +1157,6 @@ end)
 mp.register_script_message('show-submenu', function(id) toggle_menu_with_items({submenu = id}) end)
 mp.register_script_message('show-submenu-blurred', function(id)
 	toggle_menu_with_items({submenu = id, mouse_nav = true})
-end)
-mp.register_script_message('get-version', function(script)
-	mp.commandv('script-message-to', script, 'uosc-version', config.version)
 end)
 mp.register_script_message('open-menu', function(json, submenu_id)
 	local data = utils.parse_json(json)

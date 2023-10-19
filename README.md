@@ -425,26 +425,25 @@ esc         quit #! Quit
 
 To see all the commands you can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).
 
-## Message handlers
+## Messages
 
-**uosc** listens on some messages that can be sent with `script-message-to uosc` command. Example:
+### `uosc-version <version>`
 
-```
-R    script-message-to uosc show-submenu "Utils > Aspect ratio"
-```
-
-### `get-version <script_id>`
-
-Tells uosc to send it's version to `<script_id>` script. Useful if you want to detect that uosc is installed. Example:
+Broadcasts the uosc version during script initialization. Useful if you want to detect that uosc is installed. Example:
 
 ```lua
 -- Register response handler
 mp.register_script_message('uosc-version', function(version)
   print('uosc version', version)
 end)
+```
 
--- Ask for version
-mp.commandv('script-message-to', 'uosc', 'get-version', mp.get_script_name())
+## Message handlers
+
+**uosc** listens on some messages that can be sent with `script-message-to uosc` command. Example:
+
+```
+R    script-message-to uosc show-submenu "Utils > Aspect ratio"
 ```
 
 ### `show-submenu <menu_id>`, `show-submenu-blurred <menu_id>`
