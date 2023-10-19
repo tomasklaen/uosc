@@ -6,7 +6,7 @@ local PauseIndicator = class(Element)
 function PauseIndicator:new() return Class.new(self) --[[@as PauseIndicator]] end
 function PauseIndicator:init()
 	Element.init(self, 'pause_indicator', {render_order = 3})
-	self.ignores_menu = true
+	self.ignores_curtain = true
 	self.paused = state.pause
 	self.fadeout_requested = false
 	self.opacity = 0

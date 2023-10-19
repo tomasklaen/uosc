@@ -32,22 +32,18 @@ function Elements:remove(idOrElement)
 end
 
 function Elements:update_proximities()
-	local menu_only = Elements.menu ~= nil
+	local curtain_render_order = Elements.curtain.opacity > 0 and Elements.curtain.render_order or 0
 	local mouse_leave_elements = {}
 	local mouse_enter_elements = {}
 
-	-- Calculates proximities and opacities for defined elements
+	-- Calculates proximities for all elements
 	for _, element in self:ipairs() do
 		if element.enabled then
 			local previous_proximity_raw = element.proximity_raw
 
-			-- If menu is open, all other elements have to be disabled
-			if menu_only then
-				if element.ignores_menu then
-					element:update_proximity()
-				else
-					element:reset_proximity()
-				end
+			-- If curtain is open, we disable all elements set to rendered below it
+			if not element.ignores_curtain and element.render_order < curtain_render_order then
+				element:reset_proximity()
 			else
 				element:update_proximity()
 			end

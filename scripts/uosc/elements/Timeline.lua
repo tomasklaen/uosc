@@ -26,7 +26,7 @@ function Timeline:init()
 end
 
 function Timeline:get_visibility()
-	return math.max(Elements:v('controls', 'proximity', 0), Element.get_visibility(self))
+	return math.max(Elements:maybe('controls', 'get_visibility') or 0, Element.get_visibility(self))
 end
 
 function Timeline:decide_enabled()
