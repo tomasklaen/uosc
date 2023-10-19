@@ -414,20 +414,6 @@ To see all the commands you can bind keys or menu items to, refer to [mpv's list
 R    script-message-to uosc show-submenu "Utils > Aspect ratio"
 ```
 
-### `get-version <script_id>`
-
-Tells uosc to send it's version to `<script_id>` script. Useful if you want to detect that uosc is installed. Example:
-
-```lua
--- Register response handler
-mp.register_script_message('uosc-version', function(version)
-  print('uosc version', version)
-end)
-
--- Ask for version
-mp.commandv('script-message-to', 'uosc', 'get-version', mp.get_script_name())
-```
-
 ### `show-submenu <menu_id>`, `show-submenu-blurred <menu_id>`
 
 Opens one of the submenus defined in `input.conf` (read on how to build those in the Menu documentation above). To prevent 1st item being preselected, use `show-submenu-blurred` instead.
