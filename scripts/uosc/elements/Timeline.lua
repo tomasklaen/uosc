@@ -175,7 +175,6 @@ function Timeline:render()
 	local text_opacity = clamp(0, size - hide_text_below, hide_text_ramp) / hide_text_ramp
 
 	local tooltip_gap = round(2 * state.scale)
-	local tooltip_margin = round(10 * state.scale)
 	local timestamp_gap = tooltip_gap
 
 	local spacing = math.max(math.floor((self.size - self.font_size) / 2.5), 4)
@@ -392,10 +391,10 @@ function Timeline:render()
 		local color = ((fax - 0.5) < cursor_x and cursor_x < (fbx + 0.5)) and bg or fg
 		local ax, ay, bx, by = cursor_x - 0.5, fay, cursor_x + 0.5, fby
 		ass:rect(ax, ay, bx, by, {color = color, opacity = 0.2})
-		local tooltip_anchor = {ax = ax, ay = ay, bx = bx, by = by}
+		local tooltip_anchor = {ax = ax, ay = ay - self.top_border, bx = bx, by = by}
 
 		-- Timestamp
-		local opts = {size = self.font_size, offset = timestamp_gap, margin = tooltip_margin}
+		local opts = {size = self.font_size, offset = timestamp_gap, margin = tooltip_gap}
 		local hovered_time_human = format_time(hovered_seconds, state.duration)
 		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
 		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts)
@@ -407,8 +406,7 @@ function Timeline:render()
 			and thumbnail.height ~= 0
 		then
 			local border = math.ceil(math.max(2, state.radius / 2) * state.scale)
-			local margin_x, margin_y = tooltip_margin, tooltip_gap
-			local thumb_x_margin, thumb_y_margin = border + margin_x + bax, border + margin_y
+			local thumb_x_margin, thumb_y_margin = border + tooltip_gap + bax, border + tooltip_gap
 			local thumb_width, thumb_height = thumbnail.width, thumbnail.height
 			local thumb_x = round(clamp(
 				thumb_x_margin,
@@ -442,7 +440,7 @@ function Timeline:render()
 					bold = true,
 					width_overwrite = chapter.title_wrapped_width * self.font_size,
 					lines = chapter.title_lines,
-					margin = tooltip_margin,
+					margin = tooltip_gap,
 				})
 			end
 		end
