@@ -406,6 +406,19 @@ esc         quit #! Quit
 
 To see all the commands you can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).
 
+## Messages
+
+### `uosc-version <version>`
+
+Broadcasts the uosc version during script initialization. Useful if you want to detect that uosc is installed. Example:
+
+```lua
+-- Register response handler
+mp.register_script_message('uosc-version', function(version)
+  print('uosc version', version)
+end)
+```
+
 ## Message handlers
 
 **uosc** listens on some messages that can be sent with `script-message-to uosc` command. Example:
