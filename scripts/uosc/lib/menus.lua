@@ -401,7 +401,7 @@ do
 end
 
 -- Adapted from `stats.lua`
-function get_input_items()
+function get_keybinds_items()
 	local items = {}
 	local active = find_active_keybindings()
 

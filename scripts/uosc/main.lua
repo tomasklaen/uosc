@@ -294,7 +294,7 @@ function create_default_menu_items()
 				{title = t('Audio devices'), value = 'script-binding uosc/audio-device'},
 				{title = t('Editions'), value = 'script-binding uosc/editions'},
 				{title = t('Screenshot'), value = 'async screenshot'},
-				{title = t('Inputs'), value = 'script-binding uosc/inputs'},
+				{title = t('Key bindings'), value = 'script-binding uosc/keybinds'},
 				{title = t('Show in directory'), value = 'script-binding uosc/show-in-directory'},
 				{title = t('Open config folder'), value = 'script-binding uosc/open-config-directory'},
 				{title = t('Update uosc'), value = 'script-binding uosc/update'},
@@ -820,11 +820,11 @@ bind_command('toggle-title', function() Elements:maybe('top_bar', 'toggle_title'
 bind_command('decide-pause-indicator', function() Elements:maybe('pause_indicator', 'decide') end)
 bind_command('menu', function() toggle_menu_with_items() end)
 bind_command('menu-blurred', function() toggle_menu_with_items({mouse_nav = true}) end)
-bind_command('inputs', function()
-	if Menu:is_open('inputs') then
+bind_command('keybinds', function()
+	if Menu:is_open('keybinds') then
 		Menu:close()
 	else
-		open_command_menu({type = 'inputs', items = get_input_items(), palette = true})
+		open_command_menu({type = 'keybinds', items = get_keybinds_items(), palette = true})
 	end
 end)
 local track_loaders = {

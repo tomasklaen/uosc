@@ -232,9 +232,9 @@ Editions menu. Editions are different video cuts available in some mkv files.
 
 Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv property from predefined options (configurable with `stream_quality_options`) and video reload, there is no fetching of available formats going on.
 
-#### `inputs`
+#### `keybinds`
 
-Displays a command palette menu with all inputs defined in your `input.conf` file. Useful to check what command is bound to what shortcut, etc.
+Displays a command palette menu with all key bindings defined in your `input.conf` file. Useful to check what command is bound to what shortcut, or the other way around.
 
 #### `open-file`
 
@@ -416,7 +416,7 @@ o           script-binding uosc/open-file          #! Navigation > Open file
 #           script-binding uosc/audio-device       #! Utils > Audio devices
 #           script-binding uosc/editions           #! Utils > Editions
 ctrl+s      async screenshot                       #! Utils > Screenshot
-alt+i       script-binding uosc/inputs             #! Utils > Inputs
+alt+i       script-binding uosc/keybinds           #! Utils > Key bindings
 O           script-binding uosc/show-in-directory  #! Utils > Show in directory
 #           script-binding uosc/open-config-directory #! Utils > Open config directory
 #           script-binding uosc/update             #! Utils > Update uosc
