@@ -120,8 +120,10 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				end
 				if track['demux-fps'] then h(string.format('%.5gfps', track['demux-fps'])) end
 				h(track.codec)
-				if track['audio-channels'] then h(t(track['audio-channels'] == 1 and '%s channel' or '%s channels',
-						track['audio-channels'])) end
+				if track['audio-channels'] then
+					h(t(track['audio-channels'] == 1 and '%s channel' or '%s channels',
+						track['audio-channels']))
+				end
 				if track['demux-samplerate'] then h(string.format('%.3gkHz', track['demux-samplerate'] / 1000)) end
 				if track.forced then h(t('forced')) end
 				if track.default then h(t('default')) end
@@ -422,4 +424,123 @@ function get_keybinds_items()
 			muted = true,
 		},
 	}
+end
+
+function open_stream_quality_menu()
+	if Menu:is_open('stream-quality') then
+		Menu:close()
+		return
+	end
+
+	local ytdl_format = mp.get_property_native('ytdl-format')
+	local items = {}
+
+	for _, height in ipairs(config.stream_quality_options) do
+		local format = 'bestvideo[height<=?' .. height .. ']+bestaudio/best[height<=?' .. height .. ']'
+		items[#items + 1] = {title = height .. 'p', value = format, active = format == ytdl_format}
+	end
+
+	Menu:open({type = 'stream-quality', title = t('Stream quality'), items = items}, function(format)
+		mp.set_property('ytdl-format', format)
+
+		-- Reload the video to apply new format
+		-- This is taken from https://github.com/jgreco/mpv-youtube-quality
+		-- which is in turn taken from https://github.com/4e6/mpv-reload/
+		local duration = mp.get_property_native('duration')
+		local time_pos = mp.get_property('time-pos')
+
+		mp.command('playlist-play-index current')
+
+		-- Tries to determine live stream vs. pre-recorded VOD. VOD has non-zero
+		-- duration property. When reloading VOD, to keep the current time position
+		-- we should provide offset from the start. Stream doesn't have fixed start.
+		-- Decent choice would be to reload stream from it's current 'live' position.
+		-- That's the reason we don't pass the offset when reloading streams.
+		if duration and duration > 0 then
+			local function seeker()
+				mp.commandv('seek', time_pos, 'absolute')
+				mp.unregister_event(seeker)
+			end
+			mp.register_event('file-loaded', seeker)
+		end
+	end)
+end
+
+function open_open_file_menu()
+	if Menu:is_open('open-file') then
+		Menu:close()
+		return
+	end
+
+	local directory
+	local active_file
+
+	if state.path == nil or is_protocol(state.path) then
+		local serialized = serialize_path(get_default_directory())
+		if serialized then
+			directory = serialized.path
+			active_file = nil
+		end
+	else
+		local serialized = serialize_path(state.path)
+		if serialized then
+			directory = serialized.dirname
+			active_file = serialized.path
+		end
+	end
+
+	if not directory then
+		msg.error('Couldn\'t serialize path "' .. state.path .. '".')
+		return
+	end
+
+	-- Update active file in directory navigation menu
+	local menu = nil
+	local function handle_file_loaded()
+		if menu and menu:is_alive() then
+			menu:activate_one_value(normalize_path(mp.get_property_native('path')))
+		end
+	end
+
+	menu = open_file_navigation_menu(
+		directory,
+		function(path) mp.commandv('loadfile', path) end,
+		{
+			type = 'open-file',
+			allowed_types = config.types.media,
+			active_path = active_file,
+			on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
+			on_close = function() mp.unregister_event(handle_file_loaded) end,
+		}
+	)
+end
+
+---@param opts {name: string; prop: string; allowed_types: string[]}
+function create_track_loader_menu_opener(opts)
+	local menu_type = 'load-' .. opts.name
+
+	return function()
+		if Menu:is_open(menu_type) then
+			Menu:close()
+			return
+		end
+
+		local path = state.path
+		if path then
+			if is_protocol(path) then
+				path = false
+			else
+				local serialized_path = serialize_path(path)
+				path = serialized_path ~= nil and serialized_path.dirname or false
+			end
+		end
+		if not path then
+			path = get_default_directory()
+		end
+		open_file_navigation_menu(
+			path,
+			function(path) mp.commandv(opts.prop .. '-add', path) end,
+			{type = menu_type, title = t('Load ' .. opts.name), allowed_types = opts.allowed_types}
+		)
+	end
 end

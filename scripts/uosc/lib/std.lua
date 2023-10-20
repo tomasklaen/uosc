@@ -225,7 +225,7 @@ function table_copy(input) return table_assign({}, input) end
 
 -- Converts itable values into `table<value, true>` map.
 ---@param values any[]
-function make_set(values)
+function create_set(values)
 	local result = {}
 	for _, value in ipairs(values) do result[value] = true end
 	return result

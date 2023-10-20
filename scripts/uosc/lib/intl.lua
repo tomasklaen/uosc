@@ -40,12 +40,6 @@ function get_locale_from_json(path)
 	return utils.parse_json(json)
 end
 
-function make_locale()
-	local translations = {}
-
-	return translations
-end
-
 ---@param text string
 function t(text, a)
 	if not text then return '' end

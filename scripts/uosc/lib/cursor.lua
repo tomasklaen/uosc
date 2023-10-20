@@ -278,7 +278,7 @@ function cursor:direction_to_rectangle_distance(rect)
 	return get_ray_to_rectangle_distance(self.x, self.y, end_x, end_y, rect)
 end
 
-function cursor:make_handler(event, cb)
+function cursor:create_handler(event, cb)
 	return function(...)
 		call_maybe(cb, ...)
 		self:trigger(event, ...)
@@ -301,8 +301,8 @@ mp.observe_property('mouse-pos', 'native', handle_mouse_pos)
 mp.set_key_bindings({
 	{
 		'mbtn_left',
-		cursor:make_handler('primary_up'),
-		cursor:make_handler('primary_down', function(...)
+		cursor:create_handler('primary_up'),
+		cursor:create_handler('primary_down', function(...)
 			handle_mouse_pos(nil, mp.get_property_native('mouse-pos'))
 		end),
 	},
@@ -311,11 +311,11 @@ mp.set_key_bindings({
 	{'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left_dbl', 'force')
 mp.set_key_bindings({
-	{'mbtn_right', cursor:make_handler('secondary_up'), cursor:make_handler('secondary_down')},
+	{'mbtn_right', cursor:create_handler('secondary_up'), cursor:create_handler('secondary_down')},
 }, 'mbtn_right', 'force')
 mp.set_key_bindings({
-	{'wheel_up', cursor:make_handler('wheel_up')},
-	{'wheel_down', cursor:make_handler('wheel_down')},
+	{'wheel_up', cursor:create_handler('wheel_up')},
+	{'wheel_down', cursor:create_handler('wheel_down')},
 }, 'wheel', 'force')
 
 return cursor

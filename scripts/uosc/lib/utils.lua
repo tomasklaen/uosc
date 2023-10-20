@@ -547,6 +547,38 @@ function delete_file(path)
 	})
 end
 
+function delete_file_navigate(delta)
+	local next_file = nil
+	local is_local_file = state.path and not is_protocol(state.path)
+
+	if is_local_file then
+		if Menu:is_open('open-file') then Elements:maybe('menu', 'delete_value', state.path) end
+	end
+
+	if state.has_playlist then
+		mp.commandv('playlist-remove', 'current')
+	else
+		if is_local_file then
+			local paths, current_index = get_adjacent_files(state.path, {
+				types = config.types.autoload,
+				hidden = options.show_hidden_files,
+			})
+			if paths and current_index then
+				local index, path = decide_navigation_in_list(paths, current_index, delta)
+				if path then next_file = path end
+			end
+		end
+
+		if next_file then
+			mp.commandv('loadfile', next_file)
+		else
+			mp.commandv('stop')
+		end
+	end
+
+	if is_local_file then delete_file(state.path) end
+end
+
 function serialize_chapter_ranges(normalized_chapters)
 	local ranges = {}
 	local simple_ranges = {
