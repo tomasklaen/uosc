@@ -119,6 +119,8 @@ These bindings are active when any **uosc** menu is open (main menu, playlist, l
 -   `pgup`, `pgdwn`, `home`, `end` - Self explanatory.
 -   `ctrl+f` or `\` - In case `menu_type_to_search` is disabled, these two trigger the menu search instead.
 -   `ctrl+enter` - Submits a search in menus without instant search.
+-   `ctrl+backspace` - Delete search query by word.
+-   `shift+backspace` - Clear search query.
 -   `ctrl+up/down` - Move selected item in menus that support it (playlist).
 -   `del` - Delete selected item in menus that support it (playlist).
 -   `shift+enter`, `shift+right` - Activate item without closing the menu.

@@ -88,8 +88,8 @@ function Menu:init(data, callback, opts)
 	self.opts = opts or {}
 	self.offset_x = 0 -- Used for submenu transition animation.
 	self.mouse_nav = self.opts.mouse_nav -- Stops pre-selecting items
-	---@type Modifiers|nil
-	self.modifiers = nil
+	---@type Modifiers
+	self.modifiers = {}
 	self.item_height = nil
 	self.min_width = nil
 	self.item_spacing = 1
@@ -813,13 +813,26 @@ function Menu:search_query_update(query, menu)
 end
 
 ---@param event? string
-function Menu:search_backspace(event)
+---@param word_mode? boolean Delete by words.
+function Menu:search_backspace(event, word_mode)
 	local pos, old_query, is_palette = #self.current.search.query, self.current.search.query, self.current.palette
-	-- The while loop is for skipping utf8 continuation bytes
-	while pos > 1 and old_query:byte(pos) >= 0x80 and old_query:byte(pos) <= 0xbf do
+	if word_mode then
+		local word_pat, other_pat = '[^%c%s%p]+$', '[%c%s%p]+$'
+		local init_pat = old_query:sub(#old_query):match(word_pat) and word_pat or other_pat
+		-- First we match all same type consecutive chars at the end
+		local tail = old_query:match(init_pat)
+		-- If there's only one, we extend the tail with opposite type chars
+		if tail and #tail == 1 then
+			tail = tail .. old_query:sub(1, #old_query - #tail):match(init_pat == word_pat and other_pat or word_pat)
+		end
+		pos = pos - #tail
+	else
+		-- The while loop is for skipping utf8 continuation bytes
+		while pos > 1 and old_query:byte(pos) >= 0x80 and old_query:byte(pos) <= 0xbf do
+			pos = pos - 1
+		end
 		pos = pos - 1
 	end
-	pos = pos - 1
 	local new_query = old_query:sub(1, pos)
 	if new_query ~= old_query and (is_palette or not self.type_to_search or pos > 0) then
 		self:search_query_update(new_query)
@@ -888,26 +901,24 @@ function Menu:search_start(menu)
 	self:update_dimensions()
 end
 
-function Menu:key_esc()
-	if self.current.search then
-		if self.current.palette then
-			if self.current.search.query == '' then
-				self:close()
-			else
-				self:search_query_update('')
-			end
-		else
-			self:search_stop()
-		end
+---@param menu? MenuStack
+function Menu:search_clear_query(menu)
+	menu = menu or self.current
+	if not self.current.palette and self.type_to_search then
+		self:search_stop(menu)
 	else
-		self:close()
+		self:search_query_update('', menu)
 	end
 end
 
 function Menu:key_bs(info)
 	if info.event ~= 'up' then
 		if self.current.search then
-			self:search_backspace(info.event)
+			if self.modifiers.shift then
+				self:search_clear_query()
+			else
+				self:search_backspace(info.event, self.modifiers.ctrl)
+			end
 		elseif info.event ~= 'repeat' then
 			self:back()
 		end
@@ -989,6 +1000,10 @@ function Menu:enable_key_bindings()
 	self:add_key_binding('alt+mbtn_left', 'menu-select4', self:create_modified_mbtn_left_handler({alt = true}))
 	self:add_key_binding('mbtn_back', 'menu-back-alt3', self:create_key_action('back'))
 	self:add_key_binding('bs', 'menu-back-alt4', self:create_key_action('key_bs'), {repeatable = true, complex = true})
+	self:add_key_binding('shift+bs', 'menu-clear-query', self:create_key_action('key_bs', {shift = true}),
+		{repeatable = true, complex = true})
+	self:add_key_binding('ctrl+bs', 'menu-delete-word', self:create_key_action('key_bs', {ctrl = true}),
+		{repeatable = true, complex = true})
 	self:add_key_binding('enter', 'menu-select-alt3', self:create_key_action('open_selected_item_preselect'))
 	self:add_key_binding('kp_enter', 'menu-select-alt4', self:create_key_action('open_selected_item_preselect'))
 	self:add_key_binding('ctrl+enter', 'menu-select-ctrl1', self:create_key_action('key_ctrl_enter', {ctrl = true}))
@@ -1002,7 +1017,7 @@ function Menu:enable_key_bindings()
 		self:create_key_action('open_selected_item_soft', {shift = true}))
 	self:add_key_binding('shift+kp_enter', 'menu-select-alt6',
 		self:create_key_action('open_selected_item_soft', {shift = true}))
-	self:add_key_binding('esc', 'menu-close', self:create_key_action('key_esc'))
+	self:add_key_binding('esc', 'menu-close', self:create_key_action('close'))
 	self:add_key_binding('pgup', 'menu-page-up', self:create_key_action('on_pgup'), 'repeatable')
 	self:add_key_binding('pgdwn', 'menu-page-down', self:create_key_action('on_pgdwn'), 'repeatable')
 	self:add_key_binding('home', 'menu-home', self:create_key_action('on_home'))
@@ -1037,10 +1052,10 @@ end
 function Menu:create_modified_mbtn_left_handler(modifiers)
 	return self:create_action(function()
 		self.mouse_nav = true
-		self.modifiers = modifiers
+		self.modifiers = modifiers or {}
 		self:handle_cursor_down()
 		self:handle_cursor_up()
-		self.modifiers = nil
+		self.modifiers = {}
 	end)
 end
 
@@ -1049,9 +1064,9 @@ end
 function Menu:create_key_action(name, modifiers)
 	return self:create_action(function(...)
 		self.mouse_nav = false
-		self.modifiers = modifiers
+		self.modifiers = modifiers or {}
 		self:maybe(name, ...)
-		self.modifiers = nil
+		self.modifiers = {}
 	end)
 end
 
