@@ -47,7 +47,7 @@ function Timeline:update_dimensions()
 	self.top_border = round(options.timeline_border * state.scale)
 	self.line_width = round(options.timeline_line_width * state.scale)
 	self.progress_line_width = round(options.progress_line_width * state.scale)
-	self.font_size = math.floor(math.min((self.size + 60) * 0.2, self.size * 0.96) * options.font_scale)
+	self.font_size = math.floor(math.min((self.size + 60 * state.scale) * 0.2, self.size * 0.96) * options.font_scale)
 	local window_border_size = Elements:v('window_border', 'size', 0)
 	self.ax = window_border_size
 	self.ay = display.height - window_border_size - self.size - self.top_border
