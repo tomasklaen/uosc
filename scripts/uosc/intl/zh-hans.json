@@ -58,6 +58,11 @@
 	"playlist or file": "播放列表或文件",
 	"type to search": "输入搜索内容",
 	"type & ctrl+enter to search": "输入并按 ctrl+enter 进行搜索",
-	"Inputs": "输入",
-	"Drop files or URLs to play here": "拖放文件或 URL 到此处进行播放"
+	"Key bindings": "键位绑定",
+	"Drop files or URLs to play here": "拖放文件或 URL 到此处进行播放",
+	"Update uosc": "更新 uosc",
+	"Updating uosc": "正在更新 uosc",
+	"uosc has been installed. Restart mpv for it to take effect.": "uosc 已经安装，重新启动 mpv 使其生效",
+	"An error has occurred.": "出现错误",
+	"See above for clues.": "线索见上文"
 }
