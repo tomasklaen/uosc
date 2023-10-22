@@ -121,8 +121,9 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				if track['demux-fps'] then h(string.format('%.5gfps', track['demux-fps'])) end
 				h(track.codec)
 				if track['audio-channels'] then
-					h(t(track['audio-channels'] == 1 and '%s channel' or '%s channels',
-						track['audio-channels']))
+					h(track['audio-channels'] == 1
+						and t('%s channel', track['audio-channels'])
+						or t('%s channels', track['audio-channels']))
 				end
 				if track['demux-samplerate'] then h(string.format('%.3gkHz', track['demux-samplerate'] / 1000)) end
 				if track.forced then h(t('forced')) end

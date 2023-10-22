@@ -977,8 +977,9 @@ bind_command('audio-device', create_self_updating_menu_opener({
 				local hint = string.match(device.name, ao .. '/(.+)')
 				if not hint then hint = device.name end
 				items[#items + 1] = {
-					title = device.description:sub(1, 7) == 'Default' and t('Default %s', device.description:sub(9)) or
-						t(device.description),
+					title = device.description:sub(1, 7) == 'Default'
+						and t('Default %s', device.description:sub(9))
+						or device.description,
 					hint = hint,
 					active = device.name == current_device,
 					value = device.name,
