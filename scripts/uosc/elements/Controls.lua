@@ -30,26 +30,26 @@ end
 function Controls:init_options()
 	-- Serialize control elements
 	local shorthands = {
-		['play-pause'] = 'cycle:pause:pause:no/yes=play_arrow?Play/Pause',
-		menu = 'command:menu:script-binding uosc/menu-blurred?Menu',
-		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?Subtitles',
-		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?Audio',
-		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?Audio device',
-		video = 'command:theaters:script-binding uosc/video#video>1?Video',
-		playlist = 'command:list_alt:script-binding uosc/playlist?Playlist',
-		chapters = 'command:bookmark:script-binding uosc/chapters#chapters>0?Chapters',
-		['editions'] = 'command:bookmarks:script-binding uosc/editions#editions>1?Editions',
-		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?Stream quality',
-		['open-file'] = 'command:file_open:script-binding uosc/open-file?Open file',
-		['items'] = 'command:list_alt:script-binding uosc/items?Playlist/Files',
-		prev = 'command:arrow_back_ios:script-binding uosc/prev?Previous',
-		next = 'command:arrow_forward_ios:script-binding uosc/next?Next',
-		first = 'command:first_page:script-binding uosc/first?First',
-		last = 'command:last_page:script-binding uosc/last?Last',
-		['loop-playlist'] = 'cycle:repeat:loop-playlist:no/inf!?Loop playlist',
-		['loop-file'] = 'cycle:repeat_one:loop-file:no/inf!?Loop file',
-		shuffle = 'toggle:shuffle:shuffle?Shuffle',
-		fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!?Fullscreen',
+		['play-pause'] = 'cycle:pause:pause:no/yes=play_arrow?' .. t('Play/Pause'),
+		menu = 'command:menu:script-binding uosc/menu-blurred?' .. t('Menu'),
+		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?' .. t('Subtitles'),
+		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?' .. t('Audio'),
+		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?' .. t('Audio device'),
+		video = 'command:theaters:script-binding uosc/video#video>1?' .. t('Video'),
+		playlist = 'command:list_alt:script-binding uosc/playlist?' .. t('Playlist'),
+		chapters = 'command:bookmark:script-binding uosc/chapters#chapters>0?' .. t('Chapters'),
+		['editions'] = 'command:bookmarks:script-binding uosc/editions#editions>1?' .. t('Editions'),
+		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?' .. t('Stream quality'),
+		['open-file'] = 'command:file_open:script-binding uosc/open-file?' .. t('Open file'),
+		['items'] = 'command:list_alt:script-binding uosc/items?' .. t('Playlist/Files'),
+		prev = 'command:arrow_back_ios:script-binding uosc/prev?' .. t('Previous'),
+		next = 'command:arrow_forward_ios:script-binding uosc/next?' .. t('Next'),
+		first = 'command:first_page:script-binding uosc/first?' .. t('First'),
+		last = 'command:last_page:script-binding uosc/last?' .. t('Last'),
+		['loop-playlist'] = 'cycle:repeat:loop-playlist:no/inf!?' .. t('Loop playlist'),
+		['loop-file'] = 'cycle:repeat_one:loop-file:no/inf!?' .. t('Loop file'),
+		shuffle = 'toggle:shuffle:shuffle?' .. t('Shuffle'),
+		fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!?' .. t('Fullscreen'),
 	}
 
 	-- Parse out disposition/config pairs
@@ -77,7 +77,7 @@ function Controls:init_options()
 	for i, item in ipairs(items) do
 		local config = shorthands[item.config] and shorthands[item.config] or item.config
 		local config_tooltip = split(config, ' *%? *')
-		local tooltip = t(config_tooltip[2])
+		local tooltip = config_tooltip[2]
 		config = shorthands[config_tooltip[1]]
 			and split(shorthands[config_tooltip[1]], ' *%? *')[1] or config_tooltip[1]
 		local config_badge = split(config, ' *# *')
