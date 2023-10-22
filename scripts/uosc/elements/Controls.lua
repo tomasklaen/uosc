@@ -30,6 +30,7 @@ end
 function Controls:init_options()
 	-- Serialize control elements
 	local shorthands = {
+		['play-pause'] = 'cycle:pause:pause:no/yes=play_arrow?Play/Pause',
 		menu = 'command:menu:script-binding uosc/menu-blurred?Menu',
 		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?Subtitles',
 		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?Audio',
