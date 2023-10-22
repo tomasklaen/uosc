@@ -64,5 +64,6 @@
 	"Updating uosc": "uosc оновлюється",
 	"uosc has been installed. Restart mpv for it to take effect.": "uosc встановлено. mpv потрібно перезапустити.",
 	"An error has occurred.": "Сталася помилка.",
-	"See above for clues.": "Дивіться підказки вище."
+	"See above for clues.": "Дивіться підказки вище.",
+	"Play/Pause": "Відтворення / Пауза"
 }
