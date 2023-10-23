@@ -1140,7 +1140,7 @@ function Menu:render()
 			local item_center_y = item_ay + (self.item_height / 2)
 			local item_clip = (item_ay < ay or item_by > by) and scroll_clip or nil
 			local content_ax, content_bx = ax + self.padding + spacing, bx - self.padding - spacing
-			local is_selected = menu.selected_index == index or item.active
+			local is_selected = menu.selected_index == index
 
 			-- Select hovered item
 			if is_current and self.mouse_nav and item.selectable ~= false then
@@ -1156,28 +1156,32 @@ function Menu:render()
 					if submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0 then
 						blur_selected_index = false
 						menu.selected_index = index
+						if not is_selected then request_render() end
 					end
 				end
 			end
 
+			local has_background = is_selected or item.active
 			local next_item = menu.items[index + 1]
 			local next_is_active = next_item and next_item.active
-			local next_is_highlighted = menu.selected_index == index + 1 or next_is_active
+			local next_has_background = menu.selected_index == index + 1 or next_is_active
 			local font_color = item.active and fgt or bgt
 
 			-- Separator
-			local separator_ay = item.separator and item_by - 1 or item_by
-			local separator_by = item_by + (item.separator and 2 or 1)
-			if is_selected then separator_ay = item_by + 1 end
-			if next_is_highlighted then separator_by = item_by end
-			if separator_by - separator_ay > 0 and item_by < by then
-				ass:rect(ax + spacing / 2, separator_ay, bx - spacing / 2, separator_by, {
-					color = fg, opacity = menu_opacity * (item.separator and 0.08 or 0.06),
+			if item_by < by and ((not has_background and not next_has_background) or item.separator) then
+				local separator_ay, separator_by = item_by, item_by + 1
+				if has_background then
+					separator_ay, separator_by = separator_ay + 1, separator_by + 1
+				elseif next_has_background then
+					separator_ay, separator_by = separator_ay - 1, separator_by - 1
+				end
+				ass:rect(ax + spacing, separator_ay, bx - spacing, separator_by, {
+					color = fg, opacity = menu_opacity * (item.separator and 0.13 or 0.04),
 				})
 			end
 
-			-- Highlight
-			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (menu.selected_index == index and 0.15 or 0)
+			-- Background
+			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (is_selected and 0.15 or 0)
 			if not is_submenu and highlight_opacity > 0 then
 				ass:rect(ax + self.padding, item_ay, bx - self.padding, item_by, {
 					radius = state.radius,
