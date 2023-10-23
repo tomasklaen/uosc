@@ -278,7 +278,7 @@ function Menu:update_content_dimensions()
 	self.item_height = round(options.menu_item_height * state.scale)
 	self.min_width = round(options.menu_min_width * state.scale)
 	self.separator_size = round(1 * state.scale)
-	self.padding = round(2 * state.scale)
+	self.padding = round(options.menu_padding * state.scale)
 	self.gap = round(2 * state.scale)
 	self.font_size = round(self.item_height * 0.48 * options.font_scale)
 	self.font_size_hint = self.font_size - 1
@@ -322,7 +322,7 @@ function Menu:update_dimensions()
 	for _, menu in ipairs(self.all) do
 		local width = math.max(menu.search and menu.search.max_width or 0, menu.max_width)
 		menu.width = round(clamp(min_width, width, width_available))
-		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step or 0
+		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step + self.padding or 0
 		local max_height = height_available - title_height
 		local content_height = self.scroll_step * #menu.items
 		menu.height = math.min(content_height - self.item_spacing, max_height)
@@ -1103,7 +1103,7 @@ function Menu:render()
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
 		local menu_rect = {
 			ax = ax,
-			ay = ay - (draw_title and self.scroll_step or 0) - self.padding,
+			ay = ay - (draw_title and self.scroll_step + self.padding or 0) - self.padding,
 			bx = bx,
 			by = by + self.padding,
 		}
@@ -1111,7 +1111,9 @@ function Menu:render()
 
 		-- Background
 		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {
-			color = bg, opacity = menu_opacity * config.opacity.menu, radius = state.radius + self.padding,
+			color = bg,
+			opacity = menu_opacity * config.opacity.menu,
+			radius = state.radius > 0 and state.radius + self.padding or 0,
 		})
 
 		if is_parent then
@@ -1137,7 +1139,7 @@ function Menu:render()
 			local item_by = item_ay + self.item_height
 			local item_center_y = item_ay + (self.item_height / 2)
 			local item_clip = (item_ay < ay or item_by > by) and scroll_clip or nil
-			local content_ax, content_bx = ax + spacing, bx - spacing
+			local content_ax, content_bx = ax + self.padding + spacing, bx - self.padding - spacing
 			local is_selected = menu.selected_index == index or item.active
 
 			-- Select hovered item
@@ -1245,7 +1247,12 @@ function Menu:render()
 		-- Menu title
 		if draw_title then
 			local requires_submit = menu.search_debounce == 'submit'
-			local rect = {ax = ax + spacing, ay = ay - self.scroll_step, bx = bx - spacing, by = math.min(by, ay - 2)}
+			local rect = {
+				ax = ax + spacing / 2 + self.padding,
+				ay = ay - self.scroll_step - self.padding * 2,
+				bx = bx - spacing / 2 - self.padding,
+				by = math.min(by, ay - self.padding),
+			}
 			rect.cx, rect.cy = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2 -- centers
 
 			if menu.title and not menu.ass_safe_title then
