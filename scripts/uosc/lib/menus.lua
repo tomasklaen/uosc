@@ -516,9 +516,14 @@ function open_open_file_menu()
 	)
 end
 
----@param opts {name: string; prop: string; allowed_types: string[]}
+---@param opts {name: 'subtitles'|'audio'|'video'; prop: string; allowed_types: string[]}
 function create_track_loader_menu_opener(opts)
 	local menu_type = 'load-' .. opts.name
+	local title = ({
+		subtitles = t('Load subtitles'),
+		audio = t('Load audio'),
+		video = t('Load video'),
+	})[opts.name]
 
 	return function()
 		if Menu:is_open(menu_type) then
@@ -541,7 +546,7 @@ function create_track_loader_menu_opener(opts)
 		open_file_navigation_menu(
 			path,
 			function(path) mp.commandv(opts.prop .. '-add', path) end,
-			{type = menu_type, title = t('Load ' .. opts.name), allowed_types = opts.allowed_types}
+			{type = menu_type, title = title, allowed_types = opts.allowed_types}
 		)
 	end
 end
