@@ -118,7 +118,10 @@ function Timeline:on_prop_fullormaxed()
 	self:update_dimensions()
 end
 function Timeline:on_display() self:update_dimensions() end
-function Timeline:on_options() self:update_dimensions() end
+function Timeline:on_options()
+	self:decide_progress_size()
+	self:update_dimensions()
+end
 function Timeline:handle_cursor_up()
 	if self.pressed then
 		mp.set_property_native('pause', self.pressed.pause)
