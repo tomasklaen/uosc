@@ -16,18 +16,18 @@ if ($args[0] -eq "intl") {
 
 	Write-Output "Building for Windows..."
 	$env:GOOS = "windows"
-	go build -ldflags "-s -w" -o ./scripts/intl.exe src/intl.go
-	upx --brute ./scripts/intl.exe
+	go build -ldflags "-s -w" -o ./tools/intl.exe src/intl.go
+	upx --brute ./tools/intl.exe
 
 	Write-Output "Building for Linux..."
 	$env:GOOS = "linux"
-	go build -ldflags "-s -w" -o ./scripts/intl src/intl.go
-	upx --brute ./scripts/intl
+	go build -ldflags "-s -w" -o ./tools/intl-linux src/intl.go
+	upx --brute ./tools/intl-linux
 
 	Write-Output "Building for MacOS..."
 	$env:GOOS = "darwin"
-	go build -ldflags "-s -w" -o ./scripts/intlmac src/intl.go
-	upx --brute ./scripts/intlmac
+	go build -ldflags "-s -w" -o ./tools/intl-darwin src/intl.go
+	upx --brute ./tools/intl-darwin
 
 	Remove-Item Env:\GOOS
 	Remove-Item Env:\GOARCH

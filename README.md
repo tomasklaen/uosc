@@ -699,13 +699,10 @@ Using `'user'` as `script_id` will overwrite user's `disable_elements` config. E
 If you want to help localizing uosc by either adding a new locale or fixing one that is not up to date, start by running this while in the repository root:
 
 ```
-scripts/intl languagecode
-
-# If you're on a mac, the command is
-scripts/intlmac languagecode
+tools/intl languagecode
 ```
 
-`languagecode` can be any [IETF language tag](https://en.wikipedia.org/wiki/IETF_language_tag). If it doesn't exist, the `scripts/intl` tool will create it.
+`languagecode` can be any [IETF language tag](https://en.wikipedia.org/wiki/IETF_language_tag). If it doesn't exist, the `tools/intl` tool will create it.
 
 This will parse the codebase for localization strings and use them to either update existing locale by removing unused and setting untranslated strings to `null`, or create a new one with all `null` strings.
 

@@ -18,7 +18,6 @@ import (
 func main() {
 	cwd, err := os.Getwd()
 	check(err)
-	binName := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
 	uoscRootRelative := "dist/scripts/uosc"
 	intlRootRelative := uoscRootRelative + "/intl"
 	uoscRoot := filepath.Join(cwd, uoscRootRelative)
@@ -36,25 +35,25 @@ Strings no longer in use are removed. Strings not yet translated are set to "nul
 
 Usage:
 
-  %s [languages]
+  intl [languages]
 
 Parameters:
 
-  [languages]  A comma separated list of language codes to update
+  languages    A comma separated list of language codes to update
                or create. Use 'all' to update all existing locales.
 
 Examples:
 
-  > %s xy
+  > intl xy
   Create a new locale xy.
 
-  > %s de,es
+  > intl de,es
   Update de and es locales.
 
-  > %s all
+  > intl all
   Update everything inside "%s".
 
-`, binName, binName, binName, binName, intlRootRelative)
+`, intlRootRelative)
 		os.Exit(0)
 	}
 
