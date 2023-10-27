@@ -702,7 +702,7 @@ If you want to help localizing uosc by either adding a new locale or fixing one 
 tools/intl languagecode
 ```
 
-`languagecode` can be any [IETF language tag](https://en.wikipedia.org/wiki/IETF_language_tag). If it doesn't exist, the `tools/intl` tool will create it.
+`languagecode` can be any existing locale in `dist/scripts/uosc/intl/` directory, or any [IETF language tag](https://en.wikipedia.org/wiki/IETF_language_tag). If it doesn't exist yet, the `intl` tool will create it.
 
 This will parse the codebase for localization strings and use them to either update existing locale by removing unused and setting untranslated strings to `null`, or create a new one with all `null` strings.
 
