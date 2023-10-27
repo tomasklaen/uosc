@@ -45,16 +45,16 @@ Parameters:
 
 Examples:
 
-  > %s
-  Update everything inside "%s".
-
-  > %s de,es
-  Update de and es locales only.
-
   > %s xy
   Create a new locale xy.
 
-`, binName, binName, intlRootRelative, binName, binName)
+  > %s de,es
+  Update de and es locales.
+
+  > %s all
+  Update everything inside "%s".
+
+`, binName, binName, binName, binName, intlRootRelative)
 		os.Exit(0)
 	}
 
