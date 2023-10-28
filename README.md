@@ -692,6 +692,22 @@ mp.commandv('script-message-to', 'uosc', 'disable-elements', mp.get_script_name(
 
 Using `'user'` as `script_id` will overwrite user's `disable_elements` config. Elements will be enabled only when neither user, nor any script requested them to be disabled.
 
+## Contributing
+
+### Localization
+
+If you want to help localizing uosc by either adding a new locale or fixing one that is not up to date, start by running this while in the repository root:
+
+```
+tools/intl languagecode
+```
+
+`languagecode` can be any existing locale in `dist/scripts/uosc/intl/` directory, or any [IETF language tag](https://en.wikipedia.org/wiki/IETF_language_tag). If it doesn't exist yet, the `intl` tool will create it.
+
+This will parse the codebase for localization strings and use them to either update existing locale by removing unused and setting untranslated strings to `null`, or create a new one with all `null` strings.
+
+You can then navigate to `dist/scripts/uosc/intl/languagecode.json` and start translating.
+
 ## Why _uosc_?
 
 It stood for micro osc as it used to render just a couple rectangles before it grew to what it is today. And now it means a minimalist UI design direction where everything is out of your way until needed.

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+if [ "$(uname)" == "Darwin" ]; then
+	"$SCRIPT_DIR/intl-darwin" $*
+else
+	"$SCRIPT_DIR/intl-linux" $*
+fi
