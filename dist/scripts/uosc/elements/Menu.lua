@@ -820,7 +820,7 @@ function Menu:search_backspace(event, word_mode)
 		local word_pat, other_pat = '[^%c%s%p]+$', '[%c%s%p]+$'
 		local init_pat = old_query:sub(#old_query):match(word_pat) and word_pat or other_pat
 		-- First we match all same type consecutive chars at the end
-		local tail = old_query:match(init_pat)
+		local tail = old_query:match(init_pat) or ''
 		-- If there's only one, we extend the tail with opposite type chars
 		if tail and #tail == 1 then
 			tail = tail .. old_query:sub(1, #old_query - #tail):match(init_pat == word_pat and other_pat or word_pat)
