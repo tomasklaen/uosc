@@ -18,7 +18,7 @@ function VolumeSlider:init(props)
 end
 
 function VolumeSlider:update_dimensions()
-	self.border_size = math.max(1, round(options.volume_border * state.scale))
+	self.border_size = math.max(0, round(options.volume_border * state.scale))
 end
 
 function VolumeSlider:get_visibility() return Elements.volume:get_visibility(self) end
