@@ -351,6 +351,34 @@ function Timeline:render()
 		ass:txt(x, y, align, text, opts)
 	end
 
+	local function draw_semi_monospace_time(x, y, align, time_human, opts)
+		local widths, width_total = {}, 0
+		zero_rep = timestamp_zero_rep(time_human)
+		for i = 1, #zero_rep do
+			local width = text_width(zero_rep:sub(i, i), opts)
+			widths[i] = width
+			width_total = width_total + width
+		end
+		if align == 6 then
+			x = x - width_total
+		elseif align == 5 then
+			x = x - width_total / 2
+		end
+		local opacity = opts.opacity
+		opts.opacity = {main = opacity, primary = 0}
+		for i, width in ipairs(widths) do
+			draw_timeline_text(x + width / 2, y, 5, time_human:sub(i, i), opts)
+			x = x + width
+		end
+		x = x - width_total
+		opts.opacity.main, opts.opacity.primary = 0, opacity
+		for i, width in ipairs(widths) do
+			draw_timeline_text(x + width / 2, y, 5, time_human:sub(i, i), opts)
+			x = x + width
+		end
+		opts.opacity = opacity
+	end
+
 	-- Time values
 	if text_opacity > 0 then
 		local time_opts = {size = self.font_size, opacity = text_opacity, border = 2}
@@ -367,17 +395,17 @@ function Timeline:render()
 			local time_width_end = timestamp_width(state.destination_time_human, time_opts)
 			local min_x, max_x = bax + spacing + 5 + time_width, bbx - spacing - 5 - time_width_end
 			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
-			draw_timeline_text(x, fcy, align, human, cache_opts)
+			draw_semi_monospace_time(x, fcy, align, human, cache_opts)
 		end
 
 		-- Elapsed time
 		if state.time_human then
-			draw_timeline_text(bax + spacing, fcy, 4, state.time_human, time_opts)
+			draw_semi_monospace_time(bax + spacing, fcy, 4, state.time_human, time_opts)
 		end
 
 		-- End time
 		if state.destination_time_human then
-			draw_timeline_text(bbx - spacing, fcy, 6, state.destination_time_human, time_opts)
+			draw_semi_monospace_time(bbx - spacing, fcy, 6, state.destination_time_human, time_opts)
 		end
 	end
 
