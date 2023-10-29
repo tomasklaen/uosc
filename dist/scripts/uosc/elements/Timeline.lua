@@ -342,48 +342,13 @@ function Timeline:render()
 		end
 	end
 
-	local function draw_timeline_text(x, y, align, text, opts)
+	local function draw_timeline_timestamp(x, y, align, timestamp, opts)
 		opts.color, opts.border_color = fgt, fg
 		opts.clip = '\\clip(' .. foreground_coordinates .. ')'
-		ass:txt(x, y, align, text, opts)
+		ass:timestamp(x, y, align, timestamp, opts)
 		opts.color, opts.border_color = bgt, bg
 		opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
-		ass:txt(x, y, align, text, opts)
-	end
-
-	local function draw_semi_monospace_time(x, y, align, time_human, opts)
-		local widths, width_total = {}, 0
-		zero_rep = timestamp_zero_rep(time_human)
-		for i = 1, #zero_rep do
-			local width = text_width(zero_rep:sub(i, i), opts)
-			widths[i] = width
-			width_total = width_total + width
-		end
-		-- shift x and y to fit align 5
-		local mod_align = align % 3
-		if mod_align == 0 then
-			x = x - width_total
-		elseif mod_align == 2 then
-			x = x - width_total / 2
-		end
-		if align < 4 then
-			y = y - opts.size / 2
-		elseif align > 6 then
-			y = y + opts.size / 2
-		end
-		local opacity = opts.opacity
-		opts.opacity = {main = opacity or 1, primary = 0}
-		for i, width in ipairs(widths) do
-			draw_timeline_text(x + width / 2, y, 5, time_human:sub(i, i), opts)
-			x = x + width
-		end
-		x = x - width_total
-		opts.opacity.main, opts.opacity.primary = 0, opacity or 1
-		for i, width in ipairs(widths) do
-			draw_timeline_text(x + width / 2, y, 5, time_human:sub(i, i), opts)
-			x = x + width
-		end
-		opts.opacity = opacity
+		ass:timestamp(x, y, align, timestamp, opts)
 	end
 
 	-- Time values
@@ -402,17 +367,17 @@ function Timeline:render()
 			local time_width_end = timestamp_width(state.destination_time_human, time_opts)
 			local min_x, max_x = bax + spacing + 5 + time_width, bbx - spacing - 5 - time_width_end
 			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
-			draw_semi_monospace_time(x, fcy, align, human, cache_opts)
+			draw_timeline_timestamp(x, fcy, align, human, cache_opts)
 		end
 
 		-- Elapsed time
 		if state.time_human then
-			draw_semi_monospace_time(bax + spacing, fcy, 4, state.time_human, time_opts)
+			draw_timeline_timestamp(bax + spacing, fcy, 4, state.time_human, time_opts)
 		end
 
 		-- End time
 		if state.destination_time_human then
-			draw_semi_monospace_time(bbx - spacing, fcy, 6, state.destination_time_human, time_opts)
+			draw_timeline_timestamp(bbx - spacing, fcy, 6, state.destination_time_human, time_opts)
 		end
 	end
 
@@ -430,10 +395,10 @@ function Timeline:render()
 		local tooltip_anchor = {ax = ax, ay = ay - self.top_border, bx = bx, by = by}
 
 		-- Timestamp
-		local opts = {size = self.font_size, offset = timestamp_gap, margin = tooltip_gap}
+		local opts = {size = self.font_size, offset = timestamp_gap, margin = tooltip_gap, timestamp = true}
 		local hovered_time_human = format_time(hovered_seconds, state.duration)
 		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
-		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts, draw_semi_monospace_time)
+		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts)
 
 		-- Thumbnail
 		if not thumbnail.disabled
