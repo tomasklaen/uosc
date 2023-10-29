@@ -6,14 +6,14 @@ local cache = {}
 function get_languages()
 	local languages = {}
 
-	for _, lang in ipairs(split(options.languages, ',')) do
+	for _, lang in ipairs(comma_split(options.languages)) do
 		if (lang == 'slang') then
 			local slang = mp.get_property_native('slang')
 			if slang then
 				itable_append(languages, slang)
 			end
 		else
-			itable_append(languages, {lang})
+			languages[#languages +1] = lang
 		end
 	end
 

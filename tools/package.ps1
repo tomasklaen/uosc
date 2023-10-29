@@ -16,6 +16,10 @@ if (!(Test-Path -Path "$PWD/src" -PathType Container)) {
 	Abort("'src' directory not found. Make sure this script is run in uosc's repository root as current working directory.")
 }
 
+if (!(Test-Path -Path "$PWD/dist/scripts/uosc/bin/ziggy-linux" -PathType Leaf)) {
+	Abort("'dist/scripts/uosc/bin' binaries are not build.")
+}
+
 $ReleaseDir = "release"
 
 # Clear old

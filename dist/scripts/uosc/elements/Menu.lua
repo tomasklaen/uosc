@@ -769,19 +769,6 @@ function Menu:search_submit(menu)
 	menu = menu or self.current
 	if not menu.search then return end
 	if menu.on_search then
-		if menu.search_debounce ~= 0 then
-			menu.items = {
-				{
-					title = 'Loading...',
-					icon = 'spinner',
-					italic = true,
-					align = 'center',
-					selectable = false,
-					muted = true,
-				},
-			}
-			self:update_items(self.root.items)
-		end
 		local search_type = type(menu.on_search)
 		if search_type == 'string' then
 			mp.command(menu.on_search .. ' ' .. menu.search.query)
@@ -1197,11 +1184,13 @@ function Menu:render()
 
 			-- Icon
 			if item.icon then
-				local x, y = content_bx - (icon_size / 2), item_center_y
+				local x = (not item.title and not item.hint and item.align == 'center')
+					and menu_rect.ax + (menu_rect.bx - menu_rect.ax) / 2
+					or content_bx - (icon_size / 2)
 				if item.icon == 'spinner' then
-					ass:spinner(x, y, icon_size * 1.5, {color = font_color, opacity = menu_opacity * 0.8})
+					ass:spinner(x, item_center_y, icon_size * 1.5, {color = font_color, opacity = menu_opacity * 0.8})
 				else
-					ass:icon(x, y, icon_size * 1.5, item.icon, {
+					ass:icon(x, item_center_y, icon_size * 1.5, item.icon, {
 						color = font_color, opacity = menu_opacity, clip = item_clip,
 					})
 				end

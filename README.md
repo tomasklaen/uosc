@@ -15,8 +15,9 @@ Features:
 -   Configurable controls bar.
 -   Fast and efficient thumbnails with [thumbfast](https://github.com/po5/thumbfast) integration.
 -   UIs for:
-    -   Loading external subtitles.
     -   Selecting subtitle/audio/video track.
+    -   Downloading subtitles from Open Subtitles.
+    -   Loading external subtitles.
     -   Selecting stream quality.
     -   Quick directory and playlist navigation.
 -   All menus are instantly searchable. Just start typing.
@@ -217,6 +218,16 @@ Menus to select a track of a requested type.
 Displays a file explorer with directory navigation to load a requested track type.
 
 For subtitles, the explorer only displays file types defined in `subtitle_types` option. For audio and video, the ones defined in `video_types` and `audio_types` are displayed.
+
+#### `download-subtitles`
+
+A menu to search and download subtitles from [Open Subtitles](https://www.opensubtitles.com). It can also be opened by selecting the **Download** option in `subtitles` menu.
+
+We hash the current file and send the hash to Open Subtitles so you can search even with empty query and if your file is known, you'll get subtitles exactly for it.
+
+Subtitles will be downloaded to the same directory as currently opened file, or `~~/subtitles` (folder in your mpv config directory) if playing a URL.
+
+Current Open Subtitles limit for unauthenticated requests is **5 download per day**, but searching is unlimited. Authentication raises downloads to 10, which doesn't feel like it's wroth the effort of implementing it, so currently there's no way to authenticate.
 
 #### `playlist`
 

@@ -85,14 +85,22 @@ function create_self_updating_menu_opener(options)
 	end
 end
 
-function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop, load_command)
+function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop, load_command, download_command)
 	local function serialize_tracklist(tracklist)
 		local items = {}
 
+		if download_command then
+			items[#items + 1] = {
+				title = t('Download'), bold = true, italic = true, hint = t('search online'), value = '{download}',
+			}
+		end
 		if load_command then
 			items[#items + 1] = {
-				title = t('Load'), bold = true, italic = true, hint = t('open file'), value = '{load}', separator = true,
+				title = t('Load'), bold = true, italic = true, hint = t('open file'), value = '{load}',
 			}
+		end
+		if #items > 0 then
+			items[#items].separator = true
 		end
 
 		local first_item_index = #items + 1
@@ -148,12 +156,14 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	end
 
 	local function selection_handler(value)
-		if value == '{load}' then
+		if value == '{download}' then
+			mp.command(download_command)
+		elseif value == '{load}' then
 			mp.command(load_command)
 		else
 			mp.commandv('set', track_prop, value and value or 'no')
 
-			-- If subtitle track was selected, assume user also wants to see it
+			-- If subtitle track was selected, assume the user also wants to see it
 			if value and track_type == 'sub' then
 				mp.commandv('set', 'sub-visibility', 'yes')
 			end
@@ -545,8 +555,247 @@ function create_track_loader_menu_opener(opts)
 		end
 		open_file_navigation_menu(
 			path,
-			function(path) mp.commandv(opts.prop .. '-add', path) end,
+			function(path)
+				mp.commandv(opts.prop .. '-add', path)
+				-- If subtitle track was loaded, assume the user also wants to see it
+				if opts.prop == 'sub' then
+					mp.commandv('set', 'sub-visibility', 'yes')
+				end
+			end,
 			{type = menu_type, title = title, allowed_types = opts.allowed_types}
 		)
 	end
+end
+
+function open_subtitle_downloader()
+	local menu_type = 'download-subtitles'
+	---@type Menu
+	local menu
+
+	if Menu:is_open(menu_type) then
+		Menu:close()
+		return
+	end
+
+	local search_suggestion, file_path = '', nil
+	local destination_directory = mp.command_native({'expand-path', '~~/subtitles'})
+	local credentials = {'--api-key', config.open_subtitles_api_key, '--agent', config.open_subtitles_agent}
+
+	if state.path then
+		if is_protocol(state.path) then
+			if not is_protocol(state.title) then search_suggestion = state.title end
+		else
+			local serialized_path = serialize_path(state.path)
+			if serialized_path then
+				search_suggestion = serialized_path.filename
+				file_path = state.path
+				destination_directory = serialized_path.dirname
+			end
+		end
+	end
+
+	local handle_select, handle_search
+
+	local function ensure_response_data(success, result, error, check)
+		local data
+		if success and result and result.status == 0 then
+			data = utils.parse_json(result.stdout)
+			if not data or not check(data) then
+				data = (data and data.error == true) and data or {
+					error = true,
+					message = t('invalid response json'),
+					message_verbose = 'invalid response json: ' .. utils.to_string(result.stdout),
+				}
+			end
+		else
+			data = {
+				error = true,
+				message = error or t('process exited with code %s', result.status),
+				message_verbose = result.stdout .. result.stderr,
+			}
+		end
+
+		if data.error then
+			local message = data.message or t('unknown error')
+			if data.message then msg.error(data.message_verbose or data.message) end
+			menu:update_items({
+				{
+					title = message,
+					hint = t('error'),
+					muted = true,
+					italic = true,
+					selectable = false,
+				},
+			})
+			return
+		end
+
+		return data
+	end
+
+	---@param data {kind: 'file', id: number}|{kind: 'page', query: string, page: number}
+	handle_select = function(data)
+		if data.kind == 'page' then
+			handle_search(data.query, data.page)
+			return
+		end
+
+		menu:update_items({{icon = 'spinner', align = 'center', selectable = false, muted = true}})
+
+		local args = itable_join({config.ziggy_path, 'download-subtitles'}, credentials, {
+			'--file-id', tostring(data.id),
+			'--destination', destination_directory,
+		})
+
+		mp.command_native_async({
+			name = 'subprocess',
+			capture_stderr = true,
+			capture_stdout = true,
+			playback_only = false,
+			args = args,
+		}, function(success, result, error)
+			if not menu:is_alive() then return end
+
+			local data = ensure_response_data(success, result, error, function(data)
+				return type(data.file) == 'string'
+			end)
+
+			if not data then return end
+
+			mp.commandv('sub-add', data.file)
+			mp.commandv('set', 'sub-visibility', 'yes')
+
+			menu:update_items({
+				{
+					title = t('Subtitles loaded & applied'),
+					bold = true,
+					icon = 'check',
+					selectable = false,
+				},
+				{
+					title = t('Remaining downloads today: %s', data.remaining .. '/' .. data.total),
+					italic = true,
+					muted = true,
+					icon = 'file_download',
+					selectable = false,
+				},
+				{
+					title = t('Resets in: %s', data.reset_time),
+					italic = true,
+					muted = true,
+					icon = 'schedule',
+					selectable = false,
+				},
+			})
+		end)
+	end
+
+	---@param query string
+	---@param page number|nil
+	handle_search = function(query, page)
+		if not menu:is_alive() then return end
+		page = math.max(1, type(page) == 'number' and round(page) or 1)
+
+		menu:update_items({{icon = 'spinner', align = 'center', selectable = false, muted = true}})
+
+		local args = itable_join({config.ziggy_path, 'search-subtitles'}, credentials)
+
+		local languages = itable_filter(get_languages(), function(lang) return lang:match('.json$') == nil end)
+		args[#args + 1] = '--languages'
+		args[#args + 1] = table.concat(table_keys(create_set(languages)), ',') -- deduplicates stuff like `en,eng,en`
+
+		args[#args + 1] = '--page'
+		args[#args + 1] = tostring(page)
+
+		if file_path then
+			args[#args + 1] = '--hash'
+			args[#args + 1] = file_path
+		end
+
+		if query and #query > 0 then
+			args[#args + 1] = '--query'
+			args[#args + 1] = query
+		end
+
+		mp.command_native_async({
+			name = 'subprocess',
+			capture_stderr = true,
+			capture_stdout = true,
+			playback_only = false,
+			args = args,
+		}, function(success, result, error)
+			if not menu:is_alive() then return end
+
+			local data = ensure_response_data(success, result, error, function(data)
+				return type(data.data) == 'table' and data.page and data.total_pages
+			end)
+
+			if not data then return end
+
+			local subs = itable_filter(data.data, function(sub)
+				return sub and sub.attributes and sub.attributes.release and type(sub.attributes.files) == 'table' and
+					#sub.attributes.files > 0
+			end)
+			local items = itable_map(subs, function(sub)
+				local hints = {sub.attributes.language}
+				if sub.attributes.foreign_parts_only then hints[#hints + 1] = t('foreign parts only') end
+				if sub.attributes.hearing_impaired then hints[#hints + 1] = t('hearing impaired') end
+				return {
+					title = sub.attributes.release,
+					hint = table.concat(hints, ', '),
+					value = {kind = 'file', id = sub.attributes.files[1].file_id},
+					keep_open = true,
+				}
+			end)
+
+			if #items == 0 then
+				items = {
+					{title = t('no results'), align = 'center', muted = true, italic = true, selectable = false},
+				}
+			end
+
+			if data.page > 1 then
+				items[#items + 1] = {
+					title = t('Previous page'),
+					align = 'center',
+					bold = true,
+					italic = true,
+					icon = 'navigate_before',
+					keep_open = true,
+					value = {kind = 'page', query = query, page = data.page - 1},
+				}
+			end
+
+			if data.page < data.total_pages then
+				items[#items + 1] = {
+					title = t('Next page'),
+					align = 'center',
+					bold = true,
+					italic = true,
+					icon = 'navigate_next',
+					keep_open = true,
+					value = {kind = 'page', query = query, page = data.page + 1},
+				}
+			end
+
+			menu:update_items(items)
+		end)
+	end
+
+	local initial_items = {
+		{title = t('%s to search', 'ctrl+enter'), align = 'center', muted = true, italic = true, selectable = false},
+	}
+
+	menu = Menu:open(
+		{
+			type = menu_type,
+			title = t('enter query'),
+			items = initial_items,
+			palette = true,
+			on_search = handle_search,
+			search_debounce = 'submit',
+			search_suggestion = search_suggestion,
+		},
+		handle_select
+	)
 end
