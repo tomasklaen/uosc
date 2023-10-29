@@ -359,19 +359,26 @@ function Timeline:render()
 			widths[i] = width
 			width_total = width_total + width
 		end
-		if align == 6 then
+		-- shift x and y to fit align 5
+		local mod_align = align % 3
+		if mod_align == 0 then
 			x = x - width_total
-		elseif align == 5 then
+		elseif mod_align == 2 then
 			x = x - width_total / 2
 		end
+		if align < 4 then
+			y = y - opts.size / 2
+		elseif align > 6 then
+			y = y + opts.size / 2
+		end
 		local opacity = opts.opacity
-		opts.opacity = {main = opacity, primary = 0}
+		opts.opacity = {main = opacity or 1, primary = 0}
 		for i, width in ipairs(widths) do
 			draw_timeline_text(x + width / 2, y, 5, time_human:sub(i, i), opts)
 			x = x + width
 		end
 		x = x - width_total
-		opts.opacity.main, opts.opacity.primary = 0, opacity
+		opts.opacity.main, opts.opacity.primary = 0, opacity or 1
 		for i, width in ipairs(widths) do
 			draw_timeline_text(x + width / 2, y, 5, time_human:sub(i, i), opts)
 			x = x + width
@@ -426,7 +433,7 @@ function Timeline:render()
 		local opts = {size = self.font_size, offset = timestamp_gap, margin = tooltip_gap}
 		local hovered_time_human = format_time(hovered_seconds, state.duration)
 		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
-		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts)
+		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts, draw_semi_monospace_time)
 
 		-- Thumbnail
 		if not thumbnail.disabled

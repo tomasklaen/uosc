@@ -86,7 +86,8 @@ end
 ---@param element Rect
 ---@param value string|number
 ---@param opts? {size?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, margin?: number; responsive?: boolean; lines?: integer}
-function ass_mt:tooltip(element, value, opts)
+---@param txt_func? function
+function ass_mt:tooltip(element, value, opts, txt_func)
 	if value == '' then return end
 	opts = opts or {}
 	opts.size = opts.size or round(16 * state.scale)
@@ -107,7 +108,11 @@ function ass_mt:tooltip(element, value, opts)
 	local ay = (align_top and y - opts.size * opts.lines - 2 * padding_y or y)
 	local by = (align_top and y or y + opts.size * opts.lines + 2 * padding_y)
 	self:rect(ax, ay, bx, by, {color = bg, opacity = config.opacity.tooltip, radius = state.radius})
-	self:txt(x, align_top and y - padding_y or y + padding_y, align_top and 2 or 8, value, opts)
+	if txt_func then
+		txt_func(x, align_top and y - padding_y or y + padding_y, align_top and 2 or 8, value, opts)
+	else
+		self:txt(x, align_top and y - padding_y or y + padding_y, align_top and 2 or 8, value, opts)
+	end
 	return {ax = element.ax, ay = ay, bx = element.bx, by = by}
 end
 
