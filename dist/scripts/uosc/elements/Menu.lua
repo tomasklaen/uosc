@@ -290,7 +290,7 @@ function Menu:update_content_dimensions()
 
 	for _, menu in ipairs(self.all) do
 		title_opts.bold, title_opts.italic = true, false
-		local max_width = text_width(menu.title, title_opts) + 2 * self.item_padding
+		local max_width = text_width(menu.title, title_opts) + 2 * self.padding + 2 * self.item_padding
 
 		-- Estimate width of a widest item
 		for _, item in ipairs(menu.items) do
@@ -304,7 +304,7 @@ function Menu:update_content_dimensions()
 			if estimated_width > max_width then max_width = estimated_width end
 		end
 
-		menu.max_width = max_width
+		menu.max_width = max_width + 2 * self.padding
 	end
 
 	self:update_dimensions()
