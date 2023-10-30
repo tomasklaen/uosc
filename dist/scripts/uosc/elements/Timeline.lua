@@ -345,10 +345,11 @@ function Timeline:render()
 	local function draw_timeline_timestamp(x, y, align, timestamp, opts)
 		opts.color, opts.border_color = fgt, fg
 		opts.clip = '\\clip(' .. foreground_coordinates .. ')'
-		ass:timestamp(x, y, align, timestamp, opts)
+		local func = options.time_precision > 0 and ass.timestamp or ass.txt
+		func(ass, x, y, align, timestamp, opts)
 		opts.color, opts.border_color = bgt, bg
 		opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
-		ass:timestamp(x, y, align, timestamp, opts)
+		func(ass, x, y, align, timestamp, opts)
 	end
 
 	-- Time values
@@ -395,7 +396,9 @@ function Timeline:render()
 		local tooltip_anchor = {ax = ax, ay = ay - self.top_border, bx = bx, by = by}
 
 		-- Timestamp
-		local opts = {size = self.font_size, offset = timestamp_gap, margin = tooltip_gap, timestamp = true}
+		local opts = {
+			size = self.font_size, offset = timestamp_gap, margin = tooltip_gap, timestamp = options.time_precision > 0
+		}
 		local hovered_time_human = format_time(hovered_seconds, state.duration)
 		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
 		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts)
