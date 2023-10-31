@@ -640,7 +640,11 @@ function open_subtitle_downloader()
 			return
 		end
 
-		menu:update_items({{icon = 'spinner', align = 'center', selectable = false, muted = true}})
+		menu = Menu:open({
+			type = menu_type .. '-result',
+			search_style = 'disabled',
+			items = {{icon = 'spinner', align = 'center', selectable = false, muted = true}},
+		}, function() end)
 
 		local args = itable_join({config.ziggy_path, 'download-subtitles'}, credentials, {
 			'--file-id', tostring(data.id),
