@@ -342,13 +342,14 @@ function Timeline:render()
 		end
 	end
 
-	local function draw_timeline_text(x, y, align, text, opts)
+	local function draw_timeline_timestamp(x, y, align, timestamp, opts)
 		opts.color, opts.border_color = fgt, fg
 		opts.clip = '\\clip(' .. foreground_coordinates .. ')'
-		ass:txt(x, y, align, text, opts)
+		local func = options.time_precision > 0 and ass.timestamp or ass.txt
+		func(ass, x, y, align, timestamp, opts)
 		opts.color, opts.border_color = bgt, bg
 		opts.clip = '\\iclip(' .. foreground_coordinates .. ')'
-		ass:txt(x, y, align, text, opts)
+		func(ass, x, y, align, timestamp, opts)
 	end
 
 	-- Time values
@@ -368,17 +369,17 @@ function Timeline:render()
 			local time_width_end = timestamp_width(state.destination_time_human, time_opts)
 			local min_x, max_x = bax + spacing + margin + time_width, bbx - spacing - margin - time_width_end
 			if x < min_x then x = min_x elseif x + width > max_x then x, align = max_x, 6 end
-			draw_timeline_text(x, fcy, align, human, cache_opts)
+			draw_timeline_timestamp(x, fcy, align, human, cache_opts)
 		end
 
 		-- Elapsed time
 		if state.time_human then
-			draw_timeline_text(bax + spacing, fcy, 4, state.time_human, time_opts)
+			draw_timeline_timestamp(bax + spacing, fcy, 4, state.time_human, time_opts)
 		end
 
 		-- End time
 		if state.destination_time_human then
-			draw_timeline_text(bbx - spacing, fcy, 6, state.destination_time_human, time_opts)
+			draw_timeline_timestamp(bbx - spacing, fcy, 6, state.destination_time_human, time_opts)
 		end
 	end
 
@@ -396,7 +397,9 @@ function Timeline:render()
 		local tooltip_anchor = {ax = ax, ay = ay - self.top_border, bx = bx, by = by}
 
 		-- Timestamp
-		local opts = {size = self.font_size, offset = timestamp_gap, margin = tooltip_gap}
+		local opts = {
+			size = self.font_size, offset = timestamp_gap, margin = tooltip_gap, timestamp = options.time_precision > 0
+		}
 		local hovered_time_human = format_time(hovered_seconds, state.duration)
 		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
 		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts)
