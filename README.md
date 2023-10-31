@@ -473,8 +473,8 @@ Menu {
   keep_open?: boolean;
   on_close?: string | string[];
   on_search?: string | string[];
-  palette?: boolean;
-  search_debounce?: 'submit' | number;
+  search_style?: 'on_demand' | 'palette' | 'disabled'; // default: on_demand
+  search_debounce?: 'submit' | number; // default: 0
   search_suggestion?: string;
   search_submenus?: boolean;
 }
@@ -492,8 +492,8 @@ Submenu {
   separator?: boolean;
   keep_open?: boolean;
   on_search?: string | string[];
-  palette?: boolean;
-  search_debounce?: 'submit' | number;
+  search_style?: 'on_demand' | 'palette' | 'disabled'; // default: on_demand
+  search_debounce?: 'submit' | number; // default: 0
   search_suggestion?: string;
   search_submenus?: boolean;
 }
@@ -519,7 +519,10 @@ When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it'
 `Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.
 While the menu is open this value will be available in `user-data/uosc/menu/type` and the `shared-script-properties` entry `uosc-menu-type`. If no type was provided, those will be set to `'undefined'`.
 
-`palette` specifies that this menu's primarily mode of interaction is through a search input. When enabled, search input will be visible at all times (doesn't have to be enabled and can't be disabled), and `title` will be used as input placeholder while search query is empty.
+`search_style` can be:
+- `on_demand` (_default_) - Search input pops up when user starts typing, or presses `/` or `ctrl+f`, depending on user configuration. It disappears on `shift+backspace`, or when input text is cleared.
+- `palette` - Search input is always visible and can't be disabled. In this mode, menu `title` is used as input placeholder when no text has been entered yet.
+- `disabled` - Menu can't be searched.
 
 `search_debounce` controls how soon the search happens after the last character was entered in milliseconds. Entering new character resets the timer. Defaults to `300`. It can also have a special value `'submit'`, which triggers a search only after `ctrl+enter` was pressed.
 
