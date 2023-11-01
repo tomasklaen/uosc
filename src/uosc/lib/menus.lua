@@ -596,6 +596,8 @@ function open_subtitle_downloader()
 
 	local handle_select, handle_search
 
+	-- Ensures response is valid, and returns its payload, or handles error reporting,
+	-- and returns `nil`, indicating the consumer should abort response handling.
 	local function ensure_response_data(success, result, error, check)
 		local data
 		if success and result and result.status == 0 then
@@ -603,21 +605,21 @@ function open_subtitle_downloader()
 			if not data or not check(data) then
 				data = (data and data.error == true) and data or {
 					error = true,
-					message = t('invalid response json'),
+					message = t('invalid response json (see console for details)'),
 					message_verbose = 'invalid response json: ' .. utils.to_string(result.stdout),
 				}
 			end
 		else
 			data = {
 				error = true,
-				message = error or t('process exited with code %s', result.status),
+				message = error or t('process exited with code %s (see console for details)', result.status),
 				message_verbose = result.stdout .. result.stderr,
 			}
 		end
 
 		if data.error then
-			local message = data.message or t('unknown error')
-			if data.message then msg.error(data.message_verbose or data.message) end
+			local message, message_verbose = data.message or t('unknown error'), data.message_verbose or data.message
+			if message_verbose then msg.error(message_verbose) end
 			menu:update_items({
 				{
 					title = message,
@@ -671,7 +673,7 @@ function open_subtitle_downloader()
 
 			menu:update_items({
 				{
-					title = t('Subtitles loaded & applied'),
+					title = t('Subtitles loaded & enabled'),
 					bold = true,
 					icon = 'check',
 					selectable = false,
