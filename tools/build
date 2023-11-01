@@ -44,7 +44,7 @@ if [ "$1" = "tools" ]; then
 elif [ "$1" = "ziggy" ]; then
 	export GOARCH="amd64"
 	src="./src/ziggy/ziggy.go"
-	out_dir="./dist/scripts/uosc/bin"
+	out_dir="./src/uosc/bin"
 
 	if [ ! -d $out_dir ]; then
 		mkdir -pv $out_dir

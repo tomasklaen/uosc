@@ -1,7 +1,7 @@
 # Script to build one of uosc binaries.
 # Requirements: go, upx (if compressing)
 # Usage: tools/build <name> [-c]
-# <name> can be: intl, ziggy
+# <name> can be: tools, ziggy
 # -c enables binary compression with upx (only needed for builds being released)
 
 Function Abort($Message) {
@@ -76,6 +76,6 @@ else {
 	Write-Output "Tool to build one of uosc binaries."
 	Write-Output "Requirements: go, upx (if compressing)"
 	Write-Output "Usage: tools/build <name> [-c]"
-	Write-Output "<name> can be: intl, ziggy"
+	Write-Output "<name> can be: tools, ziggy"
 	Write-Output "-c enables binary compression (requires upx)"
 }
