@@ -222,8 +222,6 @@ function Menu:update(data)
 			new_menus[#new_menus + 1] = menu
 		end
 
-		if menu.selected_index then self:select_by_offset(0, menu) end
-
 		new_all[#new_all + 1] = menu
 		new_by_id[menu.id] = menu
 	end
@@ -261,8 +259,10 @@ function Menu:update(data)
 			-- the menu items are new objects and the search needs to contain those
 			menu.search.source.items = not menu.on_search and menu.items or nil
 			-- Only internal searches are immediately submitted
-			if not menu.on_search then self:search_submit(menu) end
+			if not menu.on_search then self:search_internal(menu, true) end
 		end
+
+		if menu.selected_index then self:select_by_offset(0, menu) end
 	end
 
 	self:search_ensure_key_bindings()
@@ -716,7 +716,8 @@ function Menu:on_end()
 end
 
 ---@param menu MenuStack
-function Menu:search_internal(menu)
+---@param no_select_first? boolean
+function Menu:search_internal(menu, no_select_first)
 	local query = menu.search.query:lower()
 	if query == '' then
 		-- Reset menu state to what it was before search
@@ -730,7 +731,7 @@ function Menu:search_internal(menu)
 		menu.items = search_items(menu.search.source.items, query, search_submenus)
 		-- Select 1st item in search results
 		menu.scroll_y = 0
-		if not self.mouse_nav then self:select_index(1, menu) end
+		if not no_select_first then self:select_index(1, menu) end
 	end
 	self:update_content_dimensions()
 end
