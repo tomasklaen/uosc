@@ -14,10 +14,10 @@ if [ ! -d "$PWD/src" ]; then
 	abort "'src' directory not found. Make sure this script is run in uosc's repository root as current working directory."
 fi
 
-elif [ $1 == "intl" ]; then
+if [ "$1" = "intl" ]; then
 	export GOARCH="amd64"
-	$src="./src/intl/intl.go"
-	$out_dir="./tools"
+	src="./src/intl/intl.go"
+	out_dir="./tools"
 
 	echo "Building for Windows..."
 	export GOOS="windows"
@@ -31,7 +31,7 @@ elif [ $1 == "intl" ]; then
 	export GOOS="darwin"
 	go build -ldflags "-s -w" -o "$out_dir/intl-darwin" $src
 
-	if [ $2 == "-c" ]; then
+	if [ "$2" = "-c" ]; then
 		echo "Compressing binaries..."
 		upx --brute "$out_dir/intl.exe"
 		upx --brute "$out_dir/intl-linux"
@@ -41,10 +41,10 @@ elif [ $1 == "intl" ]; then
 	unset GOARCH
 	unset GOOS
 
-elif [ $1 == "ziggy" ]; then
+elif [ "$1" = "ziggy" ]; then
 	export GOARCH="amd64"
-	$src = "./src/ziggy/ziggy.go"
-	$out_dir = "./dist/scripts/uosc/bin"
+	src="./src/ziggy/ziggy.go"
+	out_dir="./dist/scripts/uosc/bin"
 
 	if [ ! -d $out_dir ]; then
 		mkdir -pv $out_dir
@@ -62,7 +62,7 @@ elif [ $1 == "ziggy" ]; then
 	export GOOS="darwin"
 	go build -ldflags "-s -w" -o "$out_dir/ziggy-darwin" $src
 
-	if [ $2 == "-c" ]; then
+	if [ "$2" = "-c" ]; then
 		echo "Compressing binaries..."
 		upx --brute "$out_dir/ziggy-windows.exe"
 		upx --brute "$out_dir/ziggy-linux"
