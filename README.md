@@ -708,6 +708,16 @@ Using `'user'` as `script_id` will overwrite user's `disable_elements` config. E
 
 ## Contributing
 
+### Setup
+
+If you want to test or work on something that involves ziggy (our multitool binary, currently handles searching & downloading subtitles), you first need to build it with:
+
+```
+tools/build ziggy
+```
+
+This requires [`go`](https://go.dev/dl/) to be installed and in path. If you don't want to bother with installing go, and there were no changes to ziggy, you can just use the binaries from [latest release](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip). Place folder `scripts/uosc/bin` from `uosc.zip` into `src/uosc/bin`.
+
 ### Localization
 
 If you want to help localizing uosc by either adding a new locale or fixing one that is not up to date, start by running this while in the repository root:
@@ -716,11 +726,11 @@ If you want to help localizing uosc by either adding a new locale or fixing one 
 tools/intl languagecode
 ```
 
-`languagecode` can be any existing locale in `dist/scripts/uosc/intl/` directory, or any [IETF language tag](https://en.wikipedia.org/wiki/IETF_language_tag). If it doesn't exist yet, the `intl` tool will create it.
+`languagecode` can be any existing locale in `src/uosc/intl/` directory, or any [IETF language tag](https://en.wikipedia.org/wiki/IETF_language_tag). If it doesn't exist yet, the `intl` tool will create it.
 
 This will parse the codebase for localization strings and use them to either update existing locale by removing unused and setting untranslated strings to `null`, or create a new one with all `null` strings.
 
-You can then navigate to `dist/scripts/uosc/intl/languagecode.json` and start translating.
+You can then navigate to `src/uosc/intl/languagecode.json` and start translating.
 
 ## Why _uosc_?
 

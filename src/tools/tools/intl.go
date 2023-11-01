@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"bufio"
@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func main() {
+func Intl(args []string) {
 	cwd, err := os.Getwd()
 	check(err)
-	uoscRootRelative := "dist/scripts/uosc"
+	uoscRootRelative := "src/uosc"
 	intlRootRelative := uoscRootRelative + "/intl"
 	uoscRoot := filepath.Join(cwd, uoscRootRelative)
 
@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// Help
-	if len(os.Args) <= 1 || len(os.Args) > 1 && sets.New("--help", "-h").Has(os.Args[1]) {
+	if len(args) < 1 || len(args) > 0 && sets.New("--help", "-h").Has(args[0]) {
 		fmt.Printf(`Updates or creates a localization files by parsing the codebase for localization strings, and (re)constructing the locale files with them.
 Strings no longer in use are removed. Strings not yet translated are set to "null".
 
@@ -58,15 +58,14 @@ Examples:
 	}
 
 	var locales []string
-	if os.Args[1] == "all" {
+	if args[0] == "all" {
 		intlRoot := filepath.Join(cwd, intlRootRelative)
 		locales = must(listFilenamesOfType(intlRoot, ".json"))
 	} else {
-		locales = strings.Split(os.Args[1], ",")
+		locales = strings.Split(args[0], ",")
 	}
 
 	holePunchLocales(locales, uoscRoot)
-
 }
 
 func holePunchLocales(locales []string, rootPath string) {
@@ -235,17 +234,6 @@ func holePunchLocales(locales []string, rootPath string) {
 			}
 		}
 	}
-}
-
-func check(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-func must[T any](t T, err error) T {
-	check(err)
-	return t
 }
 
 func listFilenamesOfType(directoryPath string, extension string) ([]string, error) {

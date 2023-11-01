@@ -2,7 +2,7 @@
 # Script to build one of uosc binaries.
 # Requirements: go, upx (if compressing)
 # Usage: tools/build <name> [-c]
-# <name> can be: intl, ziggy
+# <name> can be: tools, ziggy
 # -c enables binary compression with upx (only needed for builds being released)
 
 abort() {
@@ -14,28 +14,28 @@ if [ ! -d "$PWD/src" ]; then
 	abort "'src' directory not found. Make sure this script is run in uosc's repository root as current working directory."
 fi
 
-if [ "$1" = "intl" ]; then
+if [ "$1" = "tools" ]; then
 	export GOARCH="amd64"
-	src="./src/intl/intl.go"
+	src="./src/tools/tools.go"
 	out_dir="./tools"
 
 	echo "Building for Windows..."
 	export GOOS="windows"
-	go build -ldflags "-s -w" -o "$out_dir/intl.exe" $src
+	go build -ldflags "-s -w" -o "$out_dir/tools.exe" $src
 
 	echo "Building for Linux..."
 	export GOOS="linux"
-	go build -ldflags "-s -w" -o "$out_dir/intl-linux" $src
+	go build -ldflags "-s -w" -o "$out_dir/tools-linux" $src
 
 	echo "Building for MacOS..."
 	export GOOS="darwin"
-	go build -ldflags "-s -w" -o "$out_dir/intl-darwin" $src
+	go build -ldflags "-s -w" -o "$out_dir/tools-darwin" $src
 
 	if [ "$2" = "-c" ]; then
 		echo "Compressing binaries..."
-		upx --brute "$out_dir/intl.exe"
-		upx --brute "$out_dir/intl-linux"
-		upx --brute "$out_dir/intl-darwin"
+		upx --brute "$out_dir/tools.exe"
+		upx --brute "$out_dir/tools-linux"
+		upx --brute "$out_dir/tools-darwin"
 	fi
 
 	unset GOARCH
@@ -76,6 +76,6 @@ else
 	echo "Tool to build one of uosc binaries. Requires go to be installed and in path."
 	echo "Requirements: go, upx (if compressing)"
 	echo "Usage: tools/build <name> [-c]"
-	echo "<name> can be: intl, ziggy"
+	echo "<name> can be: tools, ziggy"
 	echo "-c enables binary compression (requires upx)"
 fi

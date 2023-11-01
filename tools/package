@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 if [ "$(uname)" == "Darwin" ]; then
-	"$SCRIPT_DIR/tools-darwin" intl $*
+	"$SCRIPT_DIR/tools-darwin" package $*
 else
-	"$SCRIPT_DIR/tools-linux" intl $*
+	"$SCRIPT_DIR/tools-linux" package $*
 fi

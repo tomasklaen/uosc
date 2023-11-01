@@ -14,28 +14,28 @@ if (!(Test-Path -Path "$PWD/src" -PathType Container)) {
 	Abort("'src' directory not found. Make sure this script is run in uosc's repository root as current working directory.")
 }
 
-if ($args[0] -eq "intl") {
+if ($args[0] -eq "tools") {
 	$env:GOARCH = "amd64"
-	$Src = "./src/intl/intl.go"
+	$Src = "./src/tools/tools.go"
 	$OutDir = "./tools"
 
 	Write-Output "Building for Windows..."
 	$env:GOOS = "windows"
-	go build -ldflags "-s -w" -o "$OutDir/intl.exe" $Src
+	go build -ldflags "-s -w" -o "$OutDir/tools.exe" $Src
 
 	Write-Output "Building for Linux..."
 	$env:GOOS = "linux"
-	go build -ldflags "-s -w" -o "$OutDir/intl-linux" $Src
+	go build -ldflags "-s -w" -o "$OutDir/tools-linux" $Src
 
 	Write-Output "Building for MacOS..."
 	$env:GOOS = "darwin"
-	go build -ldflags "-s -w" -o "$OutDir/intl-darwin" $Src
+	go build -ldflags "-s -w" -o "$OutDir/tools-darwin" $Src
 
 	if ($args[1] -eq "-c") {
 		Write-Output "Compressing binaries..."
-		upx --brute "$OutDir/intl.exe"
-		upx --brute "$OutDir/intl-linux"
-		upx --brute "$OutDir/intl-darwin"
+		upx --brute "$OutDir/tools.exe"
+		upx --brute "$OutDir/tools-linux"
+		upx --brute "$OutDir/tools-darwin"
 	}
 
 	Remove-Item Env:\GOOS
@@ -44,7 +44,7 @@ if ($args[0] -eq "intl") {
 elseif ($args[0] -eq "ziggy") {
 	$env:GOARCH = "amd64"
 	$Src = "./src/ziggy/ziggy.go"
-	$OutDir = "./dist/scripts/uosc/bin"
+	$OutDir = "./src/uosc/bin"
 
 	if (!(Test-Path $OutDir)) {
 		New-Item -ItemType Directory -Force -Path $OutDir > $null
