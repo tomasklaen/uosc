@@ -3,10 +3,15 @@ local Button = require('elements/Button')
 local CycleButton = require('elements/CycleButton')
 local Speed = require('elements/Speed')
 
--- `scale` - `options.controls_size` scale factor.
--- `ratio` - Width/height ratio of a static or dynamic element.
--- `ratio_min` Min ratio for 'dynamic' sized element.
----@alias ControlItem {element?: Element; kind: string; sizing: 'space' | 'static' | 'dynamic'; scale: number; ratio?: number; ratio_min?: number; hide: boolean; dispositions?: table<string, boolean>}
+-- sizing:
+--   static - shrink, have highest claim on available space, disappear when there's not enough of it
+--   dynamic - shrink to make room for static elements until they reach their ratio_min, then disappear
+--   gap - shrink if there's no space left
+--   space - expands to fill available space, shrinks as needed
+-- scale - `options.controls_size` scale factor.
+-- ratio - Width/height ratio of a static or dynamic element.
+-- ratio_min Min ratio for 'dynamic' sized element.
+---@alias ControlItem {element?: Element; kind: string; sizing: 'space' | 'static' | 'dynamic' | 'gap'; scale: number; ratio?: number; ratio_min?: number; hide: boolean; dispositions?: table<string, boolean>}
 
 ---@class Controls : Element
 local Controls = class(Element)
@@ -109,7 +114,7 @@ function Controls:init_options()
 		if kind == 'space' then
 			control.sizing = 'space'
 		elseif kind == 'gap' then
-			table_assign(control, {sizing = 'dynamic', scale = 1, ratio = params[1] or 0.3, ratio_min = 0})
+			table_assign(control, {sizing = 'gap', scale = 1, ratio = params[1] or 0.3, ratio_min = 0})
 		elseif kind == 'command' then
 			if #params ~= 2 then
 				mp.error(string.format(
@@ -264,22 +269,24 @@ function Controls:update_dimensions()
 	self.ax, self.ay = window_border + margin, self.by - size
 
 	-- Controls
-	local available_width = self.bx - self.ax
-	local statics_width = (#self.layout - 1) * spacing
+	local available_width, statics_width = self.bx - self.ax, 0
 	local min_content_width = statics_width
-	local max_dynamics_width, dynamic_units, spaces = 0, 0, 0
+	local max_dynamics_width, dynamic_units, spaces, gaps = 0, 0, 0, 0
 
-	-- Calculate statics_width, min_content_width, and count spaces
+	-- Calculate statics_width, min_content_width, and count spaces & gaps
 	for c, control in ipairs(self.layout) do
 		if control.sizing == 'space' then
 			spaces = spaces + 1
+		elseif control.sizing == 'gap' then
+			gaps = gaps + control.scale * control.ratio
 		elseif control.sizing == 'static' then
-			local width = size * control.scale * control.ratio
+			local width = size * control.scale * control.ratio + (c ~= #self.layout and spacing or 0)
 			statics_width = statics_width + width
 			min_content_width = min_content_width + width
 		elseif control.sizing == 'dynamic' then
-			min_content_width = min_content_width + size * control.scale * control.ratio_min
-			max_dynamics_width = max_dynamics_width + size * control.scale * control.ratio
+			local spacing = (c ~= #self.layout and spacing or 0)
+			min_content_width = min_content_width + size * control.scale * control.ratio_min + spacing
+			max_dynamics_width = max_dynamics_width + size * control.scale * control.ratio + spacing
 			dynamic_units = dynamic_units + control.scale * control.ratio
 		end
 	end
@@ -291,7 +298,7 @@ function Controls:update_dimensions()
 			i = i + (a * (a % 2 == 0 and 1 or -1))
 			local control = self.layout[i]
 
-			if control.kind ~= 'gap' and control.kind ~= 'space' then
+			if control.sizing ~= 'gap' and control.sizing ~= 'space' then
 				control.hide = true
 				if control.element then control.element.enabled = false end
 				if control.sizing == 'static' then
@@ -300,7 +307,7 @@ function Controls:update_dimensions()
 					statics_width = statics_width - width - spacing
 				elseif control.sizing == 'dynamic' then
 					min_content_width = min_content_width - size * control.scale * control.ratio_min - spacing
-					max_dynamics_width = max_dynamics_width - size * control.scale * control.ratio
+					max_dynamics_width = max_dynamics_width - size * control.scale * control.ratio - spacing
 					dynamic_units = dynamic_units - control.scale * control.ratio
 				end
 
@@ -312,7 +319,9 @@ function Controls:update_dimensions()
 	-- Lay out the elements
 	local current_x = self.ax
 	local width_for_dynamics = available_width - statics_width
-	local space_width = (width_for_dynamics - max_dynamics_width) / spaces
+	local empty_space_width = width_for_dynamics - max_dynamics_width
+	local width_for_gaps = math.min(empty_space_width, size * gaps)
+	local individual_space_width = spaces > 0 and ((empty_space_width - width_for_gaps) / spaces) or 0
 
 	for c, control in ipairs(self.layout) do
 		if not control.hide then
@@ -320,7 +329,9 @@ function Controls:update_dimensions()
 			local width, height = 0, 0
 
 			if sizing == 'space' then
-				if space_width > 0 then width = space_width end
+				if individual_space_width > 0 then width = individual_space_width end
+			elseif sizing == 'gap' then
+				if width_for_gaps > 0 then width = width_for_gaps * (ratio / gaps) end
 			elseif sizing == 'static' then
 				height = size * scale
 				width = height * ratio
@@ -332,7 +343,7 @@ function Controls:update_dimensions()
 
 			local bx = current_x + width
 			if element then element:set_coordinates(round(current_x), round(self.by - height), bx, self.by) end
-			current_x = bx + spacing
+			current_x = element and bx + spacing or bx
 		end
 	end
 
