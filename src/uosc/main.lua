@@ -131,35 +131,6 @@ local intl = require('lib/intl')
 t = intl.t
 
 --[[ CONFIG ]]
-local config_defaults = {
-	color = {
-		foreground = serialize_rgba('ffffff').color,
-		foreground_text = serialize_rgba('000000').color,
-		background = serialize_rgba('000000').color,
-		background_text = serialize_rgba('ffffff').color,
-		curtain = serialize_rgba('111111').color,
-		success = serialize_rgba('a5e075').color,
-		error = serialize_rgba('ff616e').color,
-	},
-	opacity = {
-		timeline = 0.9,
-		position = 1,
-		chapters = 0.8,
-		slider = 0.9,
-		slider_gauge = 1,
-		speed = 0.6,
-		menu = 1,
-		submenu = 0.4,
-		border = 1,
-		title = 1,
-		tooltip = 1,
-		thumbnail = 1,
-		curtain = 0.8,
-		idle_indicator = 0.8,
-		audio_indicator = 0.5,
-		buffering_indicator = 0.3,
-	},
-}
 config = {
 	version = uosc_version,
 	open_subtitles_api_key = 'b0rd16N0bp7DETMpO4pYZwIqmQkZbYQr',
@@ -204,8 +175,8 @@ config = {
 		---@type table<string, {color: string; opacity: number; patterns?: string[]}>
 		local ranges = {}
 		if options.chapter_ranges and options.chapter_ranges ~= '' then
-			for _, definition in ipairs(split(options.chapter_ranges, ' *,+ *')) do
-				local name_color = split(definition, ' *:+ *')
+			for _, definition in ipairs(comma_split(options.chapter_ranges)) do
+				local name_color = comma_split(definition, ':')
 				local name, color = name_color[1], name_color[2]
 				if name and color
 					and name:match('^[a-zA-Z0-9_]+$') and color:match('^[a-fA-F0-9]+$')
@@ -222,6 +193,58 @@ config = {
 	opacity = table_copy(config_defaults.opacity),
 	cursor_leave_fadeout_elements = {'timeline', 'volume', 'top_bar', 'controls'},
 }
+---@class Colors
+local color_defaults = {
+	timeline = serialize_rgba('000000e6'),
+	timeline_border = serialize_rgba('000e'),
+	timeline_text = serialize_rgba('fff'),
+	timeline_text_border = serialize_rgba('000'),
+	timeline_cursor = serialize_rgba('fff3'),
+	timeline_position = serialize_rgba('fff'),
+	timeline_position_text = serialize_rgba('000'),
+	timeline_position_text_border = serialize_rgba('0000'),
+	timeline_position_cursor = serialize_rgba('0003'),
+	button = serialize_rgba('0000'),
+	button_icon = serialize_rgba('fff'),
+	button_icon_border = serialize_rgba('000'),
+	button_hover = serialize_rgba('fff1'),
+	button_active = serialize_rgba('fff'),
+	button_active_icon = serialize_rgba('000'),
+	button_badge = serialize_rgba('fff'),
+	button_badge_text = serialize_rgba('000'),
+	pause_indicator = serialize_rgba('fff'),
+	pause_indicator_fade = serialize_rgba('0004'),
+	volume = serialize_rgba('000000e6'),
+	volume_text = serialize_rgba('fff'),
+	volume_range = serialize_rgba('fff'),
+	volume_range_text = serialize_rgba('000'),
+	speed = serialize_rgba('0009'),
+	speed_text = serialize_rgba('fff'),
+	speed_text_border = serialize_rgba('000'),
+	speed_notch = serialize_rgba('fff'),
+	speed_notch_border = serialize_rgba('000'),
+	curtain = serialize_rgba('1111'),
+	menu = serialize_rgba('000'),
+	menu_text = serialize_rgba('fff'),
+	menu_placeholder = serialize_rgba('fff6'),
+	menu_item_hover = serialize_rgba('fff1'),
+	menu_item_active = serialize_rgba('fff'),
+	menu_item_active_text = serialize_rgba('000'),
+	title = serialize_rgba('000000e6'),
+	title_text = serialize_rgba('fff'),
+	title_text_border = serialize_rgba('000'),
+	playlist_position = serialize_rgba('fff'),
+	playlist_position_text = serialize_rgba('000'),
+	playlist_position_text_border = serialize_rgba('0000'),
+	success = serialize_rgba('a5e075'),
+	warning = serialize_rgba('ffc461'),
+	error = serialize_rgba('ff616e'),
+	ads = serialize_rgba('c54e4e80'),
+	openings = serialize_rgba('30abf964'),
+	endings = serialize_rgba('30abf964'),
+}
+---@type Colors
+color = {}
 
 -- Updates config with values dependent on options
 function update_config()
@@ -235,17 +258,8 @@ function update_config()
 		config[option_name] = flags
 	end
 
-	-- Opacity
-	config.opacity = table_assign({}, config_defaults.opacity, serialize_key_value_list(options.opacity,
-		function(value, key)
-			return clamp(0, tonumber(value) or config.opacity[key], 1)
-		end
-	))
-
-	-- Color
-	config.color = table_assign({}, config_defaults.color, serialize_key_value_list(options.color, function(value)
-		return serialize_rgba(value).color
-	end))
+	-- Colors
+	color = table_assign({}, color_defaults, serialize_key_value_list(options.colors, serialize_rgba))
 
 	-- Global color shorthands
 	fg, bg = config.color.foreground, config.color.background

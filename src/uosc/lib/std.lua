@@ -8,11 +8,25 @@ function round(number) return math.floor(number + 0.5) end
 ---@param max number
 function clamp(min, value, max) return math.max(min, math.min(value, max)) end
 
----@param rgba string `rrggbb` or `rrggbbaa` hex string.
-function serialize_rgba(rgba)
-	local a = rgba:sub(7, 8)
+---@alias Color {color: string; opacity: number}
+
+---@param hex string rgb, rgba, rrggbb, rrggbbaa hex string.
+---@return Color color If input color was invalid we return a pure red as fallback.
+function serialize_rgba(hex)
+	if not hex or type(hex) ~= 'string' or #hex < 3 or #hex == 5 or #hex == 7 or #hex > 8 or hex:match('[^0-9a-f]') then
+		hex = 'ff0000' -- fallback to pure red
+	end
+	if #hex == 3 or #hex == 4 then
+		local expanded = ''
+		for i = 1, #hex, 1 do
+			local char = hex:sub(i, i)
+			expanded = expanded .. char .. char
+		end
+		hex = expanded
+	end
+	local a = hex:sub(7, 8)
 	return {
-		color = rgba:sub(5, 6) .. rgba:sub(3, 4) .. rgba:sub(1, 2),
+		color = hex:sub(5, 6) .. hex:sub(3, 4) .. hex:sub(1, 2),
 		opacity = clamp(0, tonumber(#a == 2 and a or 'ff', 16) / 255, 1),
 	}
 end
@@ -59,7 +73,7 @@ function comma_split(input)
 	if not input then return {} end
 	if type(input) == 'table' then return itable_map(input, tostring) end
 	local str = tostring(input)
-	return str:match('^%s*$') and {} or split(str, ' *, *')
+	return str:match('^%s*$') and {} or split(str, ' *,+ *')
 end
 
 -- Get index of the last appearance of `sub` in `str`.
