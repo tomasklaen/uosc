@@ -285,8 +285,9 @@ function Controls:update_dimensions()
 			min_content_width = min_content_width + width
 		elseif control.sizing == 'dynamic' then
 			local spacing = (c ~= #self.layout and spacing or 0)
+			statics_width = statics_width + spacing
 			min_content_width = min_content_width + size * control.scale * control.ratio_min + spacing
-			max_dynamics_width = max_dynamics_width + size * control.scale * control.ratio + spacing
+			max_dynamics_width = max_dynamics_width + size * control.scale * control.ratio
 			dynamic_units = dynamic_units + control.scale * control.ratio
 		end
 	end
@@ -306,8 +307,9 @@ function Controls:update_dimensions()
 					min_content_width = min_content_width - width - spacing
 					statics_width = statics_width - width - spacing
 				elseif control.sizing == 'dynamic' then
+					statics_width = statics_width - spacing
 					min_content_width = min_content_width - size * control.scale * control.ratio_min - spacing
-					max_dynamics_width = max_dynamics_width - size * control.scale * control.ratio - spacing
+					max_dynamics_width = max_dynamics_width - size * control.scale * control.ratio
 					dynamic_units = dynamic_units - control.scale * control.ratio
 				end
 
