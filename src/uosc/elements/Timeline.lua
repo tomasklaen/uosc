@@ -393,7 +393,7 @@ function Timeline:render()
 		-- 0.5 to switch when the pixel is half filled in
 		local color = ((fax - 0.5) < cursor_x and cursor_x < (fbx + 0.5)) and bg or fg
 		local ax, ay, bx, by = cursor_x - 0.5, fay, cursor_x + 0.5, fby
-		ass:rect(ax, ay, bx, by, {color = color, opacity = 0.2})
+		ass:rect(ax, ay, bx, by, {color = color, opacity = 0.33})
 		local tooltip_anchor = {ax = ax, ay = ay - self.top_border, bx = bx, by = by}
 
 		-- Timestamp
