@@ -733,6 +733,9 @@ function Menu:paste()
 		else
 			menu.on_paste(payload)
 		end
+	elseif menu.search_style ~= 'disabled' then
+		self:search_start(menu)
+		self:search_query_update(payload, menu)
 	end
 end
 
