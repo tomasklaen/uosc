@@ -484,6 +484,7 @@ Menu {
   keep_open?: boolean;
   on_close?: string | string[];
   on_search?: string | string[];
+  on_paste?: string | string[];
   search_style?: 'on_demand' | 'palette' | 'disabled'; // default: on_demand
   search_debounce?: 'submit' | number; // default: 0
   search_suggestion?: string;
@@ -503,6 +504,7 @@ Submenu {
   separator?: boolean;
   keep_open?: boolean;
   on_search?: string | string[];
+  on_paste?: string | string[];
   search_style?: 'on_demand' | 'palette' | 'disabled'; // default: on_demand
   search_debounce?: 'submit' | number; // default: 0
   search_suggestion?: string;
@@ -543,6 +545,8 @@ While the menu is open this value will be available in `user-data/uosc/menu/type
 
 `item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons?icon.platform=web&icon.set=Material+Icons&icon.style=Rounded)\
 There is also a special icon name `spinner` which will display a rotating spinner. Along with a no-op command on an item and `keep_open=true`, this can be used to display placeholder menus/items that are still loading.
+
+`on_paste` is triggered when user pastes a string while menu is opened. Works the same as `on_search`.
 
 When `keep_open` is `true`, activating the item will not close the menu. This property can be defined on both menus and items, and is inherited from parent to child if child doesn't overwrite it.
 

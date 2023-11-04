@@ -29,18 +29,18 @@ function toggle_menu_with_items(opts)
 	end
 end
 
----@param options {type: string; title: string; list_prop: string; active_prop?: string; serializer: fun(list: any, active: any): MenuDataItem[]; on_select: fun(value: any); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
-function create_self_updating_menu_opener(options)
+---@param opts {type: string; title: string; list_prop: string; active_prop?: string; serializer: fun(list: any, active: any): MenuDataItem[]; on_select: fun(value: any); on_paste: fun(payload: string); on_move_item?: fun(from_index: integer, to_index: integer, submenu_path: integer[]); on_delete_item?: fun(index: integer, submenu_path: integer[])}
+function create_self_updating_menu_opener(opts)
 	return function()
-		if Menu:is_open(options.type) then
+		if Menu:is_open(opts.type) then
 			Menu:close()
 			return
 		end
-		local list = mp.get_property_native(options.list_prop)
-		local active = options.active_prop and mp.get_property_native(options.active_prop) or nil
+		local list = mp.get_property_native(opts.list_prop)
+		local active = opts.active_prop and mp.get_property_native(opts.active_prop) or nil
 		local menu
 
-		local function update() menu:update_items(options.serializer(list, active)) end
+		local function update() menu:update_items(opts.serializer(list, active)) end
 
 		local ignore_initial_list = true
 		local function handle_list_prop_change(name, value)
@@ -62,25 +62,31 @@ function create_self_updating_menu_opener(options)
 			end
 		end
 
-		local initial_items, selected_index = options.serializer(list, active)
+		local initial_items, selected_index = opts.serializer(list, active)
 
 		-- Items and active_index are set in the handle_prop_change callback, since adding
 		-- a property observer triggers its handler immediately, we just let that initialize the items.
 		menu = Menu:open(
-			{type = options.type, title = options.title, items = initial_items, selected_index = selected_index},
-			options.on_select, {
+			{
+				type = opts.type,
+				title = opts.title,
+				items = initial_items,
+				selected_index = selected_index,
+				on_paste = opts.on_paste,
+			},
+			opts.on_select, {
 				on_open = function()
-					mp.observe_property(options.list_prop, 'native', handle_list_prop_change)
-					if options.active_prop then
-						mp.observe_property(options.active_prop, 'native', handle_active_prop_change)
+					mp.observe_property(opts.list_prop, 'native', handle_list_prop_change)
+					if opts.active_prop then
+						mp.observe_property(opts.active_prop, 'native', handle_active_prop_change)
 					end
 				end,
 				on_close = function()
 					mp.unobserve_property(handle_list_prop_change)
 					mp.unobserve_property(handle_active_prop_change)
 				end,
-				on_move_item = options.on_move_item,
-				on_delete_item = options.on_delete_item,
+				on_move_item = opts.on_move_item,
+				on_delete_item = opts.on_delete_item,
 			})
 	end
 end
@@ -155,7 +161,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		return items, active_index or first_item_index
 	end
 
-	local function selection_handler(value)
+	local function handle_select(value)
 		if value == '{download}' then
 			mp.command(download_command)
 		elseif value == '{load}' then
@@ -170,12 +176,21 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		end
 	end
 
+	local function handle_paste(value)
+		mp.commandv(track_type .. '-add', value)
+		-- If subtitle track was loaded, assume the user also wants to see it
+		if track_type == 'sub' then
+			mp.commandv('set', 'sub-visibility', 'yes')
+		end
+	end
+
 	return create_self_updating_menu_opener({
 		title = menu_title,
 		type = track_type,
 		list_prop = 'track-list',
 		serializer = serialize_tracklist,
-		on_select = selection_handler,
+		on_select = handle_select,
+		on_paste = handle_paste,
 	})
 end
 
