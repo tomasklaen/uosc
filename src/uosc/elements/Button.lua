@@ -43,11 +43,11 @@ function Button:render()
 	local background = self.active and self.foreground or self.background
 
 	-- Background
-	if is_hover_or_active then
+	if is_hover_or_active or config.opacity.controls > 0 then
 		ass:rect(self.ax, self.ay, self.bx, self.by, {
-			color = self.active and background or foreground,
+			color = (self.active or not is_hover) and background or foreground,
 			radius = state.radius,
-			opacity = visibility * (self.active and 1 or 0.3),
+			opacity = visibility * (self.active and 1 or (is_hover and 0.3 or config.opacity.controls)),
 		})
 	end
 

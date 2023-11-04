@@ -147,6 +147,7 @@ local config_defaults = {
 		chapters = 0.8,
 		slider = 0.9,
 		slider_gauge = 1,
+		controls = 0,
 		speed = 0.6,
 		menu = 1,
 		submenu = 0.4,
