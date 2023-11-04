@@ -8,6 +8,19 @@ import (
 	"path/filepath"
 )
 
+// CountingWriter wraps an io.Writer and counts the number of bytes written.
+type CountingWriter struct {
+	written int64
+	writer  io.Writer
+}
+
+// Write writes bytes and counts them.
+func (cw *CountingWriter) Write(p []byte) (int, error) {
+	n, err := cw.writer.Write(p)
+	cw.written += int64(n)
+	return n, err
+}
+
 /*
 `files` format:
 
@@ -39,7 +52,8 @@ func ZipFilesWithHeaders(files map[string]string, outputFile string, headerMod H
 		return ZipStats{}, err
 	}
 	defer f.Close()
-	zw := zip.NewWriter(f)
+	countedF := &CountingWriter{writer: f}
+	zw := zip.NewWriter(countedF)
 	defer zw.Close()
 
 	var filesNum, bytes int64
@@ -127,8 +141,9 @@ func ZipFilesWithHeaders(files map[string]string, outputFile string, headerMod H
 	}
 
 	return ZipStats{
-		FilesNum: filesNum,
-		Bytes:    bytes,
+		FilesNum:        filesNum,
+		TotalBytes:      bytes,
+		CompressedBytes: countedF.written,
 	}, nil
 }
 
@@ -136,6 +151,7 @@ func ZipFilesWithHeaders(files map[string]string, outputFile string, headerMod H
 type HeaderModFn func(header *zip.FileHeader) *zip.FileHeader
 
 type ZipStats struct {
-	FilesNum int64
-	Bytes    int64
+	FilesNum        int64
+	TotalBytes      int64
+	CompressedBytes int64
 }

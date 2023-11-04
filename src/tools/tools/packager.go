@@ -58,7 +58,7 @@ func Packager(args []string) {
 	fmt.Printf(
 		"Packaging into: %s\n- uosc.zip:  %.2f MB, %d files\n- uosc.conf: %.1f KB",
 		filepath.ToSlash(must(filepath.Rel(cwd, releaseRoot)))+"/",
-		float64(stats.Bytes)/1024/1024,
+		float64(stats.CompressedBytes)/1024/1024,
 		stats.FilesNum,
 		float64(confSize)/1024,
 	)
