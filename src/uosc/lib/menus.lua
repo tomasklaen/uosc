@@ -176,21 +176,13 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		end
 	end
 
-	local function handle_paste(value)
-		mp.commandv(track_type .. '-add', value)
-		-- If subtitle track was loaded, assume the user also wants to see it
-		if track_type == 'sub' then
-			mp.commandv('set', 'sub-visibility', 'yes')
-		end
-	end
-
 	return create_self_updating_menu_opener({
 		title = menu_title,
 		type = track_type,
 		list_prop = 'track-list',
 		serializer = serialize_tracklist,
 		on_select = handle_select,
-		on_paste = handle_paste,
+		on_paste = function(path) load_track(track_type, path) end,
 	})
 end
 
@@ -541,7 +533,7 @@ function open_open_file_menu()
 	)
 end
 
----@param opts {name: 'subtitles'|'audio'|'video'; prop: string; allowed_types: string[]}
+---@param opts {name: 'subtitles'|'audio'|'video'; prop: 'sub'|'audio'|'video'; allowed_types: string[]}
 function create_track_loader_menu_opener(opts)
 	local menu_type = 'load-' .. opts.name
 	local title = ({
@@ -568,17 +560,12 @@ function create_track_loader_menu_opener(opts)
 		if not path then
 			path = get_default_directory()
 		end
-		open_file_navigation_menu(
-			path,
-			function(path)
-				mp.commandv(opts.prop .. '-add', path)
-				-- If subtitle track was loaded, assume the user also wants to see it
-				if opts.prop == 'sub' then
-					mp.commandv('set', 'sub-visibility', 'yes')
-				end
-			end,
-			{type = menu_type, title = title, allowed_types = opts.allowed_types}
-		)
+
+		local function handle_select(path) load_track(opts.prop, path) end
+
+		open_file_navigation_menu(path, handle_select, {
+			type = menu_type, title = title, allowed_types = opts.allowed_types,
+		})
 	end
 end
 
@@ -683,8 +670,7 @@ function open_subtitle_downloader()
 
 			if not data then return end
 
-			mp.commandv('sub-add', data.file)
-			mp.commandv('set', 'sub-visibility', 'yes')
+			load_track('sub', data.file)
 
 			menu:update_items({
 				{

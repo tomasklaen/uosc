@@ -728,6 +728,16 @@ function find_active_keybindings(key)
 	return not key and active or active[key]
 end
 
+---@param type 'sub'|'audio'|'video'
+---@param path string
+function load_track(type, path)
+	mp.commandv(type .. '-add', path, 'cached')
+	-- If subtitle track was loaded, assume the user also wants to see it
+	if type == 'sub' then
+		mp.commandv('set', 'sub-visibility', 'yes')
+	end
+end
+
 ---@return string|nil
 function get_clipboard()
 	local result = mp.command_native({
