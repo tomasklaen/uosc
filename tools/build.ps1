@@ -64,9 +64,9 @@ elseif ($args[0] -eq "ziggy") {
 
 	if ($args[1] -eq "-c") {
 		Write-Output "Compressing binaries..."
-		upx --brute "$OutDir/ziggy-windows.exe"
-		upx --brute "$OutDir/ziggy-linux"
-		upx --brute "$OutDir/ziggy-darwin"
+		upx "$OutDir/ziggy-windows.exe"
+		upx "$OutDir/ziggy-linux"
+		upx "$OutDir/ziggy-darwin"
 	}
 
 	Remove-Item Env:\GOOS

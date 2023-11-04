@@ -64,9 +64,9 @@ elif [ "$1" = "ziggy" ]; then
 
 	if [ "$2" = "-c" ]; then
 		echo "Compressing binaries..."
-		upx --brute "$out_dir/ziggy-windows.exe"
-		upx --brute "$out_dir/ziggy-linux"
-		upx --brute "$out_dir/ziggy-darwin"
+		upx "$out_dir/ziggy-windows.exe"
+		upx "$out_dir/ziggy-linux"
+		upx "$out_dir/ziggy-darwin"
 	fi
 
 	unset GOARCH
