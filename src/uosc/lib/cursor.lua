@@ -204,8 +204,7 @@ function cursor:move(x, y)
 	end
 
 	-- Add 0.5 to be in the middle of the pixel
-	self.x = x == math.huge and x or x + 0.5
-	self.y = y == math.huge and y or y + 0.5
+	self.x, self.y = x + 0.5, y + 0.5
 
 	if old_x ~= self.x or old_y ~= self.y then
 		if self.x == math.huge or self.y == math.huge then
