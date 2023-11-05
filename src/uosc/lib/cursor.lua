@@ -35,11 +35,11 @@ local cursor = {
 	autohide_fs_only = nil,
 }
 
-cursor.autohide_timer = (function()
-	local timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function() cursor:autohide() end)
-	timer:kill()
-	return timer
-end)()
+cursor.autohide_timer = mp.add_timeout(1, function() cursor:autohide() end)
+cursor.autohide_timer:kill()
+mp.observe_property('cursor-autohide', 'number', function(_, val)
+	cursor.autohide_timer.timeout = (val or 1000) / 1000
+end)
 
 -- Called at the beginning of each render
 function cursor:clear_zones()
