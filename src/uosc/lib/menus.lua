@@ -341,20 +341,33 @@ do
 		if items then return items end
 
 		local input_conf_property = mp.get_property_native('input-conf')
-		local input_conf = input_conf_property == '' and '~~/input.conf' or input_conf_property
-		local input_conf_path = mp.command_native({'expand-path', input_conf})
-		local input_conf_meta, meta_error = utils.file_info(input_conf_path)
+		local input_conf_iterator
+		if input_conf_property:sub(1, 9) == 'memory://' then
+			-- mpv.net v7
+			local input_conf_lines = split(input_conf_property:sub(10), '\n')
+			local i = 0
+			input_conf_iterator = function()
+				i = i + 1
+				return input_conf_lines[i]
+			end
+		else
+			local input_conf = input_conf_property == '' and '~~/input.conf' or input_conf_property
+			local input_conf_path = mp.command_native({'expand-path', input_conf})
+			local input_conf_meta, meta_error = utils.file_info(input_conf_path)
 
-		-- File doesn't exist
-		if not input_conf_meta or not input_conf_meta.is_file then
-			items = create_default_menu_items()
-			return items
+			-- File doesn't exist
+			if not input_conf_meta or not input_conf_meta.is_file then
+				items = create_default_menu_items()
+				return items
+			end
+
+			input_conf_iterator = io.lines(input_conf_path)
 		end
 
 		local main_menu = {items = {}, items_by_command = {}}
 		local by_id = {}
 
-		for line in io.lines(input_conf_path) do
+		for line in input_conf_iterator do
 			local key, command, comment = string.match(line, '%s*([%S]+)%s+(.-)%s+#%s*(.-)%s*$')
 			local title = ''
 
