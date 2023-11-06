@@ -32,13 +32,14 @@ local cursor = {
 	mbtn_left_dbl_enabled = nil,
 	mbtn_right_enabled = nil,
 	wheel_enabled = nil,
+	autohide_fs_only = nil,
 }
 
-cursor.autohide_timer = (function()
-	local timer = mp.add_timeout(mp.get_property_native('cursor-autohide') / 1000, function() cursor:autohide() end)
-	timer:kill()
-	return timer
-end)()
+cursor.autohide_timer = mp.add_timeout(1, function() cursor:autohide() end)
+cursor.autohide_timer:kill()
+mp.observe_property('cursor-autohide', 'number', function(_, val)
+	cursor.autohide_timer.timeout = (val or 1000) / 1000
+end)
 
 -- Called at the beginning of each render
 function cursor:clear_zones()
@@ -152,14 +153,17 @@ function cursor:decide_keybinds()
 	if enable_mbtn_left_dbl ~= self.mbtn_left_dbl_enabled then
 		mp[(enable_mbtn_left_dbl and 'enable' or 'disable') .. '_key_bindings']('mbtn_left_dbl')
 		self.mbtn_left_dbl_enabled = enable_mbtn_left_dbl
+		self:queue_autohide()
 	end
 	if enable_mbtn_right ~= self.mbtn_right_enabled then
 		mp[(enable_mbtn_right and 'enable' or 'disable') .. '_key_bindings']('mbtn_right')
 		self.mbtn_right_enabled = enable_mbtn_right
+		self:queue_autohide()
 	end
 	if enable_wheel ~= self.wheel_enabled then
 		mp[(enable_wheel and 'enable' or 'disable') .. '_key_bindings']('wheel')
 		self.wheel_enabled = enable_wheel
+		self:queue_autohide()
 	end
 end
 
@@ -253,13 +257,23 @@ end
 
 function cursor:leave() self:move(math.huge, math.huge) end
 
+function cursor:is_autohide_allowed()
+	return options.autohide and (not self.autohide_fs_only or state.fullscreen) and
+		not (self.mbtn_left_dbl_enabled or self.mbtn_right_enabled or self.wheel_enabled) and
+		not Menu:is_open()
+end
+mp.observe_property('cursor-autohide-fs-only', 'bool', function(_, val) cursor.autohide_fs_only = val end)
+
 -- Cursor auto-hiding after period of inactivity.
 function cursor:autohide()
-	if #self.zone_handlers.primary_up == 0 and not Menu:is_open() then self:leave() end
+	if self:is_autohide_allowed() then
+		self:leave()
+		self.autohide_timer:kill()
+	end
 end
 
 function cursor:queue_autohide()
-	if options.autohide and #self.zone_handlers.primary_up == 0 then
+	if self:is_autohide_allowed() then
 		self.autohide_timer:kill()
 		self.autohide_timer:resume()
 	end
