@@ -159,6 +159,7 @@ local config_defaults = {
 		idle_indicator = 0.8,
 		audio_indicator = 0.5,
 		buffering_indicator = 0.3,
+		playlist_position = 0.8,
 	},
 }
 config = {

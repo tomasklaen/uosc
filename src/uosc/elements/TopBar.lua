@@ -214,7 +214,13 @@ function TopBar:render()
 				bx = round(title_ax + text_width(text, opts) + padding * 2),
 				by = self.by - bg_margin,
 			}
-			ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {color = fg, opacity = visibility, radius = state.radius})
+			local opacity = get_point_to_rectangle_proximity(cursor, rect) == 0
+				and 1 or config.opacity.playlist_position
+			if opacity > 0 then
+				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
+					color = fg, opacity = visibility * opacity, radius = state.radius,
+				})
+			end
 			ass:txt(rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2, 5, formatted_text, opts)
 			title_ax = rect.bx + bg_margin
 
