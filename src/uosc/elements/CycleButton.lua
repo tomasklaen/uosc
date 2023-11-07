@@ -52,7 +52,7 @@ function CycleButton:init(id, props)
 		self['on_prop_' .. self.prop] = function(self, value) handle_change(self.prop, value) end
 		handle_change(self.prop, state[self.prop])
 	else
-		self:observe_mp_property(self.prop, handle_change)
+		self:observe_mp_property(self.prop, 'string', handle_change)
 	end
 end
 

@@ -182,9 +182,12 @@ end
 
 -- Automatically registers disposer for the observer.
 ---@param name string
----@param callback fun(name: string, value: any)
-function Element:observe_mp_property(name, callback)
-	mp.observe_property(name, 'native', callback)
+---@param type_or_callback string|fun(name: string, value: any)
+---@param callback_maybe nil|fun(name: string, value: any)
+function Element:observe_mp_property(name, type_or_callback, callback_maybe)
+	local callback = type(type_or_callback) == 'function' and type_or_callback or callback_maybe
+	local prop_type = type(type_or_callback) == 'string' and type_or_callback or 'native'
+	mp.observe_property(name, prop_type, callback)
 	self:register_disposer(function() mp.unobserve_property(callback) end)
 end
 
