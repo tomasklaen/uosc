@@ -338,8 +338,7 @@ function Menu:update_dimensions()
 			menu.search.max_width = math.max(menu.search.max_width, menu.width)
 		end
 		menu.scroll_height = math.max(content_height - menu.height - self.item_spacing, 0)
-		menu.scroll_y = menu.scroll_y or 0
-		self:scroll_to(menu.scroll_y, menu) -- clamps scroll_y to scroll limits
+		self:set_scroll_to(menu.scroll_y, menu) -- clamps scroll_y to scroll limits
 	end
 
 	self:update_coordinates()
