@@ -512,6 +512,13 @@ function Menu:activate_submenu(id)
 	local submenu = self.by_id[id]
 	if submenu then
 		self:activate_menu(submenu)
+		local menu = self.current
+		local parent = menu.parent_menu
+		while parent do
+			parent.selected_index = itable_index_of(parent.items, menu)
+			self:scroll_to_index(parent.selected_index, parent)
+			menu, parent = parent, parent.parent_menu
+		end
 	else
 		msg.error(string.format('Requested submenu id "%s" doesn\'t exist', id))
 	end
