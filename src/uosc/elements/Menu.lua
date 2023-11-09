@@ -125,11 +125,8 @@ function Menu:init(data, callback, opts)
 	mp.set_property_native('user-data/uosc/menu/type', self.type or 'undefined')
 	self:update(data)
 
-	if self.mouse_nav then
-		if self.current then self.current.selected_index = nil end
-	else
-		for _, menu in ipairs(self.all) do self:scroll_to_index(menu.selected_index, menu) end
-	end
+	for _, menu in ipairs(self.all) do self:scroll_to_index(menu.selected_index, menu) end
+	if self.mouse_nav then self.current.selected_index = nil end
 
 	self:tween_property('opacity', 0, 1)
 	self:enable_key_bindings()
