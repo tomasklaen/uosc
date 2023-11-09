@@ -261,7 +261,7 @@ function Timeline:render()
 	-- Chapters
 	local hovered_chapter = nil
 	if (config.opacity.chapters > 0 and (#state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)) then
-		local diamond_radius = math.min(foreground_size, self.chapter_size)
+		local diamond_radius = math.min(math.max(1, foreground_size * 0.8), self.chapter_size)
 		local diamond_radius_hovered = diamond_radius * 2
 		local diamond_border = options.timeline_border and math.max(options.timeline_border, 1) or 1
 
