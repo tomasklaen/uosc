@@ -746,7 +746,13 @@ Other scripts usually choose to go the route of adding python scripts and requir
 
 #### Why don't you have `uosc-{platform}.zip` releases and only include binaries for the concerned platform in each?
 
-Then you wouldn't be able to sync your mpv config between platforms and everything _just work_. And the binaries are small, this is not a problem.
+Then you wouldn't be able to sync your mpv config between platforms and everything _just work_.
+
+#### Why is the release reported as malicious by some antiviruses?
+
+Some obscure antiviruses find our binaries suspicious due to the way go packages them. I think the only way to solve that would be to sign them (not 100% sure though), but I'm not paying to work on free stuff. If anyone is bothered by this, and would be willing to donate a code signing certificate, let me know.
+
+If you want to check the binaries are safe, the code is in `src/ziggy`, and you can build them yourself by running `tools/build ziggy` in the repository root and compare.
 
 #### Why _uosc_?
 
