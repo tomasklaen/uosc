@@ -16,7 +16,7 @@ Features:
 -   Fast and efficient thumbnails with [thumbfast](https://github.com/po5/thumbfast) integration.
 -   UIs for:
     -   Selecting subtitle/audio/video track.
-    -   Downloading subtitles from Open Subtitles.
+    -   [Downloading subtitles](#download-subtitles) from [Open Subtitles](https://www.opensubtitles.com).
     -   Loading external subtitles.
     -   Selecting stream quality.
     -   Quick directory and playlist navigation.
@@ -223,11 +223,13 @@ For subtitles, the explorer only displays file types defined in `subtitle_types`
 
 A menu to search and download subtitles from [Open Subtitles](https://www.opensubtitles.com). It can also be opened by selecting the **Download** option in `subtitles` menu.
 
-We hash the current file and send the hash to Open Subtitles so you can search even with empty query and if your file is known, you'll get subtitles exactly for it.
+We fetch results for languages defined in *uosc**'s `languages` option, which defaults to your mpv `slang` configuration.
+
+We also hash the current file and send the hash to Open Subtitles so you can search even with empty query and if your file is known, you'll get subtitles exactly for it.
 
 Subtitles will be downloaded to the same directory as currently opened file, or `~~/subtitles` (folder in your mpv config directory) if playing a URL.
 
-Current Open Subtitles limit for unauthenticated requests is **5 download per day**, but searching is unlimited. Authentication raises downloads to 10, which doesn't feel like it's wroth the effort of implementing it, so currently there's no way to authenticate.
+Current Open Subtitles limit for unauthenticated requests is **5 download per day**, but searching is unlimited. Authentication raises downloads to 10, which doesn't feel like it's worth the effort of implementing it, so currently there's no way to authenticate. 5 downloads per day seems sufficient for most use cases anyway, as if you need more, you should probably just deal with it in the browser beforehand so you don't have to fiddle with the subtitle downloading menu every time you start playing a new file.
 
 #### `playlist`
 
