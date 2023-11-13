@@ -160,7 +160,7 @@ end
 ---@return T[]
 function itable_join(...)
 	local args, result = {...}, {}
-	for i = 1, #args do
+	for i = 1, select('#', ...) do
 		if args[i] then for _, value in ipairs(args[i]) do result[#result + 1] = value end end
 	end
 	return result
@@ -201,8 +201,8 @@ end
 ---@return T
 function table_assign(target, ...)
 	local args = {...}
-	for i = 1, #args do
-		if args[i] then for key, value in pairs(args[i]) do target[key] = value end end
+	for i = 1, select('#', ...) do
+		if type(args[i]) == 'table' then for key, value in pairs(args[i]) do target[key] = value end end
 	end
 	return target
 end
