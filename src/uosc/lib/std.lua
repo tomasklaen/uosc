@@ -202,7 +202,7 @@ end
 function table_assign(target, ...)
 	local args = {...}
 	for i = 1, select('#', ...) do
-		if args[i] then for key, value in pairs(args[i]) do target[key] = value end end
+		if type(args[i]) == 'table' then for key, value in pairs(args[i]) do target[key] = value end end
 	end
 	return target
 end
