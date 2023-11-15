@@ -54,9 +54,12 @@ function TopBar:init()
 	self.main_title, self.alt_title = nil, nil
 
 	local function get_maximized_command()
-		return state.border
-			and (state.fullscreen and 'set fullscreen no;cycle window-maximized' or 'cycle window-maximized')
-			or 'set window-maximized no;cycle fullscreen'
+		if state.platform == 'windows' then
+			return state.border
+				and (state.fullscreen and 'set fullscreen no;cycle window-maximized' or 'cycle window-maximized')
+				or 'set window-maximized no;cycle fullscreen'
+		end
+		return state.fullormaxed and 'set fullscreen no;set window-maximized no' or 'set window-maximized yes'
 	end
 
 	-- Order aligns from right to left
