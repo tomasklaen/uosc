@@ -926,7 +926,7 @@ bind_command('show-in-directory', function()
 	if not state.path or is_protocol(state.path) then return end
 
 	if state.platform == 'windows' then
-		utils.subprocess_detached({args = {'explorer', '/select,', state.path}, cancellable = false})
+		utils.subprocess_detached({args = {'explorer', '/select,', state.path .. ' '}, cancellable = false})
 	elseif state.platform == 'darwin' then
 		utils.subprocess_detached({args = {'open', '-R', state.path}, cancellable = false})
 	elseif state.platform == 'linux' then
