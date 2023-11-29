@@ -5,7 +5,7 @@ local BufferingIndicator = class(Element)
 
 function BufferingIndicator:new() return Class.new(self) --[[@as BufferingIndicator]] end
 function BufferingIndicator:init()
-	Element.init(self, 'buffer_indicator', {ignores_curtain = true, render_order = 2})
+	Element.init(self, 'buffering_indicator', {ignores_curtain = true, render_order = 2})
 	self.enabled = false
 	self:decide_enabled()
 end
