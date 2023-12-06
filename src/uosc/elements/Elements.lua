@@ -70,8 +70,12 @@ end
 -- Toggles passed elements' min visibilities between 0 and 1.
 ---@param ids string[] IDs of elements to peek.
 function Elements:toggle(ids)
-	local has_invisible = itable_find(ids, function(id) return Elements[id] and Elements[id]:get_visibility() ~= 1 end)
+	local has_invisible = itable_find(ids, function(id)
+		return Elements[id] and Elements[id].enabled and Elements[id]:get_visibility() ~= 1
+	end)
+
 	self:set_min_visibility(has_invisible and 1 or 0, ids)
+
 	-- Reset proximities when toggling off. Has to happen after `set_min_visibility`,
 	-- as that is using proximity as a tween starting point.
 	if not has_invisible then
