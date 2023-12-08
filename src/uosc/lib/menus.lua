@@ -210,8 +210,8 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 	if not files or not directories then return end
 
-	sort_filenames(directories)
-	sort_filenames(files)
+	sort_strings(directories)
+	sort_strings(files)
 
 	-- Pre-populate items with parent directory selector if not at root
 	-- Each item value is a serialized path table it points to.
