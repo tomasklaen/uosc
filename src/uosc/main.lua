@@ -129,6 +129,7 @@ if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
 --[[ INTERNATIONALIZATION ]]
 local intl = require('lib/intl')
 t = intl.t
+require('lib/char_conv')
 
 --[[ CONFIG ]]
 local config_defaults = {
