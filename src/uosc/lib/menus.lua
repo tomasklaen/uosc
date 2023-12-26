@@ -190,7 +190,7 @@ end
 
 -- Opens a file navigation menu with items inside `directory_path`.
 ---@param directory_path string
----@param handle_select fun(path: string): nil
+---@param handle_select fun(path: string, mods: Modifiers): nil
 ---@param opts NavigationMenuOptions
 function open_file_navigation_menu(directory_path, handle_select, opts)
 	directory = serialize_path(normalize_path(directory_path))
@@ -273,7 +273,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 			return
 		end
 
-		if info.is_dir and not meta.modifiers.alt then
+		if info.is_dir and not meta.modifiers.alt and not meta.modifiers.ctrl then
 			--  Preselect directory we are coming from
 			if is_to_parent then
 				inheritable_options.selected_path = directory.path
@@ -281,7 +281,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 			open_file_navigation_menu(path, handle_select, inheritable_options)
 		else
-			handle_select(path)
+			handle_select(path, meta.modifiers)
 		end
 	end
 
@@ -535,7 +535,7 @@ function open_open_file_menu()
 
 	menu = open_file_navigation_menu(
 		directory,
-		function(path) mp.commandv('loadfile', path) end,
+		function(path, mods) mp.commandv('loadfile', path, mods.ctrl and 'append' or nil) end,
 		{
 			type = 'open-file',
 			allowed_types = config.types.media,
