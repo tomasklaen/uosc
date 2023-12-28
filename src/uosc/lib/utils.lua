@@ -14,7 +14,7 @@ do
 	-- this function was taken from https://github.com/mpvnet-player/mpv.net/issues/575#issuecomment-1817413401
 	local winapi = nil
 
-	if state.platform == 'windows' and config.features.accurate_sorting then
+	if state.platform == 'windows' and config.refine.sorting then
 		-- is_ffi_loaded is false usually means the mpv builds without luajit
 		local is_ffi_loaded, ffi = pcall(require, 'ffi')
 
