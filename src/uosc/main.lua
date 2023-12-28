@@ -71,7 +71,7 @@ defaults = {
 	color = '',
 	opacity = '',
 	animation_duration = 100,
-	text_width_estimation = true,
+	refine = '',
 	pause_on_click_shorter_than = 0, -- deprecated by below
 	click_threshold = 0,
 	click_command = 'cycle pause; script-binding uosc/flash-pause-indicator',
@@ -175,6 +175,7 @@ config = {
 	osd_margin_y = mp.get_property('osd-margin-y'),
 	osd_alignment_x = mp.get_property('osd-align-x'),
 	osd_alignment_y = mp.get_property('osd-align-y'),
+	refine = create_set(comma_split(options.refine)),
 	types = {
 		video = comma_split(options.video_types),
 		audio = comma_split(options.audio_types),
@@ -542,7 +543,7 @@ function load_file_index_in_current_directory(index)
 		})
 
 		if not files then return end
-		sort_filenames(files)
+		sort_strings(files)
 		if index < 0 then index = #files + index + 1 end
 
 		if files[index] then

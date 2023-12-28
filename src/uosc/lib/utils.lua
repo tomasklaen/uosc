@@ -6,61 +6,52 @@
 --- In place sorting of filenames
 ---@param filenames string[]
 
------ winapi start -----
--- in windows system, we can use the sorting function provided by the win32 API
--- see https://learn.microsoft.com/en-us/windows/win32/api/shlwapi/nf-shlwapi-strcmplogicalw
--- this function was taken from https://github.com/mpvnet-player/mpv.net/issues/575#issuecomment-1817413401
-local winapi = {}
+-- String sorting
+do
+	----- winapi start -----
+	-- in windows system, we can use the sorting function provided by the win32 API
+	-- see https://learn.microsoft.com/en-us/windows/win32/api/shlwapi/nf-shlwapi-strcmplogicalw
+	-- this function was taken from https://github.com/mpvnet-player/mpv.net/issues/575#issuecomment-1817413401
+	local winapi = nil
 
-if state.platform == 'windows' then
-	-- is_ffi_loaded is false usually means the mpv builds without luajit
-	local is_ffi_loaded, ffi = pcall(require, 'ffi')
+	if state.platform == 'windows' and config.refine.sorting then
+		-- is_ffi_loaded is false usually means the mpv builds without luajit
+		local is_ffi_loaded, ffi = pcall(require, 'ffi')
 
-	if is_ffi_loaded then
-		winapi = {
-			ffi = ffi,
-			C = ffi.C,
-			CP_UTF8 = 65001,
-			shlwapi = ffi.load('shlwapi'),
-		}
+		if is_ffi_loaded then
+			winapi = {
+				ffi = ffi,
+				C = ffi.C,
+				CP_UTF8 = 65001,
+				shlwapi = ffi.load('shlwapi'),
+			}
 
-		-- ffi code from https://github.com/po5/thumbfast, Mozilla Public License Version 2.0
-		ffi.cdef[[
-			int __stdcall MultiByteToWideChar(unsigned int CodePage, unsigned long dwFlags, const char *lpMultiByteStr,
-			int cbMultiByte, wchar_t *lpWideCharStr, int cchWideChar);
-			int __stdcall StrCmpLogicalW(wchar_t *psz1, wchar_t *psz2);
-		]]
+			-- ffi code from https://github.com/po5/thumbfast, Mozilla Public License Version 2.0
+			ffi.cdef [[
+				int __stdcall MultiByteToWideChar(unsigned int CodePage, unsigned long dwFlags, const char *lpMultiByteStr,
+				int cbMultiByte, wchar_t *lpWideCharStr, int cchWideChar);
+				int __stdcall StrCmpLogicalW(wchar_t *psz1, wchar_t *psz2);
+			]]
 
-		winapi.utf8_to_wide = function(utf8_str)
-			if utf8_str then
-				local utf16_len = winapi.C.MultiByteToWideChar(winapi.CP_UTF8, 0, utf8_str, -1, nil, 0)
+			winapi.utf8_to_wide = function(utf8_str)
+				if utf8_str then
+					local utf16_len = winapi.C.MultiByteToWideChar(winapi.CP_UTF8, 0, utf8_str, -1, nil, 0)
 
-				if utf16_len > 0 then
-					local utf16_str = winapi.ffi.new('wchar_t[?]', utf16_len)
+					if utf16_len > 0 then
+						local utf16_str = winapi.ffi.new('wchar_t[?]', utf16_len)
 
-					if winapi.C.MultiByteToWideChar(winapi.CP_UTF8, 0, utf8_str, -1, utf16_str, utf16_len) > 0 then
-						return utf16_str
+						if winapi.C.MultiByteToWideChar(winapi.CP_UTF8, 0, utf8_str, -1, utf16_str, utf16_len) > 0 then
+							return utf16_str
+						end
 					end
 				end
-			end
 
-			return ''
+				return ''
+			end
 		end
 	end
-end
------ winapi end -----
+	----- winapi end -----
 
-function sort_filenames_windows(filenames)
-	table.sort(filenames, function(a, b)
-		local a_wide = winapi.utf8_to_wide(a)
-		local b_wide = winapi.utf8_to_wide(b)
-		return winapi.shlwapi.StrCmpLogicalW(a_wide, b_wide) == -1
-	end)
-
-	return filenames
-end
-
-function sort_filenames_lua(filenames)
 	-- alphanum sorting for humans in Lua
 	-- http://notebook.kulchenko.com/algorithms/alphanumeric-natural-sorting-for-humans-in-lua
 	local function padnum(n, d)
@@ -68,23 +59,27 @@ function sort_filenames_lua(filenames)
 			or ('%03d%s'):format(#n, n)
 	end
 
-	local tuples = {}
-	for i, f in ipairs(filenames) do
-		tuples[i] = {f:lower():gsub('0*(%d+)%.?(%d*)', padnum), f}
+	local function sort_lua(strings)
+		local tuples = {}
+		for i, f in ipairs(strings) do
+			tuples[i] = {f:lower():gsub('0*(%d+)%.?(%d*)', padnum), f}
+		end
+		table.sort(tuples, function(a, b)
+			return a[1] == b[1] and #b[2] < #a[2] or a[1] < b[1]
+		end)
+		for i, tuple in ipairs(tuples) do strings[i] = tuple[2] end
+		return strings
 	end
-	table.sort(tuples, function(a, b)
-		return a[1] == b[1] and #b[2] < #a[2] or a[1] < b[1]
-	end)
-	for i, tuple in ipairs(tuples) do filenames[i] = tuple[2] end
-	return filenames
-end
 
-function sort_filenames(filenames)
-	local is_ffi_loaded = pcall(require, 'ffi')
-	if state.platform == 'windows' and is_ffi_loaded then
-		sort_filenames_windows(filenames)
-	else
-		sort_filenames_lua(filenames)
+	---@param strings string[]
+	function sort_strings(strings)
+		if winapi then
+			table.sort(strings, function(a, b)
+				return winapi.shlwapi.StrCmpLogicalW(winapi.utf8_to_wide(a), winapi.utf8_to_wide(b)) == -1
+			end)
+		else
+			sort_lua(strings)
+		end
 	end
 end
 
@@ -465,7 +460,7 @@ function get_adjacent_files(file_path, opts)
 	if not current_meta then return end
 	local files = read_directory(current_meta.dirname, {hidden = opts.hidden})
 	if not files then return end
-	sort_filenames(files)
+	sort_strings(files)
 	local current_file_index
 	local paths = {}
 	for _, file in ipairs(files) do
