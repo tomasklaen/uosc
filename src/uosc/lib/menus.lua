@@ -535,7 +535,13 @@ function open_open_file_menu()
 
 	menu = open_file_navigation_menu(
 		directory,
-		function(path, mods) mp.commandv('loadfile', path, mods.ctrl and 'append' or nil) end,
+		function(path, mods)
+			if mods.ctrl then
+				mp.commandv('loadfile', path, 'append')
+			else
+				mp.commandv('loadfile', path)
+			end
+		end,
 		{
 			type = 'open-file',
 			allowed_types = config.types.media,
