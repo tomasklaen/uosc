@@ -11,6 +11,7 @@ function Timeline:init()
 	self.obstructed = false
 	self.size = 0
 	self.progress_size = 0
+	self.min_progress_size = 0 -- used for `flash-progress`
 	self.font_size = 0
 	self.top_border = 0
 	self.line_width = 0
@@ -37,7 +38,8 @@ end
 
 function Timeline:get_effective_size()
 	if Elements:v('speed', 'dragging') then return self.size end
-	return self.progress_size + math.ceil((self.size - self.progress_size) * self:get_visibility())
+	local progress_size = math.max(self.min_progress_size, self.progress_size)
+	return progress_size + math.ceil((self.size - self.progress_size) * self:get_visibility())
 end
 
 function Timeline:get_is_hovered() return self.enabled and self.is_hovered end
@@ -74,6 +76,24 @@ function Timeline:toggle_progress()
 	local current = self.progress_size
 	self:tween_property('progress_size', current, current > 0 and 0 or options.progress_size)
 	request_render()
+end
+
+function Timeline:flash_progress()
+	if self.enabled and options.flash_duration > 0 then
+		if not self._flash_progress_timer then
+			self._flash_progress_timer = mp.add_timeout(options.flash_duration / 1000, function()
+				self:tween_property('min_progress_size', options.progress_size, 0)
+			end)
+			self._flash_progress_timer:kill()
+		end
+
+		self:tween_stop()
+		self.min_progress_size = options.progress_size
+		request_render()
+		self._flash_progress_timer.timeout = options.flash_duration / 1000
+		self._flash_progress_timer:kill()
+		self._flash_progress_timer:resume()
+	end
 end
 
 function Timeline:get_time_at_x(x)
@@ -171,9 +191,10 @@ function Timeline:render()
 	end
 
 	local ass = assdraw.ass_new()
+	local progress_size = math.max(self.min_progress_size, self.progress_size)
 
-	-- Text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches self.progress_size
-	local hide_text_below = math.max(self.font_size * 0.8, self.progress_size * 2)
+	-- Text opacity rapidly drops to 0 just before it starts overflowing, or before it reaches progress_size
+	local hide_text_below = math.max(self.font_size * 0.8, progress_size * 2)
 	local hide_text_ramp = hide_text_below / 2
 	local text_opacity = clamp(0, size - hide_text_below, hide_text_ramp) / hide_text_ramp
 
@@ -192,8 +213,8 @@ function Timeline:render()
 	local line_width = 0
 
 	if is_line then
-		local minimized_fraction = 1 - math.min((size - self.progress_size) / ((self.size - self.progress_size) / 8), 1)
-		local progress_delta = self.progress_size > 0 and self.progress_line_width - self.line_width or 0
+		local minimized_fraction = 1 - math.min((size - progress_size) / ((self.size - progress_size) / 8), 1)
+		local progress_delta = progress_size > 0 and self.progress_line_width - self.line_width or 0
 		line_width = self.line_width + (progress_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
@@ -398,7 +419,7 @@ function Timeline:render()
 
 		-- Timestamp
 		local opts = {
-			size = self.font_size, offset = timestamp_gap, margin = tooltip_gap, timestamp = options.time_precision > 0
+			size = self.font_size, offset = timestamp_gap, margin = tooltip_gap, timestamp = options.time_precision > 0,
 		}
 		local hovered_time_human = format_time(hovered_seconds, state.duration)
 		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
