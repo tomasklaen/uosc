@@ -542,7 +542,7 @@ function open_open_file_menu()
 				mp.commandv('loadfile', path, 'append')
 			else
 				mp.commandv('loadfile', path)
-				menu:close()
+				Menu:close()
 			end
 		end,
 		{
