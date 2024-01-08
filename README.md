@@ -257,7 +257,8 @@ Displays a command palette menu with all key bindings defined in your `input.con
 
 Open file menu. Browsing starts in current file directory, or user directory when file not available. The explorer only displays file types defined in the `video_types`, `audio_types`, and `image_types` options.
 
-You can use `ctrl+enter` or `ctrl+click` to load the whole directory in mpv instead of navigating its contents.
+You can use `alt+enter` or `alt+click` to load the whole directory in mpv instead of navigating its contents.
+You can also use `ctrl+enter` or `ctrl+click` to append a file or directory to the playlist.
 
 #### `items`
 

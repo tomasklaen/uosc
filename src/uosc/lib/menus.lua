@@ -186,11 +186,11 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	})
 end
 
----@alias NavigationMenuOptions {type: string, title?: string, allowed_types?: string[], active_path?: string, selected_path?: string; on_open?: fun(); on_close?: fun()}
+---@alias NavigationMenuOptions {type: string, title?: string, allowed_types?: string[], keep_open?: boolean, active_path?: string, selected_path?: string; on_open?: fun(); on_close?: fun()}
 
 -- Opens a file navigation menu with items inside `directory_path`.
 ---@param directory_path string
----@param handle_select fun(path: string): nil
+---@param handle_select fun(path: string, mods: Modifiers): nil
 ---@param opts NavigationMenuOptions
 function open_file_navigation_menu(directory_path, handle_select, opts)
 	directory = serialize_path(normalize_path(directory_path))
@@ -251,6 +251,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		local is_to_parent = is_drives or #path < #directory_path
 		local inheritable_options = {
 			type = opts.type, title = opts.title, allowed_types = opts.allowed_types, active_path = opts.active_path,
+			keep_open = opts.keep_open,
 		}
 
 		if is_drives then
@@ -273,7 +274,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 			return
 		end
 
-		if info.is_dir and not meta.modifiers.alt then
+		if info.is_dir and not meta.modifiers.alt and not meta.modifiers.ctrl then
 			--  Preselect directory we are coming from
 			if is_to_parent then
 				inheritable_options.selected_path = directory.path
@@ -281,7 +282,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 
 			open_file_navigation_menu(path, handle_select, inheritable_options)
 		else
-			handle_select(path)
+			handle_select(path, meta.modifiers)
 		end
 	end
 
@@ -293,6 +294,7 @@ function open_file_navigation_menu(directory_path, handle_select, opts)
 		type = opts.type,
 		title = opts.title or directory.basename .. path_separator,
 		items = items,
+		keep_open = opts.keep_open,
 		selected_index = selected_index,
 	}
 	local menu_options = {on_open = opts.on_open, on_close = opts.on_close, on_back = handle_back}
@@ -535,11 +537,19 @@ function open_open_file_menu()
 
 	menu = open_file_navigation_menu(
 		directory,
-		function(path) mp.commandv('loadfile', path) end,
+		function(path, mods)
+			if mods.ctrl then
+				mp.commandv('loadfile', path, 'append')
+			else
+				mp.commandv('loadfile', path)
+				Menu:close()
+			end
+		end,
 		{
 			type = 'open-file',
 			allowed_types = config.types.media,
 			active_path = active_file,
+			keep_open = true,
 			on_open = function() mp.register_event('file-loaded', handle_file_loaded) end,
 			on_close = function() mp.unregister_event(handle_file_loaded) end,
 		}
