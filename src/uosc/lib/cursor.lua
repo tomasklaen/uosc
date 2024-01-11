@@ -6,8 +6,8 @@ local cursor = {
 	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
 	-- - element activations (clicks) go to `primary_down` handler
 	-- - `primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
-	---@type {[string]: {hitbox: Rect|{point: Point, r: number}; handler: fun(...)}[]}
-	zone_handlers = {
+	---@type {[string]: {hitbox: Hitbox; handler: fun(...)}[]}
+	zones = {
 		primary_down = {},
 		primary_up = {},
 		secondary_down = {},
@@ -27,12 +27,22 @@ local cursor = {
 	},
 	first_real_mouse_move_received = false,
 	history = CircularBuffer:new(10),
-	-- Enables pointer key group captures needed by handlers (called at the end of each render)
-	mbtn_left_enabled = nil,
-	mbtn_left_dbl_enabled = nil,
-	mbtn_right_enabled = nil,
-	wheel_enabled = nil,
 	autohide_fs_only = nil,
+	-- Tracks current key binding levels for each event. 0: disabled, 1: enabled, 2: enabled + window dragging prevented
+	binding_levels = {
+		mbtn_left = 0,
+		mbtn_left_dbl = 0,
+		mbtn_right = 0,
+		wheel = 0,
+	},
+	event_forward_map = {
+		primary_down = 'MBTN_LEFT',
+		primary_up = 'MBTN_LEFT',
+		secondary_down = 'MBTN_RIGHT',
+		secondary_up = 'MBTN_RIGHT',
+		wheel_down = 'WHEEL',
+		wheel_up = 'WHEEL',
+	}
 }
 
 cursor.autohide_timer = mp.add_timeout(1, function() cursor:autohide() end)
@@ -43,27 +53,32 @@ end)
 
 -- Called at the beginning of each render
 function cursor:clear_zones()
-	for _, handlers in pairs(self.zone_handlers) do
+	for _, handlers in pairs(self.zones) do
 		itable_clear(handlers)
 	end
 end
 
+---@param hitbox Hitbox
+function cursor:collides_with(hitbox)
+	return (hitbox.r and get_point_to_point_proximity(self, hitbox.point) <= hitbox.r) or
+		(not hitbox.r and get_point_to_rectangle_proximity(self, hitbox) == 0)
+end
+
 ---@param event string
 function cursor:find_zone_handler(event)
-	local zone_handlers = self.zone_handlers[event]
-	for i = #zone_handlers, 1, -1 do
-		local zone_handler = zone_handlers[i]
-		local hitbox = zone_handler.hitbox
-		if (hitbox.r and get_point_to_point_proximity(self, hitbox.point) <= hitbox.r) or
-			(not hitbox.r and get_point_to_rectangle_proximity(self, hitbox) == 0) then
-			return zone_handler.handler
-		end
+	local zones = self.zones[event]
+	for i = #zones, 1, -1 do
+		local zone = zones[i]
+		if self:collides_with(zone.hitbox) then return zone.handler end
 	end
 end
 
+---@param event string
+---@param hitbox Hitbox
+---@param callback fun(...)
 function cursor:zone(event, hitbox, callback)
-	local area_handlers = self.zone_handlers[event]
-	area_handlers[#area_handlers + 1] = {hitbox = hitbox, handler = callback}
+	local event_zones = self.zones[event]
+	event_zones[#event_zones + 1] = {hitbox = hitbox, handler = callback}
 end
 
 -- Binds a cursor event handler.
@@ -107,63 +122,61 @@ function cursor:trigger(event, ...)
 	if zone_handler or #callbacks > 0 then
 		call_maybe(zone_handler, ...)
 		for _, callback in ipairs(callbacks) do callback(...) end
-	elseif (event == 'primary_down' or event == 'primary_up') then
-		-- forward mbtn_left events if there was no handler
-		local active = find_active_keybindings('MBTN_LEFT')
-		if active then
-			if active.owner then
-				-- binding belongs to other script, so make it look like regular key event
-				-- mouse bindings are simple, other keys would require repeat and pressed handling
-				-- which can't be done with mp.set_key_bindings(), but is possible with mp.add_key_binding()
-				local state = event == 'primary_up' and 'um' or 'dm'
-				local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
-				mp.commandv('script-message-to', active.owner, 'key-binding', name, state, 'MBTN_LEFT')
-			elseif event == 'primary_down' then
-				-- input.conf binding
-				mp.command(active.cmd)
+	else
+		local forward_name = self.event_forward_map[event]
+		if forward_name then
+			-- Forward events if there was no handler.
+			local active = find_active_keybindings(forward_name)
+			if active then
+				local is_up = event:sub(-3) == '_up'
+				if active.owner then
+					-- Binding belongs to other script, so make it look like regular key event.
+					-- Mouse bindings are simple, other keys would require repeat and pressed handling,
+					-- which can't be done with mp.set_key_bindings(), but is possible with mp.add_key_binding().
+					local state = is_up and 'um' or 'dm'
+					local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
+					mp.commandv('script-message-to', active.owner, 'key-binding', name, state, forward_name)
+				elseif not is_up then
+					-- input.conf binding
+					mp.command(active.cmd)
+				end
 			end
 		end
 	end
 	self:queue_autohide() -- refresh cursor autohide timer
 end
 
----Checks if there are any handlers for the current cursor position
----@param name string
-function cursor:has_handler(name)
-	return self:find_zone_handler(name) ~= nil or #self.handlers[name] > 0
-end
-
----Checks if there are any handlers at all
----@param name string
-function cursor:has_any_handler(name)
-	return #self.zone_handlers[name] > 0 or #self.handlers[name] > 0
+-- Decides necessary bindings level for passed event, where:
+--   0: bindings should be disabled
+--   1: bindings should be enabled
+--   2: bindings should be enabled, and window dragging prevented
+---@param event string
+function cursor:get_binding_level(event)
+	local level = #self.handlers[event] > 0 and 1 or 0
+	for _, zone in ipairs(self.zones[event]) do
+		if zone.hitbox.window_drag == false and cursor:collides_with(zone.hitbox) then return 2 end
+		level = math.max(level, 1)
+	end
+	return level
 end
 
 -- Enables or disables keybinding groups based on what event listeners are bound.
 function cursor:decide_keybinds()
-	local enable_mbtn_left = self:has_any_handler('primary_down') or self:has_any_handler('primary_up')
-	local enable_mbtn_left_dbl = self:has_handler('primary_down') or self:has_handler('primary_up')
-	local enable_mbtn_right = self:has_handler('secondary_down') or self:has_handler('secondary_up')
-	local enable_wheel = self:has_handler('wheel_down') or self:has_handler('wheel_up')
-	if enable_mbtn_left ~= self.mbtn_left_enabled then
-		local flags = 'allow-vo-dragging+allow-hide-cursor'
-		mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left', flags)
-		self.mbtn_left_enabled = enable_mbtn_left
-	end
-	if enable_mbtn_left_dbl ~= self.mbtn_left_dbl_enabled then
-		mp[(enable_mbtn_left_dbl and 'enable' or 'disable') .. '_key_bindings']('mbtn_left_dbl')
-		self.mbtn_left_dbl_enabled = enable_mbtn_left_dbl
-		self:queue_autohide()
-	end
-	if enable_mbtn_right ~= self.mbtn_right_enabled then
-		mp[(enable_mbtn_right and 'enable' or 'disable') .. '_key_bindings']('mbtn_right')
-		self.mbtn_right_enabled = enable_mbtn_right
-		self:queue_autohide()
-	end
-	if enable_wheel ~= self.wheel_enabled then
-		mp[(enable_wheel and 'enable' or 'disable') .. '_key_bindings']('wheel')
-		self.wheel_enabled = enable_wheel
-		self:queue_autohide()
+	local mbtn_left_level = math.max(self:get_binding_level('primary_down'), self:get_binding_level('primary_up'))
+	local new_levels = {
+		mbtn_left = mbtn_left_level,
+		mbtn_left_dbl = mbtn_left_level,
+		mbtn_right = math.max(self:get_binding_level('secondary_down'), self:get_binding_level('secondary_up')),
+		wheel = math.max(self:get_binding_level('wheel_down'), self:get_binding_level('wheel_up')),
+	}
+
+	for name, level in pairs(new_levels) do
+		if level ~= self.binding_levels[name] then
+			local flags = level == 1 and 'allow-vo-dragging+allow-hide-cursor' or ''
+			mp[(level == 0 and 'disable' or 'enable') .. '_key_bindings'](name, flags)
+			self.binding_levels[name] = level
+			self:queue_autohide()
+		end
 	end
 end
 

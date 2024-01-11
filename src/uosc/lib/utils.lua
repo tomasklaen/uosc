@@ -1,7 +1,9 @@
 --[[ UI specific utilities that might or might not depend on its state or options ]]
 
 ---@alias Point {x: number; y: number}
----@alias Rect {ax: number, ay: number, bx: number, by: number}
+---@alias Rect {ax: number, ay: number, bx: number, by: number, window_drag?: boolean}
+---@alias Circle {point: Point, r: number, window_drag?: boolean}
+---@alias Hitbox Rect|Circle
 
 --- In place sorting of filenames
 ---@param filenames string[]
@@ -830,6 +832,9 @@ function render()
 	state.render_last_time = mp.get_time()
 
 	cursor:clear_zones()
+
+	-- Click on empty area detection
+	if setup_click_detection then setup_click_detection() end
 
 	-- Actual rendering
 	local ass = assdraw.ass_new()
