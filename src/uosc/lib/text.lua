@@ -408,6 +408,10 @@ do
 	---@type {[string]: string}
 	local cache = {}
 
+	function timestamp_zero_rep_clear_cache()
+		cache = {}
+	end
+
 	---Replace all timestamp digits with 0
 	---@param timestamp string
 	function timestamp_zero_rep(timestamp)
