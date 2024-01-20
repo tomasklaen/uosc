@@ -82,6 +82,8 @@ function TopBar:init()
 	}
 
 	self:decide_titles()
+	self:decide_enabled()
+	self:update_dimensions()
 end
 
 function TopBar:destroy()
