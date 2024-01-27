@@ -147,6 +147,13 @@ function get_point_to_point_proximity(point_a, point_b)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
+---@param point Point
+---@param hitbox Hitbox
+function point_collides_with(point, hitbox)
+	return (hitbox.r and get_point_to_point_proximity(point, hitbox.point) <= hitbox.r) or
+		(not hitbox.r and get_point_to_rectangle_proximity(point, hitbox --[[@as Rect]]) == 0)
+end
+
 ---@param lax number
 ---@param lay number
 ---@param lbx number
