@@ -757,8 +757,10 @@ function Menu:search_internal(menu, no_select_first)
 		end
 		menu.items = search_items(menu.search.source.items, query, search_submenus)
 		-- Select 1st item in search results
-		menu.scroll_y = 0
-		if not no_select_first then self:select_index(1, menu) end
+		if not no_select_first then
+			menu.scroll_y = 0
+			self:select_index(1, menu)
+		end
 	end
 	self:update_content_dimensions()
 end
