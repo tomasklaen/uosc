@@ -593,7 +593,7 @@ if options.click_threshold > 0 then
 	end
 	-- If this function exists, it'll be called at the beginning of render().
 	function setup_click_detection()
-		local hitbox = {ax = 0, ay = 0, bx = display.width, by = display.height}
+		local hitbox = {ax = 0, ay = 0, bx = display.width, by = display.height, window_drag = true}
 		cursor:zone('primary_down', hitbox, handle_down)
 		cursor:zone('primary_up', hitbox, handle_up)
 	end

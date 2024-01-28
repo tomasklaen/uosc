@@ -25,6 +25,7 @@ local cursor = {
 		mbtn_right = 0,
 		wheel = 0,
 	},
+	is_dragging_prevented = false,
 	event_forward_map = {
 		primary_down = 'MBTN_LEFT',
 		primary_up = 'MBTN_LEFT',
@@ -43,6 +44,7 @@ local cursor = {
 		wheel_down = 'wheel',
 		wheel_up = 'wheel',
 	},
+	window_dragging_blockers = create_set({'primary_click', 'primary_down'}),
 	event_propagation_blockers = {
 		primary_down = 'primary_click',
 		primary_click = 'primary_down',
@@ -98,6 +100,7 @@ end
 -- - One event type per zone: only the last bound zone per event type gets triggered.
 -- - In current implementation, you can only use `_click` or `_down`. If you bind both, only the last bound one will fire.
 -- - `primary_up` and `primary_click` prevent autohide when bound.
+-- - Primary `_down` and `_click` automatically disable dragging. Define `window_drag = true` on hitbox to re-enable.
 -- - `move` even zones are not triggered due to it being a high frequency event that is currently not needed as a zone.
 ---@param event string
 ---@param hitbox Hitbox
@@ -205,6 +208,7 @@ end
 -- Enables or disables keybinding groups based on what event listeners are bound.
 function cursor:decide_keybinds()
 	local new_levels = {mbtn_left = 0, mbtn_right = 0, wheel = 0}
+	self.is_dragging_prevented = false
 
 	-- Check global events.
 	for name, handlers in ipairs(self.handlers) do
@@ -218,7 +222,12 @@ function cursor:decide_keybinds()
 	for _, zone in ipairs(self.zones) do
 		local binding = self.event_binding_map[zone.event]
 		if binding and cursor:collides_with(zone.hitbox) then
-			new_levels[binding] = math.max(new_levels[binding], zone.hitbox.window_drag == false and 2 or 1)
+			local new_level = (self.window_dragging_blockers[zone.event] and zone.hitbox.window_drag ~= true) and 2
+				or math.max(new_levels[binding], zone.hitbox.window_drag == false and 2 or 1)
+			new_levels[binding] = new_level
+			if new_level > 1 then
+				self.is_dragging_prevented = true
+			end
 		end
 	end
 
@@ -326,7 +335,9 @@ end
 function cursor:leave() self:move(math.huge, math.huge) end
 
 function cursor:is_autohide_allowed()
-	return options.autohide and (not self.autohide_fs_only or state.fullscreen) and not Menu:is_open()
+	return options.autohide and (not self.autohide_fs_only or state.fullscreen)
+		and not self.is_dragging_prevented
+		and not Menu:is_open()
 end
 mp.observe_property('cursor-autohide-fs-only', 'bool', function(_, val) cursor.autohide_fs_only = val end)
 

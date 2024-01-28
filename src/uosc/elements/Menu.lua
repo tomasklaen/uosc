@@ -118,8 +118,6 @@ function Menu:init(data, callback, opts)
 	self.is_closing, self.is_closed = false, false
 	self.drag_last_y = nil
 	self.is_dragging = false
-	-- A flag for cursor zone to prevent window dragging on top of this element, since we're just passing `self` to it.
-	self.window_drag = false
 
 	if utils.shared_script_property_set then
 		utils.shared_script_property_set('uosc-menu-type', self.type or 'undefined')

@@ -20,8 +20,6 @@ function Speed:init(props)
 	self.font_size = nil
 	---@type Dragging|nil
 	self.dragging = nil
-	-- A flag for cursor zone to prevent window dragging on top of this element, since we're just passing `self` to it.
-	self.window_drag = false
 end
 
 function Speed:on_coordinates()

@@ -14,8 +14,6 @@ function VolumeSlider:init(props)
 	self.draw_nudge = false
 	self.spacing = 0
 	self.border_size = 0
-	-- A flag for cursor zone to prevent window dragging on top of this element, since we're just passing `self` to it.
-	self.window_drag = false
 	self:update_dimensions()
 end
 
