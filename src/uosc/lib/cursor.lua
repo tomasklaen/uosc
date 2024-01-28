@@ -81,7 +81,7 @@ end
 -- Returns zone for event at current cursor position.
 ---@param event string
 function cursor:find_zone(event)
-	-- We ignore `move` because it's the most performance impacting event, and not needed as a zone at current time.
+	-- Premature optimization to ignore a high frequency event that is not needed as a zone atm.
 	if event == 'move' then return end
 
 	for i = #self.zones, 1, -1 do
@@ -95,13 +95,14 @@ end
 
 -- Defines an event zone for a hitbox on currently rendered screen. Available events:
 -- - primary_down, primary_up, primary_click, secondary_down, secondary_up, secondary_click, wheel_down, wheel_up
+--
 -- Notes:
 -- - Zones are cleared on beginning of every `render()`, and need to be rebound.
--- - One event type per zone: only the last bound zone per event type gets triggered.
--- - In current implementation, you can only use `_click` or `_down`. If you bind both, only the last bound one will fire.
--- - `primary_up` and `primary_click` prevent autohide when bound.
--- - Primary `_down` and `_click` automatically disable dragging. Define `window_drag = true` on hitbox to re-enable.
--- - `move` even zones are not triggered due to it being a high frequency event that is currently not needed as a zone.
+-- - One event type per zone: only the last bound zone per event gets triggered.
+-- - In current implementation, you have to choose between `_click` or `_down`. Binding both makes only the last bound fire.
+-- - Primary `_down` and `_click` disable dragging. Define `window_drag = true` on hitbox to re-enable.
+-- - Anything that disables dragging also implicitly disables cursor autohide.
+-- - `move` event zones are ignored due to it being a high frequency event that is currently not needed as a zone.
 ---@param event string
 ---@param hitbox Hitbox
 ---@param callback fun(...)
