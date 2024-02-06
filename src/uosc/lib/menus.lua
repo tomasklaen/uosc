@@ -821,7 +821,7 @@ function open_subtitle_downloader()
 			type = menu_type,
 			title = t('enter query'),
 			items = initial_items,
-			palette = true,
+			search_style = 'palette',
 			on_search = handle_search,
 			search_debounce = 'submit',
 			search_suggestion = search_suggestion,

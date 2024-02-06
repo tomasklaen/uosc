@@ -844,7 +844,7 @@ bind_command('keybinds', function()
 	if Menu:is_open('keybinds') then
 		Menu:close()
 	else
-		open_command_menu({type = 'keybinds', items = get_keybinds_items(), palette = true})
+		open_command_menu({type = 'keybinds', items = get_keybinds_items(), search_style = 'palette'})
 	end
 end)
 bind_command('download-subtitles', open_subtitle_downloader)
