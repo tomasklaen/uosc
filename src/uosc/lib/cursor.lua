@@ -3,19 +3,9 @@ local cursor = {
 	y = math.huge,
 	hidden = true,
 	hover_raw = false,
-	-- Event handlers that are only fired on cursor, bound during render loop. Guidelines:
-	-- - element activations (clicks) go to `primary_down` handler
-	-- - `primary_up` is only for clearing dragging/swiping, and prevents autohide when bound
-	---@type {[string]: {hitbox: Rect|{point: Point, r: number}; handler: fun(...)}[]}
-	zone_handlers = {
-		primary_down = {},
-		primary_up = {},
-		secondary_down = {},
-		secondary_up = {},
-		wheel_down = {},
-		wheel_up = {},
-		move = {},
-	},
+	-- Event handlers that are only fired on zones defined during render loop.
+	---@type {event: string, hitbox: Hitbox; handler: fun(...)}[]
+	zones = {},
 	handlers = {
 		primary_down = {},
 		primary_up = {},
@@ -27,12 +17,49 @@ local cursor = {
 	},
 	first_real_mouse_move_received = false,
 	history = CircularBuffer:new(10),
-	-- Enables pointer key group captures needed by handlers (called at the end of each render)
-	mbtn_left_enabled = nil,
-	mbtn_left_dbl_enabled = nil,
-	mbtn_right_enabled = nil,
-	wheel_enabled = nil,
 	autohide_fs_only = nil,
+	-- Tracks current key binding levels for each event. 0: disabled, 1: enabled, 2: enabled + window dragging prevented
+	binding_levels = {
+		mbtn_left = 0,
+		mbtn_left_dbl = 0,
+		mbtn_right = 0,
+		wheel = 0,
+	},
+	is_dragging_prevented = false,
+	event_forward_map = {
+		primary_down = 'MBTN_LEFT',
+		primary_up = 'MBTN_LEFT',
+		secondary_down = 'MBTN_RIGHT',
+		secondary_up = 'MBTN_RIGHT',
+		wheel_down = 'WHEEL_DOWN',
+		wheel_up = 'WHEEL_UP',
+	},
+	event_binding_map = {
+		primary_down = 'mbtn_left',
+		primary_up = 'mbtn_left',
+		primary_click = 'mbtn_left',
+		secondary_down = 'mbtn_right',
+		secondary_up = 'mbtn_right',
+		secondary_click = 'mbtn_right',
+		wheel_down = 'wheel',
+		wheel_up = 'wheel',
+	},
+	window_dragging_blockers = create_set({'primary_click', 'primary_down'}),
+	event_propagation_blockers = {
+		primary_down = 'primary_click',
+		primary_click = 'primary_down',
+		secondary_down = 'secondary_click',
+		secondary_click = 'secondary_down',
+	},
+	event_parent_map = {
+		primary_down = {is_start = true, trigger_event = 'primary_click'},
+		primary_up = {is_end = true, start_event = 'primary_down', trigger_event = 'primary_click'},
+		secondary_down = {is_start = true, trigger_event = 'secondary_click'},
+		secondary_up = {is_end = true, start_event = 'secondary_down', trigger_event = 'secondary_click'},
+	},
+	-- Holds positions of last events.
+	---@type {[string]: {x: number, y: number, time: number}}
+	last_event = {},
 }
 
 cursor.autohide_timer = mp.add_timeout(1, function() cursor:autohide() end)
@@ -43,30 +70,48 @@ end)
 
 -- Called at the beginning of each render
 function cursor:clear_zones()
-	for _, handlers in pairs(self.zone_handlers) do
-		itable_clear(handlers)
-	end
+	itable_clear(self.zones)
 end
 
+---@param hitbox Hitbox
+function cursor:collides_with(hitbox)
+	return point_collides_with(self, hitbox)
+end
+
+-- Returns zone for event at current cursor position.
 ---@param event string
-function cursor:find_zone_handler(event)
-	local zone_handlers = self.zone_handlers[event]
-	for i = #zone_handlers, 1, -1 do
-		local zone_handler = zone_handlers[i]
-		local hitbox = zone_handler.hitbox
-		if (hitbox.r and get_point_to_point_proximity(self, hitbox.point) <= hitbox.r) or
-			(not hitbox.r and get_point_to_rectangle_proximity(self, hitbox) == 0) then
-			return zone_handler.handler
+function cursor:find_zone(event)
+	-- Premature optimization to ignore a high frequency event that is not needed as a zone atm.
+	if event == 'move' then return end
+
+	for i = #self.zones, 1, -1 do
+		local zone = self.zones[i]
+		local is_blocking_only = zone.event == self.event_propagation_blockers[event]
+		if (zone.event == event or is_blocking_only) and self:collides_with(zone.hitbox) then
+			return not is_blocking_only and zone or nil
 		end
 	end
 end
 
+-- Defines an event zone for a hitbox on currently rendered screen. Available events:
+-- - primary_down, primary_up, primary_click, secondary_down, secondary_up, secondary_click, wheel_down, wheel_up
+--
+-- Notes:
+-- - Zones are cleared on beginning of every `render()`, and need to be rebound.
+-- - One event type per zone: only the last bound zone per event gets triggered.
+-- - In current implementation, you have to choose between `_click` or `_down`. Binding both makes only the last bound fire.
+-- - Primary `_down` and `_click` disable dragging. Define `window_drag = true` on hitbox to re-enable.
+-- - Anything that disables dragging also implicitly disables cursor autohide.
+-- - `move` event zones are ignored due to it being a high frequency event that is currently not needed as a zone.
+---@param event string
+---@param hitbox Hitbox
+---@param callback fun(...)
 function cursor:zone(event, hitbox, callback)
-	local area_handlers = self.zone_handlers[event]
-	area_handlers[#area_handlers + 1] = {hitbox = hitbox, handler = callback}
+	self.zones[#self.zones + 1] = {event = event, hitbox = hitbox, handler = callback}
 end
 
--- Binds a cursor event handler.
+-- Binds a permanent cursor event handler active until manually unbound using `cursor:off()`.
+-- `_click` events are not available as permanent global events, only as zones.
 ---@param event string
 ---@return fun() disposer Unbinds the event.
 function cursor:on(event, callback)
@@ -102,68 +147,101 @@ end
 -- Trigger the event.
 ---@param event string
 function cursor:trigger(event, ...)
-	local zone_handler = self:find_zone_handler(event)
+	local forward = true
+
+	-- Call raw event handlers.
+	local zone = self:find_zone(event)
 	local callbacks = self.handlers[event]
-	if zone_handler or #callbacks > 0 then
-		call_maybe(zone_handler, ...)
+	if zone or #callbacks > 0 then
+		forward = false
+		if zone then zone.handler(...) end
 		for _, callback in ipairs(callbacks) do callback(...) end
-	elseif (event == 'primary_down' or event == 'primary_up') then
-		-- forward mbtn_left events if there was no handler
-		local active = find_active_keybindings('MBTN_LEFT')
-		if active then
-			if active.owner then
-				-- binding belongs to other script, so make it look like regular key event
-				-- mouse bindings are simple, other keys would require repeat and pressed handling
-				-- which can't be done with mp.set_key_bindings(), but is possible with mp.add_key_binding()
-				local state = event == 'primary_up' and 'um' or 'dm'
-				local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
-				mp.commandv('script-message-to', active.owner, 'key-binding', name, state, 'MBTN_LEFT')
-			elseif event == 'primary_down' then
-				-- input.conf binding
-				mp.command(active.cmd)
+	end
+
+	-- Call compound/parent (click) event handlers if both start and end events are within `parent_zone.hitbox`.
+	local parent = self.event_parent_map[event]
+	if parent then
+		local parent_zone = self:find_zone(parent.trigger_event)
+		if parent_zone then
+			forward = false -- Canceled here so we don't forward down events if they can lead to a click.
+			if parent.is_end then
+				local last_start_event = self.last_event[parent.start_event]
+				if last_start_event and point_collides_with(last_start_event, parent_zone.hitbox) then
+					parent_zone.handler(...)
+				end
 			end
 		end
 	end
-	self:queue_autohide() -- refresh cursor autohide timer
-end
 
----Checks if there are any handlers for the current cursor position
----@param name string
-function cursor:has_handler(name)
-	return self:find_zone_handler(name) ~= nil or #self.handlers[name] > 0
-end
+	-- Forward unhandled events.
+	if forward then
+		local forward_name = self.event_forward_map[event]
+		if forward_name then
+			-- Forward events if there was no handler.
+			local active = find_active_keybindings(forward_name)
+			if active then
+				local is_wheel = event:find('wheel', 1, true)
+				local is_up = event:sub(-3) == '_up'
+				if active.owner then
+					-- Binding belongs to other script, so make it look like regular key event.
+					-- Mouse bindings are simple, other keys would require repeat and pressed handling,
+					-- which can't be done with mp.set_key_bindings(), but is possible with mp.add_key_binding().
+					local state = is_wheel and 'pm' or is_up and 'um' or 'dm'
+					local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
+					mp.commandv('script-message-to', active.owner, 'key-binding', name, state, forward_name)
+				elseif is_wheel or is_up then
+					-- input.conf binding, react to button release for mouse buttons
+					mp.command(active.cmd)
+				end
+			end
+		end
+	end
 
----Checks if there are any handlers at all
----@param name string
-function cursor:has_any_handler(name)
-	return #self.zone_handlers[name] > 0 or #self.handlers[name] > 0
+	-- Update last event position.
+	local last = self.last_event[event] or {}
+	last.x, last.y, last.time = self.x, self.y, mp.get_time()
+	self.last_event[event] = last
+
+	-- Refresh cursor autohide timer.
+	self:queue_autohide()
 end
 
 -- Enables or disables keybinding groups based on what event listeners are bound.
 function cursor:decide_keybinds()
-	local enable_mbtn_left = self:has_any_handler('primary_down') or self:has_any_handler('primary_up')
-	local enable_mbtn_left_dbl = self:has_handler('primary_down') or self:has_handler('primary_up')
-	local enable_mbtn_right = self:has_handler('secondary_down') or self:has_handler('secondary_up')
-	local enable_wheel = self:has_handler('wheel_down') or self:has_handler('wheel_up')
-	if enable_mbtn_left ~= self.mbtn_left_enabled then
-		local flags = 'allow-vo-dragging+allow-hide-cursor'
-		mp[(enable_mbtn_left and 'enable' or 'disable') .. '_key_bindings']('mbtn_left', flags)
-		self.mbtn_left_enabled = enable_mbtn_left
+	local new_levels = {mbtn_left = 0, mbtn_right = 0, wheel = 0}
+	self.is_dragging_prevented = false
+
+	-- Check global events.
+	for name, handlers in ipairs(self.handlers) do
+		local binding = self.event_binding_map[name]
+		if binding then
+			new_levels[binding] = #handlers > 0 and 1 or 0
+		end
 	end
-	if enable_mbtn_left_dbl ~= self.mbtn_left_dbl_enabled then
-		mp[(enable_mbtn_left_dbl and 'enable' or 'disable') .. '_key_bindings']('mbtn_left_dbl')
-		self.mbtn_left_dbl_enabled = enable_mbtn_left_dbl
-		self:queue_autohide()
+
+	-- Check zones.
+	for _, zone in ipairs(self.zones) do
+		local binding = self.event_binding_map[zone.event]
+		if binding and cursor:collides_with(zone.hitbox) then
+			local new_level = (self.window_dragging_blockers[zone.event] and zone.hitbox.window_drag ~= true) and 2
+				or math.max(new_levels[binding], zone.hitbox.window_drag == false and 2 or 1)
+			new_levels[binding] = new_level
+			if new_level > 1 then
+				self.is_dragging_prevented = true
+			end
+		end
 	end
-	if enable_mbtn_right ~= self.mbtn_right_enabled then
-		mp[(enable_mbtn_right and 'enable' or 'disable') .. '_key_bindings']('mbtn_right')
-		self.mbtn_right_enabled = enable_mbtn_right
-		self:queue_autohide()
-	end
-	if enable_wheel ~= self.wheel_enabled then
-		mp[(enable_wheel and 'enable' or 'disable') .. '_key_bindings']('wheel')
-		self.wheel_enabled = enable_wheel
-		self:queue_autohide()
+
+	-- Window dragging only gets prevented when on top of an element, which is when double clicks should be ignored.
+	new_levels.mbtn_left_dbl = new_levels.mbtn_left == 2 and 2 or 0
+
+	for name, level in pairs(new_levels) do
+		if level ~= self.binding_levels[name] then
+			local flags = level == 1 and 'allow-vo-dragging+allow-hide-cursor' or ''
+			mp[(level == 0 and 'disable' or 'enable') .. '_key_bindings'](name, flags)
+			self.binding_levels[name] = level
+			self:queue_autohide()
+		end
 	end
 end
 
@@ -258,9 +336,9 @@ end
 function cursor:leave() self:move(math.huge, math.huge) end
 
 function cursor:is_autohide_allowed()
-	return options.autohide and (not self.autohide_fs_only or state.fullscreen) and
-		not (self.mbtn_left_dbl_enabled or self.mbtn_right_enabled or self.wheel_enabled) and
-		not Menu:is_open()
+	return options.autohide and (not self.autohide_fs_only or state.fullscreen)
+		and not self.is_dragging_prevented
+		and not Menu:is_open()
 end
 mp.observe_property('cursor-autohide-fs-only', 'bool', function(_, val) cursor.autohide_fs_only = val end)
 

@@ -16,7 +16,7 @@ function TopBarButton:init(id, props)
 	self.command = props.command
 end
 
-function TopBarButton:handle_cursor_down()
+function TopBarButton:handle_click()
 	mp.command(type(self.command) == 'function' and self.command() or self.command)
 end
 
@@ -29,7 +29,7 @@ function TopBarButton:render()
 	if self.proximity_raw == 0 then
 		ass:rect(self.ax, self.ay, self.bx, self.by, {color = self.background, opacity = visibility})
 	end
-	cursor:zone('primary_down', self, function() self:handle_cursor_down() end)
+	cursor:zone('primary_click', self, function() self:handle_click() end)
 
 	local width, height = self.bx - self.ax, self.by - self.ay
 	local icon_size = math.min(width, height) * 0.5
@@ -231,7 +231,7 @@ function TopBar:render()
 			title_ax = rect.bx + bg_margin
 
 			-- Click action
-			cursor:zone('primary_down', rect, function() mp.command('script-binding uosc/playlist') end)
+			cursor:zone('primary_click', rect, function() mp.command('script-binding uosc/playlist') end)
 		end
 
 		-- Skip rendering titles if there's not enough horizontal space
@@ -253,7 +253,7 @@ function TopBar:render()
 				local title_rect = {ax = title_ax, ay = title_ay, bx = bx, by = by}
 
 				if options.top_bar_alt_title_place == 'toggle' then
-					cursor:zone('primary_down', title_rect, function() self:toggle_title() end)
+					cursor:zone('primary_click', title_rect, function() self:toggle_title() end)
 				end
 
 				ass:rect(title_rect.ax, title_rect.ay, title_rect.bx, title_rect.by, {
@@ -324,7 +324,7 @@ function TopBar:render()
 				ass:txt(rect.ax + padding, rect.ay + height / 2, 4, text, opts)
 
 				-- Click action
-				cursor:zone('primary_down', rect, function() mp.command('script-binding uosc/chapters') end)
+				cursor:zone('primary_click', rect, function() mp.command('script-binding uosc/chapters') end)
 
 				-- Time
 				rect.ax = rect.bx + spacing

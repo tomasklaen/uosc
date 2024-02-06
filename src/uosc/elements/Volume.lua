@@ -249,14 +249,14 @@ function Volume:render()
 	if visibility <= 0 then return end
 
 	-- Reset volume on secondary click
-	cursor:zone('secondary_down', self, function()
+	cursor:zone('secondary_click', self, function()
 		mp.set_property_native('mute', false)
 		mp.set_property_native('volume', 100)
 	end)
 
 	-- Mute button
 	local mute_rect = {ax = self.ax, ay = self.mute_ay, bx = self.bx, by = self.by}
-	cursor:zone('primary_down', mute_rect, function() mp.commandv('cycle', 'mute') end)
+	cursor:zone('primary_click', mute_rect, function() mp.commandv('cycle', 'mute') end)
 	local ass = assdraw.ass_new()
 	local width_half = (mute_rect.bx - mute_rect.ax) / 2
 	local height_half = (mute_rect.by - mute_rect.ay) / 2

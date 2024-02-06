@@ -109,7 +109,7 @@ function Speed:render()
 		self:handle_cursor_down()
 		cursor:once('primary_up', function() self:handle_cursor_up() end)
 	end)
-	cursor:zone('secondary_down', self, function() mp.set_property_native('speed', 1) end)
+	cursor:zone('secondary_click', self, function() mp.set_property_native('speed', 1) end)
 	cursor:zone('wheel_down', self, function() self:handle_wheel_down() end)
 	cursor:zone('wheel_up', self, function() self:handle_wheel_up() end)
 

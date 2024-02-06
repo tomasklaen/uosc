@@ -1,7 +1,9 @@
 --[[ UI specific utilities that might or might not depend on its state or options ]]
 
 ---@alias Point {x: number; y: number}
----@alias Rect {ax: number, ay: number, bx: number, by: number}
+---@alias Rect {ax: number, ay: number, bx: number, by: number, window_drag?: boolean}
+---@alias Circle {point: Point, r: number, window_drag?: boolean}
+---@alias Hitbox Rect|Circle
 
 --- In place sorting of filenames
 ---@param filenames string[]
@@ -143,6 +145,13 @@ end
 function get_point_to_point_proximity(point_a, point_b)
 	local dx, dy = point_a.x - point_b.x, point_a.y - point_b.y
 	return math.sqrt(dx * dx + dy * dy)
+end
+
+---@param point Point
+---@param hitbox Hitbox
+function point_collides_with(point, hitbox)
+	return (hitbox.r and get_point_to_point_proximity(point, hitbox.point) <= hitbox.r) or
+		(not hitbox.r and get_point_to_rectangle_proximity(point, hitbox --[[@as Rect]]) == 0)
 end
 
 ---@param lax number
@@ -830,6 +839,9 @@ function render()
 	state.render_last_time = mp.get_time()
 
 	cursor:clear_zones()
+
+	-- Click on empty area detection
+	if setup_click_detection then setup_click_detection() end
 
 	-- Actual rendering
 	local ass = assdraw.ass_new()

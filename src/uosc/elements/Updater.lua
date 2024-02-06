@@ -161,7 +161,7 @@ function Updater:render()
 		local y = round(button_rect.ay + (button_rect.by - button_rect.ay) / 2)
 		ass:icon(x, y, icon_size * 0.8, 'close', {color = bg})
 
-		cursor:zone('primary_down', button_rect, function() self:destroy() end)
+		cursor:zone('primary_click', button_rect, function() self:destroy() end)
 	end
 
 	return ass

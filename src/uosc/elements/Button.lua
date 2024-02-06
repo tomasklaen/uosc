@@ -23,7 +23,7 @@ function Button:init(id, props)
 end
 
 function Button:on_coordinates() self.font_size = round((self.by - self.ay) * 0.7) end
-function Button:handle_cursor_down()
+function Button:handle_cursor_click()
 	-- We delay the callback to next tick, otherwise we are risking race
 	-- conditions as we are in the middle of event dispatching.
 	-- For example, handler might add a menu to the end of the element stack, and that
@@ -34,7 +34,7 @@ end
 function Button:render()
 	local visibility = self:get_visibility()
 	if visibility <= 0 then return end
-	cursor:zone('primary_down', self, function() self:handle_cursor_down() end)
+	cursor:zone('primary_click', self, function() self:handle_cursor_click() end)
 
 	local ass = assdraw.ass_new()
 	local is_hover = self.proximity_raw == 0
