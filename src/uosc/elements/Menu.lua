@@ -845,7 +845,7 @@ end
 function Menu:search_backspace(event, word_mode)
 	local pos, old_query = #self.current.search.query, self.current.search.query
 	local is_palette = self.current.search_style == 'palette'
-	if word_mode then
+	if word_mode and #old_query > 1 then
 		local word_pat, other_pat = '[^%c%s%p]+$', '[%c%s%p]+$'
 		local init_pat = old_query:sub(#old_query):match(word_pat) and word_pat or other_pat
 		-- First we match all same type consecutive chars at the end
