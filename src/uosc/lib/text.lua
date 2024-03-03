@@ -382,7 +382,7 @@ do
 		---@type boolean, boolean
 		local bold, italic = opts.bold or options.font_bold, opts.italic or false
 
-		if config.refine.text_width then
+		if not config.refine.text_width then
 			---@type {[string|number]: {[1]: number, [2]: integer}}
 			local text_width = get_cache_stage(width_cache, bold)
 			local width_px = text_width[text]
