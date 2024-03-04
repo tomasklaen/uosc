@@ -157,6 +157,7 @@ end
 function TopBar:toggle_title()
 	if options.top_bar_alt_title_place ~= 'toggle' then return end
 	self.show_alt_title = not self.show_alt_title
+	request_render()
 end
 
 function TopBar:on_prop_title() self:decide_titles() end
