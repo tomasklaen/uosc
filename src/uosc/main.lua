@@ -435,7 +435,8 @@ function update_human_times()
 		if state.duration then
 			local speed = state.speed or 1
 			if options.destination_time == 'playtime-remaining' then
-				state.destination_time_human = format_time((state.time - state.duration) / speed, state.duration)
+				local max_seconds = speed >= 1 and state.duration or state.duration / speed
+				state.destination_time_human = format_time((state.time - state.duration) / speed, max_seconds)
 			elseif options.destination_time == 'total' then
 				state.destination_time_human = format_time(state.duration, state.duration)
 			else
