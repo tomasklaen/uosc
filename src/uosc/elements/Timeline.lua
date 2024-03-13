@@ -258,7 +258,7 @@ function Timeline:render()
 		local offset = opts.size / (visibility > 0 and 24 or 28)
 		for _, range in ipairs(state.uncached_ranges) do
 			if not buffered_playtime and (range[1] > state.time or range[2] > state.time) then
-				buffered_playtime = (range[1] - state.time) / (state.speed or 1)
+				buffered_playtime = (range[1] - state.time) / state.speed
 			end
 			if options.timeline_cache then
 				local ax = range[1] < 0.5 and bax or math.floor(t2x(range[1]))

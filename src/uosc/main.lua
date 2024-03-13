@@ -430,13 +430,13 @@ function update_fullormaxed()
 end
 
 function update_human_times()
+	state.speed = state.speed or 1
 	if state.time then
 		local max_seconds = state.duration
 		if state.duration then
-			local speed = state.speed or 1
 			if options.destination_time == 'playtime-remaining' then
-				max_seconds = speed >= 1 and state.duration or state.duration / speed
-				state.destination_time_human = format_time((state.time - state.duration) / speed, max_seconds)
+				max_seconds = state.speed >= 1 and state.duration or state.duration / state.speed
+				state.destination_time_human = format_time((state.time - state.duration) / state.speed, max_seconds)
 			elseif options.destination_time == 'total' then
 				state.destination_time_human = format_time(state.duration, max_seconds)
 			else
@@ -447,7 +447,7 @@ function update_human_times()
 		end
 		state.time_human = format_time(state.time, max_seconds)
 	else
-		state.time_human = nil
+		state.time_human, state.destination_time_human = nil, nil
 	end
 end
 
