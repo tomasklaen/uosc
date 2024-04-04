@@ -75,7 +75,7 @@ do
 
 	---@param strings string[]
 	function sort_strings(strings)
-		if winapi then
+		if #winapi > 0 then
 			table.sort(strings, function(a, b)
 				return winapi.shlwapi.StrCmpLogicalW(winapi.utf8_to_wide(a), winapi.utf8_to_wide(b)) == -1
 			end)
