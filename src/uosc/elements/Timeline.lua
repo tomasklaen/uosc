@@ -251,15 +251,11 @@ function Timeline:render()
 	ass:rect(fax, fay, fbx, fby, {opacity = config.opacity.position})
 
 	-- Uncached ranges
-	local buffered_playtime = nil
 	if state.uncached_ranges then
 		local opts = {size = 80, anchor_y = fby}
 		local texture_char = visibility > 0 and 'b' or 'a'
 		local offset = opts.size / (visibility > 0 and 24 or 28)
 		for _, range in ipairs(state.uncached_ranges) do
-			if not buffered_playtime and (range[1] > state.time or range[2] > state.time) then
-				buffered_playtime = (range[1] - state.time) / state.speed
-			end
 			if options.timeline_cache then
 				local ax = range[1] < 0.5 and bax or math.floor(t2x(range[1]))
 				local bx = range[2] > state.duration - 0.5 and bbx or math.ceil(t2x(range[2]))
@@ -377,14 +373,14 @@ function Timeline:render()
 	if text_opacity > 0 then
 		local time_opts = {size = self.font_size, opacity = text_opacity, border = 2 * state.scale}
 		-- Upcoming cache time
-		if buffered_playtime and options.buffered_time_threshold > 0
-			and buffered_playtime < options.buffered_time_threshold then
+		if state.cache_duration and options.buffered_time_threshold > 0
+			and state.cache_duration < options.buffered_time_threshold then
 			local margin = 5 * state.scale
 			local x, align = fbx + margin, 4
 			local cache_opts = {
 				size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = options.text_border * state.scale,
 			}
-			local human = round(math.max(buffered_playtime, 0)) .. 's'
+			local human = round(state.cache_duration) .. 's'
 			local width = text_width(human, cache_opts)
 			local time_width = timestamp_width(state.time_human, time_opts)
 			local time_width_end = timestamp_width(state.destination_time_human, time_opts)
