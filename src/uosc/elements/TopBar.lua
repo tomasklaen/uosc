@@ -62,24 +62,22 @@ function TopBar:init()
 		return state.fullormaxed and 'set fullscreen no;set window-maximized no' or 'set window-maximized yes'
 	end
 
-	-- Order aligns from right to left
-	self.buttons = {
-		TopBarButton:new('tb_close', {
-			icon = 'close', background = '2311e8', command = 'quit', render_order = self.render_order,
-		}),
-		TopBarButton:new('tb_max', {
-			icon = 'crop_square',
-			background = '222222',
-			command = get_maximized_command,
-			render_order = self.render_order,
-		}),
-		TopBarButton:new('tb_min', {
-			icon = 'minimize',
-			background = '222222',
-			command = 'cycle window-minimized',
-			render_order = self.render_order,
-		}),
-	}
+	local close = TopBarButton:new('tb_close', {
+		icon = 'close', background = '2311e8', command = 'quit', render_order = self.render_order,
+	})
+	local max = TopBarButton:new('tb_max', {
+		icon = 'crop_square',
+		background = '222222',
+		command = get_maximized_command,
+		render_order = self.render_order,
+	})
+	local min = TopBarButton:new('tb_min', {
+		icon = 'minimize',
+		background = '222222',
+		command = 'cycle window-minimized',
+		render_order = self.render_order,
+	})
+	self.buttons = options.top_bar_controls == 'left' and {min, max, close} or {close, max, min}
 
 	self:decide_titles()
 	self:decide_enabled()
@@ -99,7 +97,7 @@ function TopBar:decide_enabled()
 	end
 	self.enabled = self.enabled and (options.top_bar_controls or options.top_bar_title ~= 'no' or state.has_playlist)
 	for _, element in ipairs(self.buttons) do
-		element.enabled = self.enabled and options.top_bar_controls
+		element.enabled = self.enabled and options.top_bar_controls ~= nil
 	end
 end
 
@@ -139,13 +137,15 @@ function TopBar:update_dimensions()
 	self.font_size = math.floor((self.size - (math.ceil(self.size * 0.25) * 2)) * options.font_scale)
 	self.button_width = round(self.size * 1.15)
 	local window_border_size = Elements:v('window_border', 'size', 0)
+	self.ax = window_border_size
 	self.ay = window_border_size
 	self.bx = display.width - window_border_size
 	self.by = self.size + window_border_size
-	self.title_bx = self.bx - (options.top_bar_controls and (self.button_width * 3) or 0)
-	self.ax = (options.top_bar_title ~= 'no' or state.has_playlist) and window_border_size or self.title_bx
+	local buttons_width = self.button_width * 3
+	self.title_ax = options.top_bar_controls == 'left' and buttons_width or self.ax
+	self.title_bx = self.bx - (options.top_bar_controls == 'right' and buttons_width or 0)
 
-	local button_bx = self.bx
+	local button_bx = options.top_bar_controls == 'left' and self.title_ax or self.bx
 	for _, element in pairs(self.buttons) do
 		element.ax, element.bx = button_bx - self.button_width, button_bx
 		element.ay, element.by = self.ay, self.by
@@ -204,7 +204,7 @@ function TopBar:render()
 		local bg_margin = math.floor((self.size - self.font_size) / 4)
 		local padding = self.font_size / 2
 		local spacing = 1
-		local title_ax = self.ax + bg_margin
+		local title_ax = self.title_ax + bg_margin
 		local title_ay = self.ay + bg_margin
 		local max_bx = self.title_bx - bg_margin
 
