@@ -49,7 +49,7 @@ function TopBar:new() return Class.new(self) --[[@as TopBar]] end
 function TopBar:init()
 	Element.init(self, 'top_bar', {render_order = 4})
 	self.size = 0
-	self.icon_size, self.spacing, self.font_size, self.title_bx, self.title_by = 1, 1, 1, 1, 1
+	self.icon_size, self.font_size, self.title_bx, self.title_by = 1, 1, 1, 1
 	self.show_alt_title = false
 	self.main_title, self.alt_title = nil, nil
 
@@ -136,8 +136,7 @@ end
 function TopBar:update_dimensions()
 	self.size = round(options.top_bar_size * state.scale)
 	self.icon_size = round(self.size * 0.5)
-	self.spacing = math.ceil(self.size * 0.25)
-	self.font_size = math.floor((self.size - (self.spacing * 2)) * options.font_scale)
+	self.font_size = math.floor((self.size - (math.ceil(self.size * 0.25) * 2)) * options.font_scale)
 	self.button_width = round(self.size * 1.15)
 	local window_border_size = Elements:v('window_border', 'size', 0)
 	self.ay = window_border_size
@@ -207,7 +206,7 @@ function TopBar:render()
 		local spacing = 1
 		local title_ax = self.ax + bg_margin
 		local title_ay = self.ay + bg_margin
-		local max_bx = self.title_bx - self.spacing
+		local max_bx = self.title_bx - bg_margin
 
 		-- Playlist position
 		if state.has_playlist then
