@@ -127,7 +127,7 @@ elseif not itable_index_of({'total', 'playtime-remaining', 'time-remaining'}, op
 	options.destination_time = 'playtime-remaining'
 end
 if not itable_index_of({'left', 'right'}, options.top_bar_controls) then
-	options.top_bar_controls = nil
+	options.top_bar_controls = options.top_bar_controls == 'yes' and 'right' or nil
 end
 -- Ensure required environment configuration
 if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
