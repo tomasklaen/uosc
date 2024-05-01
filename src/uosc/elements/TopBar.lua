@@ -49,7 +49,7 @@ function TopBar:new() return Class.new(self) --[[@as TopBar]] end
 function TopBar:init()
 	Element.init(self, 'top_bar', {render_order = 4})
 	self.size = 0
-	self.icon_size, self.font_size, self.title_bx, self.title_by = 1, 1, 1, 1
+	self.icon_size, self.font_size, self.title_by = 1, 1, 1
 	self.show_alt_title = false
 	self.main_title, self.alt_title = nil, nil
 
@@ -141,11 +141,8 @@ function TopBar:update_dimensions()
 	self.ay = window_border_size
 	self.bx = display.width - window_border_size
 	self.by = self.size + window_border_size
-	local buttons_width = self.button_width * 3
-	self.title_ax = options.top_bar_controls == 'left' and buttons_width or self.ax
-	self.title_bx = self.bx - (options.top_bar_controls == 'right' and buttons_width or 0)
 
-	local button_bx = options.top_bar_controls == 'left' and self.title_ax or self.bx
+	local button_bx = options.top_bar_controls == 'left' and self.button_width * 3 or self.bx
 	for _, element in pairs(self.buttons) do
 		element.ax, element.bx = button_bx - self.button_width, button_bx
 		element.ay, element.by = self.ay, self.by
@@ -204,9 +201,11 @@ function TopBar:render()
 		local bg_margin = math.floor((self.size - self.font_size) / 4)
 		local padding = self.font_size / 2
 		local spacing = 1
-		local title_ax = self.title_ax + bg_margin
+		local left_aligned = options.top_bar_controls == 'left'
+		local controls_width = options.top_bar_controls and self.button_width * 3 or 0
+		local title_ax = self.ax + (left_aligned and controls_width or 0) + bg_margin
+		local title_bx = self.bx - (left_aligned and 0 or controls_width) - bg_margin
 		local title_ay = self.ay + bg_margin
-		local max_bx = self.title_bx - bg_margin
 
 		-- Playlist position
 		if state.has_playlist then
@@ -214,10 +213,12 @@ function TopBar:render()
 			local formatted_text = '{\\b1}' .. state.playlist_pos .. '{\\b0\\fs' .. self.font_size * 0.9 .. '}/'
 				.. state.playlist_count
 			local opts = {size = self.font_size, wrap = 2, color = fgt, opacity = visibility}
+			local rect_width = round(text_width(text, opts) + padding * 2)
+			local ax = left_aligned and title_bx - rect_width or title_ax
 			local rect = {
-				ax = title_ax,
+				ax = ax,
 				ay = title_ay,
-				bx = round(title_ax + text_width(text, opts) + padding * 2),
+				bx = ax + rect_width,
 				by = self.by - bg_margin,
 			}
 			local opacity = get_point_to_rectangle_proximity(cursor, rect) == 0
@@ -228,14 +229,14 @@ function TopBar:render()
 				})
 			end
 			ass:txt(rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2, 5, formatted_text, opts)
-			title_ax = rect.bx + bg_margin
+			if left_aligned then title_bx = rect.ax - bg_margin else title_ax = rect.bx + bg_margin end
 
 			-- Click action
 			cursor:zone('primary_click', rect, function() mp.command('script-binding uosc/playlist') end)
 		end
 
 		-- Skip rendering titles if there's not enough horizontal space
-		if max_bx - title_ax > self.font_size * 3 and options.top_bar_title ~= 'no' then
+		if title_bx - title_ax > self.font_size * 3 and options.top_bar_title ~= 'no' then
 			-- Main title
 			local main_title = self.show_alt_title and self.alt_title or self.main_title
 			if main_title then
@@ -246,11 +247,12 @@ function TopBar:render()
 					opacity = visibility,
 					border = options.text_border * state.scale,
 					border_color = bg,
-					clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, max_bx, self.by),
+					clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, title_bx, self.by),
 				}
-				local bx = round(math.min(max_bx, title_ax + text_width(main_title, opts) + padding * 2))
+				local rect_width = math.min(round(text_width(main_title, opts) + padding * 2), title_bx - title_ax)
+				local ax = left_aligned and title_bx - rect_width or title_ax
 				local by = self.by - bg_margin
-				local title_rect = {ax = title_ax, ay = title_ay, bx = bx, by = by}
+				local title_rect = {ax = ax, ay = title_ay, bx = ax + rect_width, by = by}
 
 				if options.top_bar_alt_title_place == 'toggle' then
 					cursor:zone('primary_click', title_rect, function() self:toggle_title() end)
@@ -259,7 +261,7 @@ function TopBar:render()
 				ass:rect(title_rect.ax, title_rect.ay, title_rect.bx, title_rect.by, {
 					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
-				ass:txt(title_ax + padding, self.ay + (self.size / 2), 4, main_title, opts)
+				ass:txt(ax + padding, self.ay + (self.size / 2), 4, main_title, opts)
 				title_ay = by + spacing
 			end
 
@@ -276,12 +278,14 @@ function TopBar:render()
 					border_color = bg,
 					opacity = visibility,
 				}
-				local bx = round(math.min(max_bx, title_ax + text_width(self.alt_title, opts) + padding * 2))
+				local rect_width = math.min(round(text_width(self.alt_title, opts) + padding * 2), title_bx - title_ax)
+				local ax = left_aligned and title_bx - rect_width or title_ax
+				local bx = ax + rect_width
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
-				ass:rect(title_ax, title_ay, bx, by, {
+				ass:rect(ax, title_ay, bx, by, {
 					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
-				ass:txt(title_ax + padding, title_ay + height / 2, 4, self.alt_title, opts)
+				ass:txt(ax + padding, title_ay + height / 2, 4, self.alt_title, opts)
 				title_ay = by + spacing
 			end
 
@@ -290,7 +294,8 @@ function TopBar:render()
 				local padding_half = round(padding / 2)
 				local font_size = self.font_size * 0.8
 				local height = font_size * 1.3
-				local text = '└ ' .. state.current_chapter.index .. ': ' .. state.current_chapter.title
+				local prefix, postfix = left_aligned and '' or ' ┘', left_aligned and ' ┘' or ''
+				local text = prefix .. state.current_chapter.index .. ': ' .. state.current_chapter.title .. postfix
 				local next_chapter = state.chapters[state.current_chapter.index + 1]
 				local chapter_end = next_chapter and next_chapter.time or state.duration or 0
 				local remaining_time = ((state.time or 0) - chapter_end) /
@@ -309,13 +314,13 @@ function TopBar:render()
 				local remaining_box_width = remaining_width + padding_half * 2
 
 				-- Title
+				local max_bx = title_bx - remaining_box_width - spacing
+				local rect_width = round(math.min(text_width(text, opts) + padding * 2, max_bx - title_ax))
+				local ax = left_aligned and max_bx - rect_width or title_ax
 				local rect = {
-					ax = title_ax,
+					ax = ax,
 					ay = title_ay,
-					bx = round(math.min(
-						max_bx - remaining_box_width - spacing,
-						title_ax + text_width(text, opts) + padding * 2
-					)),
+					bx = ax + rect_width,
 					by = title_ay + height,
 				}
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, rect.bx, rect.by)
