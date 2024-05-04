@@ -316,7 +316,7 @@ function TopBar:render()
 				-- Title
 				local max_bx = title_bx - remaining_box_width - spacing
 				local rect_width = round(math.min(text_width(text, opts) + padding * 2, max_bx - title_ax))
-				local ax = left_aligned and max_bx - rect_width or title_ax
+				local ax = left_aligned and title_bx - rect_width or title_ax
 				local rect = {
 					ax = ax,
 					ay = title_ay,
@@ -333,7 +333,7 @@ function TopBar:render()
 				cursor:zone('primary_click', rect, function() mp.command('script-binding uosc/chapters') end)
 
 				-- Time
-				rect.ax = rect.bx + spacing
+				rect.ax = left_aligned and rect.ax - spacing - remaining_box_width or rect.bx + spacing
 				rect.bx = rect.ax + remaining_box_width
 				opts.clip = nil
 				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
