@@ -249,7 +249,8 @@ function TopBar:render()
 					border_color = bg,
 					clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, title_bx, self.by),
 				}
-				local rect_width = math.min(round(text_width(main_title, opts) + padding * 2), title_bx - title_ax)
+				local rect_ideal_width = round(text_width(main_title, opts) + padding * 2)
+				local rect_width = math.min(rect_ideal_width, title_bx - title_ax)
 				local ax = left_aligned and title_bx - rect_width or title_ax
 				local by = self.by - bg_margin
 				local title_rect = {ax = ax, ay = title_ay, bx = ax + rect_width, by = by}
@@ -261,7 +262,9 @@ function TopBar:render()
 				ass:rect(title_rect.ax, title_rect.ay, title_rect.bx, title_rect.by, {
 					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
-				ass:txt(ax + padding, self.ay + (self.size / 2), 4, main_title, opts)
+				local align = left_aligned and rect_ideal_width == rect_width and 6 or 4
+				local x = align == 6 and title_rect.bx - padding or ax + padding
+				ass:txt(x, self.ay + (self.size / 2), align, main_title, opts)
 				title_ay = by + spacing
 			end
 
@@ -278,14 +281,17 @@ function TopBar:render()
 					border_color = bg,
 					opacity = visibility,
 				}
-				local rect_width = math.min(round(text_width(self.alt_title, opts) + padding * 2), title_bx - title_ax)
+				local rect_ideal_width = round(text_width(self.alt_title, opts) + padding * 2)
+				local rect_width = math.min(rect_ideal_width, title_bx - title_ax)
 				local ax = left_aligned and title_bx - rect_width or title_ax
 				local bx = ax + rect_width
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, bx, by)
 				ass:rect(ax, title_ay, bx, by, {
 					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
-				ass:txt(ax + padding, title_ay + height / 2, 4, self.alt_title, opts)
+				local align = left_aligned and rect_ideal_width == rect_width and 6 or 4
+				local x = align == 6 and bx - padding or ax + padding
+				ass:txt(x, title_ay + height / 2, align, self.alt_title, opts)
 				title_ay = by + spacing
 			end
 
@@ -315,7 +321,8 @@ function TopBar:render()
 
 				-- Title
 				local max_bx = title_bx - remaining_box_width - spacing
-				local rect_width = round(math.min(text_width(text, opts) + padding * 2, max_bx - title_ax))
+				local rect_ideal_width = round(text_width(text, opts) + padding * 2)
+				local rect_width = math.min(rect_ideal_width, max_bx - title_ax)
 				local ax = left_aligned and title_bx - rect_width or title_ax
 				local rect = {
 					ax = ax,
@@ -327,7 +334,9 @@ function TopBar:render()
 				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
 					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
-				ass:txt(rect.ax + padding, rect.ay + height / 2, 4, text, opts)
+				local align = left_aligned and rect_ideal_width == rect_width and 6 or 4
+				local x = align == 6 and rect.bx - padding or rect.ax + padding
+				ass:txt(x, rect.ay + height / 2, align, text, opts)
 
 				-- Click action
 				cursor:zone('primary_click', rect, function() mp.command('script-binding uosc/chapters') end)
