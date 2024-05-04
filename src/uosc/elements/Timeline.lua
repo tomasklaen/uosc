@@ -380,7 +380,7 @@ function Timeline:render()
 			local cache_opts = {
 				size = self.font_size * 0.8, opacity = text_opacity * 0.6, border = options.text_border * state.scale,
 			}
-			local human = round(state.cache_duration) .. 's'
+			local human = round(state.cache_duration / state.speed) .. 's'
 			local width = text_width(human, cache_opts)
 			local time_width = timestamp_width(state.time_human, time_opts)
 			local time_width_end = timestamp_width(state.destination_time_human, time_opts)
