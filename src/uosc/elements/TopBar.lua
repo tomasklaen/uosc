@@ -294,7 +294,7 @@ function TopBar:render()
 				local padding_half = round(padding / 2)
 				local font_size = self.font_size * 0.8
 				local height = font_size * 1.3
-				local prefix, postfix = left_aligned and '' or ' ┘', left_aligned and ' ┘' or ''
+				local prefix, postfix = left_aligned and '' or '└ ', left_aligned and ' ┘' or ''
 				local text = prefix .. state.current_chapter.index .. ': ' .. state.current_chapter.title .. postfix
 				local next_chapter = state.chapters[state.current_chapter.index + 1]
 				local chapter_end = next_chapter and next_chapter.time or state.duration or 0
