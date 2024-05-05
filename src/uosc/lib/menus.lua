@@ -109,6 +109,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 			items[#items].separator = true
 		end
 
+		local track_prop_index = tonumber(mp.get_property(track_prop))
 		local first_item_index = #items + 1
 		local active_index = nil
 		local disabled_item = nil
@@ -126,6 +127,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		for _, track in ipairs(tracklist) do
 			if track.type == track_type then
 				local hint_values = {}
+				local track_selected = track.selected and track.id == track_prop_index
 				local function h(value) hint_values[#hint_values + 1] = value end
 
 				if track.lang then h(track.lang) end
@@ -148,10 +150,10 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 					title = (track.title and track.title or t('Track %s', track.id)),
 					hint = table.concat(hint_values, ', '),
 					value = track.id,
-					active = track.selected,
+					active = track_selected,
 				}
 
-				if track.selected then
+				if track_selected then
 					if disabled_item then disabled_item.active = false end
 					active_index = #items
 				end
