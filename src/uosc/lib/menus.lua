@@ -128,7 +128,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				local hint_values = {}
 				local function h(value) hint_values[#hint_values + 1] = value end
 
-				if track.lang then h(track.lang:upper()) end
+				if track.lang then h(track.lang) end
 				if track['demux-h'] then
 					h(track['demux-w'] and (track['demux-w'] .. 'x' .. track['demux-h']) or (track['demux-h'] .. 'p'))
 				end
