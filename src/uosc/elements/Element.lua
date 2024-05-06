@@ -35,7 +35,7 @@ function Element:init(id, props)
 		local function getTo() return self.proximity end
 		local function onTweenEnd() self.forced_visibility = nil end
 		if self.enabled then
-			self:tween_property('forced_visibility', 1, getTo, onTweenEnd)
+			self:tween_property('forced_visibility', self:get_visibility(), getTo, onTweenEnd)
 		else
 			onTweenEnd()
 		end
