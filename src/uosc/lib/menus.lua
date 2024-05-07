@@ -343,10 +343,12 @@ end
 
 -- On demand menu items loading
 do
-	---@type {key: string; cmd: string; comment: string}[]|nil
+	---@type {key: string; cmd: string; comment: string; is_menu_item: boolean}[]|nil
 	local all_user_bindings = nil
 	---@type MenuStackItem[]|nil
 	local menu_items = nil
+
+	local function is_uosc_menu_comment(v) return v:match('^!') or v:match('^menu:') end
 
 	-- Returns all relevant bindings from `input.conf`, even if they are overwritten
 	-- (same key bound to something else later) or have no keys (uosc menu items).
@@ -379,9 +381,25 @@ do
 		end
 
 		for line in input_conf_iterator do
-			local key, command, comment = string.match(line, '%s*([%S]+)%s+(.-)%s+#%s*(.-)%s*$')
-			if key and command and command ~= '' then
-				all_user_bindings[#all_user_bindings + 1] = {key = key, cmd = command, comment = comment or ''}
+			local key, command, comment = string.match(line, '%s*([%S]+)%s+([^#]*)%s*(.-)%s*$')
+			local is_commented_out = key and key:sub(1, 1) == '#'
+
+			if comment and #comment > 0 then comment = comment:sub(2) end
+			if command then command = trim(command) end
+
+			local is_menu_item = comment and is_uosc_menu_comment(comment)
+
+			if key and command and command ~= '' and command ~= 'ignore'
+				-- Filter out stuff like `#F2`, which is clearly intended to be disabled
+				and not (is_commented_out and #key > 1)
+				-- Filter out comments that are not uosc menu items
+				and (not is_commented_out or is_menu_item) then
+				all_user_bindings[#all_user_bindings + 1] = {
+					key = key,
+					cmd = command,
+					comment = comment or '',
+					is_menu_item = is_menu_item,
+				}
 			end
 		end
 
@@ -401,7 +419,7 @@ do
 
 			if comment then
 				local comments = split(comment, '#')
-				local titles = itable_filter(comments, function(v, i) return v:match('^!') or v:match('^menu:') end)
+				local titles = itable_filter(comments, is_uosc_menu_comment)
 				if titles and #titles > 0 then
 					title = titles[1]:match('^!%s*(.*)%s*') or titles[1]:match('^menu:%s*(.*)%s*')
 				end
@@ -464,22 +482,16 @@ end
 -- Adapted from `stats.lua`
 function get_keybinds_items()
 	local items = {}
-	local active_bindings = find_active_keybindings()
-	local user_bindings = get_all_user_bindings()
+	local no_key_menu_binds = itable_filter(
+		get_all_user_bindings(),
+		function(b) return b.is_menu_item and b.key == '#' end
+	)
+	local binds_dump = itable_join(find_active_keybindings(), no_key_menu_binds)
 
 	-- Convert to menu items
-	for _, bind in pairs(active_bindings) do
-		items[#items + 1] = {title = bind.cmd, hint = bind.key, value = bind.cmd}
-	end
-
-	-- Add overwritten or keyless keybinds from `input.conf`
-	for _, user in ipairs(user_bindings) do
-		-- Deduplicate against `active_bindings`
-		local exists = itable_find(active_bindings, function(active)
-			return active.cmd == user.cmd and active.key == user.key
-		end) ~= nil
-		if not exists then
-			items[#items + 1] = {title = user.cmd, hint = user.key, value = user.cmd}
+	for _, bind in pairs(binds_dump) do
+		if bind.cmd ~= 'ignore' then
+			items[#items + 1] = {title = bind.cmd, hint = bind.key, value = bind.cmd}
 		end
 	end
 

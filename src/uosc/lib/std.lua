@@ -17,6 +17,11 @@ function serialize_rgba(rgba)
 	}
 end
 
+-- Trim any white space from the start and end of the string.
+---@param str string
+---@return string
+function trim(str) return str:match('^%s*(.-)%s*$') end
+
 -- Trim any `char` from the end of the string.
 ---@param str string
 ---@param char string

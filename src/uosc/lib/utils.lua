@@ -782,18 +782,20 @@ end
 ---@return {[string]: table}|table
 function find_active_keybindings(key)
 	local bindings = mp.get_property_native('input-bindings', {})
-	local active = {} -- map: key-name -> bind-info
+	local active_map = {} -- map: key-name -> bind-info
+	local active_table = {}
 	for _, bind in pairs(bindings) do
 		if bind.owner ~= 'uosc' and bind.priority >= 0 and (not key or bind.key == key) and (
-				not active[bind.key]
-				or (active[bind.key].is_weak and not bind.is_weak)
-				or (bind.is_weak == active[bind.key].is_weak and bind.priority > active[bind.key].priority)
+				not active_map[bind.key]
+				or (active_map[bind.key].is_weak and not bind.is_weak)
+				or (bind.is_weak == active_map[bind.key].is_weak and bind.priority > active_map[bind.key].priority)
 			)
 		then
-			active[bind.key] = bind
+			active_table[#active_table + 1] = bind
+			active_map[bind.key] = bind
 		end
 	end
-	return not key and active or active[key]
+	return key and active_map[key] or active_table
 end
 
 ---@param type 'sub'|'audio'|'video'
