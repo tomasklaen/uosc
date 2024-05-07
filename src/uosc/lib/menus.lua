@@ -482,15 +482,19 @@ end
 -- Adapted from `stats.lua`
 function get_keybinds_items()
 	local items = {}
+	-- uosc and mpv-menu-plugin binds with no keys
 	local no_key_menu_binds = itable_filter(
 		get_all_user_bindings(),
-		function(b) return b.is_menu_item and b.key == '#' end
+		function(b) return b.is_menu_item and b.key == '#' or b.key == '_' end
 	)
 	local binds_dump = itable_join(find_active_keybindings(), no_key_menu_binds)
+	local ids = {}
 
 	-- Convert to menu items
 	for _, bind in pairs(binds_dump) do
-		if bind.cmd ~= 'ignore' then
+		local id = bind.key .. '<>' .. bind.cmd
+		if not ids[id] and bind.cmd ~= 'ignore' then
+			ids[id] = true
 			items[#items + 1] = {title = bind.cmd, hint = bind.key, value = bind.cmd}
 		end
 	end
