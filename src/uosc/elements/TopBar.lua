@@ -1,46 +1,6 @@
 local Element = require('elements/Element')
 
----@alias TopBarButtonProps {icon: string; background: string; anchor_id?: string; command: string|fun()}
-
----@class TopBarButton : Element
-local TopBarButton = class(Element)
-
----@param id string
----@param props TopBarButtonProps
-function TopBarButton:new(id, props) return Class.new(self, id, props) --[[@as TopBarButton]] end
-function TopBarButton:init(id, props)
-	Element.init(self, id, props)
-	self.anchor_id = 'top_bar'
-	self.icon = props.icon
-	self.background = props.background
-	self.command = props.command
-end
-
-function TopBarButton:handle_click()
-	mp.command(type(self.command) == 'function' and self.command() or self.command)
-end
-
-function TopBarButton:render()
-	local visibility = self:get_visibility()
-	if visibility <= 0 then return end
-	local ass = assdraw.ass_new()
-
-	-- Background on hover
-	if self.proximity_raw == 0 then
-		ass:rect(self.ax, self.ay, self.bx, self.by, {color = self.background, opacity = visibility})
-	end
-	cursor:zone('primary_click', self, function() self:handle_click() end)
-
-	local width, height = self.bx - self.ax, self.by - self.ay
-	local icon_size = math.min(width, height) * 0.5
-	ass:icon(self.ax + width / 2, self.ay + height / 2, icon_size, self.icon, {
-		opacity = visibility, border = options.text_border * state.scale,
-	})
-
-	return ass
-end
-
---[[ TopBar ]]
+---@alias TopBarButtonProps {icon: string; hover_fg?: string; hover_bg?: string; command: (fun():string)}
 
 ---@class TopBar : Element
 local TopBar = class(Element)
@@ -53,40 +13,24 @@ function TopBar:init()
 	self.show_alt_title = false
 	self.main_title, self.alt_title = nil, nil
 
-	local function get_maximized_command()
+	local function maximized_command()
 		if state.platform == 'windows' then
-			return state.border
+			mp.command(state.border
 				and (state.fullscreen and 'set fullscreen no;cycle window-maximized' or 'cycle window-maximized')
-				or 'set window-maximized no;cycle fullscreen'
+				or 'set window-maximized no;cycle fullscreen')
+		else
+			mp.command(state.fullormaxed and 'set fullscreen no;set window-maximized no' or 'set window-maximized yes')
 		end
-		return state.fullormaxed and 'set fullscreen no;set window-maximized no' or 'set window-maximized yes'
 	end
 
-	local close = TopBarButton:new('tb_close', {
-		icon = 'close', background = '2311e8', command = 'quit', render_order = self.render_order,
-	})
-	local max = TopBarButton:new('tb_max', {
-		icon = 'crop_square',
-		background = '222222',
-		command = get_maximized_command,
-		render_order = self.render_order,
-	})
-	local min = TopBarButton:new('tb_min', {
-		icon = 'minimize',
-		background = '222222',
-		command = 'cycle window-minimized',
-		render_order = self.render_order,
-	})
-	self.buttons = options.top_bar_controls == 'left' and {min, max, close} or {close, max, min}
+	local close = {icon = 'close', hover_bg = '2311e8', hover_fg = 'ffffff', command = function() mp.command('quit') end}
+	local max = {icon = 'crop_square', command = maximized_command}
+	local min = {icon = 'minimize', command = function() mp.command('cycle window-minimized') end}
+	self.buttons = options.top_bar_controls == 'left' and {close, max, min} or {min, max, close}
 
 	self:decide_titles()
 	self:decide_enabled()
 	self:update_dimensions()
-end
-
-function TopBar:destroy()
-	for _, button in ipairs(self.buttons) do button:destroy() end
-	Element.destroy(self)
 end
 
 function TopBar:decide_enabled()
@@ -96,9 +40,6 @@ function TopBar:decide_enabled()
 		self.enabled = options.top_bar == 'always'
 	end
 	self.enabled = self.enabled and (options.top_bar_controls or options.top_bar_title ~= 'no' or state.has_playlist)
-	for _, element in ipairs(self.buttons) do
-		element.enabled = self.enabled and options.top_bar_controls ~= nil
-	end
 end
 
 function TopBar:decide_titles()
@@ -135,19 +76,11 @@ function TopBar:update_dimensions()
 	self.size = round(options.top_bar_size * state.scale)
 	self.icon_size = round(self.size * 0.5)
 	self.font_size = math.floor((self.size - (math.ceil(self.size * 0.25) * 2)) * options.font_scale)
-	self.button_width = round(self.size * 1.15)
 	local window_border_size = Elements:v('window_border', 'size', 0)
 	self.ax = window_border_size
 	self.ay = window_border_size
 	self.bx = display.width - window_border_size
 	self.by = self.size + window_border_size
-
-	local button_bx = options.top_bar_controls == 'left' and self.button_width * 3 or self.bx
-	for _, element in pairs(self.buttons) do
-		element.ax, element.bx = button_bx - self.button_width, button_bx
-		element.ay, element.by = self.ay, self.by
-		button_bx = button_bx - self.button_width
-	end
 end
 
 function TopBar:toggle_title()
@@ -195,17 +128,54 @@ function TopBar:render()
 	local visibility = self:get_visibility()
 	if visibility <= 0 then return end
 	local ass = assdraw.ass_new()
+	local ax, bx = self.ax, self.bx
+	local margin = math.floor((self.size - self.font_size) / 4)
+
+	-- Window controls
+	if options.top_bar_controls then
+		local is_left, button_ax = options.top_bar_controls == 'left', 0
+		if is_left then
+			button_ax = ax
+			ax = self.size * #self.buttons
+		else
+			button_ax = bx - self.size * #self.buttons
+			bx = button_ax
+		end
+
+		for _, button in ipairs(self.buttons) do
+			local rect = {ax = button_ax, ay = self.ay, bx = button_ax + self.size, by = self.by}
+			local is_hover = get_point_to_rectangle_proximity(cursor, rect) == 0
+			local opacity = is_hover and 1 or 0.5
+			local button_fg = is_hover and (button.hover_fg or bg) or fg
+			local button_bg = is_hover and (button.hover_bg or fg) or bg
+
+			cursor:zone('primary_click', rect, button.command)
+
+			local bg_size = self.size - margin
+			local bg_ax, bg_ay = rect.ax + (is_left and margin or 0), rect.ay + margin
+			local bg_bx, bg_by = bg_ax + bg_size, bg_ay + bg_size
+
+			ass:rect(bg_ax, bg_ay, bg_bx, bg_by, {
+				color = button_bg, opacity = visibility * opacity, radius = state.radius,
+			})
+
+			ass:icon(bg_ax + bg_size / 2, bg_ay + bg_size / 2, bg_size * 0.5, button.icon, {
+				color = button_fg,
+				border_color = button_bg,
+				opacity = visibility,
+				border = options.text_border * state.scale,
+			})
+
+			button_ax = button_ax + self.size
+		end
+	end
 
 	-- Window title
 	if state.title or state.has_playlist then
-		local bg_margin = math.floor((self.size - self.font_size) / 4)
 		local padding = self.font_size / 2
 		local spacing = 1
 		local left_aligned = options.top_bar_controls == 'left'
-		local controls_width = options.top_bar_controls and self.button_width * 3 or 0
-		local title_ax = self.ax + (left_aligned and controls_width or 0) + bg_margin
-		local title_bx = self.bx - (left_aligned and 0 or controls_width) - bg_margin
-		local title_ay = self.ay + bg_margin
+		local title_ax, title_bx, title_ay = ax + margin, bx - margin, self.ay + margin
 
 		-- Playlist position
 		if state.has_playlist then
@@ -219,7 +189,7 @@ function TopBar:render()
 				ax = ax,
 				ay = title_ay,
 				bx = ax + rect_width,
-				by = self.by - bg_margin,
+				by = self.by - margin,
 			}
 			local opacity = get_point_to_rectangle_proximity(cursor, rect) == 0
 				and 1 or config.opacity.playlist_position
@@ -229,7 +199,7 @@ function TopBar:render()
 				})
 			end
 			ass:txt(rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2, 5, formatted_text, opts)
-			if left_aligned then title_bx = rect.ax - bg_margin else title_ax = rect.bx + bg_margin end
+			if left_aligned then title_bx = rect.ax - margin else title_ax = rect.bx + margin end
 
 			-- Click action
 			cursor:zone('primary_click', rect, function() mp.command('script-binding uosc/playlist') end)
@@ -252,7 +222,7 @@ function TopBar:render()
 				local rect_ideal_width = round(text_width(main_title, opts) + padding * 2)
 				local rect_width = math.min(rect_ideal_width, title_bx - title_ax)
 				local ax = left_aligned and title_bx - rect_width or title_ax
-				local by = self.by - bg_margin
+				local by = self.by - margin
 				local title_rect = {ax = ax, ay = title_ay, bx = ax + rect_width, by = by}
 
 				if options.top_bar_alt_title_place == 'toggle' then
