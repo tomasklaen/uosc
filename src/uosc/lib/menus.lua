@@ -389,7 +389,7 @@ do
 
 			local is_menu_item = comment and is_uosc_menu_comment(comment)
 
-			if key and command and command ~= '' and command ~= 'ignore'
+			if key
 				-- Filter out stuff like `#F2`, which is clearly intended to be disabled
 				and not (is_commented_out and #key > 1)
 				-- Filter out comments that are not uosc menu items
@@ -443,7 +443,6 @@ do
 
 						target_menu = by_id[submenu_id]
 					else
-						if command == 'ignore' then break end
 						-- If command is already in menu, just append the key to it
 						if key ~= '#' and command ~= '' and target_menu.items_by_command[command] then
 							local hint = target_menu.items_by_command[command].hint
@@ -453,7 +452,7 @@ do
 							if title_part:sub(1, 3) == '---' then
 								local last_item = target_menu.items[#target_menu.items]
 								if last_item then last_item.separator = true end
-							else
+							elseif command ~= 'ignore' then
 								local item = {
 									title = title_part,
 									hint = not is_dummy and key or nil,
@@ -485,7 +484,7 @@ function get_keybinds_items()
 	-- uosc and mpv-menu-plugin binds with no keys
 	local no_key_menu_binds = itable_filter(
 		get_all_user_bindings(),
-		function(b) return b.is_menu_item and b.key == '#' or b.key == '_' end
+		function(b) return b.is_menu_item and b.cmd and b.cmd ~= '' and (b.key == '#' or b.key == '_') end
 	)
 	local binds_dump = itable_join(find_active_keybindings(), no_key_menu_binds)
 	local ids = {}
