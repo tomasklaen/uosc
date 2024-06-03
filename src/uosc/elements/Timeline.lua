@@ -163,8 +163,6 @@ function Timeline:on_global_mouse_move()
 		end
 	end
 end
-function Timeline:handle_wheel_up() mp.commandv('seek', options.timeline_step) end
-function Timeline:handle_wheel_down() mp.commandv('seek', -options.timeline_step) end
 
 function Timeline:render()
 	if self.size == 0 then return end
@@ -186,8 +184,10 @@ function Timeline:render()
 			self:handle_cursor_down()
 			cursor:once('primary_up', function() self:handle_cursor_up() end)
 		end)
-		cursor:zone('wheel_down', self, function() self:handle_wheel_down() end)
-		cursor:zone('wheel_up', self, function() self:handle_wheel_up() end)
+		if options.timeline_step ~= 0 then
+			cursor:zone('wheel_down', self, function() mp.commandv('seek', -options.timeline_step) end)
+			cursor:zone('wheel_up', self, function() mp.commandv('seek', options.timeline_step) end)
+		end
 	end
 
 	local ass = assdraw.ass_new()
