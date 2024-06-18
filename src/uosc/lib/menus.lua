@@ -163,20 +163,65 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 		return items, active_index or first_item_index
 	end
 
-	local function handle_select(value)
-		if value == '{download}' then
-			mp.command(download_command)
-		elseif value == '{load}' then
-			mp.command(load_command)
-		else
-			mp.commandv('set', track_prop, value and value or 'no')
+    local function handle_select(value, meta)
+        if value == '{download}' then
+            mp.command(download_command)
+        elseif value == '{load}' then
+            mp.command(load_command)
+        else
+			if value and track_type == "audio" and meta.modifiers.ctrl then	-- Select only one specific audio track if you hold Ctrl and click on a track
+				mp.set_property("lavfi-complex", "")
+				mp.commandv('set', track_prop, value and value or 'no')
+			elseif value and track_type == "audio" then						-- Selecting Multiple Audio Tracks by default. If you hold Shift the selection menu will remain open
+				local lavfi_complex = ""
+				local track_id = 0
+				local track_selected = 0
+				local aid_count = 1
+				local aid_old = ""
+				local aid_value = "[aid" .. value .. "]"
+				for _, track in ipairs(mp.get_property_native('track-list')) do
+					if track.type == 'audio' and track.selected then
+						if track.id ~= value then
+							aid_old = aid_old .. "[aid" .. track.id .. "]"
+							aid_count = aid_count + 1
+							track_selected = track_selected + 1
+							track_id = track.id -- For deselecting if two tracks are selected and you click on the active track
+						else
+							aid_value = ""
+							aid_count = aid_count - 1
+						end
+					end
+				end
+				lavfi_complex = aid_old .. aid_value .. "amix=inputs=" .. aid_count .. "[ao]"
+
+				if track_selected == 0 and aid_count == 1 then
+					-- If no tracks are selected and you select one
+					mp.set_property("lavfi-complex", "")
+					mp.set_property("aid", value)
+				elseif aid_count == 0 then
+					-- If one track is selected and you deselect it
+					mp.set_property("lavfi-complex", "")
+					mp.set_property("aid", "no")
+				elseif aid_count == 1 then
+					-- If two tracks are selected and you deselect one
+					mp.set_property("lavfi-complex", "")
+					mp.set_property("aid", "no")
+					mp.set_property("aid", track_id)
+				else
+					-- If two or more tracks are selected and you select one or if three or more tracks selected and you deselect one
+					mp.set_property("lavfi-complex", lavfi_complex)
+					mp.set_property("aid", "")
+				end
+			else
+				mp.commandv('set', track_prop, value and value or 'no')
+			end
 
 			-- If subtitle track was selected, assume the user also wants to see it
 			if value and track_type == 'sub' then
 				mp.commandv('set', 'sub-visibility', 'yes')
 			end
-		end
-	end
+        end
+    end
 
 	return create_self_updating_menu_opener({
 		title = menu_title,
