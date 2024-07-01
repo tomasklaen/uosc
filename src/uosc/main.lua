@@ -92,6 +92,7 @@ defaults = {
 	'aac,ac3,aiff,ape,au,cue,dsf,dts,flac,m4a,mid,midi,mka,mp3,mp4a,oga,ogg,opus,spx,tak,tta,wav,weba,wma,wv',
 	image_types = 'apng,avif,bmp,gif,j2k,jp2,jfif,jpeg,jpg,jxl,mj2,png,svg,tga,tif,tiff,webp',
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,sbv,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
+	playlist_types = 'm3u,m3u8,pls,url,cue',
 	default_directory = '~/',
 	show_hidden_files = false,
 	use_trash = false,
@@ -187,7 +188,10 @@ config = {
 		audio = comma_split(options.audio_types),
 		image = comma_split(options.image_types),
 		subtitle = comma_split(options.subtitle_types),
-		media = comma_split(options.video_types .. ',' .. options.audio_types .. ',' .. options.image_types),
+		media = comma_split(options.video_types
+			.. ',' .. options.audio_types
+			.. ',' .. options.image_types
+			.. ',' .. options.playlist_types),
 		autoload = (function()
 			---@type string[]
 			local option_values = {}
