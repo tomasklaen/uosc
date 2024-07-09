@@ -591,10 +591,11 @@ function open_open_file_menu()
 	menu = open_file_navigation_menu(
 		directory,
 		function(path, mods)
+			local command = has_any_extension(path, config.types.playlist) and 'loadlist' or 'loadfile'
 			if mods.ctrl then
-				mp.commandv('loadfile', path, 'append')
+				mp.commandv(command, path, 'append')
 			else
-				mp.commandv('loadfile', path)
+				mp.commandv(command, path)
 				Menu:close()
 			end
 		end,

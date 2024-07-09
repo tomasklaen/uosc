@@ -188,6 +188,7 @@ config = {
 		audio = comma_split(options.audio_types),
 		image = comma_split(options.image_types),
 		subtitle = comma_split(options.subtitle_types),
+		playlist = comma_split(options.playlist_types),
 		media = comma_split(options.video_types
 			.. ',' .. options.audio_types
 			.. ',' .. options.image_types
