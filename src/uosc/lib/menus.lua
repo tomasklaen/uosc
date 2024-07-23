@@ -115,7 +115,25 @@ function create_self_updating_menu_opener(opts)
 			on_close = 'callback',
 		}, function(event)
 			if event.type == 'activate' then
-				if event.action == 'remove' and (opts.on_remove or opts.on_delete) then
+				if event.action == 'move_up' and opts.on_move then
+					if event.index > 1 then
+						opts.on_move({
+							type = 'move',
+							from_index = event.index,
+							to_index = event.index - 1,
+							menu_id = menu.current.id,
+						})
+					end
+				elseif event.action == 'move_down' and opts.on_move then
+					if #menu.current.items > event.index then
+						opts.on_move({
+							type = 'move',
+							from_index = event.index,
+							to_index = event.index + 1,
+							menu_id = menu.current.id,
+						})
+					end
+				elseif event.action == 'remove' and (opts.on_remove or opts.on_delete) then
 					remove_or_delete(event.index, event.value, event.menu_id, event.modifiers)
 				elseif itable_has({'', 'shift'}, event.modifiers) then
 					opts.on_activate(event --[[@as MenuEventActivate]])
@@ -159,7 +177,8 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				italic = true,
 				hint = t('open file'),
 				value = '{load}',
-				actions = download_command and {{name = 'download', icon = 'search', tooltip = t('Search online')}} or nil,
+				actions = download_command and {{name = 'download', icon = 'search', tooltip = t('Search online')}} or
+				nil,
 			}
 		end
 		if #items > 0 then
@@ -222,7 +241,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 
 	---@param event MenuEventActivate
 	local function handle_activate(event)
-			print('activate')
+		print('activate')
 		if event.value == '{load}' then
 			print('{load}', event.action)
 			mp.command(event.action == 'download' and download_command or load_command)
