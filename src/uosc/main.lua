@@ -897,11 +897,12 @@ bind_command('playlist', create_self_updating_menu_opener({
 		end
 		return items
 	end,
-	on_select = function(index) mp.commandv('set', 'playlist-pos-1', tostring(index)) end,
-	on_move_item = function(from, to)
+	on_activate = function(event) mp.commandv('set', 'playlist-pos-1', tostring(event.value)) end,
+	on_move = function(event)
+		local from, to = event.from_index, event.to_index
 		mp.commandv('playlist-move', tostring(math.max(from, to) - 1), tostring(math.min(from, to) - 1))
 	end,
-	on_delete_item = function(index) mp.commandv('playlist-remove', tostring(index - 1)) end,
+	on_remove = function(event) mp.commandv('playlist-remove', tostring(event.index - 1)) end,
 }))
 bind_command('chapters', create_self_updating_menu_opener({
 	title = t('Chapters'),
@@ -921,7 +922,7 @@ bind_command('chapters', create_self_updating_menu_opener({
 		end
 		return items
 	end,
-	on_select = function(index) mp.commandv('set', 'chapter', tostring(index - 1)) end,
+	on_activate = function(event) mp.commandv('set', 'chapter', tostring(event.value - 1)) end,
 }))
 bind_command('editions', create_self_updating_menu_opener({
 	title = t('Editions'),
@@ -941,7 +942,7 @@ bind_command('editions', create_self_updating_menu_opener({
 		end
 		return items
 	end,
-	on_select = function(id) mp.commandv('set', 'edition', id) end,
+	on_activate = function(event) mp.commandv('set', 'edition', event.value) end,
 }))
 bind_command('show-in-directory', function()
 	-- Ignore URLs
@@ -1022,7 +1023,7 @@ bind_command('audio-device', create_self_updating_menu_opener({
 		end
 		return items
 	end,
-	on_select = function(name) mp.commandv('set', 'audio-device', name) end,
+	on_activate = function(event) mp.commandv('set', 'audio-device', event.value) end,
 }))
 bind_command('open-config-directory', function()
 	local config_path = mp.command_native({'expand-path', '~~/mpv.conf'})

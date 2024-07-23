@@ -222,6 +222,19 @@ function table_assign_props(target, source, props)
 	return target
 end
 
+-- Assign props from `source` to `target` that are not in `props` set.
+---@generic T: table<any, any>
+---@param target T
+---@param source T
+---@param props table<string, boolean>
+---@return T
+function table_assign_exclude(target, source, props)
+	for key, value in pairs(source) do
+		if not props[key] then target[key] = value end
+	end
+	return target
+end
+
 -- `table_assign({}, input)` without loosing types :(
 ---@generic T: table<any, any>
 ---@param input T
