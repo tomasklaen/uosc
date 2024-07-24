@@ -398,6 +398,22 @@ function has_any_extension(path, extensions)
 	return false
 end
 
+-- Executes mp command defined as a string or an itable, or does nothing if command is any other value.
+-- Returns boolean specifying if command was executed or not.
+---@param command string | string[] | nil | any
+---@return boolean executed `true` if command was executed.
+function execute_command(command)
+	local command_type = type(command)
+	if command_type == 'string' then
+		mp.command(command)
+		return true
+	elseif command_type == 'table' and #command > 0 then
+		mp.command_native(command)
+		return true
+	end
+	return false
+end
+
 ---@return string
 function get_default_directory()
 	return mp.command_native({'expand-path', options.default_directory})
