@@ -42,6 +42,14 @@ function buttons:trigger(name)
 	end
 end
 
+---@param name string
+---@param data ButtonData
+function buttons:set(name, data)
+	buttons.data[name] = data
+	buttons:trigger(name)
+	request_render()
+end
+
 mp.register_script_message('set-button', function(name, data)
 	if type(name) ~= 'string' then
 		msg.error('Invalid set-button message parameter: 1st parameter (name) has to be a string.')
@@ -53,13 +61,9 @@ mp.register_script_message('set-button', function(name, data)
 	end
 
 	local data = utils.parse_json(data)
-
 	if type(data) == 'table' and type(data.icon) == 'string' then
-		buttons.data[name] = data
+		buttons:set(name, data)
 	end
-
-	buttons:trigger(name)
-	request_render()
 end)
 
 return buttons
