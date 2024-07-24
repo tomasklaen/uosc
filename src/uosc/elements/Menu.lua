@@ -597,7 +597,6 @@ end
 function Menu:slide_in_menu(id, x)
 	local menu = self:get_menu(id)
 	if not menu then return end
-	menu.selected_index = nil
 	self:activate_menu(id)
 	self:tween(-(display.width / 2 - menu.width / 2 - x), 0, function(offset) self:set_offset_x(offset) end)
 	self.opacity = 1 -- in case tween above canceled fade in animation
@@ -652,7 +651,6 @@ function Menu:move_selected_item_to(index)
 	if callback and from and from ~= index and index >= 1 and index <= items_count then
 		local event = {type = 'move', from_index = from, to_index = index, menu_id = self.current.id}
 		self:command_or_event(callback, {from, index, self.current.id}, event)
-		print(utils.to_string({from, index, self.current.id}))
 		self:select_index(index, self.current.id)
 		self:scroll_to_index(index, self.current.id, true)
 	end
@@ -850,13 +848,14 @@ end
 
 ---@param query string
 ---@param menu_id? string
-function Menu:search_query_update(query, menu_id)
+---@param immediate? boolean
+function Menu:search_query_update(query, menu_id, immediate)
 	local menu = self:get_menu(menu_id)
 	if not menu then return end
 	menu.search.query = query
 	if menu.search_debounce ~= 'submit' then
-		if menu.search.timeout then
-			menu.search.timeout:kill()
+		menu.search.timeout:kill()
+		if menu.search.timeout and not immediate then
 			menu.search.timeout:resume()
 		else
 			self:search_submit(menu_id)
@@ -917,7 +916,7 @@ end
 function Menu:search_cancel(menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu or not menu.search then return end
-	self:search_query_update('', menu_id)
+	self:search_query_update('', menu_id, true)
 	menu.search = nil
 	self:search_ensure_key_bindings()
 	self:update_dimensions()
@@ -1010,8 +1009,8 @@ end
 
 function Menu:enable_key_bindings()
 	-- `+` at the end enables `repeatable` flag
-	local keys = {'mbtn_left', 'mbtn_right', 'up+', 'down+', 'left', 'right', 'enter', 'kp_enter', 'bs', 'tab', 'esc',
-		'pgup+', 'pgdwn+', 'home', 'end', 'del'}
+	local keys = {'up+', 'down+', 'left', 'right', 'enter', 'kp_enter', 'bs', 'tab', 'esc', 'pgup+',
+		'pgdwn+', 'home', 'end', 'del'}
 	local modifiers = {nil, 'alt', 'alt+ctrl', 'alt+shift', 'alt+ctrl+shift', 'ctrl', 'ctrl+shift', 'shift'}
 	local normalized = {kp_enter = 'enter'}
 
@@ -1053,10 +1052,7 @@ function Menu:handle_shortcut(shortcut, info)
 
 	if info.event == 'down' then return end
 
-	if id == 'mbtn_left' then
-		self:handle_cursor_down()
-		self:handle_cursor_up()
-	elseif id == 'ctrl+enter' then
+	if id == 'ctrl+enter' then
 		if self.current.search then self:search_submit() end
 	elseif key == 'enter' and selected_item then
 		self:activate_selected_item(modifiers)
@@ -1252,8 +1248,8 @@ function Menu:render()
 			local next_is_active = next_item and next_item.active
 			local next_has_background = menu.selected_index == index + 1 or next_is_active
 			local font_color = item.active and fgt or bgt
-			local actions = item.actions or menu.actions
-			local is_action = actions and actions[menu.action_index] ~= nil
+			local actions = is_selected and (item.actions or menu.actions) -- not nil = actions are visible
+			local action = actions and actions[menu.action_index] -- not nil = action is selected
 
 			-- Separator
 			if item_by < by and ((not has_background and not next_has_background) or item.separator) then
@@ -1269,7 +1265,7 @@ function Menu:render()
 			end
 
 			-- Background
-			local highlight_opacity = 0 + (item.active and 0.8 or 0) + ((is_selected and not is_action) and 0.15 or 0)
+			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (is_selected and 0.15 or 0)
 			if not is_submenu and highlight_opacity > 0 then
 				ass:rect(ax + self.padding, item_ay, bx - self.padding, item_by, {
 					radius = state.radius,
@@ -1279,7 +1275,7 @@ function Menu:render()
 				})
 
 				-- Selected item indicator line
-				if is_selected then
+				if is_selected and not action then
 					local size = round(2 * state.scale)
 					local v_padding = math.min(state.radius, math.ceil(self.item_height / 3))
 					ass:rect(ax + self.padding - size - 1, item_ay + v_padding, ax + self.padding - 1,
@@ -1292,20 +1288,28 @@ function Menu:render()
 			local title_cut_x = content_bx
 
 			-- Actions
+			local actions_rect
 			if is_selected and actions and #actions > 0 then
 				local margin = 4
 				local size = item_by - item_ay - margin * 2
+				actions_rect = {
+					ax = item_bx - margin,
+					ay = item_ay + margin,
+					bx = item_bx - margin,
+					by = item_by - margin,
+				}
 
 				for i = 1, #actions, 1 do
 					local action_index = #actions - (i - 1)
 					local action = actions[action_index]
 					local is_active = action_index == menu.action_index
 					local rect = {
-						ay = item_ay + margin,
-						by = item_by - margin,
+						ay = actions_rect.ay,
+						by = actions_rect.by,
 						ax = item_bx - size * i - margin * i,
 						bx = item_bx - size * (i - 1) - margin * i,
 					}
+					actions_rect.ax = rect.ax
 
 					ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
 						radius = state.radius - 1,
@@ -1318,13 +1322,6 @@ function Menu:render()
 					ass:icon(rect.ax + size / 2, rect.ay + size / 2, size * 0.66, action.icon, {
 						color = is_active and bg or fg, opacity = menu_opacity, clip = item_clip,
 					})
-					if is_active and action.tooltip then
-						ass:tooltip(
-							{ax = self.ax, ay = item_ay, bx = self.bx, by = item_by},
-							action.tooltip,
-							{size = self.font_size, align = 6, offset = self.scrollbar_size * 2, responsive = false}
-						)
-					end
 
 					-- Select action on cursor hover
 					if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
@@ -1396,6 +1393,17 @@ function Menu:render()
 					wrap = 2,
 					opacity = menu_opacity * (item.muted and 0.5 or 1),
 					clip = clip,
+				})
+			end
+
+			-- Selected action tooltip
+			if action and action.tooltip and actions_rect then
+				ass:tooltip(actions_rect, action.tooltip, {
+					size = self.font_size,
+					align = 4,
+					offset = self.scrollbar_size * 2,
+					responsive = false,
+					invert_colors = not item.active,
 				})
 			end
 		end

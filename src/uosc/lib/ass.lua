@@ -85,15 +85,16 @@ end
 -- Tooltip.
 ---@param element Rect
 ---@param value string|number
----@param opts? {size?: number; align?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, margin?: number; responsive?: boolean; lines?: integer, timestamp?: boolean}
+---@param opts? {size?: number; align?: number; offset?: number; bold?: boolean; italic?: boolean; width_overwrite?: number, margin?: number; responsive?: boolean; lines?: integer, timestamp?: boolean; invert_colors?: boolean}
 function ass_mt:tooltip(element, value, opts)
 	if value == '' then return end
 	opts = opts or {}
 	opts.size = opts.size or round(16 * state.scale)
 	opts.border = options.text_border * state.scale
-	opts.border_color = bg
+	opts.border_color = opts.invert_colors and fg or bg
 	opts.margin = opts.margin or round(10 * state.scale)
 	opts.lines = opts.lines or 1
+	opts.color = opts.invert_colors and bg or fg
 	local offset = opts.offset or 2
 	local padding_y = round(opts.size / 6)
 	local padding_x = round(opts.size / 3)
@@ -129,7 +130,9 @@ function ass_mt:tooltip(element, value, opts)
 
 	-- Draw
 	local ax, ay, bx, by = round(x - width_half), round(y - height_half), round(x + width_half), round(y + height_half)
-	self:rect(ax, ay, bx, by, {color = bg, opacity = config.opacity.tooltip, radius = state.radius})
+	self:rect(ax, ay, bx, by, {
+		color = opts.invert_colors and fg or bg, opacity = config.opacity.tooltip, radius = state.radius
+	})
 	local func = opts.timestamp and self.timestamp or self.txt
 	func(self, x, y, 5, tostring(value), opts)
 	return {ax = element.ax, ay = ay, bx = element.bx, by = by}
