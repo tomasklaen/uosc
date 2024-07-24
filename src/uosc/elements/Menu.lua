@@ -1225,9 +1225,9 @@ function Menu:render()
 			local is_selected = menu.selected_index == index
 			local item_rect_hitbox = {
 				ax = item_ax,
-				ay = item_ay,
+				ay = math.max(item_ay, menu_rect.ay),
 				bx = menu_rect.bx + (item.items and self.gap or -self.padding), -- to bridge the gap with cursor
-				by = item_by,
+				by = math.min(item_by, menu_rect.by),
 			}
 
 			-- Select hovered item
