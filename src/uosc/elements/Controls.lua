@@ -170,7 +170,6 @@ function Controls:init_options()
 					'managed button needs 1 parameter, %d received: %s', #params, table.concat(params, '/')
 				))
 			else
-				print('making button:', params[1])
 				local element = ManagedButton:new('control_' .. i, {
 					name = params[1],
 					render_order = self.render_order,
