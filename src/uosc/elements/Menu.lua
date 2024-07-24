@@ -1290,7 +1290,7 @@ function Menu:render()
 			-- Actions
 			local actions_rect
 			if is_selected and actions and #actions > 0 then
-				local margin = 4
+				local margin = self.gap * 2
 				local size = item_by - item_ay - margin * 2
 				actions_rect = {
 					ax = item_bx - margin,
@@ -1314,7 +1314,7 @@ function Menu:render()
 					ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
 						radius = state.radius - 1,
 						color = is_active and fg or bg,
-						border = is_active and 2 or nil,
+						border = is_active and self.gap or nil,
 						border_color = bg,
 						opacity = menu_opacity * (is_active and 1 or 0.5),
 						clip = item_clip,
@@ -1401,7 +1401,7 @@ function Menu:render()
 				ass:tooltip(actions_rect, action.tooltip, {
 					size = self.font_size,
 					align = 4,
-					offset = self.scrollbar_size * 2,
+					offset = self.gap * 2,
 					responsive = false,
 					invert_colors = not item.active,
 				})
