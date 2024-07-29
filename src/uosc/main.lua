@@ -395,6 +395,7 @@ state = {
 	scale = 1,
 	radius = 0,
 }
+buttons = require('lib/buttons')
 thumbnail = {width = 0, height = 0, disabled = false}
 external = {} -- Properties set by external scripts
 key_binding_overwrites = {} -- Table of key_binding:mpv_command
