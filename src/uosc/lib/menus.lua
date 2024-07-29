@@ -115,23 +115,17 @@ function create_self_updating_menu_opener(opts)
 			on_close = 'callback',
 		}, function(event)
 			if event.type == 'activate' then
-				if event.action == 'move_up' and opts.on_move then
-					if event.index > 1 then
+				if (event.action == 'move_up' or event.action == 'move_down') and opts.on_move then
+					local to_index = event.index + (event.action == 'move_up' and -1 or 1)
+					if to_index > 1 and to_index <= #menu.current.items then
 						opts.on_move({
 							type = 'move',
 							from_index = event.index,
-							to_index = event.index - 1,
+							to_index = to_index,
 							menu_id = menu.current.id,
 						})
-					end
-				elseif event.action == 'move_down' and opts.on_move then
-					if #menu.current.items > event.index then
-						opts.on_move({
-							type = 'move',
-							from_index = event.index,
-							to_index = event.index + 1,
-							menu_id = menu.current.id,
-						})
+						menu:select_index(to_index)
+						menu:scroll_to_index(to_index, nil, true)
 					end
 				elseif event.action == 'remove' and (opts.on_remove or opts.on_delete) then
 					remove_or_delete(event.index, event.value, event.menu_id, event.modifiers)

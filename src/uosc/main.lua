@@ -901,7 +901,7 @@ bind_command('playlist', create_self_updating_menu_opener({
 	on_activate = function(event) mp.commandv('set', 'playlist-pos-1', tostring(event.value)) end,
 	on_move = function(event)
 		local from, to = event.from_index, event.to_index
-		mp.commandv('playlist-move', tostring(math.max(from, to) - 1), tostring(math.min(from, to) - 1))
+		mp.commandv('playlist-move', tostring(from - 1), tostring(to - (to > from and 0 or 1)))
 	end,
 	on_remove = function(event) mp.commandv('playlist-remove', tostring(event.index - 1)) end,
 }))
@@ -1071,6 +1071,17 @@ mp.register_script_message('update-menu', function(json)
 	else
 		local menu = data.type and Menu:is_open(data.type)
 		if menu then menu:update(data) end
+	end
+end)
+mp.register_script_message('select-menu-item', function(type, item_index, menu_id)
+	local menu = Menu:is_open(type)
+	local index = tonumber(item_index)
+	if menu and index and not menu.mouse_nav then
+		index = round(index)
+		if index > 0 and index <= #menu.current.items then
+			menu:select_index(index, menu_id)
+			menu:scroll_to_index(index, menu_id, true)
+		end
 	end
 end)
 mp.register_script_message('close-menu', function(type)

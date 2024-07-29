@@ -464,7 +464,7 @@ function Menu:select_index(index, menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu then return end
 	menu.selected_index = (index and index >= 1 and index <= #menu.items) and index or nil
-	menu.action_index = nil
+	self:select_action(menu.action_index, menu_id) -- normalize selected action index
 	request_render()
 end
 
@@ -1137,18 +1137,20 @@ end
 ---@param command string|number|string[]|number[]
 ---@param params string[]|number[]
 ---@param event MenuEvent
----@return 'event' | 'command'
+---@return 'event' | 'command' | nil
 function Menu:command_or_event(command, params, event)
 	if command == 'callback' then
 		self.callback(event)
 		return 'event'
 	elseif type(command) == 'table' then
 		---@diagnostic disable-next-line: deprecated
-		mp.commandv(unpack(itable_join(command, params)))
+		mp.command_native(itable_join(command, params))
+		return 'command'
 	elseif type(command) == 'string' then
 		mp.command(command .. ' ' .. table.concat(params, ' '))
+		return 'command'
 	end
-	return 'command'
+	return nil
 end
 
 function Menu:render()
@@ -1332,6 +1334,8 @@ function Menu:render()
 						end
 					end
 				end
+
+				title_cut_x = actions_rect.ax - self.gap * 2
 			else
 				-- Icon
 				if item.icon then
