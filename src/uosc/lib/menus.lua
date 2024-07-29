@@ -78,13 +78,13 @@ function create_self_updating_menu_opener(opts)
 		---@type MenuAction[]
 		local actions = opts.actions or {}
 		if opts.on_move then
-			actions[#actions + 1] = {name = 'move_up', icon = 'arrow_upward', tooltip = t('Move up')}
-			actions[#actions + 1] = {name = 'move_down', icon = 'arrow_downward', tooltip = t('Move down')}
+			actions[#actions + 1] = {name = 'move_up', icon = 'arrow_upward', label = t('Move up')}
+			actions[#actions + 1] = {name = 'move_down', icon = 'arrow_downward', label = t('Move down')}
 		end
 		if opts.on_remove or opts.on_delete then
-			local tooltip = opts.on_remove and t('Remove') or t('Delete')
-			if opts.on_remove and opts.on_delete then tooltip = t('Remove (ctrl to delete)') end
-			actions[#actions + 1] = {name = 'remove', icon = 'delete', tooltip = tooltip}
+			local label = opts.on_remove and t('Remove') or t('Delete')
+			if opts.on_remove and opts.on_delete then label = t('Remove (ctrl to delete)') end
+			actions[#actions + 1] = {name = 'remove', icon = 'delete', label = label}
 		end
 
 		function remove_or_delete(index, value, menu_id, modifiers)
@@ -171,8 +171,9 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 				italic = true,
 				hint = t('open file'),
 				value = '{load}',
-				actions = download_command and {{name = 'download', icon = 'search', tooltip = t('Search online')}} or
-				nil,
+				actions = download_command
+					and {{name = 'download', icon = 'language', label = t('Search online')}}
+					or nil,
 			}
 		end
 		if #items > 0 then

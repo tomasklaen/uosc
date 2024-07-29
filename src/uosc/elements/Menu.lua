@@ -1,6 +1,6 @@
 local Element = require('elements/Element')
 
----@alias MenuAction {name: string; icon: string; tooltip?: string;}
+---@alias MenuAction {name: string; icon: string; label?: string;}
 
 -- Menu data structure accepted by `Menu:open(menu)`.
 ---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; search_style?: 'on_demand' | 'palette' | 'disabled';  actions?: MenuAction[]; callback?: string[]; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string}
@@ -1400,9 +1400,9 @@ function Menu:render()
 				})
 			end
 
-			-- Selected action tooltip
-			if action and action.tooltip and actions_rect then
-				ass:tooltip(actions_rect, action.tooltip, {
+			-- Selected action label
+			if action and action.label and actions_rect then
+				ass:tooltip(actions_rect, action.label, {
 					size = self.font_size,
 					align = 4,
 					offset = self.gap * 2,
