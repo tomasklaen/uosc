@@ -1,6 +1,6 @@
 local Element = require('elements/Element')
 
----@alias ButtonProps {icon: string; on_click: function; anchor_id?: string; active?: boolean; badge?: string|number; foreground?: string; background?: string; tooltip?: string}
+---@alias ButtonProps {icon: string; on_click?: function; is_clickable?: boolean; anchor_id?: string; active?: boolean; badge?: string|number; foreground?: string; background?: string; tooltip?: string}
 
 ---@class Button : Element
 local Button = class(Element)
@@ -17,13 +17,15 @@ function Button:init(id, props)
 	self.badge = props.badge
 	self.foreground = props.foreground or fg
 	self.background = props.background or bg
-	---@type fun()
+	self.is_clickable = true
+	---@type fun()|nil
 	self.on_click = props.on_click
 	Element.init(self, id, props)
 end
 
 function Button:on_coordinates() self.font_size = round((self.by - self.ay) * 0.7) end
 function Button:handle_cursor_click()
+	if not self.on_click or not self.is_clickable then return end
 	-- We delay the callback to next tick, otherwise we are risking race
 	-- conditions as we are in the middle of event dispatching.
 	-- For example, handler might add a menu to the end of the element stack, and that
@@ -37,17 +39,20 @@ function Button:render()
 	cursor:zone('primary_click', self, function() self:handle_cursor_click() end)
 
 	local ass = assdraw.ass_new()
+	local is_clickable = self.is_clickable and self.on_click ~= nil
 	local is_hover = self.proximity_raw == 0
-	local is_hover_or_active = is_hover or self.active
 	local foreground = self.active and self.background or self.foreground
 	local background = self.active and self.foreground or self.background
+	local background_opacity = self.active and 1 or config.opacity.controls
+
+	if is_hover and is_clickable and background_opacity < 0.3 then background_opacity = 0.3 end
 
 	-- Background
-	if is_hover_or_active or config.opacity.controls > 0 then
+	if background_opacity > 0 then
 		ass:rect(self.ax, self.ay, self.bx, self.by, {
 			color = (self.active or not is_hover) and background or foreground,
 			radius = state.radius,
-			opacity = visibility * (self.active and 1 or (is_hover and 0.3 or config.opacity.controls)),
+			opacity = visibility * background_opacity,
 		})
 	end
 
