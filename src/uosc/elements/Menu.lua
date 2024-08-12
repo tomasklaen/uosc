@@ -851,10 +851,10 @@ end
 ---@param immediate? boolean
 function Menu:search_query_update(query, menu_id, immediate)
 	local menu = self:get_menu(menu_id)
-	if not menu then return end
+	if not menu or not menu.search then return end
 	menu.search.query = query
 	if menu.search_debounce ~= 'submit' then
-		menu.search.timeout:kill()
+		if menu.search.timeout then menu.search.timeout:kill() end
 		if menu.search.timeout and not immediate then
 			menu.search.timeout:resume()
 		else
@@ -1080,7 +1080,8 @@ function Menu:handle_shortcut(shortcut, info)
 	elseif id == 'ctrl+end' then
 		self:move_selected_item_by(math.huge)
 	elseif key == 'esc' then
-		self:request_close()
+		if menu.search then self:search_cancel()
+		else self:request_close() end
 	elseif key == 'bs' then
 		if self.current.search then
 			if modifiers == 'shift' then
@@ -1172,6 +1173,7 @@ function Menu:render()
 	local ass = assdraw.ass_new()
 	local spacing = self.item_padding
 	local icon_size = self.font_size
+	local is_alive = self:is_alive()
 
 	---@param menu MenuStack
 	---@param x number
@@ -1401,7 +1403,7 @@ function Menu:render()
 			end
 
 			-- Selected action label
-			if action and action.label and actions_rect then
+			if is_alive and action and action.label and actions_rect then
 				ass:tooltip(actions_rect, action.label, {
 					size = self.font_size,
 					align = 4,
