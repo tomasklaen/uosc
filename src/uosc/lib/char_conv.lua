@@ -4,13 +4,8 @@ local char_dir = mp.get_script_directory() .. '/char-conv/'
 local data = {}
 
 local languages = get_languages()
-for i = #languages, 1, -1 do
-	lang = languages[i]
-	if (lang == 'en') then
-		data = {}
-	else
-		table_assign(data, get_locale_from_json(char_dir .. lang:lower() .. '.json'))
-	end
+for _, lang in ipairs(languages) do
+	table_assign(data, get_locale_from_json(char_dir .. lang:lower() .. '.json'))
 end
 
 local romanization = {}
