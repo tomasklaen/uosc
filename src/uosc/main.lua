@@ -101,6 +101,7 @@ defaults = {
 	chapter_range_patterns = 'openings:オープニング;endings:エンディング',
 	languages = 'slang,en',
 	disable_elements = '',
+	char_conv = false,
 }
 options = table_copy(defaults)
 opt.read_options(options, 'uosc', function(changed_options)
