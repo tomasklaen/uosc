@@ -145,7 +145,7 @@ function TopBar:render()
 		for _, button in ipairs(self.buttons) do
 			local rect = {ax = button_ax, ay = self.ay, bx = button_ax + self.size, by = self.by}
 			local is_hover = get_point_to_rectangle_proximity(cursor, rect) == 0
-			local opacity = is_hover and 1 or 0.5
+			local opacity = is_hover and 1 or config.opacity.controls
 			local button_fg = is_hover and (button.hover_fg or bg) or fg
 			local button_bg = is_hover and (button.hover_bg or fg) or bg
 
