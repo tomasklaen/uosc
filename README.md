@@ -252,7 +252,7 @@ Switch stream quality. This is just a basic re-assignment of `ytdl-format` mpv p
 
 #### `keybinds`
 
-Displays a command palette menu with all key bindings defined in your `input.conf` file. Useful to check what command is bound to what shortcut, or the other way around.
+Displays a command palette menu with all currently active keybindings (defined in your `input.conf` file, or registered by scripts). Useful to check what command is bound to what shortcut, or the other way around.
 
 #### `open-file`
 

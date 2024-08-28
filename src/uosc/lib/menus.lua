@@ -572,7 +572,7 @@ function get_keybinds_items()
 	-- Convert to menu items
 	for _, bind in pairs(binds_dump) do
 		local id = bind.key .. '<>' .. bind.cmd
-		if not ids[id] and bind.cmd ~= 'ignore' then
+		if not ids[id] then
 			ids[id] = true
 			items[#items + 1] = {title = bind.cmd, hint = bind.key, value = bind.cmd}
 		end
