@@ -436,11 +436,6 @@ function execute_command(command)
 	return false
 end
 
----@return string
-function get_default_directory()
-	return mp.command_native({'expand-path', options.default_directory})
-end
-
 -- Serializes path into its semantic parts.
 ---@param path string
 ---@return nil|{path: string; is_root: boolean; dirname?: string; basename: string; filename: string; extension?: string;}
@@ -465,18 +460,17 @@ end
 -- Reads items in directory and splits it into directories and files tables.
 ---@param path string
 ---@param opts? {types?: string[], hidden?: boolean}
----@return string[]|nil files
----@return string[]|nil directories
+---@return string[] files
+---@return string[] directories
+---@return string|nil error
 function read_directory(path, opts)
 	opts = opts or {}
 	local items, error = utils.readdir(path, 'all')
+	local files, directories = {}, {}
 
 	if not items then
-		msg.error('Reading files from "' .. path .. '" failed: ' .. error)
-		return nil, nil
+		return files, directories, 'Reading directory "' .. path .. '" failed. Error: ' .. utils.to_string(error)
 	end
-
-	local files, directories = {}, {}
 
 	for _, item in ipairs(items) do
 		if item ~= '.' and item ~= '..' and (opts.hidden or item:sub(1, 1) ~= '.') then
@@ -505,8 +499,8 @@ function get_adjacent_files(file_path, opts)
 	opts = opts or {}
 	local current_meta = serialize_path(file_path)
 	if not current_meta then return end
-	local files = read_directory(current_meta.dirname, {hidden = opts.hidden})
-	if not files then return end
+	local files, _dirs, error = read_directory(current_meta.dirname, {hidden = opts.hidden})
+	if error then msg.error(error) return end
 	sort_strings(files)
 	local current_file_index
 	local paths = {}

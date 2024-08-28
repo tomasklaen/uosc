@@ -554,12 +554,16 @@ function load_file_index_in_current_directory(index)
 
 	local serialized = serialize_path(state.path)
 	if serialized and serialized.dirname then
-		local files = read_directory(serialized.dirname, {
+		local files, _dirs, error = read_directory(serialized.dirname, {
 			types = config.types.autoload,
 			hidden = options.show_hidden_files,
 		})
 
-		if not files then return end
+		if error then
+			msg.error(error)
+			return
+		end
+
 		sort_strings(files)
 		if index < 0 then index = #files + index + 1 end
 

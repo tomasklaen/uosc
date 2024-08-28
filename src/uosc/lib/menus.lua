@@ -265,22 +265,26 @@ end
 ---@param handle_activate fun(event: MenuEventActivate)
 ---@param opts NavigationMenuOptions
 function open_file_navigation_menu(directory_path, handle_activate, opts)
+	if directory_path == '{drives}' then
+		if state.platform ~= 'windows' then directory_path = '/' end
+	else
+		directory_path = normalize_path(mp.command_native({'expand-path', directory_path}))
+	end
+
 	opts = opts or {}
-	local current_directory = serialize_path(normalize_path(directory_path))
+	---@type string|nil
+	local current_directory = nil
 	---@type Menu
 	local menu
 	---@type string | nil
 	local back_path
-
-	if not current_directory then
-		msg.error('Couldn\'t serialize path "' .. directory_path .. '.')
-		return
-	end
-	local separator = path_separator(current_directory.path)
+	local separator = path_separator(directory_path)
 
 	---@param path string Can be path to a directory, or special string `'{drives}'` to get windows drives items.
 	---@param selected_path? string Marks item with this path as active.
-	---@return MenuStackValue, number
+	---@return MenuStackValue[] menu_items
+	---@return number selected_index
+	---@return string|nil error
 	local function serialize_items(path, selected_path)
 		if path == '{drives}' then
 			local process = mp.command_native({
@@ -303,22 +307,23 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 					end
 				end
 			else
-				msg.error(process.stderr)
+				return {}, 1, 'Couldn\'t open drives. Error: ' .. utils.to_string(process.stderr)
 			end
-
 			return items, selected_index
 		end
 
-		current_directory = serialize_path(path)
-		if not current_directory then
-			msg.error('Couldn\'t serialize path "' .. path .. '.')
-			return {}, 0
+		local serialized = serialize_path(path)
+		if not serialized then
+			return {}, 0, 'Couldn\'t serialize path "' .. path .. '.'
 		end
-		local files, directories = read_directory(current_directory.path, {
+		local files, directories, error = read_directory(serialized.path, {
 			types = opts.allowed_types,
 			hidden = options.show_hidden_files,
 		})
-		local is_root = not current_directory.dirname
+		if error then
+			return {}, 1, error
+		end
+		local is_root = not serialized.dirname
 
 		if not files or not directories then return {}, 0 end
 
@@ -331,10 +336,10 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 
 		if is_root then
 			if state.platform == 'windows' then
-				items[#items + 1] = {title = '..', hint = t('Drives'), value = '{drives}', separator = true}
+				items[#items + 1] = {title = '..', hint = t('Drives'), value = '{drives}', separator = true, is_to_parent = true}
 			end
 		else
-			items[#items + 1] = {title = '..', hint = t('parent dir'), value = current_directory.dirname, separator = true}
+			items[#items + 1] = {title = '..', hint = t('parent dir'), value = serialized.dirname, separator = true, is_to_parent = true}
 		end
 
 		back_path = items[#items] and items[#items].value
@@ -349,29 +354,46 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 		end
 
 		for index, item in ipairs(items) do
-			if not item.value.is_to_parent and opts.active_path == item.value then
-				item.active = true
-				if not selected_path then selected_index = index end
-			end
+			if not item.is_to_parent then
+				if opts.active_path == item.value then
+					item.active = true
+					if not selected_path then selected_index = index end
+				end
 
-			if selected_path == item.value then selected_index = index end
+				if selected_path == item.value then selected_index = index end
+			end
 		end
 
 		return items, selected_index
 	end
 
-	local items, selected_index = serialize_items(current_directory.path)
 	local menu_data = {
 		type = opts.type,
-		title = opts.title or current_directory.basename .. separator,
-		items = items,
+		title = opts.title or '',
+		items = {},
 		on_close = opts.on_close and 'callback' or nil,
-		selected_index = selected_index,
 	}
 
+	---@param path string
 	local function open_directory(path)
-		local items, selected_index = serialize_items(path, current_directory.path)
-		menu_data.title = opts.title or current_directory.basename .. separator
+		local items, selected_index, error = serialize_items(path, current_directory)
+		if error then
+			msg.error(error)
+			items = {{title = 'Something went wrong. See console for errors.', selectable = false, muted = true}}
+		end
+
+		local title = opts.title
+		if not title then
+			if path == '{drives}' then
+				title = 'Drives'
+			else
+				local serialized = serialize_path(path)
+				title = serialized and serialized.basename .. separator or '??'
+			end
+		end
+
+		current_directory = path
+		menu_data.title = title
 		menu_data.items = items
 		menu:search_cancel()
 		menu:update(menu_data)
@@ -417,6 +439,8 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 			close()
 		end
 	end)
+
+	open_directory(directory_path)
 
 	return menu
 end
@@ -650,11 +674,8 @@ function open_open_file_menu()
 	local active_file
 
 	if state.path == nil or is_protocol(state.path) then
-		local serialized = serialize_path(get_default_directory())
-		if serialized then
-			directory = serialized.path
-			active_file = nil
-		end
+		directory = options.default_directory
+		active_file = nil
 	else
 		local serialized = serialize_path(state.path)
 		if serialized then
@@ -723,7 +744,7 @@ function create_track_loader_menu_opener(opts)
 			end
 		end
 		if not path then
-			path = get_default_directory()
+			path = options.default_directory
 		end
 
 		local function handle_activate(event)
