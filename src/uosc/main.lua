@@ -345,11 +345,13 @@ state = {
 	alt_title = nil,
 	time = nil, -- current media playback time
 	speed = 1,
+	---@type number|nil
 	duration = nil, -- current media duration
 	time_human = nil, -- current playback time in human format
 	destination_time_human = nil, -- depends on options.destination_time
 	pause = mp.get_property_native('pause'),
 	chapters = {},
+	---@type {index: number; title: string}|nil
 	current_chapter = nil,
 	chapter_ranges = {},
 	border = mp.get_property_native('border'),
@@ -580,11 +582,18 @@ function observe_display_fps(name, fps)
 end
 
 function select_current_chapter()
+	local current_chapter_index = state.current_chapter and state.current_chapter.index
 	local current_chapter
 	if state.time and state.chapters then
 		_, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, #state.chapters, 1)
 	end
-	set_state('current_chapter', current_chapter)
+	local new_chapter_index = current_chapter and current_chapter.index
+	if current_chapter_index ~= new_chapter_index then
+		set_state('current_chapter', current_chapter)
+		if itable_has(config.top_bar_flash_on, 'chapter') then
+			Elements:flash({'top_bar'})
+		end
+	end
 end
 
 --[[ STATE HOOKS ]]
