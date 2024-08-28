@@ -915,7 +915,7 @@ end
 ---@param menu_id? string
 function Menu:search_cancel(menu_id)
 	local menu = self:get_menu(menu_id)
-	if not menu or not menu.search then return end
+	if not menu or not menu.search or menu.search_style == 'palette' then return end
 	self:search_query_update('', menu_id, true)
 	menu.search = nil
 	self:search_ensure_key_bindings()
@@ -1080,7 +1080,7 @@ function Menu:handle_shortcut(shortcut, info)
 	elseif id == 'ctrl+end' then
 		self:move_selected_item_by(math.huge)
 	elseif key == 'esc' then
-		if menu.search then self:search_cancel()
+		if menu.search and menu.search_style ~= 'palette' then self:search_cancel()
 		else self:request_close() end
 	elseif key == 'bs' then
 		if self.current.search then

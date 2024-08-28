@@ -27,8 +27,9 @@ Features:
     -   Speed bar: change speed by `speed_step` per scroll.
     -   Just hovering video with no UI widget below cursor: your configured wheel bindings from `input.conf`.
 -   Right click on volume or speed elements to reset them.
--   Transform chapters into timeline ranges (the red portion of the timeline in the preview).
--   And a lot of useful options and commands to bind keys to.
+-   Transforming chapters into timeline ranges (the red portion of the timeline in the preview).
+-   A lot of useful options and commands to bind keys to.
+-   [API for 3rd party scripts](https://github.com/tomasklaen/uosc/wiki) to extend, or use uosc to render their menus.
 
 [Changelog](https://github.com/tomasklaen/uosc/releases).
 

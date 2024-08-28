@@ -236,9 +236,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 
 	---@param event MenuEventActivate
 	local function handle_activate(event)
-		print('activate')
 		if event.value == '{load}' then
-			print('{load}', event.action)
 			mp.command(event.action == 'download' and download_command or load_command)
 		else
 			mp.commandv('set', track_prop, event.value and event.value or 'no')
