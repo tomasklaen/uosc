@@ -27,8 +27,9 @@ Features:
     -   Speed bar: change speed by `speed_step` per scroll.
     -   Just hovering video with no UI widget below cursor: your configured wheel bindings from `input.conf`.
 -   Right click on volume or speed elements to reset them.
--   Transform chapters into timeline ranges (the red portion of the timeline in the preview).
--   And a lot of useful options and commands to bind keys to.
+-   Transforming chapters into timeline ranges (the red portion of the timeline in the preview).
+-   A lot of useful options and commands to bind keys to.
+-   [API for 3rd party scripts](https://github.com/tomasklaen/uosc/wiki) to extend, or use uosc to render their menus.
 
 [Changelog](https://github.com/tomasklaen/uosc/releases).
 
@@ -115,18 +116,18 @@ To change the font, **uosc** respects the mpv's `osd-font` configuration.
 These bindings are active when any **uosc** menu is open (main menu, playlist, load/select subtitles,...):
 
 -   `up`, `down` - Select previous/next item.
--   `left`, `right` - Back to parent menu or close, activate item.
--   `enter` - Activate item.
+-   `enter` - Activate item or submenu.
+-   `bs` (backspace) - Activate parent menu.
 -   `esc` - Close menu.
 -   `wheel_up`, `wheel_down` - Scroll menu.
 -   `pgup`, `pgdwn`, `home`, `end` - Self explanatory.
--   `ctrl+f` or `\` - In case `menu_type_to_search` is disabled, these two trigger the menu search instead.
+-   `ctrl+f` or `\` - In case `menu_type_to_search` config option is disabled, these two trigger the menu search instead.
 -   `ctrl+enter` - Submits a search in menus without instant search.
 -   `ctrl+backspace` - Delete search query by word.
 -   `shift+backspace` - Clear search query.
--   `ctrl+up/down` - Move selected item in menus that support it (playlist).
+-   `ctrl+up/down/pgup/pgdwn/home/end` - Move selected item in menus that support it (playlist).
 -   `del` - Delete selected item in menus that support it (playlist).
--   `shift+enter`, `shift+right` - Activate item without closing the menu.
+-   `shift+enter`, `shift+click` - Activate item without closing the menu. Might not be supported by all menus.
 -   `alt+enter`, `alt+click` - In file navigating menus, opens a directory in mpv instead of navigating to its contents.
 
 Click on a faded parent menu to go back to it.
@@ -445,19 +446,6 @@ To see all the commands you can bind keys or menu items to, refer to [mpv's list
 
 ## Messages
 
-### `uosc-version <version>`
-
-Broadcasts the uosc version during script initialization. Useful if you want to detect that uosc is installed. Example:
-
-```lua
--- Register response handler
-mp.register_script_message('uosc-version', function(version)
-  print('uosc version', version)
-end)
-```
-
-## Message handlers
-
 **uosc** listens on some messages that can be sent with `script-message-to uosc` command. Example:
 
 ```
@@ -474,258 +462,11 @@ Parameters
 
 ID (title) of the submenu, including `>` subsections as defined in `input.conf`. It has to be match the title exactly.
 
-### `open-menu <menu_json> [submenu_id]`
+## Scripting API
 
-A message other scripts can send to open a uosc menu serialized as JSON. You can optionally pass a `submenu_id` to pre-open a submenu. The ID is the submenu title chain leading to the submenu concatenated with `>`, for example `Tools > Aspect ratio`.
-
-Menu data structure:
-
-```
-Menu {
-  type?: string;
-  title?: string;
-  items: Item[];
-  selected_index?: integer;
-  keep_open?: boolean;
-  on_close?: string | string[];
-  on_search?: string | string[];
-  on_paste?: string | string[];
-  search_style?: 'on_demand' | 'palette' | 'disabled'; // default: on_demand
-  search_debounce?: 'submit' | number; // default: 0
-  search_suggestion?: string;
-  search_submenus?: boolean;
-}
-
-Item = Command | Submenu;
-
-Submenu {
-  title?: string;
-  hint?: string;
-  items: Item[];
-  bold?: boolean;
-  italic?: boolean;
-  align?: 'left'|'center'|'right';
-  muted?: boolean;
-  separator?: boolean;
-  keep_open?: boolean;
-  on_search?: string | string[];
-  on_paste?: string | string[];
-  search_style?: 'on_demand' | 'palette' | 'disabled'; // default: on_demand
-  search_debounce?: 'submit' | number; // default: 0
-  search_suggestion?: string;
-  search_submenus?: boolean;
-}
-
-Command {
-  title?: string;
-  hint?: string;
-  icon?: string;
-  value: string | string[];
-  active?: integer;
-  selectable?: boolean;
-  bold?: boolean;
-  italic?: boolean;
-  align?: 'left'|'center'|'right';
-  muted?: boolean;
-  separator?: boolean;
-  keep_open?: boolean;
-}
-```
-
-When `Command.value` is a string, it'll be passed to `mp.command(value)`. If it's a table (array) of strings, it'll be used as `mp.commandv(table.unpack(value))`. The same goes for `Menu.on_close` and `on_search`. `on_search` additionally appends the current search string as the last parameter.
-
-`Menu.type` is used to refer to this menu in `update-menu` and `close-menu`.
-While the menu is open this value will be available in `user-data/uosc/menu/type` and the `shared-script-properties` entry `uosc-menu-type`. If no type was provided, those will be set to `'undefined'`.
-
-`search_style` can be:
-- `on_demand` (_default_) - Search input pops up when user starts typing, or presses `/` or `ctrl+f`, depending on user configuration. It disappears on `shift+backspace`, or when input text is cleared.
-- `palette` - Search input is always visible and can't be disabled. In this mode, menu `title` is used as input placeholder when no text has been entered yet.
-- `disabled` - Menu can't be searched.
-
-`search_debounce` controls how soon the search happens after the last character was entered in milliseconds. Entering new character resets the timer. Defaults to `300`. It can also have a special value `'submit'`, which triggers a search only after `ctrl+enter` was pressed.
-
-`search_submenus` makes uosc's internal search handler (when no `on_search` callback is defined) look into submenus as well, effectively flattening the menu for the duration of the search. This property is inherited by all submenus.
-
-`search_suggestion` fills menu search with initial query string. Useful for example when you want to implement something like subtitle downloader, you'd set it to current file name.
-
-`item.icon` property accepts icon names. You can pick one from here: [Google Material Icons](https://fonts.google.com/icons?icon.platform=web&icon.set=Material+Icons&icon.style=Rounded)\
-There is also a special icon name `spinner` which will display a rotating spinner. Along with a no-op command on an item and `keep_open=true`, this can be used to display placeholder menus/items that are still loading.
-
-`on_paste` is triggered when user pastes a string while menu is opened. Works the same as `on_search`.
-
-When `keep_open` is `true`, activating the item will not close the menu. This property can be defined on both menus and items, and is inherited from parent to child if child doesn't overwrite it.
-
-It's usually not necessary to define `selected_index` as it'll default to the first `active` item, or 1st item in the list.
-
-Example:
-
-```lua
-local utils = require('mp.utils')
-local menu = {
-  type = 'menu_type',
-  title = 'Custom menu',
-  items = {
-    {title = 'Foo', hint = 'foo', value = 'quit'},
-    {title = 'Bar', hint = 'bar', value = 'quit', active = true},
-  }
-}
-local json = utils.format_json(menu)
-mp.commandv('script-message-to', 'uosc', 'open-menu', json)
-```
-
-### `update-menu <menu_json>`
-
-Updates currently opened menu with the same `type`.
-
-The difference between this and `open-menu` is that if the same type menu is already open, `open-menu` will reset the menu as if it was newly opened, while `update-menu` will update it's data.
-
-`update-menu`, along with `{menu/item}.keep_open` property and `item.command` that sends a message back can be used to create a self updating menu with some limited UI. Example:
-
-```lua
-local utils = require('mp.utils')
-local script_name = mp.get_script_name()
-local state = {
-  checkbox = 'no',
-  radio = 'bar'
-}
-
-function command(str)
-  return string.format('script-message-to %s %s', script_name, str)
-end
-
-function create_menu_data()
-  return {
-    type = 'test_menu',
-    title = 'Test menu',
-    keep_open = true,
-    items = {
-      {
-        title = 'Checkbox',
-        icon = state.checkbox == 'yes' and 'check_box' or 'check_box_outline_blank',
-        value = command('set-state checkbox ' .. (state.checkbox == 'yes' and 'no' or 'yes'))
-      },
-      {
-        title = 'Radio',
-        hint = state.radio,
-        items = {
-          {
-            title = 'Foo',
-            icon = state.radio == 'foo' and 'radio_button_checked' or 'radio_button_unchecked',
-            value = command('set-state radio foo')
-          },
-          {
-            title = 'Bar',
-            icon = state.radio == 'bar' and 'radio_button_checked' or 'radio_button_unchecked',
-            value = command('set-state radio bar')
-          },
-          {
-            title = 'Baz',
-            icon = state.radio == 'baz' and 'radio_button_checked' or 'radio_button_unchecked',
-            value = command('set-state radio baz')
-          },
-        },
-      },
-      {
-        title = 'Submit',
-        icon = 'check',
-        value = command('submit'),
-        keep_open = false
-      },
-    }
-  }
-end
-
-mp.add_forced_key_binding('t', 'test_menu', function()
-  local json = utils.format_json(create_menu_data())
-  mp.commandv('script-message-to', 'uosc', 'open-menu', json)
-end)
-
-mp.register_script_message('set-state', function(prop, value)
-  state[prop] = value
-  -- Update currently opened menu
-  local json = utils.format_json(create_menu_data())
-  mp.commandv('script-message-to', 'uosc', 'update-menu', json)
-end)
-
-mp.register_script_message('submit', function(prop, value)
-  -- Do something with state
-end)
-```
-
-### `close-menu [type]`
-
-Closes the menu. If the optional parameter `type` is provided, then the menu only
-closes if it matches `Menu.type` of the currently open menu.
-
-### `set <prop> <value>`
-
-Tell **uosc** to set an external property to this value. Currently, this is only used to set/display control button active state and badges:
-
-In your script, set the value of `foo` to `1`.
-
-```lua
-mp.commandv('script-message-to', 'uosc', 'set', 'foo', 1)
-```
-
-`foo` can now be used as a `toggle` or `cycle` property by specifying its owner with a `@{script_name}` suffix:
-
-```
-toggle:icon_name:foo@script_name
-cycle:icon_name:foo@script_name:no/yes!
-```
-
-If user clicks this `toggle` or `cycle` button, uosc will send a `set` message back to the script owner. You can then listen to this message, do what you need with the new value, and update uosc state accordingly:
-
-```lua
--- Send initial value so that the button has a correct active state
-mp.commandv('script-message-to', 'uosc', 'set', 'foo', 'yes')
--- Listen for changes coming from `toggle` or `cycle` button
-mp.register_script_message('set', function(prop, value)
-    -- ... do something with `value`
-    -- Update uosc external prop
-    mp.commandv('script-message-to', 'uosc', 'set', 'foo', value)
-end)
-```
-
-External properties can also be used as control button badges:
-
-```
-controls=command:icon_name:command_name#foo@script_name?My foo button
-```
-
-### `overwrite-binding <name> <command>`
-
-Allows a overwriting handling of uosc built in bindings. Useful for 3rd party scripts that specialize in a specific domain to replace built in menus or behaviors provided by existing bindings.
-
-Example that reroutes uosc's basic stream quality menu to [christoph-heinrich/mpv-quality-menu](https://github.com/christoph-heinrich/mpv-quality-menu):
-
-```lua
-mp.commandv('script-message-to', 'uosc', 'overwrite-binding', 'stream-quality', 'script-binding quality_menu/video_formats_toggle')
-```
-
-To cancel the overwrite and return to default behavior, just omit the `<command>` parameter.
-
-### `disable-elements <script_id> <element_ids>`
-
-Set what uosc elements your script wants to disable. To cancel or re-enable them, send the message again with an empty string in place of `element_ids`.
-
-```lua
-mp.commandv('script-message-to', 'uosc', 'disable-elements', mp.get_script_name(), 'timeline,volume')
-```
-
-Using `'user'` as `script_id` will overwrite user's `disable_elements` config. Elements will be enabled only when neither user, nor any script requested them to be disabled.
+3rd party script developers can use our messaging API to integrate with uosc, or use it to render their menus. Documentation is available in [uosc Wiki](https://github.com/tomasklaen/uosc/wiki).
 
 ## Contributing
-
-### Setup
-
-If you want to test or work on something that involves ziggy (our multitool binary, currently handles searching & downloading subtitles), you first need to build it with:
-
-```
-tools/build ziggy
-```
-
-This requires [`go`](https://go.dev/dl/) to be installed and in path. If you don't want to bother with installing go, and there were no changes to ziggy, you can just use the binaries from [latest release](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip). Place folder `scripts/uosc/bin` from `uosc.zip` into `src/uosc/bin`.
 
 ### Localization
 
@@ -740,6 +481,16 @@ tools/intl languagecode
 This will parse the codebase for localization strings and use them to either update existing locale by removing unused and setting untranslated strings to `null`, or create a new one with all `null` strings.
 
 You can then navigate to `src/uosc/intl/languagecode.json` and start translating.
+
+### Setting up binaries
+
+If you want to test or work on something that involves ziggy (our multitool binary, currently handles searching & downloading subtitles), you first need to build it with:
+
+```
+tools/build ziggy
+```
+
+This requires [`go`](https://go.dev/dl/) to be installed and in path. If you don't want to bother with installing go, and there were no changes to ziggy, you can just use the binaries from [latest release](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip). Place folder `scripts/uosc/bin` from `uosc.zip` into `src/uosc/bin`.
 
 ## FAQ
 
