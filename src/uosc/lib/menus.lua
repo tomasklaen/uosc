@@ -962,11 +962,13 @@ function open_subtitle_downloader()
 				local hints = {sub.attributes.language}
 				if sub.attributes.foreign_parts_only then hints[#hints + 1] = t('foreign parts only') end
 				if sub.attributes.hearing_impaired then hints[#hints + 1] = t('hearing impaired') end
+				local url = sub.attributes.url
 				return {
 					title = sub.attributes.release,
 					hint = table.concat(hints, ', '),
-					value = {kind = 'file', id = sub.attributes.files[1].file_id},
+					value = {kind = 'file', id = sub.attributes.files[1].file_id, url = url},
 					keep_open = true,
+					actions = url and {{name = 'open_in_browser', icon = 'open_in_new', label = t('Open in browser') .. ' (shift)'}},
 				}
 			end)
 
@@ -1020,7 +1022,28 @@ function open_subtitle_downloader()
 		},
 		function(event)
 			if event.type == 'activate' then
-				handle_select(event.value)
+				if event.action == 'open_in_browser' or event.modifiers == 'shift' then
+					local command = ({
+						windows = 'explorer',
+						linux = 'xdg-open',
+						darwin = 'open',
+					})[state.platform]
+					local url = event.value.url
+					mp.command_native_async({
+						name = 'subprocess',
+						capture_stderr = true,
+						capture_stdout = true,
+						playback_only = false,
+						args = {command, url},
+					}, function(success, result, error)
+						if not success then
+							local err_str = utils.to_string(error or result.stderr)
+							msg.error('Error trying to open url "' .. url .. '" in browser: ' .. err_str)
+						end
+					end)
+				elseif not event.action then
+					handle_select(event.value)
+				end
 			elseif event.type == 'search' then
 				handle_search(event.query)
 			end

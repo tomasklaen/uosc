@@ -1309,7 +1309,7 @@ function Menu:render()
 				end
 			end
 
-			local title_cut_x = content_bx
+			local title_clip_bx = content_bx
 
 			-- Actions
 			local actions_rect
@@ -1340,7 +1340,7 @@ function Menu:render()
 						color = is_active and fg or bg,
 						border = is_active and self.gap or nil,
 						border_color = bg,
-						opacity = menu_opacity * (is_active and 1 or 0.5),
+						opacity = menu_opacity,
 						clip = item_clip,
 					})
 					ass:icon(rect.ax + size / 2, rect.ay + size / 2, size * 0.66, action.icon, {
@@ -1357,10 +1357,12 @@ function Menu:render()
 					end
 				end
 
-				title_cut_x = actions_rect.ax - self.gap * 2
-			else
-				-- Icon
-				if item.icon then
+				title_clip_bx = actions_rect.ax - self.gap * 2
+			end
+
+			-- Icon
+			if item.icon then
+				if not actions_rect then
 					local x = (not item.title and not item.hint and item.align == 'center')
 						and menu_rect.ax + (menu_rect.bx - menu_rect.ax) / 2
 						or content_bx - (icon_size / 2)
@@ -1371,45 +1373,46 @@ function Menu:render()
 							color = font_color, opacity = menu_opacity, clip = item_clip,
 						})
 					end
-					content_bx = content_bx - icon_size - spacing
-					title_cut_x = content_bx
 				end
+				content_bx = content_bx - icon_size - spacing
+				title_clip_bx = math.min(content_bx, title_clip_bx)
+			end
 
-				if item.hint_width > 0 then
-					-- controls title & hint clipping proportional to the ratio of their widths
-					-- both title and hint get at least 50% of the width, unless they are smaller then that
-					local width = content_bx - content_ax - spacing
-					local title_min = math.min(item.title_width, width * 0.5)
-					local hint_min = math.min(item.hint_width, width * 0.5)
-					local title_ratio = item.title_width / (item.title_width + item.hint_width)
-					title_cut_x = round(content_ax + clamp(title_min, width * title_ratio, width - hint_min))
-				end
+			local hint_clip_bx = title_clip_bx
+			if item.hint_width > 0 then
+				-- controls title & hint clipping proportional to the ratio of their widths
+				-- both title and hint get at least 50% of the width, unless they are smaller then that
+				local width = content_bx - content_ax - spacing
+				local title_min = math.min(item.title_width, width * 0.5)
+				local hint_min = math.min(item.hint_width, width * 0.5)
+				local title_ratio = item.title_width / (item.title_width + item.hint_width)
+				title_clip_bx = round(content_ax + clamp(title_min, width * title_ratio, width - hint_min))
+			end
 
-				-- Hint
-				if item.hint then
-					item.ass_safe_hint = item.ass_safe_hint or ass_escape(item.hint)
-					local clip = '\\clip(' .. title_cut_x + spacing .. ',' ..
-						math.max(item_ay, ay) .. ',' .. bx .. ',' .. math.min(item_by, by) .. ')'
-					ass:txt(content_bx, item_center_y, 6, item.ass_safe_hint, {
-						size = self.font_size_hint,
-						color = font_color,
-						wrap = 2,
-						opacity = 0.5 * menu_opacity,
-						clip = clip,
-					})
-				end
+			-- Hint
+			if item.hint then
+				item.ass_safe_hint = item.ass_safe_hint or ass_escape(item.hint)
+				local clip = '\\clip(' .. title_clip_bx + spacing .. ',' ..
+					math.max(item_ay, ay) .. ',' .. hint_clip_bx .. ',' .. math.min(item_by, by) .. ')'
+				ass:txt(content_bx, item_center_y, 6, item.ass_safe_hint, {
+					size = self.font_size_hint,
+					color = font_color,
+					wrap = 2,
+					opacity = 0.5 * menu_opacity,
+					clip = clip,
+				})
 			end
 
 			-- Title
 			if item.title then
 				item.ass_safe_title = item.ass_safe_title or ass_escape(item.title)
 				local clip = '\\clip(' .. ax .. ',' .. math.max(item_ay, ay) .. ','
-					.. title_cut_x .. ',' .. math.min(item_by, by) .. ')'
+					.. title_clip_bx .. ',' .. math.min(item_by, by) .. ')'
 				local title_x, align = content_ax, 4
 				if item.align == 'right' then
-					title_x, align = title_cut_x, 6
+					title_x, align = title_clip_bx, 6
 				elseif item.align == 'center' then
-					title_x, align = content_ax + (title_cut_x - content_ax) / 2, 5
+					title_x, align = content_ax + (title_clip_bx - content_ax) / 2, 5
 				end
 				ass:txt(title_x, item_center_y, align, item.ass_safe_title, {
 					size = self.font_size,
