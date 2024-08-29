@@ -720,20 +720,30 @@ function Menu:handle_wheel_down() self:scroll_by(self.scroll_step * 3, nil, {upd
 ---@param menu? MenuStack
 function Menu:select_by_offset(offset, menu)
 	menu = menu or self.current
-	local index = clamp(1, (menu.selected_index or offset >= 0 and 0 or #menu.items + 1) + offset, #menu.items)
-	local prev_index = itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1)
-	local next_index = itable_find(menu.items, function(item) return item.selectable ~= false end, index)
-	if prev_index and next_index then
-		if offset == 0 then
-			self:select_index(index - prev_index <= next_index - index and prev_index or next_index, menu.id)
-		elseif offset > 0 then
-			self:select_index(next_index, menu.id)
-		else
-			self:select_index(prev_index, menu.id)
-		end
+
+	-- Blur selected_index when navigating off bounds and submittable search is active.
+	-- Blurred selected_index is an implied focused input, so enter can submit it.
+	if menu.search and menu.search_debounce == 'submit' and (
+			(menu.selected_index == 1 and offset < 0) or (menu.selected_index == #menu.items and offset > 0)
+		) then
+		self:select_index(nil, menu.id)
 	else
-		self:select_index(prev_index or next_index or nil, menu.id)
+		local index = clamp(1, (menu.selected_index or offset >= 0 and 0 or #menu.items + 1) + offset, #menu.items)
+		local prev_index = itable_find(menu.items, function(item) return item.selectable ~= false end, index, 1)
+		local next_index = itable_find(menu.items, function(item) return item.selectable ~= false end, index)
+		if prev_index and next_index then
+			if offset == 0 then
+				self:select_index(index - prev_index <= next_index - index and prev_index or next_index, menu.id)
+			elseif offset > 0 then
+				self:select_index(next_index, menu.id)
+			else
+				self:select_index(prev_index, menu.id)
+			end
+		else
+			self:select_index(prev_index or next_index or nil, menu.id)
+		end
 	end
+
 	request_render()
 end
 
@@ -840,7 +850,7 @@ function Menu:search_submit(menu_id)
 	if not menu or not menu.search then return end
 	local callback, query = menu.on_search, menu.search.query
 	if callback then
-		self:command_or_event(callback, {query, menu_id}, {type = 'search', query = query, menu_id = menu.id})
+		self:command_or_event(callback, {query, menu.id}, {type = 'search', query = query, menu_id = menu.id})
 	else
 		self:search_internal(menu.id)
 	end
@@ -860,6 +870,10 @@ function Menu:search_query_update(query, menu_id, immediate)
 		else
 			self:search_submit(menu_id)
 		end
+	else
+		-- `search_debounce='submit'` behavior: We blur selected item when query
+		-- changes to let [enter] key submit searches instead of activating items.
+		self:select_index(nil, menu.id)
 	end
 	request_render()
 end
@@ -931,7 +945,7 @@ function Menu:search_init(menu_id)
 	local timeout
 	if menu.search_debounce ~= 'submit' and menu.search_debounce > 0 then
 		timeout = mp.add_timeout(menu.search_debounce / 1000, self:create_action(function()
-			self:search_submit(menu_id)
+			self:search_submit(menu.id)
 		end))
 		timeout:kill()
 	end
@@ -1052,14 +1066,14 @@ function Menu:handle_shortcut(shortcut, info)
 
 	if info.event == 'down' then return end
 
-	if id == 'ctrl+enter' then
-		if self.current.search then self:search_submit() end
-	elseif key == 'enter' and selected_item then
+	if key == 'enter' and selected_item then
 		self:activate_selected_item(modifiers)
+	elseif id == 'enter' and menu.search and menu.search_debounce == 'submit' then
+		self:search_submit()
 	elseif id == 'up' or id == 'down' then
 		self:navigate_by_offset(id == 'up' and -1 or 1, true)
 	elseif id == 'pgup' or id == 'pgdwn' then
-		local items_per_page = round((self.current.height / self.scroll_step) * 0.4)
+		local items_per_page = round((menu.height / self.scroll_step) * 0.4)
 		self:navigate_by_offset(items_per_page * (id == 'pgup' and -1 or 1))
 	elseif id == 'home' or id == 'end' then
 		self:navigate_by_offset(id == 'home' and -math.huge or math.huge)
@@ -1072,18 +1086,21 @@ function Menu:handle_shortcut(shortcut, info)
 	elseif id == 'ctrl+down' then
 		self:move_selected_item_by(1)
 	elseif id == 'ctrl+pgup' then
-		self:move_selected_item_by(-round((self.current.height / self.scroll_step) * 0.4))
+		self:move_selected_item_by(-round((menu.height / self.scroll_step) * 0.4))
 	elseif id == 'ctrl+pgdwn' then
-		self:move_selected_item_by(round((self.current.height / self.scroll_step) * 0.4))
+		self:move_selected_item_by(round((menu.height / self.scroll_step) * 0.4))
 	elseif id == 'ctrl+home' then
 		self:move_selected_item_by(-math.huge)
 	elseif id == 'ctrl+end' then
 		self:move_selected_item_by(math.huge)
 	elseif key == 'esc' then
-		if menu.search and menu.search_style ~= 'palette' then self:search_cancel()
-		else self:request_close() end
+		if menu.search and menu.search_style ~= 'palette' then
+			self:search_cancel()
+		else
+			self:request_close()
+		end
 	elseif key == 'bs' then
-		if self.current.search then
+		if menu.search then
 			if modifiers == 'shift' then
 				self:search_clear_query()
 			elseif modifiers == '' or modifiers == 'ctrl' then
@@ -1284,7 +1301,7 @@ function Menu:render()
 					local v_padding = math.min(state.radius, math.ceil(self.item_height / 3))
 					ass:rect(ax + self.padding - size - 1, item_ay + v_padding, ax + self.padding - 1,
 						item_by - v_padding, {
-							radius = 1, color = fg, opacity = menu_opacity, clip = item_clip,
+							radius = 1 * state.scale, color = fg, opacity = menu_opacity, clip = item_clip,
 						})
 				end
 			end
@@ -1418,12 +1435,13 @@ function Menu:render()
 		if draw_title then
 			local requires_submit = menu.search_debounce == 'submit'
 			local rect = {
-				ax = ax + spacing / 2 + self.padding,
+				ax = round(ax + spacing / 2 + self.padding),
 				ay = ay - self.scroll_step - self.padding * 2,
-				bx = bx - spacing / 2 - self.padding,
+				bx = round(bx - spacing / 2 - self.padding),
 				by = math.min(by, ay - self.padding),
 			}
-			rect.cx, rect.cy = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2 -- centers
+			-- centers
+			rect.cx, rect.cy = round(rect.ax + (rect.bx - rect.ax) / 2), round(rect.ay + (rect.by - rect.ay) / 2)
 
 			if menu.title and not menu.ass_safe_title then
 				menu.ass_safe_title = ass_escape(menu.title)
@@ -1482,12 +1500,20 @@ function Menu:render()
 					})
 				end
 
+				-- Selected input indicator for submittable searches.
+				-- (input is selected when `selected_index` is `nil`)
+				if menu.search_debounce == 'submit' and not menu.selected_index then
+					local size_half = round(1 * state.scale)
+					ass:rect(ax, rect.by - size_half, bx, rect.by + size_half, {color = fg, opacity = menu_opacity})
+				end
+				local input_is_blurred = menu.search_debounce == 'submit' and menu.selected_index
+
 				-- Cursor
-				local font_size_half, cursor_thickness = round(self.font_size / 2), round(self.font_size / 14)
+				local cursor_height_half, cursor_thickness = round(self.font_size * 0.6), round(self.font_size / 12)
 				local cursor_ax, cursor_bx = rect.bx + 1, rect.bx + 1 + cursor_thickness
-				ass:rect(cursor_ax, rect.cy - font_size_half, cursor_bx, rect.cy + font_size_half, {
+				ass:rect(cursor_ax, rect.cy - cursor_height_half, cursor_bx, rect.cy + cursor_height_half, {
 					color = fg,
-					opacity = menu_opacity * 0.5,
+					opacity = menu_opacity * (input_is_blurred and 0.5 or 1),
 					clip = '\\clip(' .. cursor_ax .. ',' .. rect.ay .. ',' .. cursor_bx .. ',' .. rect.by .. ')',
 				})
 			else

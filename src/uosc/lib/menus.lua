@@ -982,7 +982,7 @@ function open_subtitle_downloader()
 	end
 
 	local initial_items = {
-		{title = t('%s to search', 'ctrl+enter'), align = 'center', muted = true, italic = true, selectable = false},
+		{title = t('%s to search', 'enter'), align = 'center', muted = true, italic = true, selectable = false},
 	}
 
 	menu = Menu:open(
