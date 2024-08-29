@@ -105,6 +105,16 @@ Features:
 
     **uosc** places performance as one of its top priorities, but it might feel a bit sluggish because during a video playback, the UI rendering frequency is chained to its frame rate. To test this, you can pause the video which will switch refresh rate to be closer or match the frequency of your monitor, and the UI should feel smoother. This is mpv limitation, and not much we can do about it on our side.
 
+#### Build instructions
+
+To build ziggy (our utility binary) yourself, run:
+
+```
+tools/build
+```
+
+Which will run the `tools/build(.ps1)` script that builds it for each platform. It requires [go](https://go.dev/) to be installed. Source code is in `src/ziggy`.
+
 ## Options
 
 All of the available **uosc** options with their default values are documented in [`uosc.conf`](https://github.com/tomasklaen/uosc/blob/HEAD/src/uosc.conf) file ([download](https://github.com/tomasklaen/uosc/releases/latest/download/uosc.conf)).
