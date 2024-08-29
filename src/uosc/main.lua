@@ -893,15 +893,19 @@ bind_command('load-audio', create_track_loader_menu_opener({
 bind_command('load-video', create_track_loader_menu_opener({
 	name = 'video', prop = 'video', allowed_types = config.types.video,
 }))
-bind_command('subtitles', create_select_tracklist_type_menu_opener(
-	t('Subtitles'), 'sub', 'sid', 'script-binding uosc/load-subtitles', 'script-binding uosc/download-subtitles'
-))
-bind_command('audio', create_select_tracklist_type_menu_opener(
-	t('Audio'), 'audio', 'aid', 'script-binding uosc/load-audio'
-))
-bind_command('video', create_select_tracklist_type_menu_opener(
-	t('Video'), 'video', 'vid', 'script-binding uosc/load-video'
-))
+bind_command('subtitles', create_select_tracklist_type_menu_opener({
+	title = t('Subtitles'),
+	type = 'sub',
+	prop = 'sid',
+	load_command = 'script-binding uosc/load-subtitles',
+	download_command = 'script-binding uosc/download-subtitles',
+}))
+bind_command('audio', create_select_tracklist_type_menu_opener({
+	title = t('Audio'), type = 'audio', prop = 'aid', load_command = 'script-binding uosc/load-audio',
+}))
+bind_command('video', create_select_tracklist_type_menu_opener({
+	title = t('Video'), type = 'video', prop = 'vid', load_command = 'script-binding uosc/load-video',
+}))
 bind_command('playlist', create_self_updating_menu_opener({
 	title = t('Playlist'),
 	type = 'playlist',

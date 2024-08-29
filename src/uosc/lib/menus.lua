@@ -162,18 +162,21 @@ function create_self_updating_menu_opener(opts)
 	end
 end
 
-function create_select_tracklist_type_menu_opener(menu_title, track_type, track_prop, load_command, download_command)
+---@param opts {title: string, type: string, prop: string, load_command: string, download_command?: string}
+function create_select_tracklist_type_menu_opener(opts)
+	local function get_prop() return tonumber(mp.get_property(opts.prop)) end
+
 	local function serialize_tracklist(tracklist)
 		local items = {}
 
-		if load_command then
+		if opts.load_command then
 			items[#items + 1] = {
 				title = t('Load'),
 				bold = true,
 				italic = true,
 				hint = t('open file'),
 				value = '{load}',
-				actions = download_command
+				actions = opts.download_command
 					and {{name = 'download', icon = 'language', label = t('Search online')}}
 					or nil,
 			}
@@ -182,23 +185,13 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 			items[#items].separator = true
 		end
 
-		local track_prop_index = tonumber(mp.get_property(track_prop))
+		local track_prop_index = get_prop()
 		local first_item_index = #items + 1
 		local active_index = nil
 		local disabled_item = nil
 
-		-- Add option to disable a subtitle track. This works for all tracks,
-		-- but why would anyone want to disable audio or video? Better to not
-		-- let people mistakenly select what is unwanted 99.999% of the time.
-		-- If I'm mistaken and there is an active need for this, feel free to
-		-- open an issue.
-		if track_type == 'sub' then
-			disabled_item = {title = t('Disabled'), italic = true, muted = true, hint = '—', value = nil, active = true}
-			items[#items + 1] = disabled_item
-		end
-
 		for _, track in ipairs(tracklist) do
-			if track.type == track_type then
+			if track.type == opts.type then
 				local hint_values = {}
 				local track_selected = track.selected and track.id == track_prop_index
 				local function h(value) hint_values[#hint_values + 1] = value end
@@ -239,24 +232,24 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	---@param event MenuEventActivate
 	local function handle_activate(event)
 		if event.value == '{load}' then
-			mp.command(event.action == 'download' and download_command or load_command)
+			mp.command(event.action == 'download' and opts.download_command or opts.load_command)
 		else
-			mp.commandv('set', track_prop, event.value and event.value or 'no')
+			mp.commandv('set', opts.prop, event.value == get_prop() and 'no' or event.value)
 
 			-- If subtitle track was selected, assume the user also wants to see it
-			if event.value and track_type == 'sub' then
+			if event.value and opts.type == 'sub' then
 				mp.commandv('set', 'sub-visibility', 'yes')
 			end
 		end
 	end
 
 	return create_self_updating_menu_opener({
-		title = menu_title,
-		type = track_type,
+		title = opts.title,
+		type = opts.type,
 		list_prop = 'track-list',
 		serializer = serialize_tracklist,
 		on_activate = handle_activate,
-		on_paste = function(event) load_track(track_type, event.value) end,
+		on_paste = function(event) load_track(opts.type, event.value) end,
 	})
 end
 
