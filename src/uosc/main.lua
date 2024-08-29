@@ -23,7 +23,7 @@ defaults = {
 	progress_line_width = 20,
 	timeline_persistency = '',
 	timeline_border = 1,
-	timeline_step = 5,
+	timeline_step = '5',
 	timeline_cache = true,
 
 	controls =
@@ -236,6 +236,8 @@ config = {
 	color = table_copy(config_defaults.color),
 	opacity = table_copy(config_defaults.opacity),
 	cursor_leave_fadeout_elements = {'timeline', 'volume', 'top_bar', 'controls'},
+	timeline_step = 5,
+	timeline_step_flag = '',
 }
 
 -- Updates config with values dependent on options
@@ -265,6 +267,13 @@ function update_config()
 	-- Global color shorthands
 	fg, bg = config.color.foreground, config.color.background
 	fgt, bgt = config.color.foreground_text, config.color.background_text
+
+	-- Timeline step
+	do
+		local is_exact = options.timeline_step:sub(-1) == '!'
+		config.timeline_step = tonumber(is_exact and options.timeline_step:sub(1, -2) or options.timeline_step)
+		config.timeline_step_flag = is_exact and 'exact' or ''
+	end
 end
 update_config()
 
