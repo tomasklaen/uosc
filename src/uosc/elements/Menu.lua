@@ -15,7 +15,7 @@ local Element = require('elements/Element')
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
 ---@alias Search {query: string; timeout: unknown; min_top: number; max_width: number; source: {width: number; top: number; scroll_y: number; selected_index?: integer; items?: MenuDataItem[]}}
 
----@alias MenuEventActivate {type: 'activate'; index: number; value: any; action?: string; modifiers: string; keep_open?: boolean; menu_id: string;}
+---@alias MenuEventActivate {type: 'activate'; index: number; value: any; action?: string; modifiers: string; alt: boolean; ctrl: boolean; shift: boolean; keep_open?: boolean; menu_id: string;}
 ---@alias MenuEventMove {type: 'move'; from_index: number; to_index: number; menu_id: string;}
 ---@alias MenuEventSearch {type: 'search'; query: string; menu_id: string;}
 ---@alias MenuEventKey {type: 'key'; id: string; key: string; modifiers: string; alt: boolean; ctrl: boolean; shift: boolean; menu_id: string; selected_item?: {index: number; value: any; action?: string;}}
@@ -615,8 +615,8 @@ function Menu:back()
 	end
 end
 
----@param modifiers? string
-function Menu:activate_selected_item(modifiers)
+---@param shortcut? Shortcut
+function Menu:activate_selected_item(shortcut)
 	local menu = self.current
 	local item = menu.items[menu.selected_index]
 	if item then
@@ -637,7 +637,10 @@ function Menu:activate_selected_item(modifiers)
 				value = item.value,
 				action = action and action.name,
 				keep_open = item.keep_open or menu.keep_open,
-				modifiers = modifiers or '',
+				modifiers = shortcut and shortcut.modifiers or '',
+				alt = shortcut and shortcut.alt or false,
+				ctrl = shortcut and shortcut.ctrl or false,
+				shift = shortcut and shortcut.shift or false,
 				menu_id = menu.id,
 			})
 		end
@@ -1067,7 +1070,7 @@ function Menu:handle_shortcut(shortcut, info)
 	if info.event == 'down' then return end
 
 	if key == 'enter' and selected_item then
-		self:activate_selected_item(modifiers)
+		self:activate_selected_item(shortcut)
 	elseif id == 'enter' and menu.search and menu.search_debounce == 'submit' then
 		self:search_submit()
 	elseif id == 'up' or id == 'down' then
