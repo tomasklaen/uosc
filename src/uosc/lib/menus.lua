@@ -78,12 +78,14 @@ function create_self_updating_menu_opener(opts)
 		---@type MenuAction[]
 		local actions = opts.actions or {}
 		if opts.on_move then
-			actions[#actions + 1] = {name = 'move_up', icon = 'arrow_upward', label = t('Move up')}
-			actions[#actions + 1] = {name = 'move_down', icon = 'arrow_downward', label = t('Move down')}
+			actions[#actions + 1] = {name = 'move_up', icon = 'arrow_upward', label = t('Move up') .. ' (ctrl+up)'}
+			actions[#actions + 1] = {name = 'move_down', icon = 'arrow_downward', label = t('Move down' .. ' (ctrl+down)')}
 		end
 		if opts.on_remove or opts.on_delete then
-			local label = opts.on_remove and t('Remove') or t('Delete')
-			if opts.on_remove and opts.on_delete then label = t('Remove (ctrl to delete)') end
+			local label = (opts.on_remove and t('Remove') or t('Delete')) .. ' (del)'
+			if opts.on_remove and opts.on_delete then
+				label = t('Remove') .. ' (' .. t('%s to delete', 'del, ctrl+del') .. ')'
+			end
 			actions[#actions + 1] = {name = 'remove', icon = 'delete', label = label}
 		end
 
@@ -129,9 +131,9 @@ function create_self_updating_menu_opener(opts)
 					end
 				elseif event.action == 'remove' and (opts.on_remove or opts.on_delete) then
 					remove_or_delete(event.index, event.value, event.menu_id, event.modifiers)
-				elseif itable_has({'', 'shift'}, event.modifiers) then
+				elseif itable_has({'', 'alt'}, event.modifiers) then
 					opts.on_activate(event --[[@as MenuEventActivate]])
-					if event.modifiers == 'shift' then menu:close() end
+					if event.modifiers ~= 'alt' then menu:close() end
 				end
 			elseif event.type == 'key' then
 				if event.id == 'enter' then
@@ -258,7 +260,7 @@ function create_select_tracklist_type_menu_opener(menu_title, track_type, track_
 	})
 end
 
----@alias NavigationMenuOptions {type: string, title?: string, allowed_types?: string[], keep_open?: boolean, active_path?: string, selected_path?: string; on_close?: fun()}
+---@alias NavigationMenuOptions {type: string, title?: string, allowed_types?: string[], file_actions?: MenuAction[], directory_actions?: MenuAction[], active_path?: string, selected_path?: string; on_close?: fun()}
 
 -- Opens a file navigation menu with items inside `directory_path`.
 ---@param directory_path string
@@ -346,11 +348,17 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 		local selected_index = #items + 1
 
 		for _, dir in ipairs(directories) do
-			items[#items + 1] = {title = dir, value = join_path(path, dir), hint = separator}
+			items[#items + 1] = {
+				title = dir .. ' ' .. separator,
+				value = join_path(path, dir),
+				bold = true,
+				actions = opts
+					.directory_actions,
+			}
 		end
 
 		for _, file in ipairs(files) do
-			items[#items + 1] = {title = file, value = join_path(path, file)}
+			items[#items + 1] = {title = file, value = join_path(path, file), actions = opts.file_actions}
 		end
 
 		for index, item in ipairs(items) do
@@ -423,11 +431,10 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 			return
 		end
 
-		if info.is_dir and event.modifiers == '' then
+		if info.is_dir and event.modifiers == '' and event.action == nil then
 			open_directory(path)
 		else
 			handle_activate(event)
-			if not opts.keep_open then close() end
 		end
 	end
 	menu = Menu:open(menu_data, function(event)
@@ -657,7 +664,7 @@ function open_stream_quality_menu()
 				mp.register_event('file-loaded', seeker)
 			end
 
-			if event.modifiers ~= 'shift' then menu:close() end
+			if not event.alt then menu:close() end
 		end
 	end)
 end
@@ -701,17 +708,27 @@ function open_open_file_menu()
 		function(event)
 			if not menu then return end
 			local command = has_any_extension(event.value, config.types.playlist) and 'loadlist' or 'loadfile'
-			if itable_has({'ctrl', 'ctrl+shift'}, event.modifiers) then
+			if event.modifiers == 'shift' or event.action == 'add_to_playlist' then
 				mp.commandv(command, event.value, 'append')
-			elseif event.modifiers == '' then
+				local serialized = serialize_path(event.value)
+				local filename = serialized and serialized.basename or event.value
+				mp.commandv('show-text', t('Added to playlist') .. ': ' .. filename, 3000)
+			elseif itable_has({'', 'ctrl', 'alt', 'alt+ctrl'}, event.modifiers) and itable_has({nil, 'force_open'}, event.action) then
 				mp.commandv(command, event.value)
-				menu:close()
+				if not event.alt then menu:close() end
 			end
 		end,
 		{
 			type = 'open-file',
 			allowed_types = config.types.media,
 			active_path = active_file,
+			directory_actions = {
+				{name = 'add_to_playlist', icon = 'playlist_add', label = 'Add to playlist (shift)'},
+				{name = 'force_open', icon = 'folder_open', label = 'Open in mpv (ctrl)'},
+			},
+			file_actions = {
+				{name = 'add_to_playlist', icon = 'playlist_add', label = 'Add to playlist (shift)'},
+			},
 			keep_open = true,
 			on_close = function() mp.unregister_event(handle_file_loaded) end,
 		}
@@ -734,6 +751,8 @@ function create_track_loader_menu_opener(opts)
 			return
 		end
 
+		---@type Menu
+		local menu
 		local path = state.path
 		if path then
 			if is_protocol(path) then
@@ -748,10 +767,14 @@ function create_track_loader_menu_opener(opts)
 		end
 
 		local function handle_activate(event)
-			if event.modifiers == '' then load_track(opts.prop, event.value) end
+			load_track(opts.prop, event.value)
+			local serialized = serialize_path(event.value)
+			local filename = serialized and serialized.basename or event.value
+			mp.commandv('show-text', t('Loaded subtitles') .. ': ' .. filename, 3000)
+			if not event.alt then menu:close() end
 		end
 
-		open_file_navigation_menu(path, handle_activate, {
+		menu = open_file_navigation_menu(path, handle_activate, {
 			type = menu_type, title = title, allowed_types = opts.allowed_types,
 		})
 	end

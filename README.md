@@ -122,13 +122,11 @@ These bindings are active when any **uosc** menu is open (main menu, playlist, l
 -   `wheel_up`, `wheel_down` - Scroll menu.
 -   `pgup`, `pgdwn`, `home`, `end` - Self explanatory.
 -   `ctrl+f` or `\` - In case `menu_type_to_search` config option is disabled, these two trigger the menu search instead.
--   `ctrl+enter` - Submits a search in menus without instant search.
 -   `ctrl+backspace` - Delete search query by word.
 -   `shift+backspace` - Clear search query.
--   `ctrl+up/down/pgup/pgdwn/home/end` - Move selected item in menus that support it (playlist).
--   `del` - Delete selected item in menus that support it (playlist).
--   `shift+enter`, `shift+click` - Activate item without closing the menu. Might not be supported by all menus.
--   `alt+enter`, `alt+click` - In file navigating menus, opens a directory in mpv instead of navigating to its contents.
+-   Holding `alt` while activating an item should prevent closing the menu (this is just a guideline, not all menus behave this way).
+
+Each menu can also add its own shortcuts and bindings for special actions on items/menu, such as `del` to delete a playlist item, `ctrl+up/down/pgup/pgdwn/home/end` to move it around, etc. These are usually also exposed as item action buttons for you to find out about them that way.
 
 Click on a faded parent menu to go back to it.
 

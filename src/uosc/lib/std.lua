@@ -85,8 +85,8 @@ end
 ---@param value any
 ---@return integer|nil
 function itable_index_of(itable, value)
-	for index, item in ipairs(itable) do
-		if item == value then return index end
+	for index = 1, #itable do
+		if itable[index] == value then return index end
 	end
 end
 
