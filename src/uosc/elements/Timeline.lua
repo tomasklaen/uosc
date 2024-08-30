@@ -280,59 +280,46 @@ function Timeline:render()
 	end
 
 	-- Chapters
-	local hovered_chapter = nil
 	if (config.opacity.chapters > 0 and (#state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)) then
-		local diamond_radius = math.min(math.max(1, foreground_size * 0.8), self.chapter_size)
-		local diamond_radius_hovered = diamond_radius * 2
-		local diamond_border = options.timeline_border and math.max(options.timeline_border, 1) or 1
-
-		if diamond_radius > 0 then
-			local function draw_chapter(time, radius)
-				local chapter_x, chapter_y = t2x(time), fay - 1
-				ass:new_event()
-				ass:append(string.format(
-					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
-					diamond_border, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
-				))
-				ass:draw_start()
-				ass:move_to(chapter_x - radius, chapter_y)
-				ass:line_to(chapter_x, chapter_y - radius)
-				ass:line_to(chapter_x + radius, chapter_y)
-				ass:line_to(chapter_x, chapter_y + radius)
-				ass:draw_stop()
+		if size ~= nil then
+			local border_width = options.timeline_border and math.max(options.timeline_border, 1) or 1
+			local opts = {color = config.color.foreground}
+			local ay, by = fay, fay + size
+			local function draw_chapter(time, width)
+				if time < 1 then
+					return
+				end
+				local x = t2x(time)
+				local half_width = (width or border_width) / 2
+				local ax, bx = round(x - half_width), round(x + half_width)
+				local cx, dx = math.max(ax, fax), math.min(bx, fbx)
+				if ax < fax then --left of progress
+					ass:rect(ax, ay, math.min(bx, fax), by, opts)
+				end
+				if bx > fbx then --right of progress
+					ass:rect(math.max(ax, fbx), ay, bx, by, opts)
+				end
+				if (dx - cx) > 0 then --intersection
+					opts.color = config.color.background
+					ass:rect(cx, ay, dx, by, opts)
+					opts.color = config.color.foreground
+				end
+				return {ax = ax, ay = ay, bx = bx, by = by}
 			end
 
 			if #state.chapters > 0 then
-				-- Find hovered chapter indicator
-				local closest_delta = math.huge
-
-				if self.proximity_raw < diamond_radius_hovered then
-					for i, chapter in ipairs(state.chapters) do
-						local chapter_x, chapter_y = t2x(chapter.time), fay - 1
-						local cursor_chapter_delta = math.sqrt((cursor.x - chapter_x) ^ 2 + (cursor.y - chapter_y) ^ 2)
-						if cursor_chapter_delta <= diamond_radius_hovered and cursor_chapter_delta < closest_delta then
-							hovered_chapter, closest_delta = chapter, cursor_chapter_delta
-							self.is_hovered = true
-						end
-					end
-				end
-
 				for i, chapter in ipairs(state.chapters) do
-					if chapter ~= hovered_chapter then draw_chapter(chapter.time, diamond_radius) end
-					local circle = {point = {x = t2x(chapter.time), y = fay - 1}, r = diamond_radius_hovered}
-					if visibility > 0 then
-						cursor:zone('primary_click', circle, function()
-							mp.commandv('seek', chapter.time, 'absolute+exact')
-						end)
+					local hovered = math.abs(cursor.x - t2x(chapter.time)) < border_width * 8
+					if hovered then
+						local rect = draw_chapter(chapter.time, border_width * 16)
+						if visibility > 0 and rect then
+							cursor:zone('primary_click', rect, function()
+								mp.commandv('seek', chapter.time, 'absolute+exact')
+							end)
+						end
+					else
+						draw_chapter(chapter.time)
 					end
-				end
-
-				-- Render hovered chapter above others
-				if hovered_chapter then
-					draw_chapter(hovered_chapter.time, diamond_radius_hovered)
-					timestamp_gap = tooltip_gap + round(diamond_radius_hovered)
-				else
-					timestamp_gap = tooltip_gap + round(diamond_radius)
 				end
 			end
 
@@ -347,7 +334,7 @@ function Timeline:render()
 				ass:new_event()
 				ass:append(string.format(
 					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
-					diamond_border, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
+					border_width, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
 				))
 				ass:draw_start()
 				ass:move_to(x, fby - ab_radius)
