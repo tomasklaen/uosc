@@ -15,10 +15,10 @@ local Element = require('elements/Element')
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
 ---@alias Search {query: string; timeout: unknown; min_top: number; max_width: number; source: {width: number; top: number; scroll_y: number; selected_index?: integer; items?: MenuDataItem[]}}
 
----@alias MenuEventActivate {type: 'activate'; index: number; value: any; action?: string; modifiers: string; alt: boolean; ctrl: boolean; shift: boolean; keep_open?: boolean; menu_id: string;}
+---@alias MenuEventActivate {type: 'activate'; index: number; value: any; action?: string; modifiers?: string; alt: boolean; ctrl: boolean; shift: boolean; keep_open?: boolean; menu_id: string;}
 ---@alias MenuEventMove {type: 'move'; from_index: number; to_index: number; menu_id: string;}
 ---@alias MenuEventSearch {type: 'search'; query: string; menu_id: string;}
----@alias MenuEventKey {type: 'key'; id: string; key: string; modifiers: string; alt: boolean; ctrl: boolean; shift: boolean; menu_id: string; selected_item?: {index: number; value: any; action?: string;}}
+---@alias MenuEventKey {type: 'key'; id: string; key: string; modifiers?: string; alt: boolean; ctrl: boolean; shift: boolean; menu_id: string; selected_item?: {index: number; value: any; action?: string;}}
 ---@alias MenuEventPaste {type: 'paste'; value: string; menu_id: string; selected_item?: {index: number; value: any; action?: string;}}
 ---@alias MenuEventBack {type: 'back';}
 ---@alias MenuEventClose {type: 'close';}
@@ -637,7 +637,7 @@ function Menu:activate_selected_item(shortcut)
 				value = item.value,
 				action = action and action.name,
 				keep_open = item.keep_open or menu.keep_open,
-				modifiers = shortcut and shortcut.modifiers or '',
+				modifiers = shortcut and shortcut.modifiers or nil,
 				alt = shortcut and shortcut.alt or false,
 				ctrl = shortcut and shortcut.ctrl or false,
 				shift = shortcut and shortcut.shift or false,
@@ -1107,10 +1107,10 @@ function Menu:handle_shortcut(shortcut, info)
 		if menu.search then
 			if modifiers == 'shift' then
 				self:search_clear_query()
-			elseif modifiers == '' or modifiers == 'ctrl' then
+			elseif not modifiers or modifiers == 'ctrl' then
 				self:search_backspace(info.event, modifiers == 'ctrl')
 			end
-		elseif modifiers == '' and info.event ~= 'repeat' then
+		elseif not modifiers and info.event ~= 'repeat' then
 			self:back()
 		end
 	elseif key == 'mbtn_back' then

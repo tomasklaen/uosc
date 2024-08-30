@@ -898,6 +898,8 @@ bind_command('subtitles', create_select_tracklist_type_menu_opener({
 	title = t('Subtitles'),
 	type = 'sub',
 	prop = 'sid',
+	enable_prop = 'sub-visibility',
+	secondary = {prop = 'secondary-sid', icon = 'vertical_align_top', enable_prop = 'secondary-sub-visibility'},
 	load_command = 'script-binding uosc/load-subtitles',
 	download_command = 'script-binding uosc/download-subtitles',
 }))

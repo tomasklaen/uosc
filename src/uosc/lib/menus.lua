@@ -133,9 +133,9 @@ function create_self_updating_menu_opener(opts)
 					end
 				elseif event.action == 'remove' and (opts.on_remove or opts.on_delete) then
 					remove_or_delete(event.index, event.value, event.menu_id, event.modifiers)
-				elseif itable_has({'', 'alt'}, event.modifiers) then
+				else
 					opts.on_activate(event --[[@as MenuEventActivate]])
-					if event.modifiers ~= 'alt' then menu:close() end
+					if not event.modifiers then menu:close() end
 				end
 			elseif event.type == 'key' then
 				if event.id == 'enter' then
@@ -164,9 +164,12 @@ function create_self_updating_menu_opener(opts)
 	end
 end
 
----@param opts {title: string, type: string, prop: string, load_command: string, download_command?: string}
+---@param opts {title: string; type: string; prop: string; enable_prop?: string; secondary?: {prop: string; icon: string; enable_prop?: string}; load_command: string; download_command?: string}
 function create_select_tracklist_type_menu_opener(opts)
-	local function get_prop() return tonumber(mp.get_property(opts.prop)) end
+	local snd = opts.secondary
+	local function get_props()
+		return tonumber(mp.get_property(opts.prop)), snd and tonumber(mp.get_property(snd.prop)) or nil
+	end
 
 	local function serialize_tracklist(tracklist)
 		local items = {}
@@ -187,15 +190,19 @@ function create_select_tracklist_type_menu_opener(opts)
 			items[#items].separator = true
 		end
 
-		local track_prop_index = get_prop()
+		local track_prop_index, snd_prop_index = get_props()
 		local first_item_index = #items + 1
 		local active_index = nil
 		local disabled_item = nil
+		local track_actions = snd and {
+			{name = 'as_secondary', icon = snd.icon, label = t('Activate as secondary') .. ' (shift)'},
+		} or nil
 
 		for _, track in ipairs(tracklist) do
 			if track.type == opts.type then
 				local hint_values = {}
 				local track_selected = track.selected and track.id == track_prop_index
+				local snd_selected = snd and track.id == snd_prop_index
 				local function h(value) hint_values[#hint_values + 1] = value end
 
 				if track.lang then h(track.lang) end
@@ -218,7 +225,10 @@ function create_select_tracklist_type_menu_opener(opts)
 					title = (track.title and track.title or t('Track %s', track.id)),
 					hint = table.concat(hint_values, ', '),
 					value = track.id,
-					active = track_selected,
+					active = track_selected or snd_selected,
+					italic = snd_selected,
+					icon = snd and snd_selected and snd.icon or nil,
+					actions = track_actions,
 				}
 
 				if track_selected then
@@ -236,12 +246,19 @@ function create_select_tracklist_type_menu_opener(opts)
 		if event.value == '{load}' then
 			mp.command(event.action == 'download' and opts.download_command or opts.load_command)
 		else
-			mp.commandv('set', opts.prop, event.value == get_prop() and 'no' or event.value)
-
-			-- If subtitle track was selected, assume the user also wants to see it
-			if event.value and opts.type == 'sub' then
-				mp.commandv('set', 'sub-visibility', 'yes')
+			if snd and (event.action == 'as_secondary' or event.modifiers == 'shift') then
+				local _, snd_track_index = get_props()
+				mp.commandv('set', snd.prop, event.value == snd_track_index and 'no' or event.value)
+				if snd.enable_prop then
+					mp.commandv('set', snd.enable_prop, 'yes')
+				end
+			elseif not event.modifiers or event.modifiers == 'alt' then
+				mp.commandv('set', opts.prop, event.value == get_props() and 'no' or event.value)
+				if opts.enable_prop then
+					mp.commandv('set', opts.enable_prop, 'yes')
+				end
 			end
+
 		end
 	end
 
@@ -426,7 +443,7 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 			return
 		end
 
-		if info.is_dir and event.modifiers == '' and event.action == nil then
+		if info.is_dir and not event.modifiers and not event.action then
 			open_directory(path)
 		else
 			handle_activate(event)
@@ -963,7 +980,8 @@ function open_subtitle_downloader()
 					hint = table.concat(hints, ', '),
 					value = {kind = 'file', id = sub.attributes.files[1].file_id, url = url},
 					keep_open = true,
-					actions = url and {{name = 'open_in_browser', icon = 'open_in_new', label = t('Open in browser') .. ' (shift)'}},
+					actions = url and
+						{{name = 'open_in_browser', icon = 'open_in_new', label = t('Open in browser') .. ' (shift)'}},
 				}
 			end)
 
