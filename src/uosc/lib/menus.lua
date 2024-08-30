@@ -174,22 +174,6 @@ function create_select_tracklist_type_menu_opener(opts)
 	local function serialize_tracklist(tracklist)
 		local items = {}
 
-		if opts.load_command then
-			items[#items + 1] = {
-				title = t('Load'),
-				bold = true,
-				italic = true,
-				hint = t('open file'),
-				value = '{load}',
-				actions = opts.download_command
-					and {{name = 'download', icon = 'language', label = t('Search online')}}
-					or nil,
-			}
-		end
-		if #items > 0 then
-			items[#items].separator = true
-		end
-
 		local track_prop_index, snd_prop_index = get_props()
 		local first_item_index = #items + 1
 		local active_index = nil
@@ -236,6 +220,22 @@ function create_select_tracklist_type_menu_opener(opts)
 					active_index = #items
 				end
 			end
+		end
+
+		if #items > 0 then
+			items[#items].separator = true
+		end
+		if opts.load_command then
+			items[#items + 1] = {
+				title = t('Load'),
+				bold = true,
+				italic = true,
+				hint = t('open file'),
+				value = '{load}',
+				actions = opts.download_command
+					and {{name = 'download', icon = 'language', label = t('Search online')}}
+					or nil,
+			}
 		end
 
 		return items, active_index or first_item_index
