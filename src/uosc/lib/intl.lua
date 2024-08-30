@@ -1,6 +1,5 @@
 local intl_dir = mp.get_script_directory() .. '/intl/'
 local locale = {}
-local cache = {}
 
 -- https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/supported-languages?pivots=store-installer-msix#list-of-supported-languages
 function get_languages()
@@ -41,28 +40,47 @@ function get_locale_from_json(path)
 	return json_table
 end
 
----@param text string
-function t(text, a)
-	if not text then return '' end
-	local key = text
-	if a then key = key .. '|' .. a end
-	if cache[key] then return cache[key] end
-	cache[key] = string.format(locale[text] or text, a or '')
-	return cache[key]
-end
-
--- Load locales
-local languages = get_languages()
-
-for i = #languages, 1, -1 do
-	lang = languages[i]
-	if (lang:match('.json$')) then
-		table_assign(locale, get_locale_from_json(lang))
-	elseif (lang == 'en') then
-		locale = {}
-	else
-		table_assign(locale, get_locale_from_json(intl_dir .. lang:lower() .. '.json'))
+---@param path string
+function make_locale(path)
+	local translations = {}
+	local languages = get_languages()
+	for i = #languages, 1, -1 do
+		lang = languages[i]
+		if (lang:match('.json$')) then
+			table_assign(translations, get_locale_from_json(lang))
+		elseif (lang == 'en') then
+			translations = {}
+		else
+			table_assign(translations, get_locale_from_json(path .. lang:lower() .. '.json'))
+		end
 	end
+
+	return translations
 end
+
+---@param text string
+function t(text, ...)
+	if not text then
+		return ''
+	end
+
+	local trans = locale[text] or text
+
+	local arg = { ... }
+	if #arg > 0 then
+		local key = text
+		for _, value in ipairs(arg) do
+			key = key .. '|' .. value
+		end
+		if not locale[key] then
+			locale[key] = string.format(trans, unpack(arg))
+		end
+		return locale[key]
+	end
+
+	return trans
+end
+
+locale = make_locale(intl_dir)
 
 return {t = t}
