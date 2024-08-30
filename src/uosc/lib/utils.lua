@@ -571,10 +571,13 @@ function navigate_playlist(delta)
 	if playlist and #playlist > 1 and pos then
 		local paths = itable_map(playlist, function(item) return normalize_path(item.filename) end)
 		local index = decide_navigation_in_list(paths, pos, delta)
-		if index then
-			mp.commandv('playlist-play-index', index - 1)
-			return true
-		end
+        if index then
+			if mp.get_property_native('save-position-on-quit') then
+				mp.command('write-watch-later-config')
+			end
+            mp.commandv('playlist-play-index', index - 1)
+            return true
+        end
 	end
 	return false
 end
