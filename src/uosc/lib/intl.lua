@@ -81,6 +81,16 @@ function t(text, ...)
 	return trans
 end
 
+---@param path? string
+function get_locale(path)
+	local locale_copy = table_copy(locale)
+	if (path) then
+		path = trim_end(trim_end(path, '\\'), '/') .. '/'
+		table_assign(locale_copy, make_locale(path))
+	end
+	return locale_copy
+end
+
 locale = make_locale(intl_dir)
 
-return {t = t}
+return { t = t, get_locale = get_locale }
