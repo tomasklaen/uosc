@@ -1320,7 +1320,7 @@ function Menu:render()
 				actions_rect = {
 					ay = item_ay + margin,
 					by = item_by - margin,
-					is_outside = display.width - menu_rect.bx + margin * 2 > rect_width,
+					is_outside = display.width - menu_rect.bx + margin * 2 > rect_width and (item.hint or item.icon),
 				}
 				actions_rect.bx = actions_rect.is_outside and menu_rect.bx + margin + rect_width or item_bx - margin
 				actions_rect.ax = actions_rect.bx
