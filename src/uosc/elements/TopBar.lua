@@ -178,7 +178,7 @@ function TopBar:render()
 		local title_ax, title_bx, title_ay = ax + margin, bx - margin, self.ay + margin
 
 		-- Playlist position
-		if state.has_playlist then
+		if options.top_bar_position and state.has_playlist then
 			local text = state.playlist_pos .. '' .. state.playlist_count
 			local formatted_text = '{\\b1}' .. state.playlist_pos .. '{\\b0\\fs' .. self.font_size * 0.9 .. '}/'
 				.. state.playlist_count
