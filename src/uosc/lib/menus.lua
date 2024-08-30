@@ -559,6 +559,7 @@ do
 				local title_parts = split(title or '', ' *> *')
 
 				for index, title_part in ipairs(#title_parts > 0 and title_parts or {''}) do
+					title_part = t(title_part)
 					if index < #title_parts then
 						submenu_id = submenu_id .. title_part
 
