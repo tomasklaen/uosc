@@ -1,4 +1,5 @@
 {
+	"editor.fontFamily": "Cascadia Code, Consolas, Segoe Fluent Icons, system-ui, sans-serif",
 	"editor.insertSpaces": false,
 	"editor.tabSize": 4,
 	"Lua.runtime.path": [

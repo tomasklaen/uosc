@@ -36,7 +36,7 @@ end
 ---@param name string
 function buttons:trigger(name)
 	local pool = self.subscribers[name]
-	local data = self.data[name] or {icon = 'help_center', tooltip = 'Uninitialized button "' .. name .. '"'}
+	local data = self.data[name] or {icon = '', tooltip = 'Uninitialized button "' .. name .. '"'}
 	if pool then
 		for _, callback in ipairs(pool) do callback(data) end
 	end

@@ -1,0 +1,74 @@
+# controls
+pause 
+play_arrow 
+menu 
+subtitles 
+graphic_eq 
+speaker 
+theaters 
+list_alt 
+bookmark 
+bookmarks 
+high_quality 
+file_open 
+list_alt 
+arrow_back_ios 
+arrow_forward_ios 
+first_page 
+last_page 
+repeat 
+repeat_one 
+shuffle 
+crop_free 
+fullscreen_exit 
+
+# menu
+chevron_right 
+search 
+help
+help_outline
+
+# pauseindicator
+pause 
+play_arrow 
+
+# topbar
+close 
+crop_square   
+minimize 
+
+# updater
+done
+error
+
+# volume
+volume_up 
+volume_off 
+volume_mute 
+volume_down   
+
+# ass
+autorenew 
+
+# buttons
+help_center 
+
+# menus
+arrow_upward 
+arrow_downward 
+remove 
+language 
+playlist_add
+folder_open
+spinner
+check
+file_download
+schedule
+open_in_new
+navigate_before
+navigate_next
+
+# utils
+not_started 
+graphic_eq 
+delete 

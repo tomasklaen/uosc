@@ -182,7 +182,7 @@ function Menu:update(data)
 		else
 			menu.id = '{root}'
 		end
-		menu.icon = 'chevron_right'
+		menu.icon = ''
 
 		-- Normalize `search_debounce`
 		if type(menu_data.search_debounce) == 'number' then
@@ -1394,9 +1394,9 @@ function Menu:render()
 						and menu_rect.ax + (menu_rect.bx - menu_rect.ax) / 2
 						or content_bx - (icon_size / 2)
 					if item.icon == 'spinner' then
-						ass:spinner(x, item_center_y, icon_size * 1.5, {color = font_color, opacity = menu_opacity * 0.8})
+						ass:spinner(x, item_center_y, icon_size * 0.8, {color = font_color, opacity = menu_opacity * 0.8})
 					else
-						ass:icon(x, item_center_y, icon_size * 1.5, item.icon, {
+						ass:icon(x, item_center_y, icon_size * 0.8, item.icon, {
 							color = font_color, opacity = menu_opacity, clip = item_clip,
 						})
 					end
@@ -1515,7 +1515,7 @@ function Menu:render()
 					end
 				end
 
-				ass:icon(rect.ax + icon_size / 2, rect.cy, icon_size, 'search', {
+				ass:icon(rect.ax + icon_size / 2, rect.cy, icon_size, '', {
 					color = fg,
 					opacity = icon_opacity,
 					clip = '\\clip(' ..

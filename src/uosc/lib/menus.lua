@@ -78,15 +78,15 @@ function create_self_updating_menu_opener(opts)
 		---@type MenuAction[]
 		local actions = opts.actions or {}
 		if opts.on_move then
-			actions[#actions + 1] = {name = 'move_up', icon = 'arrow_upward', label = t('Move up') .. ' (ctrl+up)'}
-			actions[#actions + 1] = {name = 'move_down', icon = 'arrow_downward', label = t('Move down' .. ' (ctrl+down)')}
+			actions[#actions + 1] = {name = 'move_up', icon = '', label = t('Move up') .. ' (ctrl+up)'}
+			actions[#actions + 1] = {name = 'move_down', icon = '', label = t('Move down' .. ' (ctrl+down)')}
 		end
 		if opts.on_remove or opts.on_delete then
 			local label = (opts.on_remove and t('Remove') or t('Delete')) .. ' (del)'
 			if opts.on_remove and opts.on_delete then
 				label = t('Remove') .. ' (' .. t('%s to delete', 'del, ctrl+del') .. ')'
 			end
-			actions[#actions + 1] = {name = 'remove', icon = 'delete', label = label}
+			actions[#actions + 1] = {name = 'remove', icon = '', label = label}
 		end
 
 		function remove_or_delete(index, value, menu_id, modifiers)
@@ -233,7 +233,7 @@ function create_select_tracklist_type_menu_opener(opts)
 				hint = t('open file'),
 				value = '{load}',
 				actions = opts.download_command
-					and {{name = 'download', icon = 'language', label = t('Search online')}}
+					and {{name = 'download', icon = '', label = t('Search online')}}
 					or nil,
 			}
 		end
