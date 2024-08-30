@@ -539,7 +539,8 @@ end
 
 function set_state(name, value)
 	state[name] = value
-	call_maybe(state['on_' .. name], value)
+	local state_event = state['on_' .. name]
+	if state_event then state_event(value) end
 	Elements:trigger('prop_' .. name, value)
 end
 

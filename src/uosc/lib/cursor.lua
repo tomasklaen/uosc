@@ -1,10 +1,12 @@
+---@alias CursorEventHandler fun(shortcut: Shortcut)
+
 local cursor = {
 	x = math.huge,
 	y = math.huge,
 	hidden = true,
 	hover_raw = false,
 	-- Event handlers that are only fired on zones defined during render loop.
-	---@type {event: string, hitbox: Hitbox; handler: fun(...)}[]
+	---@type {event: string, hitbox: Hitbox; handler: CursorEventHandler}[]
 	zones = {},
 	handlers = {
 		primary_down = {},
@@ -105,7 +107,7 @@ end
 -- - `move` event zones are ignored due to it being a high frequency event that is currently not needed as a zone.
 ---@param event string
 ---@param hitbox Hitbox
----@param callback fun(...)
+---@param callback CursorEventHandler
 function cursor:zone(event, hitbox, callback)
 	self.zones[#self.zones + 1] = {event = event, hitbox = hitbox, handler = callback}
 end
@@ -113,6 +115,7 @@ end
 -- Binds a permanent cursor event handler active until manually unbound using `cursor:off()`.
 -- `_click` events are not available as permanent global events, only as zones.
 ---@param event string
+---@param callback CursorEventHandler
 ---@return fun() disposer Unbinds the event.
 function cursor:on(event, callback)
 	if self.handlers[event] and not itable_index_of(self.handlers[event], callback) then
@@ -146,7 +149,8 @@ end
 
 -- Trigger the event.
 ---@param event string
-function cursor:trigger(event, ...)
+---@param shortcut? Shortcut
+function cursor:trigger(event, shortcut)
 	local forward = true
 
 	-- Call raw event handlers.
@@ -154,8 +158,8 @@ function cursor:trigger(event, ...)
 	local callbacks = self.handlers[event]
 	if zone or #callbacks > 0 then
 		forward = false
-		if zone then zone.handler(...) end
-		for _, callback in ipairs(callbacks) do callback(...) end
+		if zone and shortcut then zone.handler(shortcut) end
+		for _, callback in ipairs(callbacks) do callback(shortcut) end
 	end
 
 	-- Call compound/parent (click) event handlers if both start and end events are within `parent_zone.hitbox`.
@@ -166,8 +170,8 @@ function cursor:trigger(event, ...)
 			forward = false -- Canceled here so we don't forward down events if they can lead to a click.
 			if parent.is_end then
 				local last_start_event = self.last_event[parent.start_event]
-				if last_start_event and point_collides_with(last_start_event, parent_zone.hitbox) then
-					parent_zone.handler(...)
+				if last_start_event and point_collides_with(last_start_event, parent_zone.hitbox) and shortcut then
+					parent_zone.handler(create_shortcut('primary_click', shortcut.modifiers))
 				end
 			end
 		end
@@ -367,10 +371,13 @@ function cursor:direction_to_rectangle_distance(rect)
 	return get_ray_to_rectangle_distance(self.x, self.y, end_x, end_y, rect)
 end
 
-function cursor:create_handler(event, cb)
-	return function(...)
-		call_maybe(cb, ...)
-		self:trigger(event, ...)
+---@param event string
+---@param shortcut Shortcut
+---@param cb? fun(shortcut: Shortcut)
+function cursor:create_handler(event, shortcut, cb)
+	return function()
+		if cb then cb(shortcut) end
+		self:trigger(event, shortcut)
 	end
 end
 
@@ -387,24 +394,33 @@ end
 mp.observe_property('mouse-pos', 'native', handle_mouse_pos)
 
 -- Key binding groups
-mp.set_key_bindings({
-	{
-		'mbtn_left',
-		cursor:create_handler('primary_up'),
-		cursor:create_handler('primary_down', function(...)
+local modifiers = {nil, 'alt', 'alt+ctrl', 'alt+shift', 'alt+ctrl+shift', 'ctrl', 'ctrl+shift', 'shift'}
+local primary_bindings = {}
+for i = 1, #modifiers do
+	local mods = modifiers[i]
+	local mp_name = (mods and mods .. '+' or '') .. 'mbtn_left'
+	primary_bindings[#primary_bindings + 1] = {
+		mp_name,
+		cursor:create_handler('primary_up', create_shortcut('primary_up', mods)),
+		cursor:create_handler('primary_down', create_shortcut('primary_down', mods), function(...)
 			handle_mouse_pos(nil, mp.get_property_native('mouse-pos'))
 		end),
-	},
-}, 'mbtn_left', 'force')
+	}
+end
+mp.set_key_bindings(primary_bindings, 'mbtn_left', 'force')
 mp.set_key_bindings({
 	{'mbtn_left_dbl', 'ignore'},
 }, 'mbtn_left_dbl', 'force')
 mp.set_key_bindings({
-	{'mbtn_right', cursor:create_handler('secondary_up'), cursor:create_handler('secondary_down')},
+	{
+		'mbtn_right',
+		cursor:create_handler('secondary_up', create_shortcut('secondary_up')),
+		cursor:create_handler('secondary_down', create_shortcut('secondary_down')),
+	},
 }, 'mbtn_right', 'force')
 mp.set_key_bindings({
-	{'wheel_up', cursor:create_handler('wheel_up')},
-	{'wheel_down', cursor:create_handler('wheel_down')},
+	{'wheel_up', cursor:create_handler('wheel_up', create_shortcut('wheel_up'))},
+	{'wheel_down', cursor:create_handler('wheel_down', create_shortcut('wheel_down'))},
 }, 'wheel', 'force')
 
 return cursor

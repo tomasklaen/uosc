@@ -4,7 +4,6 @@
 ---@alias Rect {ax: number, ay: number, bx: number, by: number, window_drag?: boolean}
 ---@alias Circle {point: Point, r: number, window_drag?: boolean}
 ---@alias Hitbox Rect|Circle
----@alias Shortcut {id: string; key: string; modifiers: string; alt: boolean; ctrl: boolean; shift: boolean}
 ---@alias ComplexBindingInfo {event: 'down' | 'repeat' | 'up' | 'press'; is_mouse: boolean; canceled: boolean; key_name?: string; key_text?: string;}
 
 --- In place sorting of filenames
@@ -225,11 +224,6 @@ function get_ray_to_rectangle_distance(ax, ay, bx, by, rect)
 	return closest
 end
 
--- Call function with args if it exists
-function call_maybe(fn, ...)
-	if type(fn) == 'function' then fn(...) end
-end
-
 -- Extracts the properties used by property expansion of that string.
 ---@param str string
 ---@param res { [string] : boolean } | nil
@@ -398,26 +392,6 @@ function has_any_extension(path, extensions)
 		if path_extension == extension then return true end
 	end
 	return false
-end
-
----@param key string
----@param modifiers? string
----@return Shortcut
-function create_shortcut(key, modifiers)
-	key = key:lower()
-
-	local id_parts, modifiers_set
-	if modifiers then
-		id_parts = split(modifiers:lower(), '+')
-		table.sort(id_parts, function(a, b) return a < b end)
-		modifiers_set = create_set(id_parts)
-		modifiers = table.concat(id_parts, '+')
-	else
-		id_parts, modifiers, modifiers_set = {}, '', {}
-	end
-	id_parts[#id_parts + 1] = key
-
-	return table_assign({id = table.concat(id_parts, '+'), key = key, modifiers = modifiers}, modifiers_set)
 end
 
 -- Executes mp command defined as a string or an itable, or does nothing if command is any other value.

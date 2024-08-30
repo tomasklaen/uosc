@@ -683,9 +683,10 @@ function Menu:handle_cursor_down()
 	end
 end
 
-function Menu:handle_cursor_up()
+---@param shortcut? Shortcut
+function Menu:handle_cursor_up(shortcut)
 	if self.proximity_raw == 0 and self.drag_last_y and not self.is_dragging then
-		self:activate_selected_item()
+		self:activate_selected_item(shortcut)
 	end
 	if self.is_dragging then
 		local distance = cursor:get_velocity().y / -3
@@ -1186,7 +1187,7 @@ function Menu:render()
 
 	local display_rect = {ax = 0, ay = 0, bx = display.width, by = display.height}
 	cursor:zone('primary_down', display_rect, self:create_action(function() self:handle_cursor_down() end))
-	cursor:zone('primary_up', display_rect, self:create_action(function() self:handle_cursor_up() end))
+	cursor:zone('primary_up', display_rect, self:create_action(function(shortcut) self:handle_cursor_up(shortcut) end))
 	cursor:zone('wheel_down', self, function() self:handle_wheel_down() end)
 	cursor:zone('wheel_up', self, function() self:handle_wheel_up() end)
 
@@ -1239,7 +1240,9 @@ function Menu:render()
 		local submenu_is_hovered = false
 		if current_item and current_item.items then
 			submenu_rect = draw_menu(current_item --[[@as MenuStack]], menu_rect.bx + self.gap, 1)
-			cursor:zone('primary_down', submenu_rect, self:create_action(function() self:activate_selected_item() end))
+			cursor:zone('primary_down', submenu_rect, self:create_action(function(shortcut)
+				self:activate_selected_item(shortcut)
+			end))
 		end
 
 		for index = start_index, end_index, 1 do
@@ -1349,8 +1352,8 @@ function Menu:render()
 
 					-- Select action on cursor hover
 					if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
-						cursor:zone('primary_down', rect, self:create_action(function()
-							self:activate_selected_item()
+						cursor:zone('primary_click', rect, self:create_action(function(shortcut)
+							self:activate_selected_item(shortcut)
 						end))
 						blur_action_index = false
 						if not is_active then

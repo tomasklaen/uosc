@@ -1,5 +1,7 @@
 --[[ Stateless utilities missing in lua standard library ]]
 
+---@alias Shortcut {id: string; key: string; modifiers?: string; alt: boolean; ctrl: boolean; shift: boolean}
+
 ---@param number number
 function round(number) return math.floor(number + 0.5) end
 
@@ -260,6 +262,26 @@ function serialize_key_value_list(input, value_sanitizer)
 		if key and value then result[key] = sanitize(value, key) end
 	end
 	return result
+end
+
+---@param key string
+---@param modifiers? string
+---@return Shortcut
+function create_shortcut(key, modifiers)
+	key = key:lower()
+
+	local id_parts, modifiers_set
+	if modifiers then
+		id_parts = split(modifiers:lower(), '+')
+		table.sort(id_parts, function(a, b) return a < b end)
+		modifiers_set = create_set(id_parts)
+		modifiers = table.concat(id_parts, '+')
+	else
+		id_parts, modifiers, modifiers_set = {}, nil, {}
+	end
+	id_parts[#id_parts + 1] = key
+
+	return table_assign({id = table.concat(id_parts, '+'), key = key, modifiers = modifiers}, modifiers_set)
 end
 
 --[[ EASING FUNCTIONS ]]
