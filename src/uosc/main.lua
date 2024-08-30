@@ -913,6 +913,7 @@ bind_command('playlist', create_self_updating_menu_opener({
 	title = t('Playlist'),
 	type = 'playlist',
 	list_prop = 'playlist',
+	footnote = t('Paste path or url to add.'),
 	serializer = function(playlist)
 		local items = {}
 		for index, item in ipairs(playlist) do
@@ -928,6 +929,7 @@ bind_command('playlist', create_self_updating_menu_opener({
 		return items
 	end,
 	on_activate = function(event) mp.commandv('set', 'playlist-pos-1', tostring(event.value)) end,
+	on_paste = function(event) mp.commandv('loadfile', tostring(event.value), 'append') end,
 	on_move = function(event)
 		local from, to = event.from_index, event.to_index
 		mp.commandv('playlist-move', tostring(from - 1), tostring(to - (to > from and 0 or 1)))

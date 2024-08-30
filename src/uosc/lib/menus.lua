@@ -40,7 +40,7 @@ function toggle_menu_with_items(opts)
 end
 
 ---@alias EventRemove {type: 'remove' | 'delete', index: number; value: any; menu_id: string;}
----@param opts {type: string; title: string; list_prop: string; active_prop?: string; serializer: fun(list: any, active: any): MenuDataItem[]; actions?: MenuAction[];on_paste: fun(event: MenuEventPaste); on_move?: fun(event: MenuEventMove); on_activate?: fun(event: MenuEventActivate); on_remove?: fun(event: EventRemove); on_delete?: fun(event: EventRemove)}
+---@param opts {type: string; title: string; list_prop: string; active_prop?: string; footnote?: string; serializer: fun(list: any, active: any): MenuDataItem[]; actions?: MenuAction[]; on_paste: fun(event: MenuEventPaste); on_move?: fun(event: MenuEventMove); on_activate?: fun(event: MenuEventActivate); on_remove?: fun(event: EventRemove); on_delete?: fun(event: EventRemove);}
 function create_self_updating_menu_opener(opts)
 	return function()
 		if Menu:is_open(opts.type) then
@@ -110,12 +110,12 @@ function create_self_updating_menu_opener(opts)
 		menu = Menu:open({
 			type = opts.type,
 			title = opts.title,
-			footnote = t('Toggle to disable. Paste to load path or url in clipboard.'),
+			footnote = opts.footnote,
 			items = initial_items,
 			actions = actions,
 			selected_index = selected_index,
 			on_move = opts.on_move and 'callback' or nil,
-			on_paste = 'callback',
+			on_paste = opts.on_paste and 'callback' or nil,
 			on_close = 'callback',
 		}, function(event)
 			if event.type == 'activate' then
@@ -258,12 +258,12 @@ function create_select_tracklist_type_menu_opener(opts)
 					mp.commandv('set', opts.enable_prop, 'yes')
 				end
 			end
-
 		end
 	end
 
 	return create_self_updating_menu_opener({
 		title = opts.title,
+		footnote = t('Toggle to disable.') .. ' ' .. t('Paste path or url to add.'),
 		type = opts.type,
 		list_prop = 'track-list',
 		serializer = serialize_tracklist,
@@ -390,8 +390,10 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 	local menu_data = {
 		type = opts.type,
 		title = opts.title or '',
+		footnote = t('Paste path or url to open.'),
 		items = {},
 		on_close = opts.on_close and 'callback' or nil,
+		on_paste = 'callback',
 	}
 
 	---@param path string
@@ -454,6 +456,8 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 			activate(event --[[@as MenuEventActivate]])
 		elseif event.type == 'back' or event.type == 'key' and event.id == 'alt+up' then
 			if back_path then open_directory(back_path) end
+		elseif event.type == 'paste' then
+			handle_activate({type = 'activate', value = event.value})
 		elseif event.type == 'close' then
 			close()
 		end
@@ -725,7 +729,7 @@ function open_open_file_menu()
 				local serialized = serialize_path(event.value)
 				local filename = serialized and serialized.basename or event.value
 				mp.commandv('show-text', t('Added to playlist') .. ': ' .. filename, 3000)
-			elseif itable_has({'', 'ctrl', 'alt', 'alt+ctrl'}, event.modifiers) and itable_has({nil, 'force_open'}, event.action) then
+			elseif itable_has({nil, 'ctrl', 'alt', 'alt+ctrl'}, event.modifiers) and itable_has({nil, 'force_open'}, event.action) then
 				mp.commandv(command, event.value)
 				if not event.alt then menu:close() end
 			end
