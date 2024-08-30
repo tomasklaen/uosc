@@ -435,7 +435,7 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 	menu = Menu:open(menu_data, function(event)
 		if event.type == 'activate' then
 			activate(event --[[@as MenuEventActivate]])
-		elseif event.type == 'back' then
+		elseif event.type == 'back' or event.type == 'key' and event.id == 'alt+up' then
 			if back_path then open_directory(back_path) end
 		elseif event.type == 'close' then
 			close()
