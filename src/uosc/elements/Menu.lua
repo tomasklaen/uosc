@@ -1262,19 +1262,6 @@ function Menu:render()
 				by = math.min(item_by, menu_rect.by),
 			}
 
-			-- Select hovered item
-			if is_current and self.mouse_nav and item.selectable ~= false then
-				if submenu_rect and cursor:direction_to_rectangle_distance(submenu_rect) then
-					blur_selected_index = false
-				else
-					if submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0 then
-						blur_selected_index = false
-						menu.selected_index = index
-						if not is_selected then request_render() end
-					end
-				end
-			end
-
 			local has_background = is_selected or item.active
 			local next_item = menu.items[index + 1]
 			local next_is_active = next_item and next_item.active
@@ -1321,25 +1308,30 @@ function Menu:render()
 
 			-- Actions
 			local actions_rect
-			if is_selected and actions and #actions > 0 then
+			if is_selected and actions and #actions > 0 and not item.items then
 				local margin = self.gap * 2
 				local size = item_by - item_ay - margin * 2
+				local rect_width = size * #actions + margin * (#actions - 1)
+
+				-- Place actions outside of menu when possible
 				actions_rect = {
-					ax = item_bx - margin,
 					ay = item_ay + margin,
-					bx = item_bx - margin,
 					by = item_by - margin,
+					is_outside = display.width - menu_rect.bx + margin * 2 > rect_width,
 				}
+				actions_rect.bx = actions_rect.is_outside and menu_rect.bx + margin + rect_width or item_bx - margin
+				actions_rect.ax = actions_rect.bx
 
 				for i = 1, #actions, 1 do
 					local action_index = #actions - (i - 1)
 					local action = actions[action_index]
 					local is_active = action_index == menu.action_index
+					local bx = actions_rect.ax - (i == 1 and 0 or margin)
 					local rect = {
 						ay = actions_rect.ay,
 						by = actions_rect.by,
-						ax = item_bx - size * i - margin * i,
-						bx = item_bx - size * (i - 1) - margin * i,
+						ax = bx - size,
+						bx = bx,
 					}
 					actions_rect.ax = rect.ax
 
@@ -1357,6 +1349,9 @@ function Menu:render()
 
 					-- Select action on cursor hover
 					if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
+						cursor:zone('primary_down', rect, self:create_action(function()
+							self:activate_selected_item()
+						end))
 						blur_action_index = false
 						if not is_active then
 							menu.action_index = action_index
@@ -1370,7 +1365,7 @@ function Menu:render()
 
 			-- Icon
 			if item.icon then
-				if not actions_rect then
+				if not actions_rect or actions_rect.is_outside then
 					local x = (not item.title and not item.hint and item.align == 'center')
 						and menu_rect.ax + (menu_rect.bx - menu_rect.ax) / 2
 						or content_bx - (icon_size / 2)
@@ -1437,11 +1432,25 @@ function Menu:render()
 			if is_alive and action and action.label and actions_rect then
 				ass:tooltip(actions_rect, action.label, {
 					size = self.font_size,
-					align = 4,
+					align = actions_rect.is_outside and 8 or 4,
 					offset = self.gap * 2,
 					responsive = false,
 					invert_colors = not item.active,
 				})
+			end
+
+			-- Select hovered item
+			if is_current and self.mouse_nav and item.selectable ~= false then
+				if submenu_rect and cursor:direction_to_rectangle_distance(submenu_rect)
+					or actions_rect and actions_rect.is_outside and cursor:direction_to_rectangle_distance(actions_rect) then
+					blur_selected_index = false
+				else
+					if submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0 then
+						blur_selected_index = false
+						menu.selected_index = index
+						if not is_selected then request_render() end
+					end
+				end
 			end
 		end
 
