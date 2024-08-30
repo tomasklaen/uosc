@@ -329,7 +329,7 @@ function Menu:update_dimensions()
 		local width = math.max(menu.search and menu.search.max_width or 0, menu.max_width)
 		menu.width = round(clamp(min_width, width, width_available))
 		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step + self.padding or 0
-		local max_height = height_available - title_height
+		local max_height = height_available - title_height - (menu.footnote and self.font_size * 1.5 or 0)
 		local content_height = self.scroll_step * #menu.items
 		menu.height = math.min(content_height - self.item_spacing, max_height)
 		menu.top = clamp(
@@ -1229,10 +1229,31 @@ function Menu:render()
 
 		-- Footnote
 		if menu.footnote and is_current then
-			local x, y = menu_rect.ax + (menu_rect.bx - menu_rect.ax) / 2, menu_rect.by + self.font_size * 0.66
-			ass:txt(x, y, 8, menu.footnote, {
-				size = self.font_size, color = fg, italic = true, border = 2 * state.scale, opacity = 0.5 * menu_opacity,
+			local is_hovered = false
+			if is_current then
+				local hitbox = {
+					ax = menu_rect.ax,
+					ay = menu_rect.by,
+					bx = menu_rect.bx,
+					by = menu_rect.by + self.font_size * 2,
+				}
+				is_hovered = get_point_to_rectangle_proximity(cursor, hitbox) == 0
+			end
+			local opacity = (is_hovered and 1 or 0.5) * menu_opacity
+			local x, y = menu_rect.ax + self.padding, menu_rect.by + self.font_size
+			ass:icon(x + self.font_size / 2, y, self.font_size, is_hovered and 'help' or 'help_outline', {
+				color = fg, border = state.scale, border_color = bg, opacity = opacity,
 			})
+			if is_hovered then
+				ass:txt(x + self.font_size * 1.25, y, 4, menu.footnote, {
+					size = self.font_size,
+					color = fg,
+					border = state.scale,
+					border_color = bg,
+					opacity = opacity,
+					italic = true,
+				})
+			end
 		end
 
 		-- Draw submenu if selected
