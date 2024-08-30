@@ -3,13 +3,13 @@ local Element = require('elements/Element')
 ---@alias MenuAction {name: string; icon: string; label?: string;}
 
 -- Menu data structure accepted by `Menu:open(menu)`.
----@alias MenuData {id?: string; type?: string; title?: string; hint?: string; search_style?: 'on_demand' | 'palette' | 'disabled';  actions?: MenuAction[]; callback?: string[]; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string}
+---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; footnote: string; search_style?: 'on_demand' | 'palette' | 'disabled';  actions?: MenuAction[]; callback?: string[]; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items?: MenuDataItem[]; selected_index?: integer; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string}
 ---@alias MenuDataItem MenuDataValue|MenuData
 ---@alias MenuDataValue {title?: string; hint?: string; icon?: string; value: any; actions?: MenuAction[]; active?: boolean; keep_open?: boolean; selectable?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'}
 ---@alias MenuOptions {mouse_nav?: boolean;}
 
 -- Internal data structure created from `MenuData`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; search_style?: 'on_demand' | 'palette' | 'disabled';  actions?: MenuAction[]; callback?: string[]; selected_index?: number; action_index?: number; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items: MenuStackItem[]; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; footnote: string; search_style?: 'on_demand' | 'palette' | 'disabled';  actions?: MenuAction[]; callback?: string[]; selected_index?: number; action_index?: number; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items: MenuStackItem[]; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
 ---@alias MenuStackItem MenuStackValue|MenuStack
 ---@alias MenuStackValue {title?: string; hint?: string; icon?: string; value: any; actions?: MenuAction[]; active?: boolean; keep_open?: boolean; selectable?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number; ass_safe_hint?: string}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
@@ -763,9 +763,7 @@ function Menu:paste()
 	local menu = self.current
 	local payload = get_clipboard()
 	if not payload then return end
-	if menu.search then
-		self:search_query_update(menu.search.query .. payload)
-	elseif menu.on_paste then
+	if menu.on_paste then
 		local selected_item = menu.items and menu.selected_index and menu.items[menu.selected_index]
 		local actions = selected_item and selected_item.actions or menu.actions
 		local selected_action = actions and menu.action_index and actions[menu.action_index]
@@ -777,6 +775,8 @@ function Menu:paste()
 				index = menu.selected_index, value = selected_item.value, action = selected_action,
 			},
 		})
+	elseif menu.search then
+		self:search_query_update(menu.search.query .. payload)
 	elseif menu.search_style ~= 'disabled' then
 		self:search_start(menu.id)
 		self:search_query_update(payload, menu.id)
@@ -1027,7 +1027,7 @@ end
 function Menu:enable_key_bindings()
 	-- `+` at the end enables `repeatable` flag
 	local keys = {'up+', 'down+', 'left', 'right', 'enter', 'kp_enter', 'bs', 'tab', 'esc', 'pgup+',
-		'pgdwn+', 'home', 'end', 'del'}
+		'pgdwn+', 'home', 'end', 'del', 'v'}
 	local modifiers = {nil, 'alt', 'alt+ctrl', 'alt+shift', 'alt+ctrl+shift', 'ctrl', 'ctrl+shift', 'shift'}
 	local normalized = {kp_enter = 'enter'}
 
@@ -1114,7 +1114,7 @@ function Menu:handle_shortcut(shortcut, info)
 		end
 	elseif key == 'mbtn_back' then
 		self:back()
-	elseif key == 'ctrl+v' then
+	elseif id == 'ctrl+v' then
 		self:paste()
 	else
 		self.callback(table_assign({}, shortcut, {
@@ -1224,6 +1224,14 @@ function Menu:render()
 
 		if is_parent then
 			cursor:zone('primary_down', menu_rect, self:create_action(function() self:slide_in_menu(menu.id, x) end))
+		end
+
+		-- Footnote
+		if menu.footnote and is_current then
+			local x, y = menu_rect.ax + (menu_rect.bx - menu_rect.ax) / 2, menu_rect.by + self.font_size * 0.66
+			ass:txt(x, y, 8, menu.footnote, {
+				size = self.font_size, color = fg, italic = true, border = 2 * state.scale, opacity = 0.5 * menu_opacity,
+			})
 		end
 
 		-- Draw submenu if selected

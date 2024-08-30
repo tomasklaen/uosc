@@ -110,10 +110,12 @@ function create_self_updating_menu_opener(opts)
 		menu = Menu:open({
 			type = opts.type,
 			title = opts.title,
+			footnote = t('Toggle to disable. Paste to load path or url in clipboard.'),
 			items = initial_items,
 			actions = actions,
 			selected_index = selected_index,
 			on_move = opts.on_move and 'callback' or nil,
+			on_paste = 'callback',
 			on_close = 'callback',
 		}, function(event)
 			if event.type == 'activate' then
