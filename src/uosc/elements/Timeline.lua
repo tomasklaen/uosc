@@ -331,17 +331,23 @@ function Timeline:render()
 			---@param kind 'a'|'b'
 			local function draw_ab_indicator(time, kind)
 				local x = t2x(time)
+				local y = fby - foreground_size / 2
+				local d = ({ a = -1, b = 1 })[kind]
 				ass:new_event()
 				ass:append(string.format(
 					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
 					border_width, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
 				))
 				ass:draw_start()
-				ass:move_to(x, fby - ab_radius)
-				if kind == 'b' then ass:line_to(x + 3, fby - ab_radius) end
-				ass:line_to(x + (kind == 'a' and 0 or ab_radius), fby)
-				ass:line_to(x - (kind == 'b' and 0 or ab_radius), fby)
-				if kind == 'a' then ass:line_to(x - 3, fby - ab_radius) end
+				ass:move_to(x + d * 0.000 * ab_radius, y + -1.000 * ab_radius)
+				ass:line_to(x + d * 0.383 * ab_radius, y + -0.924 * ab_radius)
+				ass:line_to(x + d * 0.707 * ab_radius, y + -0.707 * ab_radius)
+				ass:line_to(x + d * 0.924 * ab_radius, y + -0.383 * ab_radius)
+				ass:line_to(x + d * 1.000 * ab_radius, y +  0.000 * ab_radius)
+				ass:line_to(x + d * 0.924 * ab_radius, y +  0.383 * ab_radius)
+				ass:line_to(x + d * 0.707 * ab_radius, y +  0.707 * ab_radius)
+				ass:line_to(x + d * 0.383 * ab_radius, y +  0.924 * ab_radius)
+				ass:line_to(x + d * 0.000 * ab_radius, y +  1.000 * ab_radius)
 				ass:draw_stop()
 			end
 
