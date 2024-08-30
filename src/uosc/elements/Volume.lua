@@ -176,22 +176,6 @@ function VolumeSlider:render()
 		})
 	end
 
-	-- Disabled stripes for no audio
-	if not state.has_audio then
-		local fg_100_path = create_nudged_path(self.border_size, state.radius)
-		local texture_opts = {
-			size = 200,
-			color = 'ffffff',
-			opacity = visibility * 0.1,
-			anchor_x = ax,
-			clip = '\\clip(' .. fg_100_path.scale .. ',' .. fg_100_path.text .. ')',
-		}
-		ass:texture(ax, ay, bx, by, 'a', texture_opts)
-		texture_opts.color = '000000'
-		texture_opts.anchor_x = ax + texture_opts.size / 28
-		ass:texture(ax, ay, bx, by, 'a', texture_opts)
-	end
-
 	return ass
 end
 
@@ -227,7 +211,7 @@ function Volume:update_dimensions()
 	local available_height = max_y - min_y
 	local max_height = available_height * 0.8
 	local height = round(math.min(self.size * 8, max_height))
-	self.enabled = height > self.size * 2 -- don't render if too small
+	self.enabled = state.has_audio and height > self.size * 2 -- don't render if too small
 	local margin = (self.size / 2) + Elements:v('window_border', 'size', 0)
 	self.ax = round(options.volume == 'left' and margin or display.width - margin - self.size)
 	self.ay = min_y + round((available_height - height) / 2)
