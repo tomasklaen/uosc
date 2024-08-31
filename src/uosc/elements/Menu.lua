@@ -1413,7 +1413,10 @@ function Menu:render()
 				local title_min = math.min(item.title_width, width * 0.5)
 				local hint_min = math.min(item.hint_width, width * 0.5)
 				local title_ratio = item.title_width / (item.title_width + item.hint_width)
-				title_clip_bx = round(content_ax + clamp(title_min, width * title_ratio, width - hint_min))
+				title_clip_bx = math.min(
+					title_clip_bx,
+					round(content_ax + clamp(title_min, width * title_ratio, width - hint_min))
+				)
 			end
 
 			-- Hint
