@@ -78,8 +78,12 @@ function create_self_updating_menu_opener(opts)
 		---@type MenuAction[]
 		local actions = opts.actions or {}
 		if opts.on_move then
-			actions[#actions + 1] = {name = 'move_up', icon = 'arrow_upward', label = t('Move up') .. ' (ctrl+up)'}
-			actions[#actions + 1] = {name = 'move_down', icon = 'arrow_downward', label = t('Move down') .. ' (ctrl+down)'}
+			actions[#actions + 1] = {
+				name = 'move_up', icon = 'arrow_upward', label = t('Move up') .. ' (ctrl+up/pgup/home)'
+			}
+			actions[#actions + 1] = {
+				name = 'move_down', icon = 'arrow_downward', label = t('Move down') .. ' (ctrl+down/pgdwn/end)'
+			}
 		end
 		if opts.on_remove or opts.on_delete then
 			local label = (opts.on_remove and t('Remove') or t('Delete')) .. ' (del)'
@@ -138,11 +142,12 @@ function create_self_updating_menu_opener(opts)
 					if not event.modifiers then menu:close() end
 				end
 			elseif event.type == 'key' then
+				local item = event.selected_item
 				if event.id == 'enter' then
 					menu:close()
-				elseif event.key == 'del' then
-					if itable_has({'', 'ctrl'}, event.modifiers) then
-						remove_or_delete(event.index, event.value, event.menu_id, event.modifiers)
+				elseif event.key == 'del' and item then
+					if itable_has({nil, 'ctrl'}, event.modifiers) then
+						remove_or_delete(item.index, item.value, event.menu_id, event.modifiers)
 					end
 				end
 			elseif event.type == 'paste' and opts.on_paste then
