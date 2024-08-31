@@ -125,7 +125,7 @@ function create_self_updating_menu_opener(opts)
 			if event.type == 'activate' then
 				if (event.action == 'move_up' or event.action == 'move_down') and opts.on_move then
 					local to_index = event.index + (event.action == 'move_up' and -1 or 1)
-					if to_index > 1 and to_index <= #menu.current.items then
+					if to_index >= 1 and to_index <= #menu.current.items then
 						opts.on_move({
 							type = 'move',
 							from_index = event.index,
