@@ -79,7 +79,7 @@ function create_self_updating_menu_opener(opts)
 		local actions = opts.actions or {}
 		if opts.on_move then
 			actions[#actions + 1] = {name = 'move_up', icon = 'arrow_upward', label = t('Move up') .. ' (ctrl+up)'}
-			actions[#actions + 1] = {name = 'move_down', icon = 'arrow_downward', label = t('Move down' .. ' (ctrl+down)')}
+			actions[#actions + 1] = {name = 'move_down', icon = 'arrow_downward', label = t('Move down') .. ' (ctrl+down)'}
 		end
 		if opts.on_remove or opts.on_delete then
 			local label = (opts.on_remove and t('Remove') or t('Delete')) .. ' (del)'
@@ -739,11 +739,11 @@ function open_open_file_menu()
 			allowed_types = config.types.media,
 			active_path = active_file,
 			directory_actions = {
-				{name = 'add_to_playlist', icon = 'playlist_add', label = 'Add to playlist (shift)'},
-				{name = 'force_open', icon = 'folder_open', label = 'Open in mpv (ctrl)'},
+				{name = 'add_to_playlist', icon = 'playlist_add', label = t('Add to playlist') .. ' (shift)'},
+				{name = 'force_open', icon = 'folder_open', label = t('Open in mpv') .. ' (ctrl)'},
 			},
 			file_actions = {
-				{name = 'add_to_playlist', icon = 'playlist_add', label = 'Add to playlist (shift)'},
+				{name = 'add_to_playlist', icon = 'playlist_add', label = t('Add to playlist') .. ' (shift)'},
 			},
 			keep_open = true,
 			on_close = function() mp.unregister_event(handle_file_loaded) end,
