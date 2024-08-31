@@ -1,5 +1,5 @@
 --[[ uosc | https://github.com/tomasklaen/uosc ]]
-local uosc_version = '5.3.0'
+local uosc_version = '5.3.1'
 
 mp.commandv('script-message', 'uosc-version', uosc_version)
 
