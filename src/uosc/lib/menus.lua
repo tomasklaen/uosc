@@ -40,7 +40,7 @@ function toggle_menu_with_items(opts)
 end
 
 ---@alias EventRemove {type: 'remove' | 'delete', index: number; value: any; menu_id: string;}
----@param opts {type: string; title: string; list_prop: string; active_prop?: string; footnote?: string; serializer: fun(list: any, active: any): MenuDataItem[]; actions?: MenuAction[]; on_paste: fun(event: MenuEventPaste); on_move?: fun(event: MenuEventMove); on_activate?: fun(event: MenuEventActivate); on_remove?: fun(event: EventRemove); on_delete?: fun(event: EventRemove);}
+---@param opts {type: string; title: string; list_prop: string; active_prop?: string; footnote?: string; serializer: fun(list: any, active: any): MenuDataItem[]; actions?: MenuAction[]; actions_place?: 'inside'|'outside'; on_paste: fun(event: MenuEventPaste); on_move?: fun(event: MenuEventMove); on_activate?: fun(event: MenuEventActivate); on_remove?: fun(event: EventRemove); on_delete?: fun(event: EventRemove);}
 function create_self_updating_menu_opener(opts)
 	return function()
 		if Menu:is_open(opts.type) then
@@ -77,14 +77,6 @@ function create_self_updating_menu_opener(opts)
 
 		---@type MenuAction[]
 		local actions = opts.actions or {}
-		if opts.on_move then
-			actions[#actions + 1] = {
-				name = 'move_up', icon = 'arrow_upward', label = t('Move up') .. ' (ctrl+up/pgup/home)'
-			}
-			actions[#actions + 1] = {
-				name = 'move_down', icon = 'arrow_downward', label = t('Move down') .. ' (ctrl+down/pgdwn/end)'
-			}
-		end
 		if opts.on_remove or opts.on_delete then
 			local label = (opts.on_remove and t('Remove') or t('Delete')) .. ' (del)'
 			if opts.on_remove and opts.on_delete then
@@ -117,25 +109,14 @@ function create_self_updating_menu_opener(opts)
 			footnote = opts.footnote,
 			items = initial_items,
 			item_actions = actions,
+			item_actions_place = opts.actions_place,
 			selected_index = selected_index,
 			on_move = opts.on_move and 'callback' or nil,
 			on_paste = opts.on_paste and 'callback' or nil,
 			on_close = 'callback',
 		}, function(event)
 			if event.type == 'activate' then
-				if (event.action == 'move_up' or event.action == 'move_down') and opts.on_move then
-					local to_index = event.index + (event.action == 'move_up' and -1 or 1)
-					if to_index >= 1 and to_index <= #menu.current.items then
-						opts.on_move({
-							type = 'move',
-							from_index = event.index,
-							to_index = to_index,
-							menu_id = menu.current.id,
-						})
-						menu:select_index(to_index)
-						menu:scroll_to_index(to_index, nil, true)
-					end
-				elseif event.action == 'remove' and (opts.on_remove or opts.on_delete) then
+				if event.action == 'remove' and (opts.on_remove or opts.on_delete) then
 					remove_or_delete(event.index, event.value, event.menu_id, event.modifiers)
 				else
 					opts.on_activate(event --[[@as MenuEventActivate]])
@@ -200,7 +181,7 @@ function create_select_tracklist_type_menu_opener(opts)
 		local active_index = nil
 		local disabled_item = nil
 		local track_actions = snd and {
-			{name = 'as_secondary', icon = snd.icon, label = t('Activate as secondary') .. ' (shift)'},
+			{name = 'as_secondary', icon = snd.icon, label = t('Use as secondary') .. ' (shift+enter/click)'},
 		} or nil
 
 		for _, track in ipairs(tracklist) do
@@ -273,6 +254,7 @@ function create_select_tracklist_type_menu_opener(opts)
 		list_prop = 'track-list',
 		serializer = serialize_tracklist,
 		on_activate = handle_activate,
+		actions_place = 'outside',
 		on_paste = function(event) load_track(opts.type, event.value) end,
 	})
 end
@@ -744,11 +726,11 @@ function open_open_file_menu()
 			allowed_types = config.types.media,
 			active_path = active_file,
 			directory_actions = {
-				{name = 'add_to_playlist', icon = 'playlist_add', label = t('Add to playlist') .. ' (shift)'},
-				{name = 'force_open', icon = 'folder_open', label = t('Open in mpv') .. ' (ctrl)'},
+				{name = 'add_to_playlist', icon = 'playlist_add', label = t('Add to playlist') .. ' (shift+enter/click)'},
+				{name = 'force_open', icon = 'play_circle_outline', label = t('Open in mpv') .. ' (ctrl+enter/click)'},
 			},
 			file_actions = {
-				{name = 'add_to_playlist', icon = 'playlist_add', label = t('Add to playlist') .. ' (shift)'},
+				{name = 'add_to_playlist', icon = 'playlist_add', label = t('Add to playlist') .. ' (shift+enter/click)'},
 			},
 			keep_open = true,
 			on_close = function() mp.unregister_event(handle_file_loaded) end,
