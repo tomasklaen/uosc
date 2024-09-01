@@ -450,6 +450,12 @@ function update_fullormaxed()
 	cursor:leave()
 end
 
+function update_duration()
+	state.duration = state._duration and ((state.rebase_start_time == false and state.start_time)
+		and (state._duration + state.start_time) or state._duration)
+	update_human_times()
+end
+
 function update_human_times()
 	state.speed = state.speed or 1
 	if state.time then
@@ -723,7 +729,9 @@ mp.observe_property('playback-time', 'number', create_state_setter('time', funct
 	update_human_times()
 	select_current_chapter()
 end))
-mp.observe_property('duration', 'number', create_state_setter('duration', update_human_times))
+mp.observe_property('rebase-start-time', 'bool', create_state_setter('rebase_start_time', update_duration))
+mp.observe_property('demuxer-start-time', 'number', create_state_setter('start_time', update_duration))
+mp.observe_property('duration', 'number', create_state_setter('_duration', update_duration))
 mp.observe_property('speed', 'number', create_state_setter('speed', update_human_times))
 mp.observe_property('track-list', 'native', function(name, value)
 	-- checks the file dispositions
