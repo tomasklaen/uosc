@@ -183,7 +183,7 @@ function cursor:trigger(event, shortcut)
 		if forward_name then
 			-- Forward events if there was no handler.
 			local active = find_active_keybindings(forward_name)
-			if active then
+			if active and active.cmd then
 				local is_wheel = event:find('wheel', 1, true)
 				local is_up = event:sub(-3) == '_up'
 				if active.owner then
