@@ -40,7 +40,7 @@ function toggle_menu_with_items(opts)
 end
 
 ---@alias EventRemove {type: 'remove' | 'delete', index: number; value: any; menu_id: string;}
----@param opts {type: string; title: string; list_prop: string; active_prop?: string; footnote?: string; serializer: fun(list: any, active: any): MenuDataItem[]; actions?: MenuAction[]; actions_place?: 'inside'|'outside'; on_paste: fun(event: MenuEventPaste); on_move?: fun(event: MenuEventMove); on_activate?: fun(event: MenuEventActivate); on_remove?: fun(event: EventRemove); on_delete?: fun(event: EventRemove);}
+---@param opts {type: string; title: string; list_prop: string; active_prop?: string; footnote?: string; serializer: fun(list: any, active: any): MenuDataItem[]; actions?: MenuAction[]; actions_place?: 'inside'|'outside'; on_paste: fun(event: MenuEventPaste); on_move?: fun(event: MenuEventMove); on_activate?: fun(event: MenuEventActivate); on_remove?: fun(event: EventRemove); on_delete?: fun(event: EventRemove); on_key?: fun(event: MenuEventKey, close: fun())}
 function create_self_updating_menu_opener(opts)
 	return function()
 		if Menu:is_open(opts.type) then
@@ -71,6 +71,12 @@ function create_self_updating_menu_opener(opts)
 				active = value
 				update()
 			end
+		end
+
+		local function cleanup_and_close()
+			mp.unobserve_property(handle_list_prop_change)
+			mp.unobserve_property(handle_active_prop_change)
+			menu:close()
 		end
 
 		local initial_items, selected_index = opts.serializer(list, active)
@@ -125,18 +131,18 @@ function create_self_updating_menu_opener(opts)
 			elseif event.type == 'key' then
 				local item = event.selected_item
 				if event.id == 'enter' then
-					menu:close()
+					cleanup_and_close()
 				elseif event.key == 'del' and item then
 					if itable_has({nil, 'ctrl'}, event.modifiers) then
 						remove_or_delete(item.index, item.value, event.menu_id, event.modifiers)
 					end
+				elseif opts.on_key then
+					opts.on_key(event --[[@as MenuEventKey]], cleanup_and_close)
 				end
 			elseif event.type == 'paste' and opts.on_paste then
 				opts.on_paste(event --[[@as MenuEventPaste]])
 			elseif event.type == 'close' then
-				mp.unobserve_property(handle_list_prop_change)
-				mp.unobserve_property(handle_active_prop_change)
-				menu:close()
+				cleanup_and_close()
 			elseif event.type == 'move' and opts.on_move then
 				opts.on_move(event --[[@as MenuEventMove]])
 			elseif event.type == 'remove' and opts.on_move then
