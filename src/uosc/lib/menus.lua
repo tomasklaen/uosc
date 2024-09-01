@@ -116,7 +116,7 @@ function create_self_updating_menu_opener(opts)
 			title = opts.title,
 			footnote = opts.footnote,
 			items = initial_items,
-			actions = actions,
+			item_actions = actions,
 			selected_index = selected_index,
 			on_move = opts.on_move and 'callback' or nil,
 			on_paste = opts.on_paste and 'callback' or nil,
