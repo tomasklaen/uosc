@@ -886,13 +886,22 @@ bind_command('keybinds', function()
 end)
 bind_command('download-subtitles', open_subtitle_downloader)
 bind_command('load-subtitles', create_track_loader_menu_opener({
-	name = 'subtitles', prop = 'sub', allowed_types = itable_join(config.types.video, config.types.subtitle),
+	prop = 'sub',
+	title = t('Load subtitles'),
+	loaded_message = t('Loaded subtitles'),
+	allowed_types = itable_join(config.types.video, config.types.subtitle),
 }))
 bind_command('load-audio', create_track_loader_menu_opener({
-	name = 'audio', prop = 'audio', allowed_types = itable_join(config.types.video, config.types.audio),
+	prop = 'audio',
+	title = t('Load audio'),
+	loaded_message = t('Loaded audio'),
+	allowed_types = itable_join(config.types.video, config.types.audio),
 }))
 bind_command('load-video', create_track_loader_menu_opener({
-	name = 'video', prop = 'video', allowed_types = config.types.video,
+	prop = 'video',
+	title = t('Load video'),
+	loaded_message = t('Loaded video'),
+	allowed_types = config.types.video,
 }))
 bind_command('subtitles', create_select_tracklist_type_menu_opener({
 	title = t('Subtitles'),

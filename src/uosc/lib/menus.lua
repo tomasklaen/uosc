@@ -739,15 +739,9 @@ function open_open_file_menu()
 	if menu then mp.register_event('file-loaded', handle_file_loaded) end
 end
 
----@param opts {name: 'subtitles'|'audio'|'video'; prop: 'sub'|'audio'|'video'; allowed_types: string[]}
+---@param opts {prop: 'sub'|'audio'|'video'; title: string; loaded_message: string; allowed_types: string[]}
 function create_track_loader_menu_opener(opts)
-	local menu_type = 'load-' .. opts.name
-	local title = ({
-		subtitles = t('Load subtitles'),
-		audio = t('Load audio'),
-		video = t('Load video'),
-	})[opts.name]
-
+	local menu_type = 'load-' .. opts.prop
 	return function()
 		if Menu:is_open(menu_type) then
 			Menu:close()
@@ -773,12 +767,12 @@ function create_track_loader_menu_opener(opts)
 			load_track(opts.prop, event.value)
 			local serialized = serialize_path(event.value)
 			local filename = serialized and serialized.basename or event.value
-			mp.commandv('show-text', t('Loaded subtitles') .. ': ' .. filename, 3000)
+			mp.commandv('show-text', opts.loaded_message .. ': ' .. filename, 3000)
 			if not event.alt then menu:close() end
 		end
 
 		menu = open_file_navigation_menu(path, handle_activate, {
-			type = menu_type, title = title, allowed_types = opts.allowed_types,
+			type = menu_type, title = opts.title, allowed_types = opts.allowed_types,
 		})
 	end
 end
