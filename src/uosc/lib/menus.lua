@@ -377,7 +377,7 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 	local menu_data = {
 		type = opts.type,
 		title = opts.title or '',
-		footnote = t('Paste path or url to open.'),
+		footnote = t('%s to go up in tree.', 'alt+up') .. ' ' .. t('Paste path or url to open.'),
 		items = {},
 		on_close = opts.on_close and 'callback' or nil,
 		on_paste = 'callback',
