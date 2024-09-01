@@ -1027,12 +1027,26 @@ end
 
 function Menu:enable_key_bindings()
 	-- `+` at the end enables `repeatable` flag
-	local keys = {'up+', 'down+', 'left', 'right', 'enter', 'kp_enter', 'bs', 'tab', 'esc', 'pgup+',
-		'pgdwn+', 'home', 'end', 'del', 'v'}
+	local standalone_keys = {'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12', {'v', 'ctrl'}}
+	local modifiable_keys = {'up+', 'down+', 'left', 'right', 'enter', 'kp_enter', 'bs', 'tab', 'esc', 'pgup+',
+		'pgdwn+', 'home', 'end', 'del'}
 	local modifiers = {nil, 'alt', 'alt+ctrl', 'alt+shift', 'alt+ctrl+shift', 'ctrl', 'ctrl+shift', 'shift'}
 	local normalized = {kp_enter = 'enter'}
 
-	for i, key in ipairs(keys) do
+	local function bind(key, modifier, flags)
+		local binding = modifier and modifier .. '+' .. key or key
+		local shortcut = create_shortcut(normalized[key] or key, modifier)
+		local handler = self:create_action(function(info) self:handle_shortcut(shortcut, info) end)
+		self:add_key_binding(binding, 'menu-binding-' .. binding, handler, flags)
+	end
+
+	for i, key_mods in ipairs(standalone_keys) do
+		local is_table = type(key_mods) == 'table'
+		local key, mods = is_table and key_mods[1] or key_mods, is_table and key_mods[2] or nil
+		bind(key, mods, {repeatable = false, complex = true})
+	end
+
+	for i, key in ipairs(modifiable_keys) do
 		local flags = {repeatable = false, complex = true}
 
 		if key:sub(-1) == '+' then
@@ -1041,11 +1055,7 @@ function Menu:enable_key_bindings()
 		end
 
 		for j = 1, #modifiers do
-			local modifier = modifiers[j]
-			local binding = modifier and modifier .. '+' .. key or key
-			local shortcut = create_shortcut(normalized[key] or key, modifier)
-			local handler = self:create_action(function(info) self:handle_shortcut(shortcut, info) end)
-			self:add_key_binding(binding, 'menu-binding-' .. binding, handler, flags)
+			bind(key, modifiers[j], flags)
 		end
 	end
 
