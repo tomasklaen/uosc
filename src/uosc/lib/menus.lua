@@ -1,5 +1,6 @@
+---@alias OpenCommandMenuOptions {submenu?: string; mouse_nav?: boolean; on_close?: string | string[]}
 ---@param data MenuData
----@param opts? {submenu?: string; mouse_nav?: boolean; on_close?: string | string[]}
+---@param opts? OpenCommandMenuOptions
 function open_command_menu(data, opts)
 	opts = opts or {}
 	local menu
@@ -30,7 +31,7 @@ function open_command_menu(data, opts)
 	return menu
 end
 
----@param opts? {submenu?: string; mouse_nav?: boolean; on_close?: string | string[]}
+---@param opts? OpenCommandMenuOptions
 function toggle_menu_with_items(opts)
 	if Menu:is_open('menu') then
 		Menu:close()
@@ -39,8 +40,9 @@ function toggle_menu_with_items(opts)
 	end
 end
 
----@alias EventRemove {type: 'remove' | 'delete', index: number; value: any; menu_id: string;}
----@param opts {type: string; title: string; list_prop: string; active_prop?: string; footnote?: string; serializer: fun(list: any, active: any): MenuDataItem[]; actions?: MenuAction[]; actions_place?: 'inside'|'outside'; on_paste: fun(event: MenuEventPaste); on_move?: fun(event: MenuEventMove); on_activate?: fun(event: MenuEventActivate); on_remove?: fun(event: EventRemove); on_delete?: fun(event: EventRemove); on_key?: fun(event: MenuEventKey, close: fun())}
+---@alias TrackEventRemove {type: 'remove' | 'delete', index: number; value: any;}
+---@alias TrackEventReload {type: 'reload', index: number; value: any;}
+---@param opts {type: string; title: string; list_prop: string; active_prop?: string; footnote?: string; serializer: fun(list: any, active: any): MenuDataItem[]; actions?: MenuAction[]; actions_place?: 'inside'|'outside'; on_paste: fun(event: MenuEventPaste); on_move?: fun(event: MenuEventMove); on_activate?: fun(event: MenuEventActivate); on_remove?: fun(event: TrackEventRemove); on_delete?: fun(event: TrackEventRemove); on_reload?: fun(event: TrackEventReload); on_key?: fun(event: MenuEventKey, close: fun())}
 function create_self_updating_menu_opener(opts)
 	return function()
 		if Menu:is_open(opts.type) then
@@ -83,6 +85,9 @@ function create_self_updating_menu_opener(opts)
 
 		---@type MenuAction[]
 		local actions = opts.actions or {}
+		if opts.on_reload then
+			actions[#actions + 1] = {name = 'reload', icon = 'refresh', label = t('Reload') .. ' (f5)'}
+		end
 		if opts.on_remove or opts.on_delete then
 			local label = (opts.on_remove and t('Remove') or t('Delete')) .. ' (del)'
 			if opts.on_remove and opts.on_delete then
@@ -96,13 +101,13 @@ function create_self_updating_menu_opener(opts)
 				local method = modifiers == 'ctrl' and 'delete' or 'remove'
 				local handler = method == 'delete' and opts.on_delete or opts.on_remove
 				if handler then
-					handler({type = method, value = value, index = index, menu_id = menu_id})
+					handler({type = method, value = value, index = index})
 				end
 			elseif opts.on_remove or opts.on_delete then
 				local method = opts.on_delete and 'delete' or 'remove'
 				local handler = opts.on_delete or opts.on_remove
 				if handler then
-					handler({type = method, value = value, index = index, menu_id = menu_id})
+					handler({type = method, value = value, index = index})
 				end
 			end
 		end
@@ -122,22 +127,27 @@ function create_self_updating_menu_opener(opts)
 			on_close = 'callback',
 		}, function(event)
 			if event.type == 'activate' then
-				if event.action == 'remove' and (opts.on_remove or opts.on_delete) then
+				if event.action == 'reload' and opts.on_reload then
+					opts.on_reload({type = 'reload', index = event.index, value = event.value})
+				elseif event.action == 'remove' and (opts.on_remove or opts.on_delete) then
 					remove_or_delete(event.index, event.value, event.menu_id, event.modifiers)
 				else
 					opts.on_activate(event --[[@as MenuEventActivate]])
-					if not event.modifiers then menu:close() end
+					if not event.modifiers and not event.action then cleanup_and_close() end
 				end
 			elseif event.type == 'key' then
 				local item = event.selected_item
-				if opts.on_key then
-					opts.on_key(event --[[@as MenuEventKey]], cleanup_and_close)
-				elseif event.id == 'enter' then
+				if event.id == 'enter' then
+					-- We get here when there's no selectable item in menu and user presses enter.
 					cleanup_and_close()
-				elseif event.key == 'del' and item then
+				elseif event.key == 'f5' and opts.on_reload and item then
+					opts.on_reload({type = 'reload', index = item.index, value = item.value})
+				elseif event.key == 'del' and (opts.on_remove or opts.on_delete) and item then
 					if itable_has({nil, 'ctrl'}, event.modifiers) then
 						remove_or_delete(item.index, item.value, event.menu_id, event.modifiers)
 					end
+				elseif opts.on_key then
+					opts.on_key(event --[[@as MenuEventKey]], cleanup_and_close)
 				end
 			elseif event.type == 'paste' and opts.on_paste then
 				opts.on_paste(event --[[@as MenuEventPaste]])
@@ -190,7 +200,9 @@ function create_select_tracklist_type_menu_opener(opts)
 		local track_external_actions = {}
 
 		if snd then
-			local action = {name = 'as_secondary', icon = snd.icon, label = t('Use as secondary') .. ' (shift+enter/click)'}
+			local action = {
+				name = 'as_secondary', icon = snd.icon, label = t('Use as secondary') .. ' (shift+enter/click)',
+			}
 			track_actions = {action}
 			table.insert(track_external_actions, action)
 		end
@@ -241,25 +253,10 @@ function create_select_tracklist_type_menu_opener(opts)
 	end
 
 	local function reload(id)
-		if not id then return end
-		if opts.type == "video" then
-			mp.commandv("video-reload", id)
-		elseif opts.type == "audio" then
-			mp.commandv("audio-reload", id)
-		elseif opts.type == "sub" then
-			mp.commandv("sub-reload", id)
-		end
+		if id then mp.commandv(opts.type .. '-reload', id) end
 	end
-
 	local function remove(id)
-		if not id then return end
-		if opts.type == "video" then
-			mp.commandv("video-remove", id)
-		elseif opts.type == "audio" then
-			mp.commandv("audio-remove", id)
-		elseif opts.type == "sub" then
-			mp.commandv("sub-remove", id)
-		end
+		if id then mp.commandv(opts.type .. '-remove', id) end
 	end
 
 	---@param event MenuEventActivate
@@ -288,14 +285,11 @@ function create_select_tracklist_type_menu_opener(opts)
 
 	---@param event MenuEventKey
 	local function handle_key(event)
-		local item = event.selected_item
-		if event.id == 'f5' then
-			if item then
-				reload(item.value)
-			end
-		elseif event.id == 'del' then
-			if item then
-				remove(item.value)
+		if event.selected_item then
+			if event.id == 'f5' then
+				reload(event.selected_item.value)
+			elseif event.id == 'del' then
+				remove(event.selected_item.value)
 			end
 		end
 	end
@@ -337,7 +331,7 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 
 	---@param path string Can be path to a directory, or special string `'{drives}'` to get windows drives items.
 	---@param selected_path? string Marks item with this path as active.
-	---@return MenuStackValue[] menu_items
+	---@return MenuStackChild[] menu_items
 	---@return number selected_index
 	---@return string|nil error
 	local function serialize_items(path, selected_path)

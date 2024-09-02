@@ -816,7 +816,7 @@ mp.observe_property('demuxer-cache-state', 'native', function(prop, cache_state)
 	for _, range in ipairs(cached_ranges) do
 		ranges[#ranges + 1] = {
 			math.max(range['start'] or 0, 0),
-			math.min(range['end'] or state.duration, state.duration),
+			math.min(range['end'] or state.duration --[[@as number]], state.duration),
 		}
 	end
 	table.sort(ranges, function(a, b) return a[1] < b[1] end)

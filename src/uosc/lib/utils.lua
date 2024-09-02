@@ -6,9 +6,6 @@
 ---@alias Hitbox Rect|Circle
 ---@alias ComplexBindingInfo {event: 'down' | 'repeat' | 'up' | 'press'; is_mouse: boolean; canceled: boolean; key_name?: string; key_text?: string;}
 
---- In place sorting of filenames
----@param filenames string[]
-
 -- String sorting
 do
 	----- winapi start -----
@@ -474,7 +471,10 @@ function get_adjacent_files(file_path, opts)
 	local current_meta = serialize_path(file_path)
 	if not current_meta then return end
 	local files, _dirs, error = read_directory(current_meta.dirname, {hidden = opts.hidden})
-	if error then msg.error(error) return end
+	if error then
+		msg.error(error)
+		return
+	end
 	sort_strings(files)
 	local current_file_index
 	local paths = {}
@@ -637,7 +637,7 @@ function delete_file_navigate(delta)
 		if Menu:is_open('open-file') then
 			Elements:maybe('menu', 'delete_value', path)
 		end
-		delete_file(path)
+		if path then delete_file(path) end
 	end
 end
 
