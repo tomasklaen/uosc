@@ -1223,8 +1223,7 @@ function Menu:render()
 			bx = bx,
 			by = by + self.padding,
 		}
-		local blur_selected_index = is_current and self.mouse_nav
-		local blur_action_index = is_current and self.mouse_nav
+		local cursor_is_moving = self.mouse_nav and cursor.distance > 10
 
 		-- Background
 		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {
@@ -1341,6 +1340,7 @@ function Menu:render()
 			local title_clip_bx = content_bx
 
 			-- Actions
+			local item_can_blur_action_index = false
 			local actions_rect
 			if is_selected and actions and #actions > 0 and not item.items then
 				local place = item.actions_place or menu.item_actions_place
@@ -1383,14 +1383,17 @@ function Menu:render()
 					})
 
 					-- Select action on cursor hover
-					if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
-						cursor:zone('primary_click', rect, self:create_action(function(shortcut)
-							self:activate_selected_item(shortcut)
-						end))
-						blur_action_index = false
-						if not is_active then
-							menu.action_index = action_index
-							request_render()
+					if cursor_is_moving then
+						item_can_blur_action_index = menu.action_index ~= nil
+						if get_point_to_rectangle_proximity(cursor, rect) == 0 then
+							cursor:zone('primary_click', rect, self:create_action(function(shortcut)
+								self:activate_selected_item(shortcut)
+							end))
+							item_can_blur_action_index = false
+							if not is_active then
+								menu.action_index = action_index
+								request_render()
+							end
 						end
 					end
 				end
@@ -1478,17 +1481,13 @@ function Menu:render()
 			end
 
 			-- Select hovered item
-			if is_current and self.mouse_nav and item.selectable ~= false then
-				if submenu_rect and cursor:direction_to_rectangle_distance(submenu_rect)
-					or actions_rect and actions_rect.is_outside and cursor:direction_to_rectangle_distance(actions_rect) then
-					blur_selected_index = false
-				else
-					if submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0 then
-						blur_selected_index = false
-						menu.selected_index = index
-						if not is_selected then request_render() end
-					end
-				end
+			if is_current and cursor_is_moving and item.selectable ~= false
+				-- Do not select items if cursor is moving towards a submenu
+				and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect))
+				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0) then
+				menu.selected_index = index
+				if not is_selected or item_can_blur_action_index and menu.action_index then request_render() end
+				if item_can_blur_action_index then menu.action_index = nil end
 			end
 		end
 
@@ -1597,14 +1596,6 @@ function Menu:render()
 			local sax = bx - round(self.scrollbar_size / 2)
 			local sbx = sax + self.scrollbar_size
 			ass:rect(sax, thumb_y, sbx, thumb_y + thumb_height, {color = fg, opacity = menu_opacity * 0.8})
-		end
-
-		-- We are in mouse nav and cursor isn't hovering any item
-		if blur_selected_index then
-			menu.selected_index = nil
-		end
-		if blur_action_index then
-			menu.action_index = nil
 		end
 
 		return menu_rect
