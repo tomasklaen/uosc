@@ -1236,6 +1236,16 @@ function Menu:render()
 			cursor:zone('primary_down', menu_rect, self:create_action(function() self:slide_in_menu(menu.id, x) end))
 		end
 
+		-- Scrollbar
+		if menu.scroll_height > 0 then
+			local groove_height = menu.height - 2
+			local thumb_height = math.max((menu.height / (menu.scroll_height + menu.height)) * groove_height, 40)
+			local thumb_y = ay + 1 + ((menu.scroll_y / menu.scroll_height) * (groove_height - thumb_height))
+			local sax = bx - round(self.scrollbar_size / 2)
+			local sbx = sax + self.scrollbar_size
+			ass:rect(sax, thumb_y, sbx, thumb_y + thumb_height, {color = fg, opacity = menu_opacity * 0.8})
+		end
+
 		-- Footnote
 		if menu.footnote and is_current then
 			local is_hovered = false
@@ -1586,16 +1596,6 @@ function Menu:render()
 					clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 				})
 			end
-		end
-
-		-- Scrollbar
-		if menu.scroll_height > 0 then
-			local groove_height = menu.height - 2
-			local thumb_height = math.max((menu.height / (menu.scroll_height + menu.height)) * groove_height, 40)
-			local thumb_y = ay + 1 + ((menu.scroll_y / menu.scroll_height) * (groove_height - thumb_height))
-			local sax = bx - round(self.scrollbar_size / 2)
-			local sbx = sax + self.scrollbar_size
-			ass:rect(sax, thumb_y, sbx, thumb_y + thumb_height, {color = fg, opacity = menu_opacity * 0.8})
 		end
 
 		return menu_rect
