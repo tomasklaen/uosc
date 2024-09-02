@@ -1357,6 +1357,7 @@ function Menu:render()
 				local margin = self.gap * 2
 				local size = item_by - item_ay - margin * 2
 				local rect_width = size * #actions + margin * (#actions - 1)
+				item_can_blur_action_index = menu.action_index ~= nil
 
 				-- Place actions outside of menu when requested and there's enough space for it
 				actions_rect = {
@@ -1393,12 +1394,11 @@ function Menu:render()
 					})
 
 					-- Select action on cursor hover
-					if cursor_is_moving then
-						item_can_blur_action_index = menu.action_index ~= nil
-						if get_point_to_rectangle_proximity(cursor, rect) == 0 then
-							cursor:zone('primary_click', rect, self:create_action(function(shortcut)
-								self:activate_selected_item(shortcut)
-							end))
+					if get_point_to_rectangle_proximity(cursor, rect) == 0 then
+						cursor:zone('primary_click', rect, self:create_action(function(shortcut)
+							self:activate_selected_item(shortcut)
+						end))
+						if cursor_is_moving then
 							item_can_blur_action_index = false
 							if not is_active then
 								menu.action_index = action_index
