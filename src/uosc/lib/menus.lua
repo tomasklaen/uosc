@@ -130,14 +130,14 @@ function create_self_updating_menu_opener(opts)
 				end
 			elseif event.type == 'key' then
 				local item = event.selected_item
-				if event.id == 'enter' then
+				if opts.on_key then
+					opts.on_key(event --[[@as MenuEventKey]], cleanup_and_close)
+				elseif event.id == 'enter' then
 					cleanup_and_close()
 				elseif event.key == 'del' and item then
 					if itable_has({nil, 'ctrl'}, event.modifiers) then
 						remove_or_delete(item.index, item.value, event.menu_id, event.modifiers)
 					end
-				elseif opts.on_key then
-					opts.on_key(event --[[@as MenuEventKey]], cleanup_and_close)
 				end
 			elseif event.type == 'paste' and opts.on_paste then
 				opts.on_paste(event --[[@as MenuEventPaste]])
@@ -186,9 +186,16 @@ function create_select_tracklist_type_menu_opener(opts)
 		local first_item_index = #items + 1
 		local active_index = nil
 		local disabled_item = nil
-		local track_actions = snd and {
-			{name = 'as_secondary', icon = snd.icon, label = t('Use as secondary') .. ' (shift+enter/click)'},
-		} or nil
+		local track_actions = nil
+		local track_external_actions = {}
+
+		if snd then
+			local action = {name = 'as_secondary', icon = snd.icon, label = t('Use as secondary') .. ' (shift+enter/click)'}
+			track_actions = {action}
+			table.insert(track_external_actions, action)
+		end
+		table.insert(track_external_actions, {name = 'reload', icon = 'refresh', label = t('Reload') .. ' (f5)'})
+		table.insert(track_external_actions, {name = 'remove', icon = 'delete', label = t('Remove') .. ' (del)'})
 
 		for _, track in ipairs(tracklist) do
 			if track.type == opts.type then
@@ -220,7 +227,7 @@ function create_select_tracklist_type_menu_opener(opts)
 					active = track_selected or snd_selected,
 					italic = snd_selected,
 					icon = snd and snd_selected and snd.icon or nil,
-					actions = track_actions,
+					actions = track.external and track_external_actions or track_actions,
 				}
 
 				if track_selected then
@@ -231,6 +238,28 @@ function create_select_tracklist_type_menu_opener(opts)
 		end
 
 		return items, active_index or first_item_index
+	end
+
+	local function reload(id)
+		if not id then return end
+		if opts.type == "video" then
+			mp.commandv("video-reload", id)
+		elseif opts.type == "audio" then
+			mp.commandv("audio-reload", id)
+		elseif opts.type == "sub" then
+			mp.commandv("sub-reload", id)
+		end
+	end
+
+	local function remove(id)
+		if not id then return end
+		if opts.type == "video" then
+			mp.commandv("video-remove", id)
+		elseif opts.type == "audio" then
+			mp.commandv("audio-remove", id)
+		elseif opts.type == "sub" then
+			mp.commandv("sub-remove", id)
+		end
 	end
 
 	---@param event MenuEventActivate
@@ -244,11 +273,29 @@ function create_select_tracklist_type_menu_opener(opts)
 				if snd.enable_prop then
 					mp.commandv('set', snd.enable_prop, 'yes')
 				end
+			elseif event.action == 'reload' then
+				reload(event.value)
+			elseif event.action == 'remove' then
+				remove(event.value)
 			elseif not event.modifiers or event.modifiers == 'alt' then
 				mp.commandv('set', opts.prop, event.value == get_props() and 'no' or event.value)
 				if opts.enable_prop then
 					mp.commandv('set', opts.enable_prop, 'yes')
 				end
+			end
+		end
+	end
+
+	---@param event MenuEventKey
+	local function handle_key(event)
+		local item = event.selected_item
+		if event.id == 'f5' then
+			if item then
+				reload(item.value)
+			end
+		elseif event.id == 'del' then
+			if item then
+				remove(item.value)
 			end
 		end
 	end
@@ -260,6 +307,7 @@ function create_select_tracklist_type_menu_opener(opts)
 		list_prop = 'track-list',
 		serializer = serialize_tracklist,
 		on_activate = handle_activate,
+		on_key = handle_key,
 		actions_place = 'outside',
 		on_paste = function(event) load_track(opts.type, event.value) end,
 	})
