@@ -236,7 +236,10 @@ function create_select_tracklist_type_menu_opener(opts)
 				local hint_values = {}
 				local track_selected = track.selected and track.id == track_prop_index
 				local snd_selected = snd and track.id == snd_prop_index
-				local function h(value) hint_values[#hint_values + 1] = value end
+				local function h(value)
+					value = trim(value)
+					if #value > 0 then hint_values[#hint_values + 1] = value end
+				end
 
 				if track.lang then h(track.lang) end
 				if track['demux-h'] then
