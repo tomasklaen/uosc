@@ -1279,8 +1279,20 @@ function Menu:render()
 				ax = item_ax,
 				ay = math.max(item_ay, menu_rect.ay),
 				bx = menu_rect.bx + (item.items and self.gap or -self.padding), -- to bridge the gap with cursor
-				by = math.min(item_by, menu_rect.by),
+				by = math.min(item_ay + self.scroll_step, menu_rect.by),
 			}
+
+			-- Select hovered item
+			if is_current and self.mouse_nav and item.selectable ~= false
+				-- Do not select items if cursor is moving towards a submenu
+				and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect))
+				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0) then
+				menu.selected_index = index
+				if not is_selected then
+					is_selected = true
+					request_render()
+				end
+			end
 
 			local has_background = is_selected or item.active
 			local next_item = menu.items[index + 1]
@@ -1314,16 +1326,6 @@ function Menu:render()
 					opacity = highlight_opacity * menu_opacity,
 					clip = item_clip,
 				})
-
-				-- Selected item indicator line
-				if is_selected and not action then
-					local size = round(2 * state.scale)
-					local v_padding = math.min(state.radius, math.ceil(self.item_height / 3))
-					ass:rect(ax + self.padding - size - 1, item_ay + v_padding, ax + self.padding - 1,
-						item_by - v_padding, {
-							radius = 1 * state.scale, color = fg, opacity = menu_opacity, clip = item_clip,
-						})
-				end
 			end
 
 			local title_clip_bx = content_bx
@@ -1371,7 +1373,7 @@ function Menu:render()
 					})
 
 					-- Re-use rect as a hitbox by growing it so it bridges gaps to prevent flickering
-					rect.ay, rect.by, rect.bx = rect.ay - margin, rect.by + margin, rect.bx + margin
+					rect.ay, rect.by, rect.bx = item_ay, item_ay + self.scroll_step, rect.bx + margin
 
 					-- Select action on cursor hover
 					if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
@@ -1381,12 +1383,23 @@ function Menu:render()
 						blur_action_index = false
 						if not is_active then
 							menu.action_index = action_index
+							selected_action = actions[action_index]
 							request_render()
 						end
 					end
 				end
 
 				title_clip_bx = actions_rect.ax - self.gap * 2
+			end
+
+			-- Selected item indicator line
+			if is_selected and not selected_action then
+				local size = round(2 * state.scale)
+				local v_padding = math.min(state.radius, math.ceil(self.item_height / 3))
+				ass:rect(ax + self.padding - size - 1, item_ay + v_padding, ax + self.padding - 1,
+					item_by - v_padding, {
+						radius = 1 * state.scale, color = fg, opacity = menu_opacity, clip = item_clip,
+					})
 			end
 
 			-- Icon
@@ -1455,15 +1468,6 @@ function Menu:render()
 					opacity = menu_opacity * (item.muted and 0.5 or 1),
 					clip = clip,
 				})
-			end
-
-			-- Select hovered item
-			if is_current and self.mouse_nav and item.selectable ~= false
-				-- Do not select items if cursor is moving towards a submenu
-				and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect))
-				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0) then
-				menu.selected_index = index
-				if not is_selected then request_render() end
 			end
 		end
 
