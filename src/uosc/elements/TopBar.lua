@@ -65,7 +65,7 @@ function TopBar:decide_titles()
 			longer_title, shorter_title = self.main_title, self.alt_title
 		end
 
-		local escaped_shorter_title = string.gsub(shorter_title --[[@as string]], '[%(%)%.%+%-%*%?%[%]%^%$%%]', '%%%1')
+		local escaped_shorter_title = regexp_escape(shorter_title --[[@as string]])
 		if string.match(longer_title --[[@as string]], escaped_shorter_title) then
 			self.main_title, self.alt_title = longer_title, nil
 		end

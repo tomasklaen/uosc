@@ -223,7 +223,7 @@ function create_select_tracklist_type_menu_opener(opts)
 
 		local track_prop_index, snd_prop_index = get_props()
 		local filename = mp.get_property_native('filename/no-ext')
-		local escaped_filename = string.gsub(filename --[[@as string]], '[%(%)%.%+%-%*%?%[%]%^%$%%]', '%%%1')
+		local escaped_filename = filename and regexp_escape(filename)
 		local first_item_index = #items + 1
 		local active_index = nil
 		local disabled_item = nil
@@ -266,8 +266,8 @@ function create_select_tracklist_type_menu_opener(opts)
 				if track.default then h(t('default')) end
 				if track.external then
 					local extension = track.title:match('%.([^%.]+)$')
-					if track.title and extension then
-						track.title = track.title:gsub(escaped_filename .. '%.?', ''):gsub('%.?([^%.]+)$', '')
+					if track.title and escaped_filename and extension then
+						track.title = trim(track.title:gsub(escaped_filename .. '%.?', ''):gsub('%.?([^%.]+)$', ''))
 						if track.title == '' or track.lang and track.title:lower() == track.lang:lower() then
 							track.title = nil
 						end
