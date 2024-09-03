@@ -1075,12 +1075,13 @@ function Menu:handle_shortcut(shortcut, info)
 	local menu, id, key, modifiers = self.current, shortcut.id, shortcut.key, shortcut.modifiers
 	local selected_index = menu.selected_index
 	local selected_item = menu and selected_index and menu.items[selected_index]
+	local is_submenu = selected_item and selected_item.items ~= nil
 	local actions = selected_item and selected_item.actions or menu.item_actions
 	local selected_action = actions and menu.action_index and actions[menu.action_index]
 
 	if info.event == 'up' then return end
 
-	if key == 'enter' and selected_item then
+	if (key == 'enter' and selected_item) or (id == 'right' and is_submenu) then
 		self:activate_selected_item(shortcut)
 	elseif id == 'enter' and menu.search and menu.search_debounce == 'submit' then
 		self:search_submit()
@@ -1091,9 +1092,9 @@ function Menu:handle_shortcut(shortcut, info)
 		self:navigate_by_offset(items_per_page * (id == 'pgup' and -1 or 1))
 	elseif id == 'home' or id == 'end' then
 		self:navigate_by_offset(id == 'home' and -math.huge or math.huge)
-	elseif id == 'left' or id == 'shift+tab' then
+	elseif id == 'shift+tab' then
 		self:prev_action()
-	elseif id == 'right' or id == 'tab' then
+	elseif id == 'tab' then
 		self:next_action()
 	elseif id == 'ctrl+up' then
 		self:move_selected_item_by(-1)
@@ -1113,6 +1114,8 @@ function Menu:handle_shortcut(shortcut, info)
 		else
 			self:request_close()
 		end
+	elseif id == 'left' and menu.parent_menu then
+		self:back()
 	elseif key == 'bs' then
 		if menu.search then
 			if modifiers == 'shift' then
