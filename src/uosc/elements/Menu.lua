@@ -322,7 +322,8 @@ function Menu:update_dimensions()
 	-- This is a debt from an era where we had different cursor event handling,
 	-- and dumb titles with no search inputs. It could use a refactor.
 	local margin = round(self.item_height / 2)
-	local width_available, height_available = display.width - margin * 2, display.height - margin * 2
+	local external_buttons_reserve = display.width / self.item_height > 14 and self.scroll_step * 6 - margin * 2 or 0
+	local width_available, height_available = display.width - margin * 2 - external_buttons_reserve, display.height - margin * 2
 	local min_width = math.min(self.min_width, width_available)
 
 	for _, menu in ipairs(self.all) do
