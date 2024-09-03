@@ -1209,7 +1209,6 @@ function Menu:render()
 	local ass = assdraw.ass_new()
 	local spacing = self.item_padding
 	local icon_size = self.font_size
-	local is_alive = self:is_alive()
 
 	---@param menu MenuStack
 	---@param x number
@@ -1228,8 +1227,7 @@ function Menu:render()
 			bx = bx,
 			by = by + self.padding,
 		}
-		local cursor_is_moving = self.mouse_nav and cursor.distance > 10
-		local blur_action_index = cursor_is_moving and menu.action_index ~= nil
+		local blur_action_index = self.mouse_nav and menu.action_index ~= nil
 
 		-- Background
 		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {
@@ -1457,7 +1455,7 @@ function Menu:render()
 			end
 
 			-- Select hovered item
-			if is_current and cursor_is_moving and item.selectable ~= false
+			if is_current and self.mouse_nav and item.selectable ~= false
 				-- Do not select items if cursor is moving towards a submenu
 				and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect))
 				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0) then
