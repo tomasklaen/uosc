@@ -1078,7 +1078,7 @@ function Menu:handle_shortcut(shortcut, info)
 	local actions = selected_item and selected_item.actions or menu.item_actions
 	local selected_action = actions and menu.action_index and actions[menu.action_index]
 
-	if info.event == 'down' then return end
+	if info.event == 'up' then return end
 
 	if key == 'enter' and selected_item then
 		self:activate_selected_item(shortcut)
