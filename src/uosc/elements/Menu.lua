@@ -1250,35 +1250,6 @@ function Menu:render()
 			ass:rect(sax, thumb_y, sbx, thumb_y + thumb_height, {color = fg, opacity = menu_opacity * 0.8})
 		end
 
-		-- Footnote
-		if menu.footnote and is_current then
-			local is_hovered = false
-			if is_current then
-				local hitbox = {
-					ax = menu_rect.ax,
-					ay = menu_rect.by,
-					bx = menu_rect.bx,
-					by = menu_rect.by + self.font_size * 2,
-				}
-				is_hovered = get_point_to_rectangle_proximity(cursor, hitbox) == 0
-			end
-			local opacity = (is_hovered and 1 or 0.5) * menu_opacity
-			local x, y = menu_rect.ax + self.padding, menu_rect.by + self.font_size
-			ass:icon(x + self.font_size / 2, y, self.font_size, is_hovered and 'help' or 'help_outline', {
-				color = fg, border = state.scale, border_color = bg, opacity = opacity,
-			})
-			if is_hovered then
-				ass:txt(x + self.font_size * 1.25, y, 4, menu.footnote, {
-					size = self.font_size,
-					color = fg,
-					border = state.scale,
-					border_color = bg,
-					opacity = opacity,
-					italic = true,
-				})
-			end
-		end
-
 		-- Draw submenu if selected
 		local submenu_rect, current_item = nil, is_current and menu.selected_index and menu.items[menu.selected_index]
 		local submenu_is_hovered = false
@@ -1289,6 +1260,8 @@ function Menu:render()
 			end))
 		end
 
+		---@type MenuAction|nil
+		local selected_action
 		for index = start_index, end_index, 1 do
 			local item = menu.items[index]
 
@@ -1316,6 +1289,8 @@ function Menu:render()
 			local font_color = item.active and fgt or bgt
 			local actions = is_selected and (item.actions or menu.item_actions) -- not nil = actions are visible
 			local action = actions and actions[menu.action_index] -- not nil = action is selected
+
+			if action then selected_action = action end
 
 			-- Separator
 			if item_by < by and ((not has_background and not next_has_background) or item.separator) then
@@ -1384,7 +1359,7 @@ function Menu:render()
 					actions_rect.ax = rect.ax
 
 					ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
-						radius = state.radius - 1,
+						radius = state.radius > 2 and state.radius - 1 or state.radius,
 						color = is_active and fg or bg,
 						border = is_active and self.gap or nil,
 						border_color = bg,
@@ -1479,17 +1454,6 @@ function Menu:render()
 				})
 			end
 
-			-- Selected action label
-			if is_alive and action and action.label and actions_rect then
-				ass:tooltip(actions_rect, action.label, {
-					size = self.font_size,
-					align = actions_rect.is_outside and 8 or 4,
-					offset = self.gap * 2,
-					responsive = false,
-					invert_colors = not item.active,
-				})
-			end
-
 			-- Select hovered item
 			if is_current and cursor_is_moving and item.selectable ~= false
 				-- Do not select items if cursor is moving towards a submenu
@@ -1497,6 +1461,35 @@ function Menu:render()
 				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0) then
 				menu.selected_index = index
 				if not is_selected then request_render() end
+			end
+		end
+
+		-- Footnote / Selected action label
+		if is_current and (menu.footnote or selected_action) then
+			local height_half = self.font_size
+			local icon_x, icon_y = menu_rect.ax + self.padding + self.font_size / 2, menu_rect.by + height_half
+			local is_icon_hovered = false
+			local icon_hitbox = {
+				ax = icon_x - height_half,
+				ay = icon_y - height_half,
+				bx = icon_x + height_half,
+				by = icon_y + height_half,
+			}
+			is_icon_hovered = get_point_to_rectangle_proximity(cursor, icon_hitbox) == 0
+			local text = selected_action and selected_action.label or is_icon_hovered and menu.footnote
+			local opacity = (is_icon_hovered and 1 or 0.5) * menu_opacity
+			ass:icon(icon_x, icon_y, self.font_size, is_icon_hovered and 'help' or 'help_outline', {
+				color = fg, border = state.scale, border_color = bg, opacity = opacity,
+			})
+			if text then
+				ass:txt(icon_x + self.font_size * 0.75, icon_y, 4, text, {
+					size = self.font_size,
+					color = fg,
+					border = state.scale,
+					border_color = bg,
+					opacity = menu_opacity,
+					italic = true,
+				})
 			end
 		end
 
