@@ -85,6 +85,14 @@ function create_self_updating_menu_opener(opts)
 
 		---@type MenuAction[]
 		local actions = opts.actions or {}
+		if opts.on_move then
+			actions[#actions + 1] = {
+				name = 'move_up', icon = 'arrow_upward', label = t('Move up') .. ' (ctrl+up/pgup/home)',
+			}
+			actions[#actions + 1] = {
+				name = 'move_down', icon = 'arrow_downward', label = t('Move down') .. ' (ctrl+down/pgdwn/end)',
+			}
+		end
 		if opts.on_reload then
 			actions[#actions + 1] = {name = 'reload', icon = 'refresh', label = t('Reload') .. ' (f5)'}
 		end
@@ -127,7 +135,21 @@ function create_self_updating_menu_opener(opts)
 			on_close = 'callback',
 		}, function(event)
 			if event.type == 'activate' then
-				if event.action == 'reload' and opts.on_reload then
+				if (event.action == 'move_up' or event.action == 'move_down') and opts.on_move then
+					local to_index = event.index + (event.action == 'move_up' and -1 or 1)
+					if to_index >= 1 and to_index <= #menu.current.items then
+						opts.on_move({
+							type = 'move',
+							from_index = event.index,
+							to_index = to_index,
+							menu_id = menu.current.id,
+						})
+						menu:select_index(to_index)
+						if not event.is_pointer then
+							menu:scroll_to_index(to_index, nil, true)
+						end
+					end
+				elseif event.action == 'reload' and opts.on_reload then
 					opts.on_reload({type = 'reload', index = event.index, value = event.value})
 				elseif event.action == 'remove' and (opts.on_remove or opts.on_delete) then
 					remove_or_delete(event.index, event.value, event.menu_id, event.modifiers)
