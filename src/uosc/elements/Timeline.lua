@@ -184,7 +184,7 @@ function Timeline:render()
 			self:handle_cursor_down()
 			cursor:once('primary_up', function() self:handle_cursor_up() end)
 		end)
-		if options.timeline_step ~= 0 then
+		if config.timeline_step ~= 0 then
 			cursor:zone('wheel_down', self, function()
 				mp.commandv('seek', -config.timeline_step, config.timeline_step_flag)
 			end)
