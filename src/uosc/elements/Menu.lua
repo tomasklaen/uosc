@@ -1227,6 +1227,7 @@ function Menu:render()
 			by = by + self.padding,
 		}
 		local cursor_is_moving = self.mouse_nav and cursor.distance > 10
+		local blur_action_index = cursor_is_moving and menu.action_index ~= nil
 
 		-- Background
 		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {
@@ -1353,14 +1354,12 @@ function Menu:render()
 			local title_clip_bx = content_bx
 
 			-- Actions
-			local item_can_blur_action_index = false
 			local actions_rect
 			if is_selected and actions and #actions > 0 and not item.items then
 				local place = item.actions_place or menu.item_actions_place
 				local margin = self.gap * 2
 				local size = item_by - item_ay - margin * 2
 				local rect_width = size * #actions + margin * (#actions - 1)
-				item_can_blur_action_index = menu.action_index ~= nil
 
 				-- Place actions outside of menu when requested and there's enough space for it
 				actions_rect = {
@@ -1401,12 +1400,10 @@ function Menu:render()
 						cursor:zone('primary_click', rect, self:create_action(function(shortcut)
 							self:activate_selected_item(shortcut)
 						end))
-						if cursor_is_moving then
-							item_can_blur_action_index = false
-							if not is_active then
-								menu.action_index = action_index
-								request_render()
-							end
+						blur_action_index = false
+						if not is_active then
+							menu.action_index = action_index
+							request_render()
 						end
 					end
 				end
@@ -1499,8 +1496,7 @@ function Menu:render()
 				and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect))
 				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0) then
 				menu.selected_index = index
-				if not is_selected or item_can_blur_action_index and menu.action_index then request_render() end
-				if item_can_blur_action_index then menu.action_index = nil end
+				if not is_selected then request_render() end
 			end
 		end
 
@@ -1599,6 +1595,11 @@ function Menu:render()
 					clip = '\\clip(' .. rect.ax .. ',' .. rect.ay .. ',' .. rect.bx .. ',' .. rect.by .. ')',
 				})
 			end
+		end
+
+		if blur_action_index then
+			menu.action_index = nil
+			request_render()
 		end
 
 		return menu_rect
