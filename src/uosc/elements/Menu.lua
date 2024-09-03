@@ -1374,7 +1374,7 @@ function Menu:render()
 					rect.ay, rect.by, rect.bx = rect.ay - margin, rect.by + margin, rect.bx + margin
 
 					-- Select action on cursor hover
-					if get_point_to_rectangle_proximity(cursor, rect) == 0 then
+					if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
 						cursor:zone('primary_click', rect, self:create_action(function(shortcut)
 							self:activate_selected_item(shortcut, true)
 						end))
