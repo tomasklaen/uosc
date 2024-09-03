@@ -1370,6 +1370,9 @@ function Menu:render()
 						color = is_active and bg or fg, opacity = menu_opacity, clip = item_clip,
 					})
 
+					-- Re-use rect as a hitbox by growing it so it bridges gaps to prevent flickering
+					rect.ay, rect.by, rect.bx = rect.ay - margin, rect.by + margin, rect.bx + margin
+
 					-- Select action on cursor hover
 					if get_point_to_rectangle_proximity(cursor, rect) == 0 then
 						cursor:zone('primary_click', rect, self:create_action(function(shortcut)
