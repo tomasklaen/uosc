@@ -15,7 +15,7 @@ local Element = require('elements/Element')
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
 ---@alias Search {query: string; timeout: unknown; min_top: number; max_width: number; source: {width: number; top: number; scroll_y: number; selected_index?: integer; items?: MenuStackChild[]}}
 
----@alias MenuEventActivate {type: 'activate'; index: number; value: any; action?: string; modifiers?: string; alt: boolean; ctrl: boolean; shift: boolean; keep_open?: boolean; menu_id: string;}
+---@alias MenuEventActivate {type: 'activate'; index: number; value: any; action?: string; modifiers?: string; alt: boolean; ctrl: boolean; shift: boolean; is_pointer: boolean; keep_open?: boolean; menu_id: string;}
 ---@alias MenuEventMove {type: 'move'; from_index: number; to_index: number; menu_id: string;}
 ---@alias MenuEventSearch {type: 'search'; query: string; menu_id: string;}
 ---@alias MenuEventKey {type: 'key'; id: string; key: string; modifiers?: string; alt: boolean; ctrl: boolean; shift: boolean; menu_id: string; selected_item?: {index: number; value: any; action?: string;}}
@@ -616,7 +616,8 @@ function Menu:back()
 end
 
 ---@param shortcut? Shortcut
-function Menu:activate_selected_item(shortcut)
+---@param is_pointer? boolean Whether this was called by a pointer.
+function Menu:activate_selected_item(shortcut, is_pointer)
 	local menu = self.current
 	local item = menu.items[menu.selected_index]
 	if item then
@@ -635,6 +636,7 @@ function Menu:activate_selected_item(shortcut)
 				type = 'activate',
 				index = menu.selected_index,
 				value = item.value,
+				is_pointer = is_pointer == true,
 				action = action and action.name,
 				keep_open = item.keep_open or menu.keep_open,
 				modifiers = shortcut and shortcut.modifiers or nil,
@@ -686,7 +688,7 @@ end
 ---@param shortcut? Shortcut
 function Menu:handle_cursor_up(shortcut)
 	if self.proximity_raw == 0 and self.drag_last_y and not self.is_dragging then
-		self:activate_selected_item(shortcut)
+		self:activate_selected_item(shortcut, true)
 	end
 	if self.is_dragging then
 		local distance = cursor:get_velocity().y / -3
@@ -1256,7 +1258,7 @@ function Menu:render()
 		if current_item and current_item.items then
 			submenu_rect = draw_menu(current_item --[[@as MenuStack]], menu_rect.bx + self.gap, 1)
 			cursor:zone('primary_down', submenu_rect, self:create_action(function(shortcut)
-				self:activate_selected_item(shortcut)
+				self:activate_selected_item(shortcut, true)
 			end))
 		end
 
@@ -1373,7 +1375,7 @@ function Menu:render()
 					-- Select action on cursor hover
 					if get_point_to_rectangle_proximity(cursor, rect) == 0 then
 						cursor:zone('primary_click', rect, self:create_action(function(shortcut)
-							self:activate_selected_item(shortcut)
+							self:activate_selected_item(shortcut, true)
 						end))
 						blur_action_index = false
 						if not is_active then
