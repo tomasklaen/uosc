@@ -1191,6 +1191,7 @@ Manager = {
 ---@param element_ids string|string[]|nil `foo,bar` or `{'foo', 'bar'}`.
 function Manager:disable(client, element_ids)
 	self._disabled_by[client] = comma_split(element_ids)
+	---@diagnostic disable-next-line: deprecated
 	self.disabled = create_set(itable_join(unpack(table_values(self._disabled_by))))
 	self:_commit()
 end

@@ -6,11 +6,11 @@ function open_command_menu(data, opts)
 	local menu
 
 	local function run_command(command)
-		if type(command) == 'string' then
-			mp.command(command)
-		else
+		if type(command) == 'table' then
 			---@diagnostic disable-next-line: deprecated
 			mp.commandv(unpack(command))
+		else
+			mp.command(tostring(command))
 		end
 	end
 
@@ -20,7 +20,11 @@ function open_command_menu(data, opts)
 			mp.commandv(unpack(itable_join({'script-message-to'}, menu.root.callback, {utils.format_json(event)})))
 		elseif event.type == 'activate' then
 			run_command(event.value)
-			menu:close()
+			-- Convention: Only pure item activations should close the menu.
+			-- Using modifiers or triggering item actions should not.
+			if not event.keep_open and not event.modifiers and not event.action then
+				menu:request_close()
+			end
 		end
 	end
 
