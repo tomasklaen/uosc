@@ -330,7 +330,8 @@ function Menu:update_dimensions()
 		local width = math.max(menu.search and menu.search.max_width or 0, menu.max_width)
 		menu.width = round(clamp(min_width, width, width_available))
 		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step + self.padding or 0
-		local max_height = height_available - title_height - (menu.footnote and self.font_size * 1.5 or 0)
+		local footnote_height = self.font_size * 1.5
+		local max_height = height_available - title_height - footnote_height
 		local content_height = self.scroll_step * #menu.items
 		menu.height = math.min(content_height - self.item_spacing, max_height)
 		menu.top = clamp(
