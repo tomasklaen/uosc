@@ -947,6 +947,13 @@ bind_command('playlist', create_self_updating_menu_opener({
 	end,
 	on_activate = function(event) mp.commandv('set', 'playlist-pos-1', tostring(event.value)) end,
 	on_paste = function(event) mp.commandv('loadfile', tostring(event.value), 'append') end,
+	on_key = function(event)
+		if event.id == 'ctrl+c' and event.selected_item then
+			local payload = mp.get_property_native('playlist/' .. (event.selected_item.value - 1) .. '/filename')
+			set_clipboard(payload)
+			mp.commandv('show-text', t('Copied to clipboard') .. ': ' .. payload, 3000)
+		end
+	end,
 	on_move = function(event)
 		local from, to = event.from_index, event.to_index
 		mp.commandv('playlist-move', tostring(from - 1), tostring(to - (to > from and 0 or 1)))

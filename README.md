@@ -329,6 +329,8 @@ Note: there are alternative ways to open stuff from clipboard without the need t
 
 Copy currently open path or URL to clipboard.
 
+Additionally, you can also press `ctrl+c` to copy path of a selected item in `playlist` or all directory listing menus.
+
 #### `open-config-directory`
 
 Open directory with `mpv.conf` in file explorer.
