@@ -1074,6 +1074,22 @@ bind_command('audio-device', create_self_updating_menu_opener({
 	end,
 	on_activate = function(event) mp.commandv('set', 'audio-device', event.value) end,
 }))
+bind_command('paste', function()
+	local has_playlist = mp.get_property_native('playlist-count') > 1
+	mp.commandv('script-binding', 'uosc/paste-to-' .. (has_playlist and 'playlist' or 'open'))
+end)
+bind_command('paste-to-open', function()
+	local payload = get_clipboard()
+	if payload then mp.commandv('loadfile', payload) end
+end)
+bind_command('paste-to-playlist', function()
+	local payload = get_clipboard()
+	if payload then
+		mp.commandv('loadfile', payload, 'append')
+		mp.commandv('show-text', t('Added to playlist') .. ': ' .. payload, 3000)
+	end
+end)
+bind_command('copy-to-clipboard', function() set_clipboard(state.path) end)
 bind_command('open-config-directory', function()
 	local config_path = mp.command_native({'expand-path', '~~/mpv.conf'})
 	local config = serialize_path(normalize_path(config_path))

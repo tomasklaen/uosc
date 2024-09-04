@@ -313,6 +313,22 @@ Show current file in your operating systems' file explorer.
 
 Switch audio output device.
 
+#### `paste`, `paste-to-open`, `paste-to-playlist`
+
+Commands to paste path or URL in clipboard to either open immediately, or append to playlist.
+
+`paste` will add to playlist if there's any (`playlist-count > 1`), or open immediately otherwise.
+
+Note: there are alternative ways to open stuff from clipboard without the need to bind these commands:
+
+- When `open-file` menu is open → `ctrl+v` to open path/URL in clipboard.
+- When `playlist` menu is open → `ctrl+v` to add path/URL in clipboard to playlist.
+- When any track menu (`subtitles`, `audio`, `video`) is open → `ctrl+v` to add path/URL in clipboard as a new track.
+
+#### `copy-to-clipboard`
+
+Copy currently open path or URL to clipboard.
+
 #### `open-config-directory`
 
 Open directory with `mpv.conf` in file explorer.
