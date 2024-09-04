@@ -814,30 +814,85 @@ function load_track(type, path)
 	end
 end
 
----@return string|nil
-function get_clipboard()
+---@param args (string|number)[]
+---@return string|nil error
+---@return table data
+function call_ziggy(args)
 	local result = mp.command_native({
 		name = 'subprocess',
 		capture_stderr = true,
 		capture_stdout = true,
 		playback_only = false,
-		args = {config.ziggy_path, 'get-clipboard'},
+		args = itable_join({config.ziggy_path}, args),
 	})
 
-	local function print_error(message)
-		msg.error('Getting clipboard data failed. Error: ' .. message)
+	if result.status ~= 0 then
+		return 'Calling ziggy failed. Exit code ' .. result.status .. ': ' .. result.stdout .. result.stderr, {}
 	end
 
-	if result.status == 0 then
-		local data = utils.parse_json(result.stdout)
-		if data and data.payload then
-			return data.payload
-		else
-			print_error(data and (data.error and data.message or 'unknown error') or 'couldn\'t parse json')
-		end
+	local data = utils.parse_json(result.stdout)
+	if not data then
+		return 'Ziggy response error. Couldn\'t parse json: ' .. result.stdout, {}
+	elseif data.error then
+		return 'Ziggy error: ' .. data.message, {}
 	else
-		print_error('exit code ' .. result.status .. ': ' .. result.stdout .. result.stderr)
+		return nil, data
 	end
+end
+
+---@param args (string|number)[]
+---@param callback fun(error: string|nil, data: table)
+---@return fun() abort Function to abort the request.
+function call_ziggy_async(args, callback)
+	local abort_signal = mp.command_native_async({
+		name = 'subprocess',
+		capture_stderr = true,
+		capture_stdout = true,
+		playback_only = false,
+		args = itable_join({config.ziggy_path}, args),
+	}, function(success, result, error)
+		if not success or not result or result.status ~= 0 then
+			local exit_code = (result and result.status or 'unknown')
+			local message = error or (result and result.stdout .. result.stderr) or ''
+			callback('Calling ziggy failed. Exit code: ' .. exit_code .. ' Error: ' .. message, {})
+			return
+		end
+
+		local json = result and type(result.stdout) == 'string' and result.stdout or ''
+		local data = utils.parse_json(json)
+		if not data then
+			callback('Ziggy response error. Couldn\'t parse json: ' .. json, {})
+		elseif data.error then
+			callback('Ziggy error: ' .. data.message, {})
+		else
+			return callback(nil, data)
+		end
+	end)
+
+	return function()
+		mp.abort_async_command(abort_signal)
+	end
+end
+
+---@return string|nil
+function get_clipboard()
+	local err, data = call_ziggy({'get-clipboard'})
+	if err then
+		mp.commandv('show-text', 'Get clipboard error. See console for details.')
+		msg.error(err)
+	end
+	return data and data.payload
+end
+
+---@param payload any
+---@return string|nil payload String that was copied to clipboard.
+function set_clipboard(payload)
+	local err, data = call_ziggy({'set-clipboard', tostring(payload)})
+	if err then
+		mp.commandv('show-text', 'Set clipboard error. See console for details.')
+		msg.error(err)
+	end
+	return data and data.payload
 end
 
 --[[ RENDERING ]]
