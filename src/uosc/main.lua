@@ -451,8 +451,9 @@ function update_fullormaxed()
 end
 
 function update_duration()
-	state.duration = state._duration and ((state.rebase_start_time == false and state.start_time)
+	local duration = state._duration and ((state.rebase_start_time == false and state.start_time)
 		and (state._duration + state.start_time) or state._duration)
+	set_state('duration', duration)
 	update_human_times()
 end
 
