@@ -110,7 +110,7 @@ Features:
 To build ziggy (our utility binary) yourself, run:
 
 ```
-tools/build
+tools/build ziggy
 ```
 
 Which will run the `tools/build(.ps1)` script that builds it for each platform. It requires [go](https://go.dev/) to be installed. Source code is in `src/ziggy`.
