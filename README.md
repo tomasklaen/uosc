@@ -319,6 +319,8 @@ Commands to paste path or URL in clipboard to either open immediately, or append
 
 `paste` will add to playlist if there's any (`playlist-count > 1`), or open immediately otherwise.
 
+`paste-to-playlist` will also open the pasted file if mpv is idle (no file open).
+
 Note: there are alternative ways to open stuff from clipboard without the need to bind these commands:
 
 - When `open-file` menu is open → `ctrl+v` to open path/URL in clipboard.
