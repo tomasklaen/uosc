@@ -952,7 +952,6 @@ bind_command('playlist', create_self_updating_menu_opener({
 		if event.id == 'ctrl+c' and event.selected_item then
 			local payload = mp.get_property_native('playlist/' .. (event.selected_item.value - 1) .. '/filename')
 			set_clipboard(payload)
-			mp.commandv('show-text', t('Copied to clipboard') .. ': ' .. payload, 3000)
 		end
 	end,
 	on_move = function(event)

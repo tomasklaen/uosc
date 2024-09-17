@@ -539,7 +539,6 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 		elseif event.type == 'key' then
 			if event.id == 'ctrl+c' and event.selected_item then
 				set_clipboard(event.selected_item.value)
-				mp.commandv('show-text', t('Copied to clipboard') .. ': ' .. event.selected_item.value, 3000)
 			end
 		elseif event.type == 'close' then
 			close()
