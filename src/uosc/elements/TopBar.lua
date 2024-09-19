@@ -308,17 +308,18 @@ function TopBar:render()
 				local x = align == 6 and rect.bx - padding or rect.ax + padding
 				ass:txt(x, rect.ay + height / 2, align, text, opts)
 
-				-- Click action
-				cursor:zone('primary_click', rect, function() mp.command('script-binding uosc/chapters') end)
-
 				-- Time
-				rect.ax = left_aligned and rect.ax - spacing - remaining_box_width or rect.bx + spacing
-				rect.bx = rect.ax + remaining_box_width
+				local time_ax = left_aligned and rect.ax - spacing - remaining_box_width or rect.bx + spacing
+				local time_bx = time_ax + remaining_box_width
 				opts.clip = nil
-				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
+				ass:rect(time_ax, rect.ay, time_bx, rect.by, {
 					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
-				ass:txt(rect.ax + padding_half, rect.ay + height / 2, 4, remaining_human, opts)
+				ass:txt(time_ax + padding_half, rect.ay + height / 2, 4, remaining_human, opts)
+
+				-- Click action
+				rect.bx = time_bx
+				cursor:zone('primary_click', rect, function() mp.command('script-binding uosc/chapters') end)
 
 				title_ay = rect.by + spacing
 			end
