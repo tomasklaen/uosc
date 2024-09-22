@@ -57,33 +57,30 @@ function Speed:handle_cursor_down()
 end
 
 function Speed:on_global_mouse_move()
-	if not self.dragging then return end
+    if not self.dragging then return end
 
-	self.dragging.distance = cursor.x - self.dragging.start_x
-	self.dragging.speed_distance = (-self.dragging.distance / self.notch_spacing * self.notch_every)
+    local drag = self.dragging
+    drag.distance = cursor.x - drag.start_x
+    drag.speed_distance = (-drag.distance / self.notch_spacing) * self.notch_every
 
-	local speed_current = state.speed
-	local speed_drag_current = self.dragging.start_speed + self.dragging.speed_distance
-	speed_drag_current = clamp(0.01, speed_drag_current, 100)
-	local drag_dir_up = speed_drag_current > speed_current
+    local speed_drag_current = clamp(0.01, drag.start_speed + drag.speed_distance, 100)
+    local speed_current = state.speed
+    local drag_dir_up = speed_drag_current > speed_current
 
-	local speed_step_next = speed_current
-	local speed_drag_diff = math.abs(speed_drag_current - speed_current)
-	while math.abs(speed_step_next - speed_current) < speed_drag_diff do
-		speed_step_next = self:speed_step(speed_step_next, drag_dir_up)
-	end
-	local speed_step_prev = self:speed_step(speed_step_next, not drag_dir_up)
+    local speed_step_next = speed_current
+    local speed_drag_diff = math.abs(speed_drag_current - speed_current)
 
-	local speed_new = speed_step_prev
-	local speed_next_diff = math.abs(speed_drag_current - speed_step_next)
-	local speed_prev_diff = math.abs(speed_drag_current - speed_step_prev)
-	if speed_next_diff < speed_prev_diff then
-		speed_new = speed_step_next
-	end
+    while true do
+        local speed_step = self:speed_step(speed_step_next, drag_dir_up)
+        if math.abs(speed_step - speed_current) >= speed_drag_diff then
+            break
+        end
+        speed_step_next = speed_step
+    end
 
-	if speed_new ~= speed_current then
-		mp.set_property_native('speed', speed_new)
-	end
+    if speed_step_next ~= speed_current then
+        mp.set_property_native('speed', speed_step_next)
+    end
 end
 
 function Speed:handle_cursor_up()
