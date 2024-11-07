@@ -507,7 +507,8 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 	end
 
 	---@param event MenuEventActivate
-	local function activate(event)
+	---@param only_if_dir? boolean Activate item only if it's a directory.
+	local function activate(event, only_if_dir)
 		local path = event.value
 		local is_drives = path == '{drives}'
 
@@ -523,21 +524,29 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 			return
 		end
 
-		if info.is_dir and not event.modifiers and not event.action then
-			open_directory(path)
-		else
+		if info.is_dir then
+			if not event.modifiers and not event.action then
+				open_directory(path)
+			end
+		elseif not only_if_dir then
 			handle_activate(event)
 		end
 	end
+
 	menu = Menu:open(menu_data, function(event)
 		if event.type == 'activate' then
 			activate(event --[[@as MenuEventActivate]])
-		elseif event.type == 'back' or event.type == 'key' and event.id == 'alt+up' then
+		elseif event.type == 'back' or event.type == 'key' and itable_has({'alt+up', 'left'}, event.id) then
 			if back_path then open_directory(back_path) end
 		elseif event.type == 'paste' then
 			handle_activate({type = 'activate', value = event.value})
 		elseif event.type == 'key' then
-			if event.id == 'ctrl+c' and event.selected_item then
+			if event.id == 'right' then
+				local selected_item = event.selected_item
+				if selected_item then
+					activate(table_assign({}, selected_item, {type = 'activate'}), true)
+				end
+			elseif event.id == 'ctrl+c' and event.selected_item then
 				set_clipboard(event.selected_item.value)
 			end
 		elseif event.type == 'close' then
