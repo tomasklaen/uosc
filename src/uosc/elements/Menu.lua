@@ -1031,7 +1031,7 @@ end
 function Menu:enable_key_bindings()
 	-- `+` at the end enables `repeatable` flag
 	local standalone_keys = {
-		'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12', '/',
+		'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12', '/', 'mbtn_back',
 		{'f', 'ctrl'}, {'v', 'ctrl'}, {'c', 'ctrl'},
 	}
 	local modifiable_keys = {'up+', 'down+', 'left', 'right', 'enter', 'kp_enter', 'bs', 'tab', 'esc', 'pgup+',
