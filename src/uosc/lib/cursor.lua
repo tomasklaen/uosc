@@ -5,7 +5,7 @@ local cursor = {
 	y = math.huge,
 	hidden = true,
 	distance = 0, -- Distance traveled during current move. Reset by `cursor.distance_reset_timer`.
-	hover_raw = false,
+	last_hover = false, -- Stores `mouse.hover` boolean of the last mouse event for enter/leave detection.
 	-- Event handlers that are only fired on zones defined during render loop.
 	---@type {event: string, hitbox: Hitbox; handler: CursorEventHandler}[]
 	zones = {},
@@ -401,12 +401,12 @@ end
 -- Movement
 function handle_mouse_pos(_, mouse)
 	if not mouse then return end
-	if cursor.hover_raw and not mouse.hover then
+	if cursor.last_hover and not mouse.hover then
 		cursor:leave()
-	else
+	elseif not cursor.hidden or not cursor.last_hover and mouse.hover then
 		cursor:move(mouse.x, mouse.y)
 	end
-	cursor.hover_raw = mouse.hover
+	cursor.last_hover = mouse.hover
 end
 mp.observe_property('mouse-pos', 'native', handle_mouse_pos)
 
