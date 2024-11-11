@@ -403,7 +403,7 @@ function handle_mouse_pos(_, mouse)
 	if not mouse then return end
 	if cursor.last_hover and not mouse.hover then
 		cursor:leave()
-	elseif not cursor.hidden or not cursor.last_hover and mouse.hover then
+	elseif not (cursor.last_hover == false and mouse.hover == false) then -- filters out duplicate mouse out events
 		cursor:move(mouse.x, mouse.y)
 	end
 	cursor.last_hover = mouse.hover
