@@ -60,7 +60,6 @@ defaults = {
 	window_border_size = 1,
 
 	autoload = false,
-	autoload_types = 'video,audio,image',
 	shuffle = false,
 
 	scale = 1,
@@ -93,6 +92,7 @@ defaults = {
 	image_types = 'apng,avif,bmp,gif,j2k,jp2,jfif,jpeg,jpg,jxl,mj2,png,svg,tga,tif,tiff,webp',
 	subtitle_types = 'aqt,ass,gsub,idx,jss,lrc,mks,pgs,pjs,psb,rt,sbv,slt,smi,sub,sup,srt,ssa,ssf,ttxt,txt,usf,vt,vtt',
 	playlist_types = 'm3u,m3u8,pls,url,cue',
+	load_types = 'video,audio,image',
 	default_directory = '~/',
 	show_hidden_files = false,
 	use_trash = false,
@@ -131,8 +131,6 @@ end
 if not itable_index_of({'left', 'right'}, options.top_bar_controls) then
 	options.top_bar_controls = options.top_bar_controls == 'yes' and 'right' or nil
 end
--- Ensure required environment configuration
-if options.autoload then mp.commandv('set', 'keep-open-pause', 'no') end
 
 --[[ INTERNATIONALIZATION ]]
 local intl = require('lib/intl')
@@ -194,15 +192,7 @@ config = {
 			.. ',' .. options.audio_types
 			.. ',' .. options.image_types
 			.. ',' .. options.playlist_types),
-		autoload = (function()
-			---@type string[]
-			local option_values = {}
-			for _, name in ipairs(comma_split(options.autoload_types)) do
-				local value = options[name .. '_types']
-				if type(value) == 'string' then option_values[#option_values + 1] = value end
-			end
-			return comma_split(table.concat(option_values, ','))
-		end)(),
+		load = {}, -- populated by update_load_types() below
 	},
 	stream_quality_options = comma_split(options.stream_quality_options),
 	top_bar_flash_on = comma_split(options.top_bar_flash_on),
@@ -241,8 +231,35 @@ config = {
 	timeline_step_flag = '',
 }
 
+function update_load_types()
+	local extensions = {}
+	local types = create_set(comma_split(options.load_types:lower()))
+
+	if types.same then
+		types.same = nil
+		if state and state.type then types[state.type] = true end
+	end
+
+	for _, name in ipairs(table_keys(types)) do
+		local type_extensions = config.types[name]
+		if type(type_extensions) == 'table' then
+			itable_append(extensions, type_extensions)
+		else
+			msg.warn('Unknown load type: ' .. name)
+		end
+	end
+
+	config.types.load = extensions
+end
+
 -- Updates config with values dependent on options
 function update_config()
+	-- Required environment config
+	if options.autoload then
+		mp.commandv('set', 'keep-open', 'yes')
+		mp.commandv('set', 'keep-open-pause', 'no')
+	end
+
 	-- Adds `{element}_persistency` config properties with forced visibility states (e.g.: `{paused = true}`)
 	for _, name in ipairs({'timeline', 'controls', 'volume', 'top_bar', 'speed'}) do
 		local option_name = name .. '_persistency'
@@ -275,6 +292,9 @@ function update_config()
 		config.timeline_step = tonumber(is_exact and options.timeline_step:sub(1, -2) or options.timeline_step)
 		config.timeline_step_flag = is_exact and 'exact' or ''
 	end
+
+	-- Other
+	update_load_types()
 end
 update_config()
 
@@ -374,6 +394,7 @@ state = {
 	volume = nil,
 	volume_max = nil,
 	mute = nil,
+	type = nil, -- video,image,audio
 	is_idle = false,
 	is_video = false,
 	is_audio = false, -- true if file is audio only (mp3, etc)
@@ -573,7 +594,7 @@ function load_file_index_in_current_directory(index)
 	local serialized = serialize_path(state.path)
 	if serialized and serialized.dirname then
 		local files, _dirs, error = read_directory(serialized.dirname, {
-			types = config.types.autoload,
+			types = config.types.load,
 			hidden = options.show_hidden_files,
 		})
 
@@ -758,6 +779,8 @@ mp.observe_property('track-list', 'native', function(name, value)
 	set_state('has_many_sub', types.sub > 1)
 	set_state('is_video', types.video > 0)
 	set_state('has_many_video', types.video > 1)
+	set_state('type', state.is_video and 'video' or state.is_audio and 'audio' or state.is_image and 'image' or nil)
+	update_load_types()
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('editions', 'number', function(_, editions)

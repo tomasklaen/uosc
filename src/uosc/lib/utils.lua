@@ -552,7 +552,7 @@ end
 function navigate_directory(delta)
 	if not state.path or is_protocol(state.path) then return false end
 	local paths, current_index = get_adjacent_files(state.path, {
-		types = config.types.autoload,
+		types = config.types.load,
 		hidden = options.show_hidden_files,
 	})
 	if paths and current_index then
