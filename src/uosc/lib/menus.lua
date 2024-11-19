@@ -524,10 +524,8 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 			return
 		end
 
-		if info.is_dir then
-			if not event.modifiers and not event.action then
-				open_directory(path)
-			end
+		if info.is_dir and not event.modifiers and not event.action then
+			open_directory(path)
 		elseif not only_if_dir then
 			handle_activate(event)
 		end
