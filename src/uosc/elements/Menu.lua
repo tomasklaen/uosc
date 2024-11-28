@@ -61,9 +61,7 @@ function Menu:close(immediate, callback)
 		end
 
 		local function close()
-			Elements:remove('menu')
-			menu.is_closing, menu.root, menu.current, menu.all, menu.by_id = false, nil, nil, {}, {}
-			menu:disable_key_bindings()
+			Elements:remove('menu') -- calls menu:destroy() under the hood
 			Elements:update_proximities()
 			cursor:queue_autohide()
 			if callback then callback() end
@@ -142,7 +140,7 @@ end
 function Menu:destroy()
 	Element.destroy(self)
 	self:disable_key_bindings()
-	self.is_closed = true
+	self.is_closed, self.is_closing, self.root, self.current, self.all, self.by_id = true, false, nil, nil, {}, {}
 	if not self.is_being_replaced then Elements:maybe('curtain', 'unregister', self.id) end
 	if utils.shared_script_property_set then
 		utils.shared_script_property_set('uosc-menu-type', nil)
