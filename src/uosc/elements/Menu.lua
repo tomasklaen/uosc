@@ -32,7 +32,7 @@ local Menu = class(Element)
 ---@param callback MenuCallback
 ---@param opts? MenuOptions
 function Menu:open(data, callback, opts)
-	local open_menu = self:is_open()
+	local open_menu = Menu:is_open()
 	if open_menu then
 		open_menu.is_being_replaced = true
 		open_menu:close(true)
@@ -61,10 +61,20 @@ function Menu:close(immediate, callback)
 		end
 
 		local function close()
+			local on_close = menu.root.on_close -- removed in menu:destroy()
 			Elements:remove('menu') -- calls menu:destroy() under the hood
 			Elements:update_proximities()
 			cursor:queue_autohide()
+
+			-- Call :close() callback
 			if callback then callback() end
+
+			-- Call callbacks/events defined on menu config
+			local close_event = {type = 'close'}
+			if not on_close or menu:command_or_event(on_close, {}, close_event) ~= 'event' then
+				menu.callback(close_event)
+			end
+
 			request_render()
 		end
 
@@ -146,13 +156,6 @@ function Menu:destroy()
 		utils.shared_script_property_set('uosc-menu-type', nil)
 	end
 	mp.set_property_native('user-data/uosc/menu/type', nil)
-end
-
-function Menu:request_close()
-	local callback = self.root.on_close
-	if not callback or self:command_or_event(callback, {}, {type = 'close'}) ~= 'event' then
-		self:close()
-	end
 end
 
 ---@param data MenuData
@@ -682,7 +685,7 @@ function Menu:handle_cursor_down()
 		self.drag_last_y = cursor.y
 		self.current.fling = nil
 	else
-		self:request_close()
+		self:close()
 	end
 end
 
@@ -1115,7 +1118,7 @@ function Menu:handle_shortcut(shortcut, info)
 		if menu.search and menu.search_style ~= 'palette' then
 			self:search_cancel()
 		else
-			self:request_close()
+			self:close()
 		end
 	elseif id == 'left' and menu.parent_menu then
 		self:back()

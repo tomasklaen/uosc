@@ -26,7 +26,7 @@ function open_command_menu(data, opts)
 			-- Convention: Only pure item activations should close the menu.
 			-- Using modifiers or triggering item actions should not.
 			if not event.keep_open and not event.modifiers and not event.action then
-				menu:request_close()
+				menu:close()
 			end
 		end
 	end
@@ -139,7 +139,6 @@ function create_self_updating_menu_opener(opts)
 			selected_index = selected_index,
 			on_move = opts.on_move and 'callback' or nil,
 			on_paste = opts.on_paste and 'callback' or nil,
-			on_close = 'callback',
 		}, function(event)
 			if event.type == 'activate' then
 				if (event.action == 'move_up' or event.action == 'move_down') and opts.on_move then
@@ -470,7 +469,6 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 		title = opts.title or '',
 		footnote = t('%s to go up in tree.', 'alt+up') .. ' ' .. t('Paste path or url to open.'),
 		items = {},
-		on_close = opts.on_close and 'callback' or nil,
 		on_paste = 'callback',
 	}
 
