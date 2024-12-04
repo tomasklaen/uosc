@@ -150,7 +150,7 @@ end
 function Menu:destroy()
 	Element.destroy(self)
 	self:disable_key_bindings()
-	self.is_closed, self.is_closing, self.root, self.current, self.all, self.by_id = true, false, nil, nil, {}, {}
+	self.is_closed, self.is_closing = true, false
 	if not self.is_being_replaced then Elements:maybe('curtain', 'unregister', self.id) end
 	if utils.shared_script_property_set then
 		utils.shared_script_property_set('uosc-menu-type', nil)
