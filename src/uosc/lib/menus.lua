@@ -94,10 +94,16 @@ function create_self_updating_menu_opener(opts)
 		local actions = opts.actions or {}
 		if opts.on_move then
 			actions[#actions + 1] = {
-				name = 'move_up', icon = 'arrow_upward', label = t('Move up') .. ' (ctrl+up/pgup/home)',
+				name = 'move_up',
+				icon = 'arrow_upward',
+				label = t('Move up') .. ' (ctrl+up/pgup/home)',
+				filter_hidden = true,
 			}
 			actions[#actions + 1] = {
-				name = 'move_down', icon = 'arrow_downward', label = t('Move down') .. ' (ctrl+down/pgdwn/end)',
+				name = 'move_down',
+				icon = 'arrow_downward',
+				label = t('Move down') .. ' (ctrl+down/pgdwn/end)',
+				filter_hidden = true,
 			}
 		end
 		if opts.on_reload then

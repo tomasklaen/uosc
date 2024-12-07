@@ -655,6 +655,7 @@ end
 
 ---@param index integer
 function Menu:move_selected_item_to(index)
+	if self.current.search then return end -- Moving filtered items is an undefined behavior
 	local callback = self.current.on_move
 	local from, items_count = self.current.selected_index, self.current.items and #self.current.items or 0
 	if callback and from and from ~= index and index >= 1 and index <= items_count then
