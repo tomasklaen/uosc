@@ -45,6 +45,9 @@ func main() {
 	case "http-delete":
 		commands.Http("DELETE", args)
 
+	case "open":
+		commands.Open(args)
+
 	default:
 		panic(errors.New("command required"))
 	}
