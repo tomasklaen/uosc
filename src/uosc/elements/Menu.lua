@@ -127,7 +127,7 @@ function Menu:init(data, callback, opts)
 	self.by_id = {}
 	self.type_to_search = options.menu_type_to_search
 	self.is_being_replaced = false
-	self.is_closing, self.is_closed = false, false
+	self.is_closing = false
 	self.drag_last_y = nil
 	self.is_dragging = false
 
@@ -147,7 +147,7 @@ end
 
 function Menu:destroy()
 	Element.destroy(self)
-	self.is_closed, self.is_closing = true, false
+	self.is_closing = false
 	if not self.is_being_replaced then Elements:maybe('curtain', 'unregister', self.id) end
 	if utils.shared_script_property_set then
 		utils.shared_script_property_set('uosc-menu-type', nil)
@@ -604,7 +604,7 @@ function Menu:slide_in_menu(id, x)
 end
 
 function Menu:back()
-	if self.is_closed then return end
+	if not self:is_alive() then return end
 
 	local current = self.current
 	local parent = current.parent_menu
@@ -1131,15 +1131,7 @@ function Menu:handle_shortcut(shortcut, info)
 end
 
 -- Check if menu is not closed or closing.
-function Menu:is_alive() return not self.is_closing and not self.is_closed end
-
--- Wraps a function so that it won't run if menu is closing or closed.
----@param fn function()
-function Menu:create_action(fn)
-	return function(...)
-		if self:is_alive() then fn(...) end
-	end
-end
+function Menu:is_alive() return not self.is_closing and not self.destroyed end
 
 ---@param name string
 function Menu:create_key_handler(name)

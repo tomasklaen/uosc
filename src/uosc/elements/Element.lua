@@ -238,4 +238,16 @@ function Element:has_keybindings(namespace)
 	end
 end
 
+-- Check if element is not destroyed or otherwise disabled.
+-- Intended to be overridden by inheriting elements to add more checks.
+function Element:is_alive() return not self.destroyed end
+
+-- Wraps a function into a callback that won't run if element is destroyed or otherwise disabled.
+---@param fn function()
+function Element:create_action(fn)
+	return function(...)
+		if self:is_alive() then fn(...) end
+	end
+end
+
 return Element
