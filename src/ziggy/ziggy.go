@@ -27,6 +27,24 @@ func main() {
 	case "set-clipboard":
 		commands.SetClipboard(args)
 
+	case "download":
+		commands.Download(args)
+
+	case "http-get":
+		commands.Http("GET", args)
+
+	case "http-post":
+		commands.Http("POST", args)
+
+	case "http-put":
+		commands.Http("PUT", args)
+
+	case "http-patch":
+		commands.Http("PATCH", args)
+
+	case "http-delete":
+		commands.Http("DELETE", args)
+
 	default:
 		panic(errors.New("command required"))
 	}
