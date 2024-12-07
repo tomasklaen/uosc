@@ -196,12 +196,12 @@ end
 
 -- Adds a keybinding for the lifetime of the element, or until removed manually.
 ---@param key string mpv key identifier.
----@param fnFlags fun()|table<fun()|string> Callback, or `{callback, flags}` tuple.
+---@param fnFlags fun()|string|table<fun()|string> Callback, or `{callback, flags}` tuple. Callback can be just a method name, in which case it'll be wrapped in `create_action(callback)`.
 ---@param namespace? string Keybinding namespace. Default is `_`.
 function Element:add_key_binding(key, fnFlags, namespace)
 	local name = self.id .. '-' .. key
 	local isTuple = type(fnFlags) == 'table'
-	local fn = (isTuple and fnFlags[1] or fnFlags) --[[@as fun()]]
+	local fn = (isTuple and fnFlags[1] or fnFlags)
 	local flags = isTuple and fnFlags[2] or nil
 	namespace = namespace or '_'
 	local names = self._key_bindings[namespace]
@@ -210,6 +210,9 @@ function Element:add_key_binding(key, fnFlags, namespace)
 		self._key_bindings[namespace] = names
 	end
 	names[name] = true
+	if type(fn) == 'string' then
+		fn = self:create_action(fn)
+	end
 	mp.add_forced_key_binding(key, name, fn, flags)
 end
 
@@ -243,8 +246,12 @@ end
 function Element:is_alive() return not self.destroyed end
 
 -- Wraps a function into a callback that won't run if element is destroyed or otherwise disabled.
----@param fn function()
+---@param fn fun(...)|string Function or a name of a method on this class to call.
 function Element:create_action(fn)
+	if type(fn) == 'string' then
+		local method = fn
+		fn = function(...) self[method](self, ...) end
+	end
 	return function(...)
 		if self:is_alive() then fn(...) end
 	end
