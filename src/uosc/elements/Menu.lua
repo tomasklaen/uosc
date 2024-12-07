@@ -1,6 +1,6 @@
 local Element = require('elements/Element')
 
----@alias MenuAction {name: string; icon: string; label?: string;}
+---@alias MenuAction {name: string; icon: string; label?: string; filter_hidden?: boolean;}
 
 -- Menu data structure accepted by `Menu:open(menu)`.
 ---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; footnote: string; search_style?: 'on_demand' | 'palette' | 'disabled';  item_actions?: MenuAction[]; item_actions_place?: 'inside' | 'outside'; callback?: string[]; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items?: MenuDataChild[]; selected_index?: integer; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string}
@@ -1354,41 +1354,45 @@ function Menu:render()
 				for i = 1, #actions, 1 do
 					local action_index = #actions - (i - 1)
 					local action = actions[action_index]
-					local is_active = action_index == menu.action_index
-					local bx = actions_rect.ax - (i == 1 and 0 or margin)
-					local rect = {
-						ay = actions_rect.ay,
-						by = actions_rect.by,
-						ax = bx - size,
-						bx = bx,
-					}
-					actions_rect.ax = rect.ax
 
-					ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
-						radius = state.radius > 2 and state.radius - 1 or state.radius,
-						color = is_active and fg or bg,
-						border = is_active and self.gap or nil,
-						border_color = bg,
-						opacity = menu_opacity,
-						clip = item_clip,
-					})
-					ass:icon(rect.ax + size / 2, rect.ay + size / 2, size * 0.66, action.icon, {
-						color = is_active and bg or fg, opacity = menu_opacity, clip = item_clip,
-					})
+					-- Hide when the action shouldn't be displayed when the item is a result of a search/filter
+					if not (action.filter_hidden and menu.search) then
+						local is_active = action_index == menu.action_index
+						local bx = actions_rect.ax - (i == 1 and 0 or margin)
+						local rect = {
+							ay = actions_rect.ay,
+							by = actions_rect.by,
+							ax = bx - size,
+							bx = bx,
+						}
+						actions_rect.ax = rect.ax
 
-					-- Re-use rect as a hitbox by growing it so it bridges gaps to prevent flickering
-					rect.ay, rect.by, rect.bx = item_ay, item_ay + self.scroll_step, rect.bx + margin
+						ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
+							radius = state.radius > 2 and state.radius - 1 or state.radius,
+							color = is_active and fg or bg,
+							border = is_active and self.gap or nil,
+							border_color = bg,
+							opacity = menu_opacity,
+							clip = item_clip,
+						})
+						ass:icon(rect.ax + size / 2, rect.ay + size / 2, size * 0.66, action.icon, {
+							color = is_active and bg or fg, opacity = menu_opacity, clip = item_clip,
+						})
 
-					-- Select action on cursor hover
-					if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
-						cursor:zone('primary_click', rect, self:create_action(function(shortcut)
-							self:activate_selected_item(shortcut, true)
-						end))
-						blur_action_index = false
-						if not is_active then
-							menu.action_index = action_index
-							selected_action = actions[action_index]
-							request_render()
+						-- Re-use rect as a hitbox by growing it so it bridges gaps to prevent flickering
+						rect.ay, rect.by, rect.bx = item_ay, item_ay + self.scroll_step, rect.bx + margin
+
+						-- Select action on cursor hover
+						if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
+							cursor:zone('primary_click', rect, self:create_action(function(shortcut)
+								self:activate_selected_item(shortcut, true)
+							end))
+							blur_action_index = false
+							if not is_active then
+								menu.action_index = action_index
+								selected_action = actions[action_index]
+								request_render()
+							end
 						end
 					end
 				end
