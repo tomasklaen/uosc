@@ -27,6 +27,8 @@ function Element:init(id, props)
 	self.anchor_id = nil
 	---@type fun()[] Disposer functions called when element is destroyed.
 	self._disposers = {}
+	---@type table<string,table<string, boolean>> Namespaced active key bindings. Default namespace is `_`.
+	self._key_bindings = {}
 
 	if props then table_assign(self, props) end
 
@@ -48,6 +50,7 @@ end
 function Element:destroy()
 	for _, disposer in ipairs(self._disposers) do disposer() end
 	self.destroyed = true
+	self:remove_key_bindings()
 	Elements:remove(self)
 end
 
@@ -189,6 +192,50 @@ function Element:observe_mp_property(name, type_or_callback, callback_maybe)
 	local prop_type = type(type_or_callback) == 'string' and type_or_callback or 'native'
 	mp.observe_property(name, prop_type, callback)
 	self:register_disposer(function() mp.unobserve_property(callback) end)
+end
+
+-- Adds a keybinding for the lifetime of the element, or until removed manually.
+---@param key string mpv key identifier.
+---@param fnFlags fun()|table<fun()|string> Callback, or `{callback, flags}` tuple.
+---@param namespace? string Keybinding namespace. Default is `_`.
+function Element:add_key_binding(key, fnFlags, namespace)
+	local name = self.id .. '-' .. key
+	local isTuple = type(fnFlags) == 'table'
+	local fn = (isTuple and fnFlags[1] or fnFlags) --[[@as fun()]]
+	local flags = isTuple and fnFlags[2] or nil
+	namespace = namespace or '_'
+	local names = self._key_bindings[namespace]
+	if not names then
+		names = {}
+		self._key_bindings[namespace] = names
+	end
+	names[name] = true
+	mp.add_forced_key_binding(key, name, fn, flags)
+end
+
+-- Remove all or only keybindings belonging to a specific namespace.
+---@param namespace? string Optional keybinding namespace to remove.
+function Element:remove_key_bindings(namespace)
+	local namespaces = namespace and {namespace} or table_keys(self._key_bindings)
+	for _, namespace in ipairs(namespaces) do
+		local names = self._key_bindings[namespace]
+		if names then
+			for name, _ in pairs(names) do
+				mp.remove_key_binding(name)
+			end
+			self._key_bindings[namespace] = nil
+		end
+	end
+end
+
+-- Checks if there are any (at all or namespaced) keybindings for this element.
+---@param namespace? string Only check this namespace.
+function Element:has_keybindings(namespace)
+	if namespace then
+		return self._key_bindings[namespace] ~= nil
+	else
+		return #table_keys(self._key_bindings) > 0
+	end
 end
 
 return Element

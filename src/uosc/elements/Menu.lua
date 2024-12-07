@@ -125,8 +125,6 @@ function Menu:init(data, callback, opts)
 	self.all = nil
 	---@type table<string, MenuStack> Map of submenus by their ids, such as `'Tools > Aspect ratio'`.
 	self.by_id = {}
-	self.key_bindings = {}
-	self.key_bindings_search = {} -- temporary key bindings for search
 	self.type_to_search = options.menu_type_to_search
 	self.is_being_replaced = false
 	self.is_closing, self.is_closed = false, false
@@ -149,7 +147,6 @@ end
 
 function Menu:destroy()
 	Element.destroy(self)
-	self:disable_key_bindings()
 	self.is_closed, self.is_closing = true, false
 	if not self.is_being_replaced then Elements:maybe('curtain', 'unregister', self.id) end
 	if utils.shared_script_property_set then
@@ -996,14 +993,14 @@ function Menu:search_clear_query(menu_id)
 end
 
 function Menu:search_enable_key_bindings()
-	if #self.key_bindings_search ~= 0 then return end
+	if self:has_keybindings('search') then return end
 	local flags = {repeatable = true, complex = true}
-	self:search_add_key_binding('any_unicode', 'menu-search', self:create_key_handler('search_text_input'), flags)
+	self:add_key_binding('any_unicode', {self:create_key_handler('search_text_input'), flags}, 'search')
 	-- KP0 to KP9 and KP_DEC are not included in any_unicode
 	-- despite typically producing characters, they don't have a info.key_text
-	self:search_add_key_binding('kp_dec', 'menu-search-kp-dec', self:create_key_handler('search_text_input'), flags)
+	self:add_key_binding('kp_dec', {self:create_key_handler('search_text_input'), flags}, 'search')
 	for i = 0, 9 do
-		self:search_add_key_binding('kp' .. i, 'menu-search-kp' .. i, self:create_key_handler('search_text_input'), flags)
+		self:add_key_binding('kp' .. i, {self:create_key_handler('search_text_input'), flags}, 'search')
 	end
 end
 
@@ -1011,23 +1008,8 @@ function Menu:search_ensure_key_bindings()
 	if self.current.search or (self.type_to_search and self.current.search_style ~= 'disabled') then
 		self:search_enable_key_bindings()
 	else
-		self:search_disable_key_bindings()
+		self:remove_key_bindings('search')
 	end
-end
-
-function Menu:search_disable_key_bindings()
-	for _, name in ipairs(self.key_bindings_search) do mp.remove_key_binding(name) end
-	self.key_bindings_search = {}
-end
-
-function Menu:search_add_key_binding(key, name, fn, flags)
-	self.key_bindings_search[#self.key_bindings_search + 1] = name
-	mp.add_forced_key_binding(key, name, fn, flags)
-end
-
-function Menu:add_key_binding(key, name, fn, flags)
-	self.key_bindings[#self.key_bindings + 1] = name
-	mp.add_forced_key_binding(key, name, fn, flags)
 end
 
 function Menu:enable_key_bindings()
@@ -1045,7 +1027,7 @@ function Menu:enable_key_bindings()
 		local binding = modifier and modifier .. '+' .. key or key
 		local shortcut = create_shortcut(normalized[key] or key, modifier)
 		local handler = self:create_action(function(info) self:handle_shortcut(shortcut, info) end)
-		self:add_key_binding(binding, 'menu-binding-' .. binding, handler, flags)
+		self:add_key_binding(binding, {handler, flags})
 	end
 
 	for i, key_mods in ipairs(standalone_keys) do
@@ -1146,12 +1128,6 @@ function Menu:handle_shortcut(shortcut, info)
 			},
 		}))
 	end
-end
-
-function Menu:disable_key_bindings()
-	self:search_disable_key_bindings()
-	for _, name in ipairs(self.key_bindings) do mp.remove_key_binding(name) end
-	self.key_bindings = {}
 end
 
 -- Check if menu is not closed or closing.
