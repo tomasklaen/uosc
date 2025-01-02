@@ -1015,7 +1015,7 @@ end
 function Menu:enable_key_bindings()
 	-- `+` at the end enables `repeatable` flag
 	local standalone_keys = {
-		'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12', '/', 'mbtn_back',
+		'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12', '/', 'kp_divide', 'mbtn_back',
 		{'f', 'ctrl'}, {'v', 'ctrl'}, {'c', 'ctrl'},
 	}
 	local modifiable_keys = {'up+', 'down+', 'left', 'right', 'enter', 'kp_enter', 'bs', 'tab', 'esc', 'pgup+',
@@ -1095,7 +1095,7 @@ function Menu:handle_shortcut(shortcut, info)
 		self:move_selected_item_by(-math.huge)
 	elseif id == 'ctrl+end' then
 		self:move_selected_item_by(math.huge)
-	elseif id == '/' or id == 'ctrl+f' then
+	elseif id == '/' or id == 'kp_divide' or id == 'ctrl+f' then
 		self:search_start()
 	elseif key == 'esc' then
 		if menu.search and menu.search_style ~= 'palette' then
