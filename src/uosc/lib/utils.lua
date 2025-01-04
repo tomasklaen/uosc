@@ -887,7 +887,8 @@ end
 ---@param payload any
 ---@return string|nil payload String that was copied to clipboard.
 function set_clipboard(payload)
-	local err, data = call_ziggy({'set-clipboard', tostring(payload)})
+	payload = tostring(payload)
+	local err, data = call_ziggy({'set-clipboard', payload})
 	if err then
 		mp.commandv('show-text', 'Set clipboard error. See console for details.')
 		msg.error(err)
