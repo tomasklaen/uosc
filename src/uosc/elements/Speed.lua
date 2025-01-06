@@ -22,6 +22,10 @@ function Speed:init(props)
 	self.dragging = nil
 end
 
+function Speed:get_visibility()
+	return Elements:maybe('timeline', 'get_is_hovered') and -1 or Element.get_visibility(self)
+end
+
 function Speed:on_coordinates()
 	self.height, self.width = self.by - self.ay, self.bx - self.ax
 	self.notch_spacing = self.width / (self.notches + 1)
