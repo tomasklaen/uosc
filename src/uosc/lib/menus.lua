@@ -19,8 +19,9 @@ function open_command_menu(data, opts)
 			---@diagnostic disable-next-line: deprecated
 			mp.commandv(unpack(itable_join({'script-message-to'}, menu.root.callback, {utils.format_json(event)})))
 		elseif event.type == 'activate' then
-			-- Modifiers and actions are not available on basic non-callback mode menus
-			if not event.modifiers and not event.action then
+			-- Modifiers and actions are not available on basic non-callback mode menus.
+			-- `alt` modifier should activate without closing the menu.
+			if (event.modifiers == 'alt' or not event.modifiers) and not event.action then
 				run_command(event.value)
 			end
 			-- Convention: Only pure item activations should close the menu.
