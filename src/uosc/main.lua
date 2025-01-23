@@ -959,11 +959,12 @@ bind_command('playlist', create_self_updating_menu_opener({
 	footnote = t('Paste path or url to add.') .. ' ' .. t('%s to reorder.', 'ctrl+up/down/pgup/pgdn/home/end'),
 	serializer = function(playlist)
 		local items = {}
+		local force_filename = mp.get_property_native('osd-playlist-entry') == 'filename'
 		for index, item in ipairs(playlist) do
-			local is_url = is_protocol(item.filename)
-			local item_title = type(item.title) == 'string' and #item.title > 0 and item.title or false
+			local title = type(item.title) == 'string' and #item.title > 0 and item.title or false
 			items[index] = {
-				title = item_title or (is_url and item.filename or serialize_path(item.filename).basename),
+				title = (not force_filename and title) and title
+					or (is_protocol(item.filename) and item.filename or serialize_path(item.filename).basename),
 				hint = tostring(index),
 				active = item.current,
 				value = index,
