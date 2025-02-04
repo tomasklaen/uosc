@@ -3,6 +3,8 @@ local uosc_version = '5.7.0'
 
 mp.commandv('script-message', 'uosc-version', uosc_version)
 
+mp.set_property('osc', 'no')
+
 assdraw = require('mp.assdraw')
 opt = require('mp.options')
 utils = require('mp.utils')
@@ -667,7 +669,6 @@ if options.click_threshold > 0 then
 	end
 end
 
-mp.observe_property('osc', 'bool', function(name, value) if value == true then mp.set_property('osc', 'no') end end)
 mp.register_event('file-loaded', function()
 	local path = normalize_path(mp.get_property_native('path'))
 	itable_delete_value(state.history, path)
