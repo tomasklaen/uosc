@@ -938,6 +938,9 @@ end
 function Menu:search_cancel(menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu or not menu.search or menu.search_style == 'palette' then return end
+	if state.ime_active == false then
+		mp.set_property_bool("input-ime", false)
+    end
 	self:search_query_update('', menu_id, true)
 	menu.search = nil
 	self:search_ensure_key_bindings()
@@ -976,6 +979,9 @@ end
 function Menu:search_start(menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu or menu.search_style == 'disabled' then return end
+	if state.ime_active == false then
+		mp.set_property_bool("input-ime", true)
+    end
 	self:search_init(menu_id)
 	self:search_ensure_key_bindings()
 	self:update_dimensions()

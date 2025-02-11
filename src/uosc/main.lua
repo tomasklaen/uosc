@@ -383,6 +383,7 @@ state = {
 	time_human = nil, -- current playback time in human format
 	destination_time_human = nil, -- depends on options.destination_time
 	pause = mp.get_property_native('pause'),
+	ime_active = mp.get_property_native("input-ime"),
 	chapters = {},
 	---@type {index: number; title: string}|nil
 	current_chapter = nil,
