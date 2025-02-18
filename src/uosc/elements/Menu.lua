@@ -528,14 +528,6 @@ function Menu:activate_index(index, menu_id)
 	request_render()
 end
 
----@param index? integer
----@param menu_id? string
-function Menu:activate_one_index(index, menu_id)
-	local menu = self:get_menu(menu_id)
-	if not menu then return end
-	self:activate_index(index, menu_id)
-end
-
 ---@param value? any
 ---@param menu_id? string
 function Menu:activate_value(value, menu_id)
@@ -551,7 +543,7 @@ function Menu:activate_one_value(value, menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu then return end
 	local index = itable_find(menu.items, function(item) return item.value == value end)
-	self:activate_one_index(index, menu_id)
+	self:activate_index(index, menu_id)
 end
 
 ---@param id string One of menus in `self.all`.
@@ -937,10 +929,13 @@ end
 ---@param menu_id? string
 function Menu:search_cancel(menu_id)
 	local menu = self:get_menu(menu_id)
-	if not menu or not menu.search or menu.search_style == 'palette' then return end
+	if not menu or not menu.search or menu.search_style == 'palette' then
+		self:search_query_update('', menu_id)
+		return
+	end
 	if state.ime_active == false then
-		mp.set_property_bool("input-ime", false)
-    end
+		mp.set_property_bool('input-ime', false)
+	end
 	self:search_query_update('', menu_id, true)
 	menu.search = nil
 	self:search_ensure_key_bindings()
@@ -980,8 +975,8 @@ function Menu:search_start(menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu or menu.search_style == 'disabled' then return end
 	if state.ime_active == false then
-		mp.set_property_bool("input-ime", true)
-    end
+		mp.set_property_bool('input-ime', true)
+	end
 	self:search_init(menu_id)
 	self:search_ensure_key_bindings()
 	self:update_dimensions()

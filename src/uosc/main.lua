@@ -1197,6 +1197,16 @@ end)
 mp.register_script_message('close-menu', function(type)
 	if Menu:is_open(type) then Menu:close() end
 end)
+mp.register_script_message('menu-action', function(name, ...)
+	local menu = Menu:is_open()
+	if menu then
+		local method = ({
+			['search-cancel'] = 'search_cancel',
+			['search-query-update'] = 'search_query_update',
+		})[name]
+		if method then menu[method](menu, ...) end
+	end
+end)
 mp.register_script_message('thumbfast-info', function(json)
 	local data = utils.parse_json(json)
 	if type(data) ~= 'table' or not data.width or not data.height then
