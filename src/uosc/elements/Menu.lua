@@ -54,6 +54,10 @@ function Menu:close(immediate, callback)
 
 	local menu = self == Menu and Elements.menu or self
 
+	if state.ime_active == false and mp.get_property_bool('input-ime') then
+		mp.set_property_bool('input-ime', false)
+	end
+
 	if menu and not menu.destroyed then
 		if menu.is_closing then
 			menu:tween_stop()
@@ -948,6 +952,9 @@ function Menu:search_init(menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu then return end
 	if menu.search then return end
+	if state.ime_active == false then
+		mp.set_property_bool('input-ime', true)
+	end
 	local timeout
 	if menu.search_debounce ~= 'submit' and menu.search_debounce > 0 then
 		timeout = mp.add_timeout(menu.search_debounce / 1000, self:create_action(function()
@@ -974,9 +981,6 @@ end
 function Menu:search_start(menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu or menu.search_style == 'disabled' then return end
-	if state.ime_active == false then
-		mp.set_property_bool('input-ime', true)
-	end
 	self:search_init(menu_id)
 	self:search_ensure_key_bindings()
 	self:update_dimensions()
