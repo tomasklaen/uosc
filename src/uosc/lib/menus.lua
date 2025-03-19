@@ -1102,6 +1102,7 @@ function open_subtitle_downloader()
 			on_search = 'callback',
 			search_debounce = 'submit',
 			search_suggestion = search_suggestion,
+			search_submit = search_suggestion and #search_suggestion > 0,
 		},
 		function(event)
 			if event.type == 'activate' then
