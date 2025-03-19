@@ -1509,9 +1509,11 @@ function Menu:render()
 			-- Bottom border
 			ass:rect(ax, rect.by - self.separator_size, bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
 
-			-- Do nothing when user clicks title
+			-- Blur selection (also activates search input) when user clicks title
 			if is_current then
-				cursor:zone('primary_down', rect, function() end)
+				cursor:zone('primary_down', rect, function()
+					self:select_index(nil)
+				end)
 			end
 
 			-- Title
