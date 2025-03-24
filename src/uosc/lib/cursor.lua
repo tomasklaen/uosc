@@ -289,7 +289,7 @@ function cursor:move(x, y)
 	-- displays the top bar, so we hardcode cursor position as infinity until
 	-- we receive a first real mouse move event with coordinates other than 0,0.
 	if not self.first_real_mouse_move_received then
-		if x > 0 and y > 0 then
+		if x > 0 and y > 0 and x < 99999999 and y < 99999999 then
 			self.first_real_mouse_move_received = true
 		else
 			x, y = math.huge, math.huge
