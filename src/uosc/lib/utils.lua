@@ -430,7 +430,7 @@ end
 
 local system_files = create_set({
 	'$RECYCLE.BIN', '$Recycle.Bin', '$SysReset', '$WinREAgent', '.sys', 'pagefile.sys', 'hiberfil.sys', 'config.sys',
-	'swapfile.sys', 'Thumbs.db',
+	'swapfile.sys', 'Thumbs.db', 'desktop.ini',
 })
 
 -- Reads items in directory and splits it into directories and files tables.
