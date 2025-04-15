@@ -380,10 +380,11 @@ state = {
 	speed = 1,
 	---@type number|nil
 	duration = nil, -- current media duration
+	max_seconds = nil, -- max seconds the time in timeline is expected to reach, accounted for speed
 	time_human = nil, -- current playback time in human format
 	destination_time_human = nil, -- depends on options.destination_time
 	pause = mp.get_property_native('pause'),
-	ime_active = mp.get_property_native("input-ime"),
+	ime_active = mp.get_property_native('input-ime'),
 	chapters = {},
 	---@type {index: number; title: string}|nil
 	current_chapter = nil,
@@ -486,20 +487,23 @@ end
 function update_human_times()
 	state.speed = state.speed or 1
 	if state.time then
-		local max_seconds = state.duration
+		state.max_seconds = state.duration
 		if state.duration then
 			if options.destination_time == 'playtime-remaining' then
-				max_seconds = state.speed >= 1 and state.duration or state.duration / state.speed
-				state.destination_time_human = format_time((state.time - state.duration) / state.speed, max_seconds)
+				state.max_seconds = state.duration / state.speed
+				state.destination_time_human = format_time(
+					(state.time - state.duration) / state.speed,
+					state.max_seconds
+				)
 			elseif options.destination_time == 'total' then
-				state.destination_time_human = format_time(state.duration, max_seconds)
+				state.destination_time_human = format_time(state.duration, state.max_seconds)
 			else
-				state.destination_time_human = format_time(state.time - state.duration, max_seconds)
+				state.destination_time_human = format_time(state.time - state.duration, state.max_seconds)
 			end
 		else
 			state.destination_time_human = nil
 		end
-		state.time_human = format_time(state.time, max_seconds)
+		state.time_human = format_time(state.time, state.max_seconds)
 	else
 		state.time_human, state.destination_time_human = nil, nil
 	end

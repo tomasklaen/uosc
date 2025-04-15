@@ -422,7 +422,7 @@ function Timeline:render()
 		local opts = {
 			size = self.font_size, offset = timestamp_gap, margin = tooltip_gap, timestamp = options.time_precision > 0,
 		}
-		local hovered_time_human = format_time(hovered_seconds, state.duration)
+		local hovered_time_human = format_time(hovered_seconds, state.max_seconds)
 		opts.width_overwrite = timestamp_width(hovered_time_human, opts)
 		tooltip_anchor = ass:tooltip(tooltip_anchor, hovered_time_human, opts)
 
