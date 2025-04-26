@@ -54,15 +54,15 @@ local cursor = {
 		secondary_down = 'secondary_click',
 		secondary_click = 'secondary_down',
 	},
-	event_parent_map = {
+	event_meta = {
 		primary_down = {is_start = true, trigger_event = 'primary_click'},
 		primary_up = {is_end = true, start_event = 'primary_down', trigger_event = 'primary_click'},
 		secondary_down = {is_start = true, trigger_event = 'secondary_click'},
 		secondary_up = {is_end = true, start_event = 'secondary_down', trigger_event = 'secondary_click'},
 	},
-	-- Holds positions of last events.
+	-- Holds positions and times of starting events (events that start compound events like click).
 	---@type {[string]: {x: number, y: number, time: number}}
-	last_event = {},
+	last_events = {},
 }
 
 cursor.autohide_timer = mp.add_timeout(1, function() cursor:autohide() end)
@@ -170,14 +170,15 @@ function cursor:trigger(event, shortcut)
 	end
 
 	-- Call compound/parent (click) event handlers if both start and end events are within `parent_zone.hitbox`.
-	local parent = self.event_parent_map[event]
-	if parent then
-		local parent_zone = self:find_zone(parent.trigger_event)
+	local meta = self.event_meta[event]
+	if meta then
+		-- Trigger compound event
+		local parent_zone = self:find_zone(meta.trigger_event)
 		if parent_zone then
 			forward = false -- Canceled here so we don't forward down events if they can lead to a click.
-			if parent.is_end then
-				local last_start_event = self.last_event[parent.start_event]
-				if last_start_event and point_collides_with(last_start_event, parent_zone.hitbox) and shortcut then
+			if meta.is_end then
+				local start_event = self.last_events[meta.start_event]
+				if start_event and point_collides_with(start_event, parent_zone.hitbox) and shortcut then
 					parent_zone.handler(create_shortcut('primary_click', shortcut.modifiers))
 				end
 			end
@@ -208,10 +209,10 @@ function cursor:trigger(event, shortcut)
 		end
 	end
 
-	-- Update last event position.
-	local last = self.last_event[event] or {}
+	-- Track last events
+	local last = self.last_events[event] or {}
 	last.x, last.y, last.time = self.x, self.y, mp.get_time()
-	self.last_event[event] = last
+	self.last_events[event] = last
 
 	-- Refresh cursor autohide timer.
 	self:queue_autohide()
@@ -226,17 +227,29 @@ function cursor:decide_keybinds()
 	for name, handlers in ipairs(self.handlers) do
 		local binding = self.event_binding_map[name]
 		if binding then
-			new_levels[binding] = #handlers > 0 and 1 or 0
+			new_levels[binding] = math.max(new_levels[binding], #handlers > 0 and 1 or 0)
 		end
 	end
 
 	-- Check zones.
 	for _, zone in ipairs(self.zones) do
 		local binding = self.event_binding_map[zone.event]
-		if binding and cursor:collides_with(zone.hitbox) then
+
+		-- We enable keybinds if there's any rendered element with a listener for it. Previously
+		-- we only enabled if the cursor was above one such element, but that broke touch input, as
+		-- we don't know what the finger is hovering, causing taps to be ignored.
+		if binding then
 			local new_level = (self.window_dragging_blockers[zone.event] and zone.hitbox.window_drag ~= true) and 2
 				or math.max(new_levels[binding], zone.hitbox.window_drag == false and 2 or 1)
-			new_levels[binding] = new_level
+
+			-- We only allow dragging preventing levels when cursor is on top of the draggable element,
+			-- otherwise it breaks window dragging. This means touch devices need to tap the draggable
+			-- element before they can start dragging it. Can't think of a way around this atm.
+			if new_level > 1 and not cursor:collides_with(zone.hitbox) then
+				new_level = 1
+			end
+
+			new_levels[binding] = math.max(new_levels[binding], new_level)
 			if new_level > 1 then
 				self.is_dragging_prevented = true
 			end
@@ -333,7 +346,7 @@ function cursor:move(x, y)
 			-- Update current move travel distance
 			-- `mp.get_time() - last.time < 0.5` check is there to ignore first event after long inactivity to
 			-- filter out big jumps due to window being repositioned/rescaled (e.g. opening a different file).
-			local last = self.last_event.move
+			local last = self.last_events.move
 			if last and last.x < math.huge and last.y < math.huge and mp.get_time() - last.time < 0.5 then
 				self.distance = self.distance + get_point_to_point_proximity(cursor, last)
 				cursor.distance_reset_timer:kill()
@@ -399,7 +412,7 @@ function cursor:create_handler(event, shortcut, cb)
 end
 
 -- Movement
-function handle_mouse_pos(_, mouse)
+local function handle_mouse_pos(_, mouse)
 	if not mouse then return end
 	if cursor.last_hover and not mouse.hover then
 		cursor:leave()
@@ -408,7 +421,17 @@ function handle_mouse_pos(_, mouse)
 	end
 	cursor.last_hover = mouse.hover
 end
+
+local function handle_touch_pos(_, touches)
+	if not touches then return end
+	local touch = touches[1]
+	if touch then
+		cursor:move(touch.x, touch.y)
+	end
+end
+
 mp.observe_property('mouse-pos', 'native', handle_mouse_pos)
+mp.observe_property('touch-pos', 'native', handle_touch_pos)
 
 -- Key binding groups
 local modifiers = {nil, 'alt', 'alt+ctrl', 'alt+shift', 'alt+ctrl+shift', 'ctrl', 'ctrl+shift', 'shift'}

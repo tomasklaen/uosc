@@ -718,9 +718,11 @@ function Menu:on_global_mouse_move()
 	self.mouse_nav = true
 	if self.drag_last_y then
 		self.is_dragging = self.is_dragging or math.abs(cursor.y - self.drag_last_y) >= 10
-		local distance = self.drag_last_y - cursor.y
-		if distance ~= 0 then self:set_scroll_by(distance) end
-		if self.is_dragging then self.drag_last_y = cursor.y end
+		if self.is_dragging then
+			local distance = self.drag_last_y - cursor.y
+			if distance ~= 0 then self:set_scroll_by(distance) end
+			self.drag_last_y = cursor.y
+		end
 	end
 	request_render()
 end
