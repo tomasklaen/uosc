@@ -321,7 +321,7 @@ function Timeline:render()
 					if chapter ~= hovered_chapter then draw_chapter(chapter.time, diamond_radius) end
 					local circle = {point = {x = t2x(chapter.time), y = fay - 1}, r = diamond_radius_hovered}
 					if visibility > 0 then
-						cursor:zone('primary_click', circle, function()
+						cursor:zone('primary_down', circle, function()
 							mp.commandv('seek', chapter.time, 'absolute+exact')
 						end)
 					end

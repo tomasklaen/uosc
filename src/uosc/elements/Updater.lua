@@ -307,7 +307,10 @@ function Updater:render()
 		local x, y = rect.ax + (rect.bx - rect.ax) / 2, rect.ay + (rect.by - rect.ay) / 2
 		ass:txt(x, y, 5, button.title, {size = text_size, bold = true, color = fgt})
 
-		cursor:zone('primary_click', rect, self:create_action(button.method))
+		cursor:zone('primary_down', rect, self:create_action(button.method))
+
+		-- Select hovered button
+		if is_hovered then self.selected_button_index = index end
 	end
 
 	return ass
