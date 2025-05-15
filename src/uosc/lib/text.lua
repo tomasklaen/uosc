@@ -49,7 +49,7 @@ local osd_width, osd_height = 100, 100
 ---@param str string
 ---@param i integer?
 ---@return integer
-local function utf8_char_bytes(str, i)
+function utf8_char_bytes(str, i)
 	local char_byte = str:byte(i)
 	local max_bytes = #str - i + 1
 	if char_byte < 0xC0 then
