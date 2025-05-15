@@ -880,11 +880,43 @@ function Menu:search_cursor_move(amount, word_mode)
 	local menu = self:get_menu()
 	if not menu or not menu.search then return end
 	local query, cursor = menu.search.query, menu.search.cursor
+
+	local function utf8_next(s, i)
+		if i >= #s then return #s end
+		local len = utf8_char_bytes(s, i + 1)
+		return math.min(i + len, #s)
+	end
+
+	local function utf8_prev(s, i)
+		if i <= 0 then return 0 end
+		local pos = 1
+		local last_valid = 0
+		while pos <= #s do
+			local len = utf8_char_bytes(s, pos)
+			if pos > i then break end
+			last_valid = pos - 1
+			pos = pos + len
+		end
+		return last_valid
+	end
+
 	if word_mode then
 		menu.search.cursor = find_string_segment_bound(query, cursor, amount) + (amount < 0 and -1 or 0)
 	else
-		menu.search.cursor = clamp(0, cursor + amount, #query)
+		local move = amount > 0 and utf8_next or utf8_prev
+		local step_count = 0
+		local limit = math.abs(amount)
+
+		while step_count < limit do
+			local next_cursor = move(query, cursor)
+			if next_cursor == cursor then break end
+			cursor = next_cursor
+			step_count = step_count + 1
+		end
+
+		menu.search.cursor = clamp(0, cursor, #query)
 	end
+
 	request_render()
 end
 
