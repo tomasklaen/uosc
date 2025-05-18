@@ -35,6 +35,8 @@ Features:
 
 ## Install
 
+**uosc** requires mpv **0.33** and higher.
+
 1. These commands will install or update **uosc** and place a default `uosc.conf` file into `script-opts` if it doesn't exist already.
 
     ### Windows
