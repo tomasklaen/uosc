@@ -394,7 +394,7 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 			local items, selected_index = {}, 1
 
 			if process.status == 0 then
-				for drive in process.stdout:gmatch("(%a:)\\") do
+				for drive in process.stdout:gmatch('(%a:)\\') do
 					if drive then
 						local drive_path = normalize_path(drive)
 						items[#items + 1] = {
@@ -708,13 +708,17 @@ function get_keybinds_items()
 	)
 	local binds_dump = itable_join(find_active_keybindings(), no_key_menu_binds)
 	local ids = {}
+	local key_subs = {
+		sharp = '#',
+		['#'] = '',
+	}
 
 	-- Convert to menu items
 	for _, bind in pairs(binds_dump) do
 		local id = bind.key .. '<>' .. bind.cmd
 		if not ids[id] then
 			ids[id] = true
-			items[#items + 1] = {title = bind.cmd, hint = bind.key, value = bind.cmd}
+			items[#items + 1] = {title = bind.cmd, hint = key_subs[string.lower(bind.key)] or bind.key, value = bind.cmd}
 		end
 	end
 
