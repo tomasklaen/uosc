@@ -883,7 +883,18 @@ function Menu:search_cursor_move(amount, word_mode)
 	if word_mode then
 		menu.search.cursor = find_string_segment_bound(query, cursor, amount) + (amount < 0 and -1 or 0)
 	else
-		menu.search.cursor = clamp(0, cursor + amount, #query)
+		local move = amount > 0 and utf8_next or utf8_prev
+		local step_count = 0
+		local limit = math.abs(amount)
+
+		while step_count < limit do
+			local next_cursor = move(query, cursor)
+			if next_cursor == cursor then break end
+			cursor = next_cursor
+			step_count = step_count + 1
+		end
+
+		menu.search.cursor = clamp(0, cursor, #query)
 	end
 	request_render()
 end

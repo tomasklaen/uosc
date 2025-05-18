@@ -91,6 +91,33 @@ function utf8_length(str)
 	return str_length
 end
 
+---Get the next character in an utf-8 encoded string
+---@param str string
+---@param i integer
+---@return integer
+function utf8_next(str, i)
+	if i >= #str then return #str end
+	local len = utf8_char_bytes(str, i + 1)
+	return math.min(i + len, #str)
+end
+
+---Get the previous character in an utf-8 encoded string
+---@param str string
+---@param i integer
+---@return integer
+function utf8_prev(str, i)
+	if i <= 0 then return 0 end
+	local pos = 1
+	local last_valid = 0
+	while pos <= #str do
+		local len = utf8_char_bytes(str, pos)
+		if pos > i then break end
+		last_valid = pos - 1
+		pos = pos + len
+	end
+	return last_valid
+end
+
 ---Extract Unicode code point from utf-8 character at index i in str
 ---@param str string
 ---@param i integer
