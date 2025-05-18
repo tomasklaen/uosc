@@ -790,7 +790,7 @@ function Menu:paste()
 			},
 		})
 	elseif menu.search then
-		self:search_query_replace(menu.search.query .. payload)
+		self:search_query_insert(payload)
 	elseif menu.search_style ~= 'disabled' then
 		self:search_start(menu.id)
 		self:search_query_replace(payload, menu.id)
