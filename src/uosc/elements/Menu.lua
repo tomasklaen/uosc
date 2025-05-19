@@ -1653,8 +1653,9 @@ function Menu:render()
 					local query, cursor = menu.search.query, menu.search.cursor
 					-- Add a ZWNBSP suffix to prevent libass from trimming trailing spaces
 					local head = ass_escape(string.sub(query, 1, cursor)) .. '\239\187\191'
-					local tail = ass_escape(string.sub(query, cursor + 1)) .. '\239\187\191'
-					cursor_ax = math.max(round(cursor_ax - text_width(tail, opts)), rect.cx)
+					local tail_no_escape = string.sub(query, cursor + 1)
+					local tail = ass_escape(tail_no_escape) .. '\239\187\191'
+					cursor_ax = math.max(round(cursor_ax - text_width(tail_no_escape, opts)), rect.cx)
 					ass:txt(cursor_ax, rect.cy, 6, head, opts)
 					ass:txt(cursor_ax, rect.cy, 4, tail, opts)
 				else
