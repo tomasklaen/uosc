@@ -777,7 +777,9 @@ function Menu:paste()
 	local menu = self.current
 	local payload = get_clipboard()
 	if not payload then return end
-	if menu.on_paste then
+	if menu.search then
+		self:search_query_insert(payload)
+	elseif menu.on_paste then
 		local selected_item = menu.items and menu.selected_index and menu.items[menu.selected_index]
 		local actions = selected_item and selected_item.actions or menu.item_actions
 		local selected_action = actions and menu.action_index and actions[menu.action_index]
@@ -789,8 +791,6 @@ function Menu:paste()
 				index = menu.selected_index, value = selected_item.value, action = selected_action,
 			},
 		})
-	elseif menu.search then
-		self:search_query_insert(payload)
 	elseif menu.search_style ~= 'disabled' then
 		self:search_start(menu.id)
 		self:search_query_replace(payload, menu.id)
