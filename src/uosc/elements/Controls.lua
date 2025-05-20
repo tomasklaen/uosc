@@ -203,13 +203,15 @@ function Controls:reflow()
 	-- Populate the layout only with items that match current disposition
 	self.layout = {}
 	for _, control in ipairs(self.controls) do
-		local matches = true
+		local matches = false
+		local dispositions = 0
 		for prop, value in pairs(control.dispositions) do
-			if state[prop] ~= value then
-				matches = false
-				break
+			dispositions = dispositions + 1
+			if state[prop] == value then
+				matches = true
 			end
 		end
+		if dispositions == 0 then matches = true end
 		if control.element then control.element.enabled = matches end
 		if matches then self.layout[#self.layout + 1] = control end
 	end
