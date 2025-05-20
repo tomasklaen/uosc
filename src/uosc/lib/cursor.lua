@@ -169,41 +169,44 @@ function cursor:trigger(event, shortcut)
 		for _, callback in ipairs(callbacks) do callback(shortcut) end
 	end
 
-	-- Call compound/parent (click) event handlers if both start and end events are within `parent_zone.hitbox`.
-	local meta = self.event_meta[event]
-	if meta then
-		-- Trigger compound event
-		local parent_zone = self:find_zone(meta.trigger_event)
-		if parent_zone then
-			forward = false -- Canceled here so we don't forward down events if they can lead to a click.
-			if meta.is_end then
-				local start_event = self.last_events[meta.start_event]
-				if start_event and point_collides_with(start_event, parent_zone.hitbox) and shortcut then
-					parent_zone.handler(create_shortcut('primary_click', shortcut.modifiers))
+	if event ~= 'move' then
+		-- Call compound/parent (click) event handlers if both start and end events are within `parent_zone.hitbox`.
+		local meta = self.event_meta[event]
+		if meta then
+			-- Trigger compound event
+			local parent_zone = self:find_zone(meta.trigger_event)
+			if parent_zone then
+				forward = false -- Canceled here so we don't forward down events if they can lead to a click.
+				if meta.is_end then
+					local start_event = self.last_events[meta.start_event]
+					if start_event and point_collides_with(start_event, parent_zone.hitbox) and shortcut then
+						parent_zone.handler(create_shortcut('primary_click', shortcut.modifiers))
+					end
 				end
 			end
 		end
-	end
 
-	-- Forward unhandled events.
-	if forward then
-		local forward_name = self.event_forward_map[event]
-		if forward_name then
-			-- Forward events if there was no handler.
-			local active = find_active_keybindings(forward_name)
-			if active and active.cmd then
-				local is_wheel = event:find('wheel', 1, true)
-				local is_up = event:sub(-3) == '_up'
-				if active.owner then
-					-- Binding belongs to other script, so make it look like regular key event.
-					-- Mouse bindings are simple, other keys would require repeat and pressed handling,
-					-- which can't be done with mp.set_key_bindings(), but is possible with mp.add_key_binding().
-					local state = is_wheel and 'pm' or is_up and 'um' or 'dm'
-					local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
-					mp.commandv('script-message-to', active.owner, 'key-binding', name, state, forward_name)
-				elseif is_wheel or is_up then
-					-- input.conf binding, react to button release for mouse buttons
-					mp.command(active.cmd)
+		-- Forward unhandled events.
+		if forward then
+			local forward_name = self.event_forward_map[event]
+			local claimed_by_down = meta and meta.is_end and self:find_zone(meta.start_event) ~= nil
+			if forward_name and not claimed_by_down then
+				-- Forward events if there was no handler.
+				local active = find_active_keybindings(forward_name)
+				if active and active.cmd then
+					local is_wheel = event:find('wheel', 1, true)
+					local is_up = event:sub(-3) == '_up'
+					if active.owner then
+						-- Binding belongs to other script, so make it look like regular key event.
+						-- Mouse bindings are simple, other keys would require repeat and pressed handling,
+						-- which can't be done with mp.set_key_bindings(), but is possible with mp.add_key_binding().
+						local state = is_wheel and 'pm' or is_up and 'um' or 'dm'
+						local name = active.cmd:sub(active.cmd:find('/') + 1, -1)
+						mp.commandv('script-message-to', active.owner, 'key-binding', name, state, forward_name)
+					elseif is_wheel or is_up then
+						-- input.conf binding, react to button release for mouse buttons
+						mp.command(active.cmd)
+					end
 				end
 			end
 		end
