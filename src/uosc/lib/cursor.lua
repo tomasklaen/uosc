@@ -61,7 +61,7 @@ local cursor = {
 		secondary_up = {is_end = true, start_event = 'secondary_down', trigger_event = 'secondary_click'},
 	},
 	-- Holds positions and times of starting events (events that start compound events like click).
-	---@type {[string]: {x: number, y: number, time: number}}
+	---@type {[string]: {x: number, y: number, time: number, zone_handled: boolean}}
 	last_events = {},
 }
 
@@ -158,14 +158,17 @@ end
 ---@param event string
 ---@param shortcut? Shortcut
 function cursor:trigger(event, shortcut)
-	local forward = true
+	local forward, zone_handled = true, false
 
 	-- Call raw event handlers.
 	local zone = self:find_zone(event)
 	local callbacks = self.handlers[event]
 	if zone or #callbacks > 0 then
 		forward = false
-		if zone and shortcut then zone.handler(shortcut) end
+		if zone and shortcut then
+			zone.handler(shortcut)
+			zone_handled = true
+		end
 		for _, callback in ipairs(callbacks) do callback(shortcut) end
 	end
 
@@ -189,8 +192,9 @@ function cursor:trigger(event, shortcut)
 		-- Forward unhandled events.
 		if forward then
 			local forward_name = self.event_forward_map[event]
-			local claimed_by_down = meta and meta.is_end and self:find_zone(meta.start_event) ~= nil
-			if forward_name and not claimed_by_down then
+			local last_down = meta and meta.is_end and self.last_events[meta.start_event]
+			local down_zone_handled = last_down and last_down.zone_handled
+			if forward_name and not down_zone_handled then
 				-- Forward events if there was no handler.
 				local active = find_active_keybindings(forward_name)
 				if active and active.cmd then
@@ -214,7 +218,7 @@ function cursor:trigger(event, shortcut)
 
 	-- Track last events
 	local last = self.last_events[event] or {}
-	last.x, last.y, last.time = self.x, self.y, mp.get_time()
+	last.x, last.y, last.time, last.zone_handled = self.x, self.y, mp.get_time(), zone_handled
 	self.last_events[event] = last
 
 	-- Refresh cursor autohide timer.
