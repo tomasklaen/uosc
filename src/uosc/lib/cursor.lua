@@ -241,11 +241,7 @@ function cursor:decide_keybinds()
 	-- Check zones.
 	for _, zone in ipairs(self.zones) do
 		local binding = self.event_binding_map[zone.event]
-
-		-- We enable keybinds if there's any rendered element with a listener for it. Previously
-		-- we only enabled if the cursor was above one such element, but that broke touch input, as
-		-- we don't know what the finger is hovering, causing taps to be ignored.
-		if binding then
+		if binding and cursor:collides_with(zone.hitbox) then
 			local new_level = (self.window_dragging_blockers[zone.event] and zone.hitbox.window_drag ~= true) and 2
 				or math.max(new_levels[binding], zone.hitbox.window_drag == false and 2 or 1)
 
