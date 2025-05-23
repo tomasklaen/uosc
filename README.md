@@ -442,11 +442,9 @@ Define a separator between previous and next items by doing the same, but using 
 
 Example context menu:
 
-This is the default pre-configured menu if none is defined in your `input.conf`, but with added shortcuts. To both pause & move the window with left mouse button, so that you can have the menu on the right one, enable `click_threshold` in `uosc.conf` (see default `uosc.conf` for example/docs).
+This is the default pre-configured menu if none is defined in your `input.conf`, but with added shortcuts.
 
 ```
-menu        script-binding uosc/menu
-mbtn_right  script-binding uosc/menu
 s           script-binding uosc/subtitles          #! Subtitles
 a           script-binding uosc/audio              #! Audio tracks
 q           script-binding uosc/stream-quality     #! Stream quality
@@ -469,7 +467,7 @@ alt+i       script-binding uosc/keybinds           #! Utils > Key bindings
 O           script-binding uosc/show-in-directory  #! Utils > Show in directory
 #           script-binding uosc/open-config-directory #! Utils > Open config directory
 #           script-binding uosc/update             #! Utils > Update uosc
-esc         quit #! Quit
+esc         quit                                   #! Quit
 ```
 
 To see all the commands you can bind keys or menu items to, refer to [mpv's list of input commands documentation](https://mpv.io/manual/master/#list-of-input-commands).

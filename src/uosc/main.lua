@@ -73,9 +73,6 @@ defaults = {
 	opacity = '',
 	animation_duration = 100,
 	refine = '',
-	pause_on_click_shorter_than = 0, -- deprecated by below
-	click_threshold = 0,
-	click_command = 'cycle pause; script-binding uosc/flash-pause-indicator',
 	flash_duration = 1000,
 	proximity_in = 40,
 	proximity_out = 120,
@@ -121,10 +118,6 @@ opt.read_options(options, 'uosc', handle_options)
 -- Normalize values
 options.proximity_out = math.max(options.proximity_out, options.proximity_in + 1)
 if options.chapter_ranges:sub(1, 4) == '^op|' then options.chapter_ranges = defaults.chapter_ranges end
-if options.pause_on_click_shorter_than > 0 and options.click_threshold == 0 then
-	msg.warn('`pause_on_click_shorter_than` is deprecated. Use `click_threshold` and `click_command` instead.')
-	options.click_threshold = options.pause_on_click_shorter_than
-end
 if options.total_time and options.destination_time == 'playtime-remaining' then
 	msg.warn('`total_time` is deprecated. Use `destination_time` instead.')
 	options.destination_time = 'total'
@@ -643,31 +636,6 @@ function select_current_chapter()
 end
 
 --[[ STATE HOOKS ]]
-
--- Click detection
-if options.click_threshold > 0 then
-	-- Executes custom command for clicks shorter than `options.click_threshold`
-	-- while filtering out double clicks.
-	local click_time = options.click_threshold / 1000
-	local doubleclick_time = mp.get_property_native('input-doubleclick-time') / 1000
-	local last_down, last_up = 0, 0
-	local click_timer = mp.add_timeout(math.max(click_time, doubleclick_time), function()
-		local delta = last_up - last_down
-		if delta > 0 and delta < click_time and delta > 0.02 then mp.command(options.click_command) end
-	end)
-	click_timer:kill()
-	local function handle_up() last_up = mp.get_time() end
-	local function handle_down()
-		last_down = mp.get_time()
-		if click_timer:is_enabled() then click_timer:kill() else click_timer:resume() end
-	end
-	-- If this function exists, it'll be called at the beginning of render().
-	function setup_click_detection()
-		local hitbox = {ax = 0, ay = 0, bx = display.width, by = display.height, window_drag = true}
-		cursor:zone('primary_down', hitbox, handle_down)
-		cursor:zone('primary_up', hitbox, handle_up)
-	end
-end
 
 mp.register_event('file-loaded', function()
 	local path = normalize_path(mp.get_property_native('path'))
