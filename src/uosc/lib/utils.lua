@@ -809,6 +809,23 @@ function find_active_keybindings(key)
 	return key and active_map[key] or active_table
 end
 
+do
+	local key_subs = {
+		sharp = '#',
+		['#'] = '',
+	}
+
+	-- Replaces stuff like `SHARP` -> `#`, `#` -> ``
+	---@param keybind string
+	function keybind_to_human(keybind)
+		local keys = {}
+		for _, key in ipairs(split(keybind, ' *+ *')) do
+			keys[#keys + 1] = key_subs[string.lower(key)] or key
+		end
+		return table.concat(keys, '+')
+	end
+end
+
 ---@param type 'sub'|'audio'|'video'
 ---@param path string
 function load_track(type, path)
