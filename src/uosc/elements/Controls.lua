@@ -12,7 +12,7 @@ local Speed = require('elements/Speed')
 -- scale - `options.controls_size` scale factor.
 -- ratio - Width/height ratio of a static or dynamic element.
 -- ratio_min Min ratio for 'dynamic' sized element.
----@alias ControlItem {element?: Element; kind: string; sizing: 'space' | 'static' | 'dynamic' | 'gap'; scale: number; ratio?: number; ratio_min?: number; hide: boolean; dispositions?: table<string, boolean>}
+---@alias ControlItem {element?: Element; kind: string; sizing: 'space' | 'static' | 'dynamic' | 'gap'; scale: number; ratio?: number; ratio_min?: number; hide: boolean; dispositions?: {[string]: boolean}[]}
 
 ---@class Controls : Element
 local Controls = class(Element)
@@ -93,15 +93,20 @@ function Controls:init_options()
 		local parts = split(config, ' *: *')
 		local kind, params = parts[1], itable_slice(parts, 2)
 
-		-- Serialize dispositions
+		-- Serialize dispositions into OR groups of AND conditions
+		---@type {[string]: boolean}[]
 		local dispositions = {}
-		for _, definition in ipairs(comma_split(item.disposition)) do
-			if #definition > 0 then
-				local value = definition:sub(1, 1) ~= '!'
-				local name = not value and definition:sub(2) or definition
-				local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
-				dispositions[prop] = value
+		for _, or_group in ipairs(comma_split(item.disposition)) do
+			local group = {}
+			for _, condition in ipairs(split(or_group, ' *+ *')) do
+				if #condition > 0 then
+					local value = condition:sub(1, 1) ~= '!'
+					local name = not value and condition:sub(2) or condition
+					local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
+					group[prop] = value
+				end
 			end
+			dispositions[#dispositions + 1] = group
 		end
 
 		-- Convert toggles into cycles
@@ -204,14 +209,25 @@ function Controls:reflow()
 	self.layout = {}
 	for _, control in ipairs(self.controls) do
 		local matches = false
-		local dispositions = 0
-		for prop, value in pairs(control.dispositions) do
-			dispositions = dispositions + 1
-			if state[prop] == value then
+		local conditions_num = 0
+
+		-- Check against OR groups of AND conditions
+		for _, group in pairs(control.dispositions) do
+			local group_matches = true
+			for prop, value in pairs(group) do
+				conditions_num = conditions_num + 1
+				if state[prop] ~= value then
+					group_matches = false
+					break
+				end
+			end
+			if group_matches then
 				matches = true
+				break
 			end
 		end
-		if dispositions == 0 then matches = true end
+
+		if conditions_num == 0 then matches = true end
 		if control.element then control.element.enabled = matches end
 		if matches then self.layout[#self.layout + 1] = control end
 	end
