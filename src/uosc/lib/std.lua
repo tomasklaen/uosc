@@ -83,6 +83,28 @@ function string_last_index_of(str, sub)
 	end
 end
 
+-- Replace string inside a string in case insensitive way.
+---@param str string
+---@param match string String or a pattern.
+---@param replacement string
+function string_replace_i(str, match, replacement)
+	local str_lower, match = string.lower(str), string.lower(match)
+	local from, difference = 0, 0
+	while true do
+		start_pos, end_pos = string.find(str_lower, match, from)
+		if start_pos then
+			local before = string.sub(str, 1, start_pos - 1 + difference)
+			local after = string.sub(str, end_pos + 1 + difference)
+			str = before .. replacement .. after
+			difference = #replacement - (difference + end_pos - start_pos + 1)
+			from = end_pos + 1
+		else
+			break
+		end
+	end
+	return str
+end
+
 -- Escapes a string to be used in a matching expression.
 ---@param value string
 function regexp_escape(value)

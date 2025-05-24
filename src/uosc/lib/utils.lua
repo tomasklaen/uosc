@@ -810,19 +810,15 @@ function find_active_keybindings(key)
 end
 
 do
-	local key_subs = {
-		sharp = '#',
-		['#'] = '',
-	}
+	local key_subs = {{'#', ''}, {'sharp', '#'}}
 
 	-- Replaces stuff like `SHARP` -> `#`, `#` -> ``
 	---@param keybind string
 	function keybind_to_human(keybind)
-		local keys = {}
-		for _, key in ipairs(split(keybind, ' *+ *')) do
-			keys[#keys + 1] = key_subs[string.lower(key)] or key
+		for _, sub in ipairs(key_subs) do
+			keybind = string_replace_i(keybind, sub[1], sub[2])
 		end
-		return table.concat(keys, '+')
+		return keybind
 	end
 end
 
