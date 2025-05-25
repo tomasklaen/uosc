@@ -83,26 +83,16 @@ function string_last_index_of(str, sub)
 	end
 end
 
--- Replace string inside a string in case insensitive way.
+-- Creates a pattern that matches `str` of any case.
+-- Usage:
+-- ```lua
+-- string.gsub(str, anycase('foo'), 'bar')
+-- ```
 ---@param str string
----@param match string String or a pattern.
----@param replacement string
-function string_replace_i(str, match, replacement)
-	local str_lower, match = string.lower(str), string.lower(match)
-	local from, difference = 0, 0
-	while true do
-		start_pos, end_pos = string.find(str_lower, match, from)
-		if start_pos then
-			local before = string.sub(str, 1, start_pos - 1 + difference)
-			local after = string.sub(str, end_pos + 1 + difference)
-			str = before .. replacement .. after
-			difference = #replacement - (difference + end_pos - start_pos + 1)
-			from = end_pos + 1
-		else
-			break
-		end
-	end
-	return str
+function anycase(str)
+	return string.gsub(str, '%a', function(c)
+		return string.format('[%s%s]', c:lower(), c:upper())
+	end)
 end
 
 -- Escapes a string to be used in a matching expression.
