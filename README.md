@@ -140,6 +140,8 @@ These bindings are active when any **uosc** menu is open (main menu, playlist, l
 
 Each menu can also add its own shortcuts and bindings for special actions on items/menu, such as `del` to delete a playlist item, `ctrl+up/down/pgup/pgdwn/home/end` to move it around, etc. These are usually also exposed as item action buttons for you to find out about them that way.
 
+When menu search is active `del` will edit the string. If you want to trigger the current menu's action bound to `del` (such as delete item from playlist menu), use `shift+del`.
+
 Click on a faded parent menu to go back to it.
 
 ## Commands

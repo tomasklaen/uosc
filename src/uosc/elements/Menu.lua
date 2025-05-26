@@ -1175,6 +1175,16 @@ function Menu:handle_shortcut(shortcut, info)
 
 	if info.event == 'up' then return end
 
+	function trigger_shortcut(shortcut)
+		self.callback(table_assign({}, shortcut, {
+			type = 'key',
+			menu_id = menu.id,
+			selected_item = selected_item and {
+				index = selected_index, value = selected_item.value, action = selected_action,
+			},
+		}))
+	end
+
 	if (key == 'enter' and selected_item) or (id == 'right' and is_submenu and not menu.search) then
 		self:activate_selected_item(shortcut)
 	elseif id == 'enter' and menu.search and menu.search_debounce == 'submit' then
@@ -1230,20 +1240,20 @@ function Menu:handle_shortcut(shortcut, info)
 		elseif not modifiers and info.event ~= 'repeat' then
 			self:back()
 		end
-	elseif menu.search and (id == 'del' or id == 'ctrl+del') then
-		self:search_query_delete(info.event, modifiers == 'ctrl')
+	elseif menu.search and (id == 'del' or id == 'ctrl+del' or id == 'shift+del') then
+		if id == 'shift+del' then
+			-- During search `del` edits the string. We convert `shift+del` to
+			-- `del` to have a way to trigger menu callbacks bound to `del`.
+			trigger_shortcut(create_shortcut('del'))
+		else
+			self:search_query_delete(info.event, modifiers == 'ctrl')
+		end
 	elseif key == 'mbtn_back' then
 		self:back()
 	elseif id == 'ctrl+v' then
 		self:paste()
 	else
-		self.callback(table_assign({}, shortcut, {
-			type = 'key',
-			menu_id = menu.id,
-			selected_item = selected_item and {
-				index = selected_index, value = selected_item.value, action = selected_action,
-			},
-		}))
+		trigger_shortcut(shortcut)
 	end
 end
 
