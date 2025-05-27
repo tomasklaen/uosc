@@ -782,6 +782,7 @@ mp.observe_property('window-maximized', 'bool', create_state_setter('maximized',
 mp.observe_property('idle-active', 'bool', function(_, idle)
 	set_state('is_idle', idle)
 	Elements:trigger('dispositions')
+	mp.commandv('script-message-to', 'thumbfast', 'clear')
 end)
 mp.observe_property('pause', 'bool', create_state_setter('pause', function() file_end_timer:kill() end))
 mp.observe_property('volume', 'number', create_state_setter('volume'))
