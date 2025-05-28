@@ -810,7 +810,7 @@ function find_active_keybindings(key)
 end
 
 do
-	local key_subs = {{'#', ''}, {anycase('sharp'), '#'}}
+	local key_subs = {{'^#$', ''}, {anycase('sharp'), '#'}}
 
 	-- Replaces stuff like `SHARP` -> `#`, `#` -> ``
 	---@param keybind string
