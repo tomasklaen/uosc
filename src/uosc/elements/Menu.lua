@@ -3,13 +3,13 @@ local Element = require('elements/Element')
 ---@alias MenuAction {name: string; icon: string; label?: string; filter_hidden?: boolean;}
 
 -- Menu data structure accepted by `Menu:open(menu)`.
----@alias MenuData {id?: string; type?: string; title?: string; hint?: string; footnote: string; search_style?: 'on_demand' | 'palette' | 'disabled';  item_actions?: MenuAction[]; item_actions_place?: 'inside' | 'outside'; callback?: string[]; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items?: MenuDataChild[]; selected_index?: integer; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string; search_submit?: boolean}
+---@alias MenuData {id?: string; type?: string; title?: string; hint?: string; footnote: string; search_style?: 'on_demand' | 'palette' | 'disabled';  item_actions?: MenuAction[]; item_actions_place?: 'inside' | 'outside'; callback?: string[]; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items?: MenuDataChild[]; selected_index?: integer; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string; search_submit?: boolean; bind_keys?: string[]}
 ---@alias MenuDataChild MenuDataItem|MenuData
 ---@alias MenuDataItem {title?: string; hint?: string; icon?: string; value: any; actions?: MenuAction[]; actions_place?: 'inside' | 'outside'; active?: boolean; keep_open?: boolean; selectable?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'}
 ---@alias MenuOptions {mouse_nav?: boolean;}
 
 -- Internal data structure created from `MenuData`.
----@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; footnote: string; search_style?: 'on_demand' | 'palette' | 'disabled';  item_actions?: MenuAction[]; item_actions_place?: 'inside' | 'outside'; callback?: string[]; selected_index?: number; action_index?: number; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items: MenuStackChild[]; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string; search_submit?: boolean; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
+---@alias MenuStack {id?: string; type?: string; title?: string; hint?: string; footnote: string; search_style?: 'on_demand' | 'palette' | 'disabled';  item_actions?: MenuAction[]; item_actions_place?: 'inside' | 'outside'; callback?: string[]; selected_index?: number; action_index?: number; keep_open?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; items: MenuStackChild[]; on_search?: string|string[]; on_paste?: string|string[]; on_move?: string|string[]; on_close?: string|string[]; search_debounce?: number|string; search_submenus?: boolean; search_suggestion?: string; search_submit?: boolean; bind_keys?: string[]; parent_menu?: MenuStack; submenu_path: integer[]; active?: boolean; width: number; height: number; top: number; scroll_y: number; scroll_height: number; title_width: number; hint_width: number; max_width: number; is_root?: boolean; fling?: Fling, search?: Search, ass_safe_title?: string}
 ---@alias MenuStackChild MenuStackItem|MenuStack
 ---@alias MenuStackItem {title?: string; hint?: string; icon?: string; value: any; actions?: MenuAction[]; actions_place?: 'inside' | 'outside'; active?: boolean; keep_open?: boolean; selectable?: boolean; bold?: boolean; italic?: boolean; muted?: boolean; separator?: boolean; align?: 'left'|'center'|'right'; title_width: number; hint_width: number; ass_safe_hint?: string}
 ---@alias Fling {y: number, distance: number, time: number, easing: fun(x: number), duration: number, update_cursor?: boolean}
@@ -1120,27 +1120,22 @@ function Menu:search_ensure_key_bindings()
 end
 
 function Menu:enable_key_bindings()
+	local standalone_keys = {'/', 'kp_divide', 'mbtn_back', 'ctrl+f', 'ctrl+v', 'ctrl+c'}
+	if type(self.root.bind_keys) == 'table' then itable_append(standalone_keys, self.root.bind_keys) end
 	-- `+` at the end enables `repeatable` flag
-	local standalone_keys = {
-		'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12', '/', 'kp_divide', 'mbtn_back',
-		{'f', 'ctrl'}, {'v', 'ctrl'}, {'c', 'ctrl'},
-	}
 	local modifiable_keys = {'up+', 'down+', 'left', 'right', 'enter', 'kp_enter', 'bs', 'tab', 'esc', 'pgup+',
 		'pgdwn+', 'home', 'end', 'del'}
 	local modifiers = {nil, 'alt', 'alt+ctrl', 'alt+shift', 'alt+ctrl+shift', 'ctrl', 'ctrl+shift', 'shift'}
-	local normalized = {kp_enter = 'enter'}
 
-	local function bind(key, modifier, flags)
-		local binding = modifier and modifier .. '+' .. key or key
-		local shortcut = create_shortcut(normalized[key] or key, modifier)
+	---@param shortcut Shortcut
+	---@param flags table<string, boolean>
+	local function bind(shortcut, flags)
 		local handler = self:create_action(function(info) self:handle_shortcut(shortcut, info) end)
-		self:add_key_binding(binding, {handler, flags})
+		self:add_key_binding(shortcut.id, {handler, flags})
 	end
 
-	for i, key_mods in ipairs(standalone_keys) do
-		local is_table = type(key_mods) == 'table'
-		local key, mods = is_table and key_mods[1] or key_mods, is_table and key_mods[2] or nil
-		bind(key, mods, {repeatable = false, complex = true})
+	for i, key in ipairs(standalone_keys) do
+		bind(create_shortcut(key), {repeatable = false, complex = true})
 	end
 
 	for i, key in ipairs(modifiable_keys) do
@@ -1152,7 +1147,7 @@ function Menu:enable_key_bindings()
 		end
 
 		for j = 1, #modifiers do
-			bind(key, modifiers[j], flags)
+			bind(create_shortcut(key, modifiers[j]), flags)
 		end
 	end
 

@@ -282,11 +282,17 @@ function serialize_key_value_list(input, value_sanitizer)
 	return result
 end
 
----@param key string
+---@param key string Key or a combination of a `modifiers+key`. If this includes modifiers, the `modifiers` param is ignored.
 ---@param modifiers? string
 ---@return Shortcut
 function create_shortcut(key, modifiers)
 	key = key:lower()
+
+	local last_plus_in_key = string_last_index_of(key, '+')
+	if last_plus_in_key then
+		modifiers = string.sub(key, 1, last_plus_in_key - 1)
+		key = string.sub(key, last_plus_in_key + 1)
+	end
 
 	local id_parts, modifiers_set
 	if modifiers then
