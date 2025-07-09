@@ -894,6 +894,15 @@ end
 
 ---@return string|nil
 function get_clipboard()
+	local data, err = mp.get_property('clipboard/text')
+	if data then
+		return data
+	end
+	if err and err ~= 'property not found' and err ~= 'property unavailable' then
+		mp.commandv('show-text', 'Get clipboard error: ' .. err)
+		return nil
+	end
+
 	local err, data = call_ziggy({'get-clipboard'})
 	if err then
 		mp.commandv('show-text', 'Get clipboard error. See console for details.')
@@ -906,6 +915,17 @@ end
 ---@return string|nil payload String that was copied to clipboard.
 function set_clipboard(payload)
 	payload = tostring(payload)
+
+	local success, err = mp.set_property('clipboard/text', payload)
+	if success then
+		mp.commandv('show-text', t('Copied to clipboard') .. ': ' .. payload, 3000)
+		return payload
+	end
+	if err and err ~= 'property not found' and err ~= 'property unavailable' then
+		mp.commandv('show-text', 'Set clipboard error: ' .. err)
+		return nil
+	end
+
 	local err, data = call_ziggy({'set-clipboard', payload})
 	if err then
 		mp.commandv('show-text', 'Set clipboard error. See console for details.')
