@@ -96,14 +96,21 @@ function Controls:init_options()
 		-- Serialize dispositions into OR groups of AND conditions
 		---@type {[string]: boolean}[]
 		local dispositions = {}
+		---@type string[]
+		local disposition_props = {}
 		for _, or_group in ipairs(comma_split(item.disposition)) do
 			local group = {}
 			for _, condition in ipairs(split(or_group, ' *+ *')) do
 				if #condition > 0 then
 					local value = condition:sub(1, 1) ~= '!'
 					local name = not value and condition:sub(2) or condition
-					local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
-					group[prop] = value
+					if name:sub(1, 4) == 'has_' or itable_has({'idle', 'image', 'audio', 'video', 'stream'}, name) then
+						local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
+						group[prop] = value
+					else
+						disposition_props[#disposition_props + 1] = name
+						group[name] = value
+					end
 				end
 			end
 			dispositions[#dispositions + 1] = group
@@ -198,6 +205,11 @@ function Controls:init_options()
 			break
 		end
 
+		if control.element then
+			for _, prop in ipairs(disposition_props) do
+				control.element:observe_mp_property(prop, function() self:reflow() end)
+			end
+		end
 		self.controls[#self.controls + 1] = control
 	end
 
@@ -216,7 +228,14 @@ function Controls:reflow()
 			local group_matches = true
 			for prop, value in pairs(group) do
 				conditions_num = conditions_num + 1
-				if state[prop] ~= value then
+				---@type boolean
+				local current_value
+				if prop:sub(1, 4) == 'has_' or prop:sub(1, 3) == 'is_' then
+					current_value = state[prop]
+				else
+					current_value = mp.get_property_bool(prop, false)
+				end
+				if current_value ~= value then
 					group_matches = false
 					break
 				end
