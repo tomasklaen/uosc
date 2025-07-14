@@ -268,7 +268,7 @@ function Controls:register_badge_updater(badge, element)
 	if is_external_prop then
 		element['on_external_prop_' .. prop] = function(_, value) handler(prop, value) end
 	else
-		self:observe_mp_property(observable_name, handler)
+		element:observe_mp_property(observable_name, handler)
 	end
 end
 
