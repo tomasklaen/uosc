@@ -180,6 +180,7 @@ function Controls:init_options()
 					name = params[1],
 					render_order = self.render_order,
 					anchor_id = 'controls',
+					on_hide = function() self:reflow() end,
 				})
 				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
 			end
@@ -205,7 +206,7 @@ function Controls:init_options()
 end
 
 function Controls:reflow()
-	-- Populate the layout only with items that match current disposition
+	-- Populate the layout only with items that are not hidden and match current disposition
 	self.layout = {}
 	for _, control in ipairs(self.controls) do
 		local matches = false
@@ -228,8 +229,9 @@ function Controls:reflow()
 		end
 
 		if conditions_num == 0 then matches = true end
-		if control.element then control.element.enabled = matches end
-		if matches then self.layout[#self.layout + 1] = control end
+		local show = matches and (not control.element or control.element.hide ~= true)
+		if control.element then control.element.enabled = show end
+		if show then self.layout[#self.layout + 1] = control end
 	end
 
 	self:update_dimensions()
