@@ -766,11 +766,18 @@ end
 
 ---@param offset integer
 ---@param immediate? boolean
-function Menu:navigate_by_offset(offset, immediate)
+function Menu:navigate_by_items(offset, immediate)
 	self:select_by_offset(offset)
 	if self.current.selected_index then
 		self:scroll_to_index(self.current.selected_index, self.current.id, immediate)
 	end
+end
+
+---@param offset integer
+---@param immediate? boolean
+function Menu:navigate_by_page(offset, immediate)
+	local items_per_page = round((self.current.height / self.scroll_step) * 0.4)
+	self:navigate_by_items(items_per_page * offset, immediate)
 end
 
 function Menu:paste()
@@ -1185,10 +1192,9 @@ function Menu:handle_shortcut(shortcut, info)
 	elseif id == 'enter' and menu.search and menu.search_debounce == 'submit' then
 		self:search_submit()
 	elseif id == 'up' or id == 'down' then
-		self:navigate_by_offset(id == 'up' and -1 or 1, true)
+		self:navigate_by_items(id == 'up' and -1 or 1, true)
 	elseif id == 'pgup' or id == 'pgdwn' then
-		local items_per_page = round((menu.height / self.scroll_step) * 0.4)
-		self:navigate_by_offset(items_per_page * (id == 'pgup' and -1 or 1))
+		self:navigate_by_page(id == 'pgup' and -1 or 1)
 	elseif menu.search and (id == 'left' or id == 'ctrl+left') then
 		self:search_cursor_move(-1, modifiers == 'ctrl')
 	elseif menu.search and (id == 'right' or id == 'ctrl+right') then
@@ -1198,7 +1204,7 @@ function Menu:handle_shortcut(shortcut, info)
 	elseif menu.search and id == 'end' then
 		self:search_cursor_move(math.huge)
 	elseif id == 'home' or id == 'end' then
-		self:navigate_by_offset(id == 'home' and -math.huge or math.huge)
+		self:navigate_by_items(id == 'home' and -math.huge or math.huge)
 	elseif id == 'shift+tab' then
 		self:prev_action()
 	elseif id == 'tab' then

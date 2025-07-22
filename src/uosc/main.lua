@@ -1050,6 +1050,14 @@ bind_command('delete-file-quit', function()
 	if state.path and not is_protocol(state.path) then delete_file(state.path) end
 	mp.command('quit')
 end)
+bind_command('menu-prev', function() Elements:maybe('menu', 'navigate_by_items', -1) end)
+bind_command('menu-next', function() Elements:maybe('menu', 'navigate_by_items', 1) end)
+bind_command('menu-prev-page', function() Elements:maybe('menu', 'navigate_by_page', -1) end)
+bind_command('menu-next-page', function() Elements:maybe('menu', 'navigate_by_page', 1) end)
+bind_command('menu-start', function() Elements:maybe('menu', 'navigate_by_items', -math.huge) end)
+bind_command('menu-end', function() Elements:maybe('menu', 'navigate_by_items', math.huge) end)
+bind_command('menu-activate', function() Elements:maybe('menu', 'activate_selected_item') end)
+bind_command('menu-back', function() Elements:maybe('menu', 'back') end)
 bind_command('audio-device', create_self_updating_menu_opener({
 	title = t('Audio devices'),
 	type = 'audio-device-list',

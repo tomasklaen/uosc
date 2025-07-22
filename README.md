@@ -224,6 +224,10 @@ Toggles default menu. Read [Menu](#menu-1) section below to find out how to fill
 
 Note: there's also a `menu-blurred` command that opens a menu without pre-selecting the 1st item, suitable for commands triggered with a mouse, such as control bar buttons.
 
+#### `menu-prev`, `menu-next`, `menu-prev-page`, `menu-next-page`, `menu-start`, `menu-end`, `menu-activate`, `menu-back`
+
+Menu navigation bindings, if you want to use keys other than up, down, pgup, pgdown, home, end, enter, backspace.
+
 #### `subtitles`, `audio`, `video`
 
 Menus to select a track of a requested type.
