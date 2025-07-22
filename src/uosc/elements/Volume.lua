@@ -215,7 +215,7 @@ function Volume:destroy()
 end
 
 function Volume:get_visibility()
-	if not state.has_audio then return 0 end
+	if not state.is_idle and not state.has_audio then return 0 end
 	return self.slider.pressed and 1 or Elements:maybe('timeline', 'get_is_hovered') and -1
 		or Element.get_visibility(self)
 end
