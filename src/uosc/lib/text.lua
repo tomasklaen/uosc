@@ -118,6 +118,22 @@ function utf8_prev(str, i)
 	return last_valid
 end
 
+---Convert character position to byte position in utf-8 encoded string
+---@param str string
+---@param char_pos integer
+---@return integer
+function utf8_charpos_to_bytepos(str, char_pos)
+	local byte_pos = 1
+	local current_char = 1
+	local str_len = #str
+	while byte_pos <= str_len and current_char < char_pos do
+		local char_len = utf8_char_bytes(str, byte_pos)
+		byte_pos = byte_pos + char_len
+		current_char = current_char + 1
+	end
+	return byte_pos
+end
+
 ---Extract Unicode code point from utf-8 character at index i in str
 ---@param str string
 ---@param i integer
@@ -571,3 +587,75 @@ function find_string_segment_bound(str, cursor, direction)
 		return cursor + #segment
 	end
 end
+
+-- Highlight matching text in a string.
+---@param text string
+---@param byte_positions number[]
+---@param font_color string
+---@return string
+function highlight_match(text, byte_positions, font_color, bold)
+	if not byte_positions or #byte_positions == 0 then
+		return ass_escape(text)
+	end
+
+	table.sort(byte_positions)
+	local start_tag = '{\\c&H' .. config.color.match .. '&\\b1}'
+	local end_tag   = '{\\c&H' .. font_color .. '&\\b' .. (bold and '1' or '0') .. '}'
+
+	local result = {}
+	local pos_set = {}
+	for _, p in ipairs(byte_positions) do
+		pos_set[p] = true
+	end
+
+	local i = 1
+	local len = #text
+	while i <= len do
+		if pos_set[i] then
+			table.insert(result, start_tag)
+			local char_len = utf8_char_bytes(text, i)
+			table.insert(result, ass_escape(text:sub(i, i + char_len - 1)))
+			table.insert(result, end_tag)
+			i = i + char_len
+		else
+			local char_len = utf8_char_bytes(text, i)
+			table.insert(result, ass_escape(text:sub(i, i + char_len - 1)))
+			i = i + char_len
+		end
+	end
+
+	return table.concat(result)
+end
+
+-- Get positions of matching characters in a romanized string.
+---@param title string
+---@param query string
+---@param mode string
+---@param roman string[]
+function get_roman_match_positions(title, query, mode, roman)
+	local romans = {}
+	local char_ranges = {}
+	local total_len = 0
+	for _, char in ipairs(roman) do
+		local part = (mode == "initial") and char:sub(1, 1) or char
+		part = part:lower()
+		romans[#romans + 1] = part
+		char_ranges[#char_ranges + 1] = {total_len + 1, total_len + #part}
+		total_len = total_len + #part
+	end
+
+	local full_roman = table.concat(romans)
+	local s, e = full_roman:find(query, 1, true)
+	if not s then return nil end
+
+	local byte_positions = {}
+	for i, range in ipairs(char_ranges) do
+		local rs, re = range[1], range[2]
+		if not (re < s or rs > e) then
+			byte_positions[#byte_positions + 1] = utf8_charpos_to_bytepos(title, i)
+		end
+	end
+
+	return byte_positions
+end
+	

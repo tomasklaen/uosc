@@ -132,6 +132,7 @@ end
 local intl = require('lib/intl')
 t = intl.t
 require('lib/char_conv')
+fzy = require('lib/fzy')
 
 --[[ CONFIG ]]
 local config_defaults = {
@@ -143,6 +144,7 @@ local config_defaults = {
 		curtain = serialize_rgba('111111').color,
 		success = serialize_rgba('a5e075').color,
 		error = serialize_rgba('ff616e').color,
+		match = serialize_rgba('69c5ff').color,
 	},
 	opacity = {
 		timeline = 0.9,
