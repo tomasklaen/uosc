@@ -829,35 +829,99 @@ end
 ---@return MenuStackChild[]
 function search_items(items, query, recursive, prefix)
 	local result = {}
+	local haystacks = {}
+	local flat_items = {}
 	local concat = table.concat
+	local romanization = need_romanization()
+
 	for _, item in ipairs(items) do
 		if item.selectable ~= false then
 			local prefixed_title = prefix and prefix .. ' / ' .. (item.title or '') or item.title
+			haystacks[#haystacks + 1] = item.title
+			flat_items[#flat_items + 1] = item
+
 			if item.items and recursive then
 				itable_append(result, search_items(item.items, query, recursive, prefixed_title))
-			else
-				local title = item.title and item.title:lower()
-				local hint = item.hint and item.hint:lower()
-				local initials_title = title and concat(initials(title)) --[[@as string]]
-				local romanization = need_romanization()
-				if romanization then
-					ligature_conv_title = title and char_conv(title, true)
-					initials_conv_title = title and concat(initials(char_conv(title, false)))
-				end
-				if title and title:find(query, 1, true) or
-					title and romanization and ligature_conv_title:find(query, 1, true) or
-					hint and hint:find(query, 1, true) or
-					title and initials_title:find(query, 1, true) or
-					title and romanization and initials_conv_title:find(query, 1, true) or
-					hint and concat(initials(hint)):find(query, 1, true) then
-					item = table_assign({}, item)
-					item.title = prefixed_title
-					item.ass_safe_title = nil
-					result[#result + 1] = item
-				end
 			end
 		end
 	end
+
+	local seen = {}
+
+	local fuzzy = fzy.filter(query, haystacks, false)
+	for _, match in ipairs(fuzzy) do
+		local idx, positions, score = match[1], match[2], match[3]
+		local matched_title = haystacks[idx]
+		local item = flat_items[idx]
+		local prefixed_title = prefix and prefix .. ' / ' .. (item.title or '') or item.title
+
+		if item.selectable ~= false and not (item.items and recursive) and not seen[item] then
+			local bold = item.bold
+			local font_color = item.active and fgt or bgt
+			local ass_safe_title = highlight_match(matched_title, positions, font_color, bold) or nil
+			local new_item = table_assign({}, item)
+			new_item.title = prefixed_title
+			new_item.ass_safe_title = prefix and prefix .. ' / ' .. (ass_safe_title or '') or ass_safe_title
+			new_item.score = score
+			result[#result + 1] = new_item
+			seen[item] = true
+		end
+	end
+
+	for _, item in ipairs(items) do
+		local title = item.title and item.title:lower()
+		local hint = item.hint and item.hint:lower()
+		local bold = item.bold
+		local font_color = item.active and fgt or bgt
+		local ass_safe_title = nil
+		local prefixed_title = prefix and prefix .. ' / ' .. (item.title or '') or item.title
+		if item.selectable ~= false and not (item.items and recursive) and not seen[item] then
+			local score = 0
+			local match = false
+
+			if title and romanization then
+				local ligature_conv_title, ligature_roman = char_conv(title, true)
+				local initials_arr_conv, initials_roman = char_conv(title, false)
+				local initials_conv_title = concat(initials(initials_arr_conv))
+				if ligature_conv_title:find(query, 1, true) then
+					match = true
+					score = 1000
+					local pos = get_roman_match_positions(title, query, "ligature", ligature_roman)
+					if pos then
+						ass_safe_title = highlight_match(item.title, pos, font_color, bold)
+					end
+				elseif initials_conv_title:find(query, 1, true) then
+					match = true
+					score = 900
+					local pos = get_roman_match_positions(title, query, "initial", initials_roman)
+					if pos then
+						ass_safe_title = highlight_match(item.title, pos, font_color, bold)
+					end
+				end
+			end
+
+			if hint and not match then
+				if hint:find(query, 1, true) then
+					match = true
+					score = 100
+				elseif concat(initials(hint)):find(query, 1, true) then
+					match = true
+					score = 90
+				end
+			end
+
+			if match then
+				local new_item = table_assign({}, item)
+				new_item.title = prefixed_title
+				new_item.ass_safe_title = prefix and prefix .. ' / ' .. (ass_safe_title or '') or ass_safe_title
+				new_item.score = score
+				result[#result + 1] = new_item
+			end
+		end
+	end
+
+	table.sort(result, function(a, b) return a.score > b.score end)
+
 	return result
 end
 
