@@ -48,7 +48,7 @@ function Button:render()
 	if is_hover and is_clickable and background_opacity < 0.3 then background_opacity = 0.3 end
 
 	-- Background
-	if background_opacity > 0 then
+	if background_opacity > 0 and (self.icon ~= '') then
 		ass:rect(self.ax, self.ay, self.bx, self.by, {
 			color = (self.active or not is_hover) and background or foreground,
 			radius = state.radius,
@@ -67,6 +67,9 @@ function Button:render()
 		local badge_width = text_width(self.badge, badge_opts)
 		local width, height = math.ceil(badge_width + (badge_font_size / 7) * 2), math.ceil(badge_font_size * 0.93)
 		local bx, by = self.bx - 1, self.by - 1
+		-- if no icon, treat badge as lable and increse height a bit and center text
+		by = self.icon == '' and round((self.ay + self.by + height)/2) or self.by - 1
+		bx = self.icon == '' and round((self.ax + self.bx + width )/2) or self.bx - 1
 		ass:rect(bx - width, by - height, bx, by, {
 			color = foreground,
 			radius = state.radius,
