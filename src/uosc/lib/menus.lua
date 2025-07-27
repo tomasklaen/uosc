@@ -899,7 +899,8 @@ function open_subtitle_downloader()
 
 	if state.path then
 		if is_protocol(state.path) then
-			if not is_protocol(state.title) then search_suggestion = state.title end
+			local title = mp.get_property_native('title')
+			if title and not is_protocol(title) then search_suggestion = title end
 		else
 			local serialized_path = serialize_path(state.path)
 			if serialized_path then

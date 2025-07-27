@@ -9,9 +9,14 @@ function TopBar:new() return Class.new(self) --[[@as TopBar]] end
 function TopBar:init()
 	Element.init(self, 'top_bar', {render_order = 4})
 	self.size = 0
+	self.alt_title_size = 0
+	self.chapter_size = 0
+	self.titles_spacing = 1
 	self.icon_size, self.font_size, self.title_by = 1, 1, 1
 	self.show_alt_title = false
 	self.main_title, self.alt_title = nil, nil
+	---@type {index: number; title: string}|nil
+	self.current_chapter = nil
 
 	local function maximized_command()
 		if state.platform == 'windows' then
@@ -28,9 +33,60 @@ function TopBar:init()
 	local min = {icon = 'minimize', command = function() mp.command('cycle window-minimized') end}
 	self.buttons = options.top_bar_controls == 'left' and {close, max, min} or {min, max, close}
 
-	self:decide_titles()
+	self:register_observers()
 	self:decide_enabled()
 	self:update_dimensions()
+end
+
+---@return string|nil
+local function expand_template(template)
+	-- escape ASS, and strip newlines and trailing slashes and trim whitespace
+	local tmp = mp.command_native({'expand-text', template}):gsub('\\n', ' '):gsub('[\\%s]+$', ''):gsub('^%s+', '')
+	return tmp and tmp ~= '' and ass_escape(tmp) or nil
+end
+
+function TopBar:add_template_listener(template, callback)
+	local props = get_expansion_props(template)
+	for prop, _ in pairs(props) do
+		self:observe_mp_property(prop, 'native', callback)
+	end
+	if not next(props) then callback() end
+end
+
+function TopBar:register_observers()
+	-- Main title
+	if #options.top_bar_title > 0 and options.top_bar_title ~= 'no' then
+		if options.top_bar_title == 'yes' then
+			local template = nil
+			local function update_main_title()
+				self.main_title = expand_template(template)
+				self:normalize_titles()
+			end
+			local function remove_template_listener(callback) mp.unobserve_property(callback) end
+
+			self:observe_mp_property('title', 'string', function(_, title)
+				remove_template_listener(update_main_title)
+				template = title
+				if template then
+					if template:sub(-6) == ' - mpv' then template = template:sub(1, -7) end
+					self:add_template_listener(template, update_main_title)
+				end
+			end)
+		elseif type(options.top_bar_title) == 'string' then
+			self:add_template_listener(options.top_bar_title, function()
+				self.main_title = expand_template(options.top_bar_title)
+				self:normalize_titles()
+			end)
+		end
+	end
+
+	-- Alt title
+	if #options.top_bar_alt_title > 0 and options.top_bar_alt_title ~= 'no' then
+		self:add_template_listener(options.top_bar_alt_title, function()
+			self.alt_title = expand_template(options.top_bar_alt_title)
+			self:normalize_titles()
+		end)
+	end
 end
 
 function TopBar:decide_enabled()
@@ -42,10 +98,7 @@ function TopBar:decide_enabled()
 	self.enabled = self.enabled and (options.top_bar_controls or options.top_bar_title ~= 'no' or state.has_playlist)
 end
 
-function TopBar:decide_titles()
-	self.alt_title = state.alt_title ~= '' and state.alt_title or nil
-	self.main_title = state.title ~= '' and state.title or nil
-
+function TopBar:normalize_titles()
 	if (self.main_title == 'No file') then
 		self.main_title = t('No file')
 	end
@@ -70,17 +123,46 @@ function TopBar:decide_titles()
 			self.main_title, self.alt_title = longer_title, nil
 		end
 	end
+
+	self:update_dimensions()
+end
+
+function TopBar:select_current_chapter()
+	local current_chapter_index = self.current_chapter and self.current_chapter.index
+	local current_chapter
+	if state.time and state.chapters then
+		_, current_chapter = itable_find(state.chapters, function(c) return state.time >= c.time end, #state.chapters, 1)
+	end
+	local new_chapter_index = current_chapter and current_chapter.index
+	if current_chapter_index ~= new_chapter_index then
+		self.current_chapter = current_chapter
+		if itable_has(config.top_bar_flash_on, 'chapter') then
+			self:flash()
+		end
+		self:update_dimensions()
+	end
 end
 
 function TopBar:update_dimensions()
 	self.size = round(options.top_bar_size * state.scale)
+	self.title_spacing = round(1 * state.scale)
 	self.icon_size = round(self.size * 0.5)
 	self.font_size = math.floor((self.size - (math.ceil(self.size * 0.25) * 2)) * options.font_scale)
+	self.alt_title_size = round(self.font_size * 1.2)
+	self.chapter_size = round(self.font_size * 1.1)
 	local window_border_size = Elements:v('window_border', 'size', 0)
+	local min_hitbox_height = self.size
+	if self.alt_title and options.top_bar_alt_title_place == 'below' then
+		min_hitbox_height = min_hitbox_height + self.title_spacing + self.alt_title_size
+	end
+	if self.current_chapter then
+		min_hitbox_height = min_hitbox_height + self.title_spacing + self.chapter_size
+	end
 	self.ax = window_border_size
 	self.ay = window_border_size
 	self.bx = display.width - window_border_size
-	self.by = self.size + window_border_size
+	-- We extend the hitbox so that people with low proximity options can still click on chapter button
+	self.by = math.max(self.size + window_border_size, min_hitbox_height - options.proximity_in)
 end
 
 function TopBar:toggle_title()
@@ -89,8 +171,13 @@ function TopBar:toggle_title()
 	request_render()
 end
 
-function TopBar:on_prop_title() self:decide_titles() end
-function TopBar:on_prop_alt_title() self:decide_titles() end
+function TopBar:on_prop_time()
+	self:select_current_chapter()
+end
+
+function TopBar:on_prop_chapters()
+	self:select_current_chapter()
+end
 
 function TopBar:on_prop_border()
 	self:decide_enabled()
@@ -128,7 +215,9 @@ function TopBar:render()
 	local visibility = self:get_visibility()
 	if visibility <= 0 then return end
 	local ass = assdraw.ass_new()
-	local ax, bx = self.ax, self.bx
+	-- `by` might be artificially extended so people with low proximity options
+	-- can still click on chapter button, so we can't use it for rendering.
+	local ax, ay, bx, by = self.ax, self.ay, self.bx, self.ay + self.size
 	local margin = math.floor((self.size - self.font_size) / 4)
 
 	-- Window controls
@@ -143,7 +232,7 @@ function TopBar:render()
 		end
 
 		for _, button in ipairs(self.buttons) do
-			local rect = {ax = button_ax, ay = self.ay, bx = button_ax + self.size, by = self.by}
+			local rect = {ax = button_ax, ay = ay, bx = button_ax + self.size, by = by}
 			local is_hover = get_point_to_rectangle_proximity(cursor, rect) == 0
 			local opacity = is_hover and 1 or config.opacity.controls
 			local button_fg = is_hover and (button.hover_fg or bg) or fg
@@ -171,9 +260,8 @@ function TopBar:render()
 	end
 
 	-- Window title
-	if state.title or state.has_playlist then
-		local padding = self.font_size / 2
-		local spacing = 1
+	if self.main_title or state.has_playlist then
+		local padding = round(self.font_size / 2)
 		local left_aligned = options.top_bar_controls == 'left'
 		local title_ax, title_bx, title_ay = ax + margin, bx - margin, self.ay + margin
 
@@ -189,7 +277,7 @@ function TopBar:render()
 				ax = ax,
 				ay = title_ay,
 				bx = ax + rect_width,
-				by = self.by - margin,
+				by = by - margin,
 			}
 			local opacity = get_point_to_rectangle_proximity(cursor, rect) == 0
 				and 1 or config.opacity.playlist_position
@@ -217,12 +305,12 @@ function TopBar:render()
 					opacity = visibility,
 					border = options.text_border * state.scale,
 					border_color = bg,
-					clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, self.ay, title_bx, self.by),
+					clip = string.format('\\clip(%d, %d, %d, %d)', self.ax, ay, title_bx, by),
 				}
 				local rect_ideal_width = round(text_width(main_title, opts) + padding * 2)
 				local rect_width = math.min(rect_ideal_width, title_bx - title_ax)
 				local ax = left_aligned and title_bx - rect_width or title_ax
-				local by = self.by - margin
+				local by = by - margin
 				local title_rect = {ax = ax, ay = title_ay, bx = ax + rect_width, by = by}
 
 				if options.top_bar_alt_title_place == 'toggle' then
@@ -234,17 +322,15 @@ function TopBar:render()
 				})
 				local align = left_aligned and rect_ideal_width == rect_width and 6 or 4
 				local x = align == 6 and title_rect.bx - padding or ax + padding
-				ass:txt(x, self.ay + (self.size / 2), align, main_title, opts)
-				title_ay = by + spacing
+				ass:txt(x, ay + (self.size / 2), align, main_title, opts)
+				title_ay = by + self.title_spacing
 			end
 
 			-- Alt title
 			if self.alt_title and options.top_bar_alt_title_place == 'below' then
-				local font_size = self.font_size * 0.9
-				local height = font_size * 1.3
-				local by = title_ay + height
+				local by = title_ay + self.alt_title_size
 				local opts = {
-					size = font_size,
+					size = round(self.alt_title_size * 0.77),
 					wrap = 2,
 					color = bgt,
 					border = options.text_border * state.scale,
@@ -261,24 +347,22 @@ function TopBar:render()
 				})
 				local align = left_aligned and rect_ideal_width == rect_width and 6 or 4
 				local x = align == 6 and bx - padding or ax + padding
-				ass:txt(x, title_ay + height / 2, align, self.alt_title, opts)
-				title_ay = by + spacing
+				ass:txt(x, title_ay + self.alt_title_size / 2, align, self.alt_title, opts)
+				title_ay = by + self.title_spacing
 			end
 
 			-- Current chapter
-			if state.current_chapter then
+			if self.current_chapter then
 				local padding_half = round(padding / 2)
-				local font_size = self.font_size * 0.8
-				local height = font_size * 1.3
 				local prefix, postfix = left_aligned and '' or '└ ', left_aligned and ' ┘' or ''
-				local text = prefix .. state.current_chapter.index .. ': ' .. state.current_chapter.title .. postfix
-				local next_chapter = state.chapters[state.current_chapter.index + 1]
+				local text = prefix .. self.current_chapter.index .. ': ' .. self.current_chapter.title .. postfix
+				local next_chapter = state.chapters[self.current_chapter.index + 1]
 				local chapter_end = next_chapter and next_chapter.time or state.duration or 0
 				local remaining_time = ((state.time or 0) - chapter_end) /
 					(options.destination_time == 'time-remaining' and 1 or state.speed)
 				local remaining_human = format_time(remaining_time, math.abs(remaining_time))
 				local opts = {
-					size = font_size,
+					size = round(self.chapter_size * 0.77),
 					italic = true,
 					wrap = 2,
 					color = bgt,
@@ -290,7 +374,7 @@ function TopBar:render()
 				local remaining_box_width = remaining_width + padding_half * 2
 
 				-- Title
-				local max_bx = title_bx - remaining_box_width - spacing
+				local max_bx = title_bx - remaining_box_width - self.title_spacing
 				local rect_ideal_width = round(text_width(text, opts) + padding * 2)
 				local rect_width = math.min(rect_ideal_width, max_bx - title_ax)
 				local ax = left_aligned and title_bx - rect_width or title_ax
@@ -298,7 +382,7 @@ function TopBar:render()
 					ax = ax,
 					ay = title_ay,
 					bx = ax + rect_width,
-					by = title_ay + height,
+					by = title_ay + self.chapter_size,
 				}
 				opts.clip = string.format('\\clip(%d, %d, %d, %d)', title_ax, title_ay, rect.bx, rect.by)
 				ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
@@ -306,27 +390,28 @@ function TopBar:render()
 				})
 				local align = left_aligned and rect_ideal_width == rect_width and 6 or 4
 				local x = align == 6 and rect.bx - padding or rect.ax + padding
-				ass:txt(x, rect.ay + height / 2, align, text, opts)
+				ass:txt(x, rect.ay + self.chapter_size / 2, align, text, opts)
 
 				-- Time
-				local time_ax = left_aligned and rect.ax - spacing - remaining_box_width or rect.bx + spacing
+				local time_ax = left_aligned
+					and rect.ax - self.title_spacing - remaining_box_width or rect.bx + self.title_spacing
 				local time_bx = time_ax + remaining_box_width
 				opts.clip = nil
 				ass:rect(time_ax, rect.ay, time_bx, rect.by, {
 					color = bg, opacity = visibility * config.opacity.title, radius = state.radius,
 				})
-				ass:txt(time_ax + padding_half, rect.ay + height / 2, 4, remaining_human, opts)
+				ass:txt(time_ax + padding_half, rect.ay + self.chapter_size / 2, 4, remaining_human, opts)
 
 				-- Click action
 				rect.bx = time_bx
 				cursor:zone('primary_down', rect, function() mp.command('script-binding uosc/chapters') end)
 
-				title_ay = rect.by + spacing
+				title_ay = rect.by + self.title_spacing
 			end
 		end
 		self.title_by = title_ay - 1
 	else
-		self.title_by = self.ay
+		self.title_by = ay
 	end
 
 	return ass

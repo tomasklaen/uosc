@@ -48,10 +48,15 @@ function Element:init(id, props)
 end
 
 function Element:destroy()
-	for _, disposer in ipairs(self._disposers) do disposer() end
+	self:dispose()
 	self.destroyed = true
 	self:remove_key_bindings()
 	Elements:remove(self)
+end
+
+-- Calls all disposers registered for this element (usually mpv events/prop observers).
+function Element:dispose()
+	for _, disposer in ipairs(self._disposers) do disposer() end
 end
 
 function Element:reset_proximity() self.proximity, self.proximity_raw = 0, math.huge end
