@@ -13,8 +13,10 @@ function TopBar:init()
 	self.chapter_size = 0
 	self.titles_spacing = 1
 	self.icon_size, self.font_size, self.title_by = 1, 1, 1
-	self.show_alt_title = false
+	self.show_alt_as_main = false
 	self.main_title, self.alt_title = nil, nil
+	---@type table<string, string|nil>
+	self.render_titles = {}
 	---@type {index: number; title: string}|nil
 	self.current_chapter = nil
 
@@ -60,7 +62,7 @@ function TopBar:register_observers()
 			local template = nil
 			local function update_main_title()
 				self.main_title = expand_template(template)
-				self:normalize_titles()
+				self:update_render_titles()
 			end
 			local function remove_template_listener(callback) mp.unobserve_property(callback) end
 
@@ -75,7 +77,7 @@ function TopBar:register_observers()
 		elseif type(options.top_bar_title) == 'string' then
 			self:add_template_listener(options.top_bar_title, function()
 				self.main_title = expand_template(options.top_bar_title)
-				self:normalize_titles()
+				self:update_render_titles()
 			end)
 		end
 	end
@@ -84,7 +86,7 @@ function TopBar:register_observers()
 	if #options.top_bar_alt_title > 0 and options.top_bar_alt_title ~= 'no' then
 		self:add_template_listener(options.top_bar_alt_title, function()
 			self.alt_title = expand_template(options.top_bar_alt_title)
-			self:normalize_titles()
+			self:update_render_titles()
 		end)
 	end
 end
@@ -98,33 +100,42 @@ function TopBar:decide_enabled()
 	self.enabled = self.enabled and (options.top_bar_controls or options.top_bar_title ~= 'no' or state.has_playlist)
 end
 
-function TopBar:normalize_titles()
-	if (self.main_title == 'No file') then
-		self.main_title = t('No file')
+-- Set titles. Both have to be passed at the same time so that they can be normalized & deduplicated.
+function TopBar:update_render_titles()
+	local main, alt = self.main_title, self.alt_title
+
+	if main == 'No file' then
+		main = t('No file')
 	end
 
 	-- Fall back to alt title if main is empty
-	if not self.main_title then
-		self.main_title, self.alt_title = self.alt_title, nil
+	if not main or main == '' then
+		main, alt = alt, nil
 	end
 
 	-- Deduplicate the main and alt titles by checking if one completely
 	-- contains the other, and using only the longer one.
-	if self.main_title and self.alt_title and not self.show_alt_title then
+	if main and alt and not self.show_alt_as_main then
 		local longer_title, shorter_title
-		if #self.main_title < #self.alt_title then
-			longer_title, shorter_title = self.alt_title, self.main_title
+		if #main < #alt then
+			longer_title, shorter_title = alt, main
 		else
-			longer_title, shorter_title = self.main_title, self.alt_title
+			longer_title, shorter_title = main, alt
 		end
 
 		local escaped_shorter_title = regexp_escape(shorter_title --[[@as string]])
 		if string.match(longer_title --[[@as string]], escaped_shorter_title) then
-			self.main_title, self.alt_title = longer_title, nil
+			main, alt = longer_title, nil
 		end
 	end
 
+	if self.show_alt_as_main and alt and alt ~= '' then
+		main, alt = alt, nil
+	end
+
+	self.render_titles.main, self.render_titles.alt = main, alt
 	self:update_dimensions()
+	request_render()
 end
 
 function TopBar:select_current_chapter()
@@ -152,7 +163,7 @@ function TopBar:update_dimensions()
 	self.chapter_size = round(self.font_size * 1.1)
 	local window_border_size = Elements:v('window_border', 'size', 0)
 	local min_hitbox_height = self.size
-	if self.alt_title and options.top_bar_alt_title_place == 'below' then
+	if self.render_titles.alt and options.top_bar_alt_title_place == 'below' then
 		min_hitbox_height = min_hitbox_height + self.title_spacing + self.alt_title_size
 	end
 	if self.current_chapter then
@@ -167,8 +178,8 @@ end
 
 function TopBar:toggle_title()
 	if options.top_bar_alt_title_place ~= 'toggle' then return end
-	self.show_alt_title = not self.show_alt_title
-	request_render()
+	self.show_alt_as_main = not self.show_alt_as_main
+	self:update_render_titles()
 end
 
 function TopBar:on_prop_time()
@@ -260,7 +271,8 @@ function TopBar:render()
 	end
 
 	-- Window title
-	if self.main_title or state.has_playlist then
+	local main_title, alt_title = self.render_titles.main, self.render_titles.alt
+	if main_title or state.has_playlist then
 		local padding = round(self.font_size / 2)
 		local left_aligned = options.top_bar_controls == 'left'
 		local title_ax, title_bx, title_ay = ax + margin, bx - margin, self.ay + margin
@@ -296,7 +308,6 @@ function TopBar:render()
 		-- Skip rendering titles if there's not enough horizontal space
 		if title_bx - title_ax > self.font_size * 3 and options.top_bar_title ~= 'no' then
 			-- Main title
-			local main_title = self.show_alt_title and self.alt_title or self.main_title
 			if main_title then
 				local opts = {
 					size = self.font_size,
@@ -327,7 +338,7 @@ function TopBar:render()
 			end
 
 			-- Alt title
-			if self.alt_title and options.top_bar_alt_title_place == 'below' then
+			if alt_title and options.top_bar_alt_title_place == 'below' then
 				local by = title_ay + self.alt_title_size
 				local opts = {
 					size = round(self.alt_title_size * 0.77),
@@ -337,7 +348,7 @@ function TopBar:render()
 					border_color = bg,
 					opacity = visibility,
 				}
-				local rect_ideal_width = round(text_width(self.alt_title, opts) + padding * 2)
+				local rect_ideal_width = round(text_width(alt_title, opts) + padding * 2)
 				local rect_width = math.min(rect_ideal_width, title_bx - title_ax)
 				local ax = left_aligned and title_bx - rect_width or title_ax
 				local bx = ax + rect_width
@@ -347,7 +358,7 @@ function TopBar:render()
 				})
 				local align = left_aligned and rect_ideal_width == rect_width and 6 or 4
 				local x = align == 6 and bx - padding or ax + padding
-				ass:txt(x, title_ay + self.alt_title_size / 2, align, self.alt_title, opts)
+				ass:txt(x, title_ay + self.alt_title_size / 2, align, alt_title, opts)
 				title_ay = by + self.title_spacing
 			end
 
