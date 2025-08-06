@@ -863,7 +863,7 @@ function search_items(items, query, recursive, prefix)
 		local prefixed_title = prefix and prefix .. ' / ' .. (item.title or '') or item.title
 
 		if item.selectable ~= false and not (item.items and recursive) and not seen[item] then
-			local bold = item.bold
+			local bold = item.bold or options.font_bold
 			local font_color = item.active and fgt or bgt
 			local ass_safe_title = highlight_match(matched_title, positions, font_color, bold) or nil
 			local new_item = table_assign({}, item)
@@ -878,7 +878,7 @@ function search_items(items, query, recursive, prefix)
 	for _, item in ipairs(items) do
 		local title = item.title and item.title:lower()
 		local hint = item.hint and item.hint:lower()
-		local bold = item.bold
+		local bold = item.bold or options.font_bold
 		local font_color = item.active and fgt or bgt
 		local ass_safe_title = nil
 		local prefixed_title = prefix and prefix .. ' / ' .. (item.title or '') or item.title
