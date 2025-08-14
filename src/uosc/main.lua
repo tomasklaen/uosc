@@ -81,6 +81,7 @@ defaults = {
 	time_precision = 0,
 	font_bold = false,
 	autohide = false,
+	autohide_ignore_dragging = false,
 	buffered_time_threshold = 60,
 	pause_indicator = 'flash',
 	stream_quality_options = '4320,2160,1440,1080,720,480,360,240,144',

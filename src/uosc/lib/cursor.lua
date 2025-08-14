@@ -374,7 +374,7 @@ function cursor:leave() self:move(math.huge, math.huge) end
 
 function cursor:is_autohide_allowed()
 	return options.autohide and (not self.autohide_fs_only or state.fullscreen)
-		and not self.is_dragging_prevented
+		and (not self.is_dragging_prevented or options.autohide_ignore_dragging)
 		and not Menu:is_open()
 end
 mp.observe_property('cursor-autohide-fs-only', 'bool', function(_, val) cursor.autohide_fs_only = val end)
