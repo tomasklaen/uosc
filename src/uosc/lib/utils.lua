@@ -944,9 +944,6 @@ function render()
 
 	cursor:clear_zones()
 
-	-- Click on empty area detection
-	if setup_click_detection then setup_click_detection() end
-
 	-- Actual rendering
 	local ass = assdraw.ass_new()
 

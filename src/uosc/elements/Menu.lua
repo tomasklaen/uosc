@@ -1400,9 +1400,10 @@ function Menu:render()
 			radius = state.radius > 0 and state.radius + self.padding or 0,
 		})
 
-		if is_parent then
-			cursor:zone('primary_down', menu_rect, self:create_action(function() self:slide_in_menu(menu.id, x) end))
-		end
+		-- Clicking on parent slides it in, clicking on background of current menu is a noop preventing close
+		cursor:zone('primary_down', menu_rect, self:create_action(function()
+			if is_parent then self:slide_in_menu(menu.id, x) end
+		end))
 
 		-- Scrollbar
 		if menu.scroll_height > 0 then
