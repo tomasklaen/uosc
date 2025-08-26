@@ -130,12 +130,14 @@ function tween(from, to, setter, duration_or_callback, callback)
 	return finish
 end
 
+-- Returns signed distance (negative values mean how deep inside the rect the point is).
 ---@param point Point
 ---@param rect Rect
 function get_point_to_rectangle_proximity(point, rect)
-	local dx = math.max(rect.ax - point.x, 0, point.x - rect.bx)
-	local dy = math.max(rect.ay - point.y, 0, point.y - rect.by)
-	return math.sqrt(dx * dx + dy * dy)
+	local dx = math.max(rect.ax - point.x, point.x - rect.bx)
+	local dy = math.max(rect.ay - point.y, point.y - rect.by)
+    local distance = math.sqrt(math.max(0, dx)^2 + math.max(0, dy)^2)
+    return distance + math.min(0, math.max(dx, dy))
 end
 
 ---@param point_a Point
@@ -149,7 +151,7 @@ end
 ---@param hitbox Hitbox
 function point_collides_with(point, hitbox)
 	return (hitbox.r and get_point_to_point_proximity(point, hitbox.point) <= hitbox.r) or
-		(not hitbox.r and get_point_to_rectangle_proximity(point, hitbox --[[@as Rect]]) == 0)
+		(not hitbox.r and get_point_to_rectangle_proximity(point, hitbox --[[@as Rect]]) <= 0)
 end
 
 ---@param lax number

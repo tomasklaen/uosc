@@ -309,7 +309,7 @@ function Menu:update_content_dimensions()
 
 	for _, menu in ipairs(self.all) do
 		title_opts.bold, title_opts.italic = true, false
-		local max_width = text_width(menu.title, title_opts) + 2 * self.padding + 2 * self.item_padding
+		local max_width = text_width(menu.title, title_opts) + 2 * self.item_padding
 
 		-- Estimate width of a widest item
 		for _, item in ipairs(menu.items) do
@@ -323,7 +323,7 @@ function Menu:update_content_dimensions()
 			if estimated_width > max_width then max_width = estimated_width end
 		end
 
-		menu.max_width = max_width + 2 * self.padding
+		menu.max_width = max_width
 	end
 
 	self:update_dimensions()
@@ -336,20 +336,21 @@ function Menu:update_dimensions()
 	-- and dumb titles with no search inputs. It could use a refactor.
 	local margin = round(self.item_height / 2)
 	local external_buttons_reserve = display.width / self.item_height > 14 and self.scroll_step * 6 - margin * 2 or 0
-	local width_available = display.width - margin * 2 - external_buttons_reserve
-	local height_available = display.height - margin * 2
+	local width_available = display.width - margin * 2 - self.padding * 2 - external_buttons_reserve
+	local height_available = display.height - margin * 2 - self.padding * 2
 	local min_width = math.min(self.min_width, width_available)
 
 	for _, menu in ipairs(self.all) do
 		local width = math.max(menu.search and menu.search.max_width or 0, menu.max_width)
 		menu.width = round(clamp(min_width, width, width_available))
-		local title_height = (menu.is_root and menu.title or menu.search) and self.scroll_step + self.padding or 0
+		local title_height = (menu.is_root and menu.title or menu.search) and
+			self.scroll_step + self.separator_size + 1 or 0
 		local footnote_height = self.font_size * 1.5
 		local max_height = height_available - title_height - footnote_height
 		local content_height = self.scroll_step * #menu.items
 		menu.height = math.min(content_height - self.item_spacing, max_height)
 		menu.top = clamp(
-			title_height + margin,
+			title_height + margin + self.padding,
 			menu.search and math.min(menu.search.min_top, menu.search.source.top) or height_available,
 			round((height_available - menu.height + title_height) / 2)
 		)
@@ -364,10 +365,13 @@ function Menu:update_dimensions()
 	self:update_coordinates()
 end
 
--- Updates element coordinates to match currently open (sub)menu.
+-- Updates element coordinates to match padding box of currently open (sub)menu.
 function Menu:update_coordinates()
-	local ax = round((display.width - self.current.width) / 2) + self.offset_x
-	self:set_coordinates(ax, self.current.top, ax + self.current.width, self.current.top + self.current.height)
+	local ax = round((display.width - self.current.width) / 2 - self.padding) + self.offset_x
+	self:set_coordinates(
+		ax, self.current.top - self.padding,
+		ax + self.current.width + self.padding * 2, self.current.top + self.current.height + self.padding
+	)
 end
 
 function Menu:reset_navigation()
@@ -686,7 +690,7 @@ function Menu:on_prop_fullormaxed() self:update_content_dimensions() end
 function Menu:on_options() self:update_content_dimensions() end
 
 function Menu:handle_cursor_down()
-	if self.proximity_raw == 0 then
+	if self.proximity_raw <= 0 then
 		self.drag_last_y = cursor.y
 		self.current.fling = nil
 	else
@@ -696,7 +700,7 @@ end
 
 ---@param shortcut? Shortcut
 function Menu:handle_cursor_up(shortcut)
-	if self.proximity_raw == 0 and self.drag_last_y and not self.is_dragging then
+	if self.proximity_raw <= -self.padding and self.drag_last_y and not self.is_dragging then
 		self:activate_selected_item(shortcut, true)
 	end
 	if self.is_dragging then
@@ -893,14 +897,14 @@ function search_items(items, query, recursive, prefix)
 				if ligature_conv_title:find(query, 1, true) then
 					match = true
 					score = 1000
-					local pos = get_roman_match_positions(title, query, "ligature", ligature_roman)
+					local pos = get_roman_match_positions(title, query, 'ligature', ligature_roman)
 					if pos then
 						ass_safe_title = highlight_match(item.title, pos, font_color, bold)
 					end
 				elseif initials_conv_title:find(query, 1, true) then
 					match = true
 					score = 900
-					local pos = get_roman_match_positions(title, query, "initial", initials_roman)
+					local pos = get_roman_match_positions(title, query, 'initial', initials_roman)
 					if pos then
 						ass_safe_title = highlight_match(item.title, pos, font_color, bold)
 					end
@@ -1371,7 +1375,6 @@ function Menu:render()
 	cursor:zone('wheel_up', self, function() self:handle_wheel_up() end)
 
 	local ass = assdraw.ass_new()
-	local spacing = self.item_padding
 	local icon_size = self.font_size
 
 	---@param menu MenuStack
@@ -1380,37 +1383,43 @@ function Menu:render()
 	local function draw_menu(menu, x, pos)
 		local is_current, is_parent, is_submenu = pos == 0, pos < 0, pos > 0
 		local menu_opacity = (pos == 0 and 1 or config.opacity.submenu ^ math.abs(pos)) * self.opacity
-		local ax, ay, bx, by = x, menu.top, x + menu.width, menu.top + menu.height
+		-- Scrollable content area coordinates
+		local content_rect = {
+			ax = x + self.padding,
+			ay = menu.top,
+			bx = x + self.padding + menu.width,
+			by = menu.top + menu.height,
+		}
+		-- local ax, ay, bx, by = x + self.padding, menu.top, x + menu.width + self.padding, menu.top + menu.height
 		local draw_title = menu.is_root and menu.title or menu.search
-		local scroll_clip = '\\clip(0,' .. ay .. ',' .. display.width .. ',' .. by .. ')'
+		local scroll_clip = '\\clip(0,' .. content_rect.ay .. ',' .. display.width .. ',' .. content_rect.by .. ')'
 		local start_index = math.floor(menu.scroll_y / self.scroll_step) + 1
 		local end_index = math.ceil((menu.scroll_y + menu.height) / self.scroll_step)
-		local menu_rect = {
-			ax = ax,
-			ay = ay - (draw_title and self.scroll_step + self.padding or 0) - self.padding,
-			bx = bx,
-			by = by + self.padding,
+		local bg_rect = {
+			ax = x,
+			ay = content_rect.ay - (draw_title and self.scroll_step or 0) - self.padding,
+			bx = content_rect.bx + self.padding,
+			by = content_rect.by + self.padding,
 		}
 		local blur_action_index = self.mouse_nav and menu.action_index ~= nil
 
 		-- Background
-		ass:rect(menu_rect.ax, menu_rect.ay, menu_rect.bx, menu_rect.by, {
+		ass:rect(bg_rect.ax, bg_rect.ay, bg_rect.bx, bg_rect.by, {
 			color = bg,
 			opacity = menu_opacity * config.opacity.menu,
-			radius = state.radius > 0 and state.radius + self.padding or 0,
+			radius = state.radius > 0 and math.min(state.radius + self.padding, state.radius * 3) or 0,
 		})
 
-		-- Clicking on parent slides it in, clicking on background of current menu is a noop preventing close
-		cursor:zone('primary_down', menu_rect, self:create_action(function()
-			if is_parent then self:slide_in_menu(menu.id, x) end
-		end))
+		if is_parent then
+			cursor:zone('primary_down', bg_rect, self:create_action(function() self:slide_in_menu(menu.id, x) end))
+		end
 
 		-- Scrollbar
 		if menu.scroll_height > 0 then
 			local groove_height = menu.height - 2
 			local thumb_height = math.max((menu.height / (menu.scroll_height + menu.height)) * groove_height, 40)
-			local thumb_y = ay + 1 + ((menu.scroll_y / menu.scroll_height) * (groove_height - thumb_height))
-			local sax = bx - round(self.scrollbar_size / 2)
+			local thumb_y = content_rect.ay + 1 + ((menu.scroll_y / menu.scroll_height) * (groove_height - thumb_height))
+			local sax = content_rect.bx - round(self.scrollbar_size / 2)
 			local sbx = sax + self.scrollbar_size
 			ass:rect(sax, thumb_y, sbx, thumb_y + thumb_height, {color = fg, opacity = menu_opacity * 0.8})
 		end
@@ -1419,7 +1428,7 @@ function Menu:render()
 		local submenu_rect, current_item = nil, is_current and menu.selected_index and menu.items[menu.selected_index]
 		local submenu_is_hovered = false
 		if current_item and current_item.items then
-			submenu_rect = draw_menu(current_item --[[@as MenuStack]], menu_rect.bx + self.gap, 1)
+			submenu_rect = draw_menu(current_item --[[@as MenuStack]], bg_rect.bx + self.gap, 1)
 			cursor:zone('primary_down', submenu_rect, self:create_action(function(shortcut)
 				self:activate_selected_item(shortcut, true)
 			end))
@@ -1432,26 +1441,25 @@ function Menu:render()
 
 			if not item then break end
 
-			local item_ax = menu_rect.ax + self.padding
-			local item_bx = menu_rect.bx - self.padding
-			local item_ay = ay - menu.scroll_y + self.scroll_step * (index - 1)
+			local item_ay = content_rect.ay - menu.scroll_y + self.scroll_step * (index - 1)
 			local item_by = item_ay + self.item_height
 			local item_center_y = item_ay + (self.item_height / 2)
-			local item_clip = (item_ay < ay or item_by > by) and scroll_clip or nil
-			local content_ax, content_bx = ax + self.padding + spacing, bx - self.padding - spacing
+			local item_clip = (item_ay < content_rect.ay or item_by > content_rect.by) and scroll_clip or nil
+			local content_ax, content_bx = content_rect.ax + self.item_padding,
+				content_rect.bx - self.item_padding
 			local is_selected = menu.selected_index == index
 			local item_rect_hitbox = {
-				ax = item_ax,
-				ay = math.max(item_ay, menu_rect.ay),
-				bx = menu_rect.bx + (item.items and self.gap or -self.padding), -- to bridge the gap with cursor
-				by = math.min(item_ay + self.scroll_step, menu_rect.by),
+				ax = content_rect.ax,
+				ay = math.max(item_ay, bg_rect.ay),
+				bx = bg_rect.bx + (item.items and self.gap or -self.padding), -- to bridge the submenu gap with cursor
+				by = math.min(item_ay + self.scroll_step, bg_rect.by),
 			}
 
 			-- Select hovered item
 			if is_current and self.mouse_nav and item.selectable ~= false
 				-- Do not select items if cursor is moving towards a submenu
 				and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect))
-				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) == 0) then
+				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) <= 0) then
 				menu.selected_index = index
 				if not is_selected then
 					is_selected = true
@@ -1470,22 +1478,23 @@ function Menu:render()
 			if action then selected_action = action end
 
 			-- Separator
-			if item_by < by and ((not has_background and not next_has_background) or item.separator) then
-				local separator_ay, separator_by = item_by, item_by + self.separator_size
+			if item_by < content_rect.by and ((not has_background and not next_has_background) or item.separator) then
+				local ay, by = item_by, item_by + self.separator_size
 				if has_background then
-					separator_ay, separator_by = separator_ay + self.separator_size, separator_by + self.separator_size
+					ay, by = ay + self.separator_size, by + self.separator_size
 				elseif next_has_background then
-					separator_ay, separator_by = separator_ay - self.separator_size, separator_by - self.separator_size
+					ay, by = ay - self.separator_size, by - self.separator_size
 				end
-				ass:rect(ax + spacing, separator_ay, bx - spacing, separator_by, {
-					color = fg, opacity = menu_opacity * (item.separator and 0.13 or 0.04),
-				})
+				ass:rect(
+					content_rect.ax + self.item_padding, ay, content_rect.bx - self.item_padding, by,
+					{color = fg, opacity = menu_opacity * (item.separator and 0.13 or 0.04)}
+				)
 			end
 
 			-- Background
 			local highlight_opacity = 0 + (item.active and 0.8 or 0) + (is_selected and 0.15 or 0)
 			if highlight_opacity > 0 then
-				ass:rect(ax + self.padding, item_ay, bx - self.padding, item_by, {
+				ass:rect(content_rect.ax, item_ay, content_rect.bx, item_by, {
 					radius = state.radius,
 					color = fg,
 					opacity = highlight_opacity * menu_opacity,
@@ -1507,9 +1516,10 @@ function Menu:render()
 				actions_rect = {
 					ay = item_ay + margin,
 					by = item_by - margin,
-					is_outside = place == 'outside' and display.width - menu_rect.bx + margin * 2 > rect_width,
+					is_outside = place == 'outside' and display.width - bg_rect.bx + margin * 2 > rect_width,
 				}
-				actions_rect.bx = actions_rect.is_outside and menu_rect.bx + margin + rect_width or item_bx - margin
+				actions_rect.bx = actions_rect.is_outside and bg_rect.bx + margin + rect_width or
+					content_rect.bx - margin
 				actions_rect.ax = actions_rect.bx
 
 				for i = 1, #actions, 1 do
@@ -1544,7 +1554,7 @@ function Menu:render()
 						rect.ay, rect.by, rect.bx = item_ay, item_ay + self.scroll_step, rect.bx + margin
 
 						-- Select action on cursor hover
-						if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) == 0 then
+						if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) <= 0 then
 							cursor:zone('primary_down', rect, self:create_action(function(shortcut)
 								self:activate_selected_item(shortcut, true)
 							end))
@@ -1565,17 +1575,18 @@ function Menu:render()
 			if is_selected and not selected_action then
 				local size = round(2 * state.scale)
 				local v_padding = math.min(state.radius, math.ceil(self.item_height / 3))
-				ass:rect(ax + self.padding - size - 1, item_ay + v_padding, ax + self.padding - 1,
-					item_by - v_padding, {
-						radius = 1 * state.scale, color = fg, opacity = menu_opacity, clip = item_clip,
-					})
+				ass:rect(
+					content_rect.ax - size - 1, item_ay + v_padding,
+					content_rect.ax - 1, item_by - v_padding,
+					{radius = 1 * state.scale, color = fg, opacity = menu_opacity, clip = item_clip}
+				)
 			end
 
 			-- Icon
 			if item.icon then
 				if not actions_rect or actions_rect.is_outside then
 					local x = (not item.title and not item.hint and item.align == 'center')
-						and menu_rect.ax + (menu_rect.bx - menu_rect.ax) / 2
+						and bg_rect.ax + (bg_rect.bx - bg_rect.ax) / 2
 						or content_bx - (icon_size / 2)
 					if item.icon == 'spinner' then
 						ass:spinner(x, item_center_y, icon_size * 1.5, {color = font_color, opacity = menu_opacity * 0.8})
@@ -1585,7 +1596,7 @@ function Menu:render()
 						})
 					end
 				end
-				content_bx = content_bx - icon_size - spacing
+				content_bx = content_bx - icon_size - self.item_padding
 				title_clip_bx = math.min(content_bx, title_clip_bx)
 			end
 
@@ -1593,7 +1604,7 @@ function Menu:render()
 			if item.hint_width > 0 then
 				-- controls title & hint clipping proportional to the ratio of their widths
 				-- both title and hint get at least 50% of the width, unless they are smaller then that
-				local width = content_bx - content_ax - spacing
+				local width = content_bx - content_ax - self.item_padding
 				local title_min = math.min(item.title_width, width * 0.5)
 				local hint_min = math.min(item.hint_width, width * 0.5)
 				local title_ratio = item.title_width / (item.title_width + item.hint_width)
@@ -1606,8 +1617,9 @@ function Menu:render()
 			-- Hint
 			if item.hint then
 				item.ass_safe_hint = item.ass_safe_hint or ass_escape(item.hint)
-				local clip = '\\clip(' .. title_clip_bx + spacing .. ',' ..
-					math.max(item_ay, ay) .. ',' .. hint_clip_bx .. ',' .. math.min(item_by, by) .. ')'
+				local clip = '\\clip(' .. title_clip_bx + self.item_padding .. ','
+					.. math.max(item_ay, content_rect.ay) .. ',' .. hint_clip_bx .. ','
+					.. math.min(item_by, content_rect.by) .. ')'
 				ass:txt(content_bx, item_center_y, 6, item.ass_safe_hint, {
 					size = self.font_size_hint,
 					color = font_color,
@@ -1620,8 +1632,8 @@ function Menu:render()
 			-- Title
 			if item.title then
 				item.ass_safe_title = item.ass_safe_title or ass_escape(item.title)
-				local clip = '\\clip(' .. ax .. ',' .. math.max(item_ay, ay) .. ','
-					.. title_clip_bx .. ',' .. math.min(item_by, by) .. ')'
+				local clip = '\\clip(' .. content_rect.ax .. ',' .. math.max(item_ay, content_rect.ay) .. ','
+					.. title_clip_bx .. ',' .. math.min(item_by, content_rect.by) .. ')'
 				local title_x, align = content_ax, 4
 				if item.align == 'right' then
 					title_x, align = title_clip_bx, 6
@@ -1643,7 +1655,7 @@ function Menu:render()
 		-- Footnote / Selected action label
 		if is_current and (menu.footnote or selected_action) then
 			local height_half = self.font_size
-			local icon_x, icon_y = menu_rect.ax + self.padding + self.font_size / 2, menu_rect.by + height_half
+			local icon_x, icon_y = content_rect.ax + self.font_size / 2, bg_rect.by + height_half
 			local is_icon_hovered = false
 			local icon_hitbox = {
 				ax = icon_x - height_half,
@@ -1651,7 +1663,7 @@ function Menu:render()
 				bx = icon_x + height_half,
 				by = icon_y + height_half,
 			}
-			is_icon_hovered = get_point_to_rectangle_proximity(cursor, icon_hitbox) == 0
+			is_icon_hovered = get_point_to_rectangle_proximity(cursor, icon_hitbox) <= 0
 			local text = selected_action and selected_action.label or is_icon_hovered and menu.footnote
 			local opacity = (is_icon_hovered and 1 or 0.5) * menu_opacity
 			ass:icon(icon_x, icon_y, self.font_size, is_icon_hovered and 'help' or 'help_outline', {
@@ -1673,20 +1685,22 @@ function Menu:render()
 		if draw_title then
 			local requires_submit = menu.search_debounce == 'submit'
 			local rect = {
-				ax = round(ax + spacing / 2 + self.padding),
-				ay = ay - self.scroll_step - self.padding * 2,
-				bx = round(bx - spacing / 2 - self.padding),
-				by = math.min(by, ay - self.padding),
+				ax = content_rect.ax,
+				ay = content_rect.ay - self.scroll_step - self.separator_size - 1,
+				bx = content_rect.bx,
+				by = content_rect.ay - self.separator_size - 1,
 			}
-			-- centers
+			-- Centers
 			rect.cx, rect.cy = round(rect.ax + (rect.bx - rect.ax) / 2), round(rect.ay + (rect.by - rect.ay) / 2)
 
 			if menu.title and not menu.ass_safe_title then
 				menu.ass_safe_title = ass_escape(menu.title)
 			end
 
-			-- Bottom border
-			ass:rect(ax, rect.by - self.separator_size, bx, rect.by, {color = fg, opacity = menu_opacity * 0.2})
+			-- Separator
+			ass:rect(
+				rect.ax, rect.by, rect.bx, rect.by + self.separator_size, {color = fg, opacity = menu_opacity * 0.2}
+			)
 
 			-- Blur selection (also activates search input) when user clicks title
 			if is_current then
@@ -1699,11 +1713,16 @@ function Menu:render()
 			if menu.search then
 				-- Icon
 				local icon_size, icon_opacity = self.font_size * 1.3, menu_opacity * (requires_submit and 0.5 or 1)
-				local icon_rect = {ax = rect.ax, ay = rect.ay, bx = ax + icon_size + spacing * 1.5, by = rect.by}
+				local icon_rect = {
+					ax = rect.ax,
+					ay = rect.ay,
+					bx = content_rect.ax + icon_size + self.item_padding * 1.5,
+					by = rect.by,
+				}
 
 				if is_current and requires_submit then
 					cursor:zone('primary_down', icon_rect, function() self:search_submit() end)
-					if get_point_to_rectangle_proximity(cursor, icon_rect) == 0 then
+					if get_point_to_rectangle_proximity(cursor, icon_rect) <= 0 then
 						icon_opacity = menu_opacity
 					end
 				end
@@ -1752,7 +1771,10 @@ function Menu:render()
 				-- (input is selected when `selected_index` is `nil`)
 				if menu.search_debounce == 'submit' and not menu.selected_index then
 					local size_half = round(1 * state.scale)
-					ass:rect(ax, rect.by - size_half, bx, rect.by + size_half, {color = fg, opacity = menu_opacity})
+					ass:rect(
+						content_rect.ax, rect.by - size_half, content_rect.bx, rect.by + size_half,
+						{color = fg, opacity = menu_opacity}
+					)
 				end
 				local input_is_blurred = menu.search_debounce == 'submit' and menu.selected_index
 
@@ -1780,7 +1802,7 @@ function Menu:render()
 			request_render()
 		end
 
-		return menu_rect
+		return bg_rect
 	end
 
 	-- Active menu
@@ -1791,7 +1813,7 @@ function Menu:render()
 	local parent_offset_x, parent_horizontal_index = self.ax, -1
 
 	while parent_menu do
-		parent_offset_x = parent_offset_x - parent_menu.width - self.gap
+		parent_offset_x = parent_offset_x - parent_menu.width - self.padding * 2 - self.gap
 		draw_menu(parent_menu, parent_offset_x, parent_horizontal_index)
 		parent_horizontal_index = parent_horizontal_index - 1
 		parent_menu = parent_menu.parent_menu

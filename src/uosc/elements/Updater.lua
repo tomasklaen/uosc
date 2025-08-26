@@ -286,7 +286,7 @@ function Updater:render()
 			by = ay + height,
 		}
 		ax = rect.bx + spacing
-		local is_hovered = get_point_to_rectangle_proximity(cursor, rect) == 0
+		local is_hovered = get_point_to_rectangle_proximity(cursor, rect) <= 0
 
 		-- Background
 		ass:rect(rect.ax, rect.ay, rect.bx, rect.by, {
