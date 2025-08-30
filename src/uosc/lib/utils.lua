@@ -223,6 +223,37 @@ function get_ray_to_rectangle_distance(ax, ay, bx, by, rect)
 	return closest
 end
 
+-- Converts a flat table of points to a smooth curve using Catmull-Rom to Bezier conversion.
+---@param points number[] Flat table: x1, y1, x2, y2, ...
+---@return number[] Flat table: start point followed by segment entries cp1x, cp1y, cp2x, cp2y, px, py, ...
+function points_to_bezier(points)
+	if not points or #points < 4 then return {} end
+	local function catmullrom_to_bezier(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y)
+		local cp1x = p1x + (p2x - p0x) / 6
+		local cp1y = p1y + (p2y - p0y) / 6
+		local cp2x = p2x - (p3x - p1x) / 6
+		local cp2y = p2y - (p3y - p1y) / 6
+		return cp1x, cp1y, cp2x, cp2y
+	end
+	-- Helper to get x, y from flat table
+	local function get_xy(i)
+		return points[i * 2 - 1], points[i * 2]
+	end
+	local curve = {points[1], points[2]}
+	local xy_pairs = #points / 2
+	for i = 1, xy_pairs - 1 do
+		local p0x, p0y = get_xy(math.max(i - 1, 1))
+		local p1x, p1y = get_xy(i)
+		local p2x, p2y = get_xy(i+1)
+		local p3x, p3y = get_xy(math.min(i + 2, xy_pairs))
+		local cp1x, cp1y, cp2x, cp2y = catmullrom_to_bezier(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y)
+		local n = #curve
+		curve[n+1], curve[n+2], curve[n+3], curve[n+4], curve[n+5], curve[n+6] =
+			cp1x, cp1y, cp2x, cp2y, p2x, p2y
+	end
+	return curve
+end
+
 -- Extracts the properties used by property expansion of that string.
 ---@param str string
 ---@param res { [string] : boolean } | nil
@@ -936,6 +967,42 @@ function set_clipboard(payload)
 		mp.commandv('show-text', t('Copied to clipboard') .. ': ' .. payload, 3000)
 	end
 	return data and data.payload
+end
+
+-- Returns Youtube heatmap data if available.
+---@return number[]|nil Flat table of normalized points (0–1)
+function load_youtube_heatmap()
+	if not state.path or not is_protocol(state.path) then return end
+	-- Match mpv's ytdl whitelist
+	if not (state.path:match('^https?://%w+%.youtube%.com/') or
+			state.path:match('^https?://youtube%.com/') or
+			state.path:match('^https?://youtu%.be/')) then return end
+
+	local r = mp.get_property_native('user-data/mpv/ytdl/json-subprocess-result')
+	local ytdl_result = r and utils.parse_json(r.stdout)
+	if ytdl_result and ytdl_result.heatmap then
+		local data = ytdl_result.heatmap
+		local max_val = 0
+		local vid_length = data[#data].end_time
+		for _, seg in ipairs(data) do
+			max_val = math.max(max_val, seg.value)
+		end
+		-- Normalize and clamp to avoid gaps in heatmap
+		local is_above = options.timeline_heatmap == 'above'
+		local min_height, graph_height = 4, is_above and 40 or options.timeline_size
+		local max_norm_y = 1 - (min_height / graph_height)
+		local norm = {0, 1}
+		for _, seg in ipairs(data) do
+			local center_time = (seg.start_time + seg.end_time) / 2
+			local norm_x = center_time / vid_length
+			local norm_y = math.min(max_norm_y, 1 - (seg.value / max_val))
+			norm[#norm + 1], norm[#norm + 2] = norm_x, norm_y
+		end
+		-- Add final anchor
+		norm[#norm + 1], norm[#norm + 2] = 1, max_norm_y
+		norm[#norm + 1], norm[#norm + 2] = 1, 1
+		return points_to_bezier(norm)
+	end
 end
 
 --[[ RENDERING ]]
