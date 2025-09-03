@@ -136,8 +136,8 @@ end
 function get_point_to_rectangle_proximity(point, rect)
 	local dx = math.max(rect.ax - point.x, point.x - rect.bx)
 	local dy = math.max(rect.ay - point.y, point.y - rect.by)
-    local distance = math.sqrt(math.max(0, dx)^2 + math.max(0, dy)^2)
-    return distance + math.min(0, math.max(dx, dy))
+	local distance = math.sqrt(math.max(0, dx)^2 + math.max(0, dy)^2)
+	return distance + math.min(0, math.max(dx, dy))
 end
 
 ---@param point_a Point
@@ -999,7 +999,8 @@ function load_youtube_heatmap()
 			norm[#norm + 1], norm[#norm + 2] = norm_x, norm_y
 		end
 		-- Add final anchor
-		norm[#norm + 1], norm[#norm + 2] = 1, max_norm_y
+		local last_y = math.min(max_norm_y, 1 - (data[#data].value / max_val))
+		norm[#norm + 1], norm[#norm + 2] = 1, last_y
 		norm[#norm + 1], norm[#norm + 2] = 1, 1
 		return points_to_bezier(norm)
 	end
