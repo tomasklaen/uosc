@@ -277,6 +277,8 @@ function Timeline:render()
 			local ax, ay = bax, is_above and (bay - height) or (bay + self.top_border)
 			local bx, by = bbx, is_above and bay or bby
 			local opts = {color = config.color.heatmap, opacity = config.opacity.heatmap * visibility}
+			local clip_ay = is_above and (ay - 10) or ay
+			opts.clip = string.format('\\clip(%d,%d,%d,%d)', ax, clip_ay, bx, by)
 			ass:smooth_curve(ax, ay, bx, by, self.heatmap, opts)
 		end
 	end
