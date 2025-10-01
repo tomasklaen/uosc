@@ -462,7 +462,7 @@ alt+>       script-binding uosc/delete-file-next   #! Navigation > Delete file &
 alt+<       script-binding uosc/delete-file-prev   #! Navigation > Delete file & Prev
 alt+esc     script-binding uosc/delete-file-quit   #! Navigation > Delete file & Quit
 o           script-binding uosc/open-file          #! Navigation > Open file
-#           set video-aspect-override "-1"         #! Utils > Aspect ratio > Default
+#           set video-aspect-override no           #! Utils > Aspect ratio > Default
 #           set video-aspect-override "16:9"       #! Utils > Aspect ratio > 16:9
 #           set video-aspect-override "4:3"        #! Utils > Aspect ratio > 4:3
 #           set video-aspect-override "2.35:1"     #! Utils > Aspect ratio > 2.35:1

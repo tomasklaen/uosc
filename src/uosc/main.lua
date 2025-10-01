@@ -334,7 +334,7 @@ function create_default_menu_items()
 				{
 					title = t('Aspect ratio'),
 					items = {
-						{title = t('Default'), value = 'set video-aspect-override "-1"'},
+						{title = t('Default'), value = 'set video-aspect-override no'},
 						{title = '16:9', value = 'set video-aspect-override "16:9"'},
 						{title = '4:3', value = 'set video-aspect-override "4:3"'},
 						{title = '2.35:1', value = 'set video-aspect-override "2.35:1"'},
