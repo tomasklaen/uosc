@@ -14,7 +14,7 @@ function PauseIndicator:init()
 end
 
 function PauseIndicator:init_options()
-	self.base_icon_opacity = options.pause_indicator == 'flash' and 1 or 0.8
+	self.base_icon_opacity = config.opacity.pause_indicator or (options.pause_indicator == 'flash' and 1) or 0.8
 	self.type = options.pause_indicator
 	self:on_prop_pause()
 end
