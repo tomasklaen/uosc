@@ -1670,7 +1670,7 @@ function Menu:render()
 				color = fg, border = state.scale, border_color = bg, opacity = opacity,
 			})
 			if text then
-				ass:txt(icon_x + self.font_size * 0.75, icon_y, 4, text, {
+				ass:txt(icon_x + self.font_size * 0.75, icon_y - self.font_size * 0.5, 7, ass_escape(text), {
 					size = self.font_size,
 					color = fg,
 					border = state.scale,
