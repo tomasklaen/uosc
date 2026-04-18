@@ -9,6 +9,23 @@ function Curtain:init()
 	self.opacity = 0
 	---@type string[]
 	self.dependents = {}
+
+	-- Monitor context-menu open state
+	self:observe_mp_property('user-data/mpv/context-menu/open', function(_, value)
+ 		if value == true then
+ 			self:register('context-menu')
+ 		else
+ 			self:unregister('context-menu')
+ 		end
+ 	end)
+ 	-- Monitor console open state
+ 	self:observe_mp_property('user-data/mpv/console/open', function(_, value)
+ 		if value == true then
+ 			self:register('console')
+ 		else
+ 			self:unregister('console')
+ 		end
+ 	end)
 end
 
 ---@param id string
