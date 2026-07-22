@@ -108,6 +108,7 @@ function Menu:init(data, callback, opts)
 	self.opts = opts or {}
 	self.offset_x = 0 -- Used for submenu transition animation.
 	self.mouse_nav = self.opts.mouse_nav -- Stops pre-selecting items
+	self.mouse_hovered_index = nil -- Current menu's item being hovered by mouse, ignoring it's selectable or not.
 	self.item_height = nil
 	self.min_width = nil
 	self.item_spacing = 1
@@ -700,7 +701,8 @@ end
 
 ---@param shortcut? Shortcut
 function Menu:handle_cursor_up(shortcut)
-	if self.proximity_raw <= -self.padding and self.drag_last_y and not self.is_dragging then
+	if self.proximity_raw <= -self.padding and self.drag_last_y and not self.is_dragging
+	and self.mouse_hovered_index == self.current.selected_index then
 		self:activate_selected_item(shortcut, true)
 	end
 	if self.is_dragging then
@@ -1456,14 +1458,16 @@ function Menu:render()
 			}
 
 			-- Select hovered item
-			if is_current and self.mouse_nav and item.selectable ~= false
-				-- Do not select items if cursor is moving towards a submenu
-				and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect))
+			if is_current and self.mouse_nav
 				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) <= 0) then
-				menu.selected_index = index
-				if not is_selected then
-					is_selected = true
-					request_render()
+				self.mouse_hovered_index = index
+				-- Do not select items if cursor is moving towards a submenu
+				if item.selectable ~= false and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect)) then
+					menu.selected_index = index
+					if not is_selected then
+						is_selected = true
+						request_render()
+					end
 				end
 			end
 
