@@ -406,14 +406,8 @@ function Controls:update_dimensions()
 		end
 		local left_w, middle_w = section_widths[1], section_widths[2]
 		local total_space = empty_space_width - width_for_gaps
-		-- middle_w's last control (if not the very last item in self.layout) has a
-		-- trailing `spacing` baked into its width by the loop above, but that gap sits
-		-- between the control and space2 in the actual layout pass below — it isn't
-		-- part of the control's own visual footprint. Strip it so the centering math
-		-- centers the control itself, not the control-plus-trailing-gap.
-		local adjusted_middle_w = middle_w > spacing and (middle_w - spacing) or middle_w
-		-- For absolute centering: space1 + left_w + adjusted_middle_w/2 = available_width/2
-		local space1 = (available_width - adjusted_middle_w) / 2 - left_w
+		-- For absolute centering: space1 + left_w + middle_w/2 = available_width/2
+		local space1 = (available_width - middle_w) / 2 - left_w + spacing / 2
 		local space2 = total_space - space1
 		-- Clamp: both spaces must be non-negative. If one side would go negative,
 		-- transfer the deficit to the other side so space1 + space2 == total_space
