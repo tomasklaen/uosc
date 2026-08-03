@@ -174,6 +174,13 @@ function Timeline:on_global_mouse_move()
 	end
 end
 
+function Timeline:cursor_command(command)
+	if type(command) == 'string' and #command > 0 and state.time and state.duration then
+		local expanded_command = command:gsub("{time}", self:get_time_at_x(cursor.x))
+		mp.command(expanded_command)
+	end
+end
+
 function Timeline:render()
 	if self.size == 0 then
 		self:clear_thumbnail()
@@ -197,6 +204,11 @@ function Timeline:render()
 			self:handle_cursor_down()
 			cursor:once('primary_up', function() self:handle_cursor_up() end)
 		end)
+		if #options.timeline_mbtn_right > 0 then
+			cursor:zone('secondary_down', self, function()
+				self:cursor_command(options.timeline_mbtn_right)
+			end)
+		end
 		if config.timeline_step ~= 0 then
 			cursor:zone('wheel_down', self, function()
 				mp.commandv('seek', -config.timeline_step, config.timeline_step_flag)

@@ -28,6 +28,7 @@ defaults = {
 	timeline_step = '5',
 	timeline_cache = true,
 	timeline_heatmap = 'overlay',
+	timeline_mbtn_right = '',
 
 	controls =
 	'menu,gap,<video,audio>subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,<video,audio>speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
