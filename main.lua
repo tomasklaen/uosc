@@ -21,6 +21,7 @@ defaults = {
 	timeline_line_width = 2,
 	timeline_size = 40,
 	progress = 'windowed',
+	progress_style='line',
 	progress_size = 2,
 	progress_line_width = 20,
 	timeline_persistency = '',
