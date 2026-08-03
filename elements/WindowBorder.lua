@@ -26,7 +26,7 @@ function WindowBorder:render()
 		local clip = '\\iclip(' .. self.size .. ',' .. self.size .. ',' ..
 			(display.width - self.size) .. ',' .. (display.height - self.size) .. ')'
 		ass:rect(0, 0, display.width + 1, display.height + 1, {
-			color = bg, clip = clip, opacity = config.opacity.border,
+			color = config.color.window_border, clip = clip, opacity = config.opacity.border,
 		})
 		return ass
 	end

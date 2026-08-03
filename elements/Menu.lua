@@ -108,6 +108,7 @@ function Menu:init(data, callback, opts)
 	self.opts = opts or {}
 	self.offset_x = 0 -- Used for submenu transition animation.
 	self.mouse_nav = self.opts.mouse_nav -- Stops pre-selecting items
+	self.mouse_hovered_index = nil -- Current menu's item being hovered by mouse, ignoring it's selectable or not.
 	self.item_height = nil
 	self.min_width = nil
 	self.item_spacing = 1
@@ -700,7 +701,8 @@ end
 
 ---@param shortcut? Shortcut
 function Menu:handle_cursor_up(shortcut)
-	if self.proximity_raw <= -self.padding and self.drag_last_y and not self.is_dragging then
+	if self.proximity_raw <= -self.padding and self.drag_last_y and not self.is_dragging
+	and self.mouse_hovered_index == self.current.selected_index then
 		self:activate_selected_item(shortcut, true)
 	end
 	if self.is_dragging then
@@ -1456,14 +1458,16 @@ function Menu:render()
 			}
 
 			-- Select hovered item
-			if is_current and self.mouse_nav and item.selectable ~= false
-				-- Do not select items if cursor is moving towards a submenu
-				and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect))
+			if is_current and self.mouse_nav
 				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) <= 0) then
-				menu.selected_index = index
-				if not is_selected then
-					is_selected = true
-					request_render()
+				self.mouse_hovered_index = index
+				-- Do not select items if cursor is moving towards a submenu
+				if item.selectable ~= false and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect)) then
+					menu.selected_index = index
+					if not is_selected then
+						is_selected = true
+						request_render()
+					end
 				end
 			end
 
@@ -1555,7 +1559,7 @@ function Menu:render()
 
 						-- Select action on cursor hover
 						if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) <= 0 then
-							cursor:zone('primary_down', rect, self:create_action(function(shortcut)
+							cursor:zone('primary_click', rect, self:create_action(function(shortcut)
 								self:activate_selected_item(shortcut, true)
 							end))
 							blur_action_index = false
@@ -1589,7 +1593,9 @@ function Menu:render()
 						and bg_rect.ax + (bg_rect.bx - bg_rect.ax) / 2
 						or content_bx - (icon_size / 2)
 					if item.icon == 'spinner' then
-						ass:spinner(x, item_center_y, icon_size * 1.5, {color = font_color, opacity = menu_opacity * 0.8})
+						ass:spinner(x, item_center_y, icon_size * 1.5, {
+							color = font_color, opacity = menu_opacity * 0.8, clip = item_clip,
+						})
 					else
 						ass:icon(x, item_center_y, icon_size * 1.5, item.icon, {
 							color = font_color, opacity = menu_opacity, clip = item_clip,
@@ -1670,7 +1676,7 @@ function Menu:render()
 				color = fg, border = state.scale, border_color = bg, opacity = opacity,
 			})
 			if text then
-				ass:txt(icon_x + self.font_size * 0.75, icon_y, 4, text, {
+				ass:txt(icon_x + self.font_size * 0.75, icon_y - self.font_size * 0.5, 7, ass_escape(text), {
 					size = self.font_size,
 					color = fg,
 					border = state.scale,
