@@ -105,7 +105,12 @@ function Timeline:flash_progress()
 end
 
 function Timeline:get_time_at_x(x)
-	local line_width = (options.timeline_style == 'line' and self.line_width - 1 or 0)
+	local size = self:get_effective_size()
+	local progress_size = math.max(self.min_progress_size, self.progress_size)
+	local is_minimized = size <= progress_size + 1
+	local is_line = is_minimized and options.progress_style == 'line'
+		or (not is_minimized and options.timeline_style == 'line')
+	local line_width = (is_line and self.line_width - 1 or 0)
 	local time_width = self.width - line_width - 1
 	local fax = (time_width) * state.time / state.duration
 	local fbx = fax + line_width
@@ -232,7 +237,7 @@ function Timeline:render()
 
 	local spacing = math.max(math.floor((self.size - self.font_size) / 2.5), 4)
 	local progress = state.time / state.duration
-	local is_line = options.timeline_style == 'line'
+	local is_minimized = size <= progress_size + 1
 
 	-- Foreground & Background bar coordinates
 	local bax, bay, bbx, bby = self.ax, self.by - size - self.top_border, self.bx, self.by
@@ -241,13 +246,17 @@ function Timeline:render()
 
 	local line_width = 0
 
-	if is_line then
+	if is_minimized and options.progress_style == 'line' then
 		local minimized_fraction = 1 - math.min((size - progress_size) / ((self.size - progress_size) / 8), 1)
 		local progress_delta = progress_size > 0 and self.progress_line_width - self.line_width or 0
 		line_width = self.line_width + (progress_delta * minimized_fraction)
 		fax = bax + (self.width - line_width) * progress
 		fbx = fax + line_width
 		line_width = line_width - 1
+	elseif not is_minimized and options.timeline_style == 'line' then
+		line_width = self.line_width
+		fax = bax + (self.width - line_width) * progress
+		fbx = fax + line_width
 	else
 		fax, fbx = bax, bax + self.width * progress
 	end
