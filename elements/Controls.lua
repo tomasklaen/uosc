@@ -81,6 +81,7 @@ function Controls:init_options()
 
 	-- Create controls
 	self.controls = {}
+	local speed_present = false
 	for i, item in ipairs(items) do
 		local config = shorthands[item.config] and shorthands[item.config] or item.config
 		local config_tooltip = split(config, ' *%? *')
@@ -192,6 +193,7 @@ function Controls:init_options()
 				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
 			end
 		elseif kind == 'speed' then
+			speed_present = true
 			if not Elements.speed then
 				local element = Speed:new({anchor_id = 'controls', render_order = self.render_order})
 				local scale = tonumber(params[1]) or 1.3
@@ -212,6 +214,23 @@ function Controls:init_options()
 			end
 		end
 		self.controls[#self.controls + 1] = control
+	end
+
+	if not speed_present and not Elements.speed then
+		-- Keep a hidden speed slider element alive so `flash-speed` still works when the
+		-- control is removed from the visible controls layout.
+		local element = Speed:new({anchor_id = 'controls', render_order = self.render_order})
+		element.hide = true
+		self.controls[#self.controls + 1] = {
+			element = element,
+			sizing = 'dynamic',
+			scale = 1.3,
+			ratio = 3.5,
+			ratio_min = 2,
+			hide = true,
+			placeholder = true,
+			dispositions = {{never = true}},
+		}
 	end
 
 	self:reflow()
@@ -249,7 +268,7 @@ function Controls:reflow()
 
 		if conditions_num == 0 then matches = true end
 		local show = matches and (not control.element or control.element.hide ~= true)
-		if control.element then control.element.enabled = show end
+		if control.element then control.element.enabled = show or control.placeholder end
 		if show then self.layout[#self.layout + 1] = control end
 	end
 
@@ -377,65 +396,15 @@ function Controls:update_dimensions()
 	local width_for_dynamics = available_width - statics_width
 	local empty_space_width = width_for_dynamics - max_dynamics_width
 	local width_for_gaps = math.min(empty_space_width, size * gaps)
-
-	-- Calculate per-space widths: if exactly 2 spaces, center content between them absolutely
-	local space_widths = {}
-	if spaces == 2 then
-		-- Measure content width in each section: before space1, between spaces, after space2
-		local section = 1
-		local section_widths = {0, 0, 0}
-		for c, control in ipairs(self.layout) do
-			if not control.hide then
-				if control.sizing == 'space' then
-					section = section + 1
-				else
-					local w = 0
-					if control.sizing == 'gap' then
-						if width_for_gaps > 0 then w = width_for_gaps * (control.ratio / gaps) end
-					elseif control.sizing == 'static' then
-						w = size * control.scale * control.ratio + (c ~= #self.layout and spacing or 0)
-					elseif control.sizing == 'dynamic' then
-						local height = size * control.scale
-						w = (max_dynamics_width < width_for_dynamics
-							and height * control.ratio or width_for_dynamics * ((control.scale * control.ratio) / dynamic_units))
-							+ (c ~= #self.layout and spacing or 0)
-					end
-					section_widths[section] = section_widths[section] + w
-				end
-			end
-		end
-		local left_w, middle_w = section_widths[1], section_widths[2]
-		local total_space = empty_space_width - width_for_gaps
-		-- For absolute centering: space1 + left_w + middle_w/2 = available_width/2
-		local space1 = (available_width - middle_w) / 2 - left_w + spacing / 2
-		local space2 = total_space - space1
-		-- Clamp: both spaces must be non-negative. If one side would go negative,
-		-- transfer the deficit to the other side so space1 + space2 == total_space
-		-- is preserved whenever that's still possible (i.e. total_space >= 0).
-		if space1 < 0 then
-			space2 = space2 + space1
-			space1 = 0
-		elseif space2 < 0 then
-			space1 = space1 + space2
-			space2 = 0
-		end
-		if space1 < 0 then space1 = 0 end
-		if space2 < 0 then space2 = 0 end
-		space_widths = {space1, space2}
-	else
 	local individual_space_width = spaces > 0 and ((empty_space_width - width_for_gaps) / spaces) or 0
-		for i = 1, spaces do space_widths[i] = individual_space_width end
-	end
 
-	local space_index = 0
 	for c, control in ipairs(self.layout) do
 		if not control.hide then
 			local sizing, element, scale, ratio = control.sizing, control.element, control.scale, control.ratio
 			local width, height = 0, 0
 
 			if sizing == 'space' then
-				space_index = space_index + 1
-				width = space_widths[space_index] or 0
+				if individual_space_width > 0 then width = individual_space_width end
 			elseif sizing == 'gap' then
 				if width_for_gaps > 0 then width = width_for_gaps * (ratio / gaps) end
 			elseif sizing == 'static' then
@@ -450,6 +419,14 @@ function Controls:update_dimensions()
 			local bx = current_x + width
 			if element then element:set_coordinates(round(current_x), round(self.by - height), bx, self.by) end
 			current_x = element and bx + spacing or bx
+		end
+	end
+
+	for _, control in ipairs(self.controls) do
+		if control.placeholder and control.element then
+			local width = size * control.scale * control.ratio
+			local height = size * control.scale
+			control.element:set_coordinates(round(self.bx - width), round(self.by - height), self.bx, self.by)
 		end
 	end
 

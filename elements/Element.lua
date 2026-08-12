@@ -99,6 +99,8 @@ end
 
 -- Decide elements visibility based on proximity and various other factors
 function Element:get_visibility()
+	if self.hide and not self.forced_visibility then return 0 end
+
 	-- Hide when curtain is visible, unless this elements ignores it
 	local min_order = (Elements.curtain.opacity > 0 and not self.ignores_curtain) and Elements.curtain.render_order or 0
 	if self.render_order < min_order then return 0 end
