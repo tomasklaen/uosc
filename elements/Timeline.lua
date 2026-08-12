@@ -75,8 +75,8 @@ end
 
 function Timeline:decide_progress_size()
 	local show = options.progress == 'always'
-		or (options.progress == 'fullscreen' and state.fullormaxed)
-		or (options.progress == 'windowed' and not state.fullormaxed)
+		or (options.progress == 'fullscreen' and state.fullscreen)
+		or (options.progress == 'windowed' and not state.fullscreen)
 	self.progress_size = show and options.progress_size or 0
 end
 
