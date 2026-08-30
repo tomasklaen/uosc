@@ -104,8 +104,26 @@ function Timeline:flash_progress()
 	end
 end
 
+function Timeline:get_style_state(size)
+    local progress_size = math.max(self.min_progress_size, self.progress_size)
+    local range = (self.size - progress_size) / 8
+
+    local minimized_fraction = range > 0
+        and 1 - math.min((size - progress_size) / range, 1)
+        or 1
+
+    local style = minimized_fraction > 0
+        and options.progress_style
+        or options.timeline_style
+
+    return style, minimized_fraction
+end
+
 function Timeline:get_time_at_x(x)
-	local line_width = (options.timeline_style == 'line' and self.line_width - 1 or 0)
+	local size = self:get_effective_size()
+	local style = self:get_style_state(size)
+	local is_line = style == "line"
+	local line_width = (is_line and self.line_width - 1 or 0)
 	local time_width = self.width - line_width - 1
 	local fax = (time_width) * state.time / state.duration
 	local fbx = fax + line_width
@@ -232,28 +250,32 @@ function Timeline:render()
 
 	local spacing = math.max(math.floor((self.size - self.font_size) / 2.5), 4)
 	local progress = state.time / state.duration
-	local is_line = options.timeline_style == 'line'
 
 	-- Foreground & Background bar coordinates
 	local bax, bay, bbx, bby = self.ax, self.by - size - self.top_border, self.bx, self.by
 	local fax, fay, fbx, fby = 0, bay + self.top_border, 0, bby
 	local fcy = fay + (size / 2)
 
+	local style, minimized_fraction = self:get_style_state(size)
+	local is_line = style == "line"
 	local line_width = 0
 
 	if is_line then
-		local minimized_fraction = 1 - math.min((size - progress_size) / ((self.size - progress_size) / 8), 1)
-		local progress_delta = progress_size > 0 and self.progress_line_width - self.line_width or 0
+		local progress_delta = progress_size > 0 
+			and self.progress_line_width - self.line_width 
+			or 0
+
 		line_width = self.line_width + (progress_delta * minimized_fraction)
+
+		local visible_line_width = line_width - 1
 		fax = bax + (self.width - line_width) * progress
-		fbx = fax + line_width
-		line_width = line_width - 1
+		fbx = fax + visible_line_width
 	else
 		fax, fbx = bax, bax + self.width * progress
 	end
 
 	local foreground_size = fby - fay
-	local foreground_coordinates = round(fax) .. ',' .. fay .. ',' .. round(fbx) .. ',' .. fby -- for clipping
+	local foreground_coordinates = round(fax) .. ',' .. fay .. ',' .. round(fbx) .. ',' .. fby
 
 	-- time starts 0.5 pixels in
 	local time_ax = bax + 0.5
