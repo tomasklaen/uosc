@@ -696,7 +696,7 @@ mp.observe_property('track-list', 'native', function(name, value)
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('editions', 'number', function(_, editions)
-	if editions then set_state('has_many_edition', editions > 1) end
+	set_state('has_many_edition', editions and editions > 1)
 	Elements:trigger('dispositions')
 end)
 mp.observe_property('chapter-list', 'native', function(_, chapters)
