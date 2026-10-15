@@ -295,8 +295,9 @@ end
 function format_time(seconds, max_seconds)
 	local human = mp.format_time(seconds)
 	if options.time_precision > 0 then
-		local formatted = string.format('%.' .. options.time_precision .. 'f', math.abs(seconds) % 1)
-		human = human .. '.' .. string.sub(formatted, 3)
+		local ms = math.floor(math.abs(seconds) * 1000 + 0.5)
+		local frac = math.floor(ms % 1000 * 10 ^ options.time_precision / 1000)
+		human = human .. '.' .. string.format('%0' .. options.time_precision .. 'd', frac)
 	end
 	if max_seconds then
 		local trim_length = (max_seconds < 60 and 7 or (max_seconds < 3600 and 4 or 0))
