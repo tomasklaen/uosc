@@ -514,15 +514,38 @@ function get_adjacent_files(file_path, opts)
 		return
 	end
 	sort_strings(files)
-	local current_file_index
-	local paths = {}
+
+	-- If the current file was renamed or deleted,
+	-- insert its original name as a virtual entry.
+	local current_file_exists = false
+
 	for _, file in ipairs(files) do
-		local is_current_file = current_meta.basename == file
-		if is_current_file or not opts.types or has_any_extension(file, opts.types) then
-			paths[#paths + 1] = join_path(current_meta.dirname, file)
-			if is_current_file then current_file_index = #paths end
+		if file == current_meta.basename then
+			current_file_exists = true
+			break
 		end
 	end
+
+	if not current_file_exists then
+		files[#files + 1] = current_meta.basename
+		sort_strings(files)
+	end
+
+	local current_file_index
+	local paths = {}
+
+	for _, file in ipairs(files) do
+		local is_current_file = current_meta.basename == file
+
+		if is_current_file or not opts.types or has_any_extension(file, opts.types) then
+			paths[#paths + 1] = join_path(current_meta.dirname, file)
+
+			if is_current_file then
+				current_file_index = #paths
+			end
+		end
+	end
+
 	if not current_file_index then return end
 	return paths, current_file_index
 end
