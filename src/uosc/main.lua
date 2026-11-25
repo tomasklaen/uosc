@@ -956,7 +956,28 @@ bind_command('show-in-directory', function()
 	end
 end)
 bind_command('stream-quality', open_stream_quality_menu)
-bind_command('open-file', open_open_file_menu)
+bind_command('open-file', function()
+	local directory
+	local active_file
+
+	if state.path == nil or is_protocol(state.path) then
+		directory = options.default_directory
+		active_file = nil
+	else
+		local serialized = serialize_path(state.path)
+		if serialized then
+			directory = serialized.dirname
+			active_file = serialized.path
+		end
+	end
+
+	if not directory then
+		msg.error('Couldn\'t serialize path "' .. state.path .. '".')
+		return
+	end
+
+	open_open_file_menu(directory, active_file)
+end)
 bind_command('shuffle', function()
 	set_state('shuffle', not state.shuffle)
 	mp.osd_message(state.shuffle and t('Shuffle ON') or t('Shuffle OFF'))
@@ -1083,6 +1104,9 @@ end)
 
 --[[ MESSAGE HANDLERS ]]
 
+mp.register_script_message('open-file-menu', function(directory, active_file)
+	open_open_file_menu(directory, active_file)
+end)
 mp.register_script_message('show-submenu', function(id) toggle_menu_with_items({submenu = id}) end)
 mp.register_script_message('show-submenu-blurred', function(id)
 	toggle_menu_with_items({submenu = id, mouse_nav = true})
