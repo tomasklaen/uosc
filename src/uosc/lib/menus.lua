@@ -779,7 +779,7 @@ function open_stream_quality_menu()
 	end)
 end
 
-function open_open_file_menu()
+function open_open_file_menu(directory, active_file)
 	if Menu:is_open('open-file') then
 		Menu:close()
 		return
@@ -787,22 +787,9 @@ function open_open_file_menu()
 
 	---@type Menu | nil
 	local menu
-	local directory
-	local active_file
-
-	if state.path == nil or is_protocol(state.path) then
-		directory = options.default_directory
-		active_file = nil
-	else
-		local serialized = serialize_path(state.path)
-		if serialized then
-			directory = serialized.dirname
-			active_file = serialized.path
-		end
-	end
 
 	if not directory then
-		msg.error('Couldn\'t serialize path "' .. state.path .. '".')
+		msg.error('Unspecified required argument - directory')
 		return
 	end
 
